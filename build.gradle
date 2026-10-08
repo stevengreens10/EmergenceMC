@@ -76,7 +76,7 @@ neoForge {
         // Automated visual check: tours the demo world, saves run/screenshots/showcase-*.png, quits.
         showcaseClient {
             client()
-            programArguments.addAll('--quickPlaySingleplayer', 'Emergence Demo', '--width', '1280', '--height', '720')
+            programArguments.addAll('--quickPlaySingleplayer', 'Emergence Showcase', '--width', '1280', '--height', '720')
             systemProperty 'emergence.autoShowcase', 'true'
         }
         server {
@@ -142,4 +142,15 @@ tasks.register('generateDemoWorld', Copy) {
     from 'run-demo/world'
     into 'run/saves/Emergence Demo'
     doFirst { delete 'run/saves/Emergence Demo' }
+}
+
+// The tour flips switches and cranks machines; it plays a throwaway copy so the installed demo world stays pristine.
+tasks.named('runShowcaseClient') {
+    doFirst {
+        delete 'run/saves/Emergence Showcase'
+        copy {
+            from 'run-demo/world'
+            into 'run/saves/Emergence Showcase'
+        }
+    }
 }

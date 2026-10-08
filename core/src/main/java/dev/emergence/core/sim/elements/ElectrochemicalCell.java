@@ -87,7 +87,7 @@ public final class ElectrochemicalCell implements Element {
     private final Map<String, Integer> speciesIdx = new LinkedHashMap<>();
     private final Map<String, Integer> speciesSlot = new LinkedHashMap<>();
     private final Map<String, Double> overrideMoles = new LinkedHashMap<>();
-    private final double alpha, km;
+    private final double km;
 
     /**
      * @param bulk         electrical node of the bulk solution
@@ -101,7 +101,6 @@ public final class ElectrochemicalCell implements Element {
         this.volumeLitres = volumeLitres;
         this.initialMolar = new LinkedHashMap<>(initialMolar);
         Electrochemistry db = Electrochemistry.standard();
-        this.alpha = db.transferCoefficient();
         this.km = db.massTransferCoefficient();
         for (HalfReaction r : db.reactions()) this.initialMolar.putIfAbsent(r.speciesOx(), 0.0);
     }
@@ -219,7 +218,7 @@ public final class ElectrochemicalCell implements Element {
                 int si = sp.indexOf(hr.speciesOx());
                 double moles = Math.max(l[offSpecies() + si], 0);
                 double c = moles / volumeLitres;
-                double f = hr.n() * F / (R_GAS * tEl);
+                double f = F / (R_GAS * tEl);
                 double eEq = hr.e0() + (R_GAS * tEl / (hr.n() * F)) * hr.stoichOx() * Math.log(Math.max(c, 1e-12));
                 double eta = delta - eEq;
                 boolean ownMetal = hr.metal() != null && hr.metal().equals(e.material);
@@ -232,10 +231,10 @@ public final class ElectrochemicalCell implements Element {
                     anod = 1.0; // water oxidation
                 }
                 double cath = (hr.oxidationOnly() || c <= 0) ? 0 : 1.0;
-                double ia = anod > 0 ? anod * e.area * e.i0[b] * expClamp(alpha * f * eta) : 0;
+                double ia = anod > 0 ? anod * e.area * e.i0[b] * expClamp(hr.alphaA() * f * eta) : 0;
                 double ic = 0;
                 if (cath > 0) {
-                    double raw = e.area * e.i0[b] * Math.min(c, 1.0) * expClamp(-(1 - alpha) * f * eta);
+                    double raw = e.area * e.i0[b] * Math.min(c, 1.0) * expClamp(-hr.alphaC() * f * eta);
                     double ilim = hr.n() * F * km * c * 1000.0 * e.area / hr.stoichOx();
                     ic = raw / (1 + raw / Math.max(ilim, 1e-30));
                 }

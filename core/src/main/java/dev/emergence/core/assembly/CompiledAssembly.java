@@ -197,6 +197,44 @@ public final class CompiledAssembly {
         return out;
     }
 
+    /**
+     * Visible colour of a part as changed by chemistry (0xRRGGBB), or −1 if unchanged: an electrolyte's
+     * colour follows its ion concentrations (Beer–Lambert); an electrode takes on the colour of metal
+     * plated onto it as the film builds up (fully covered at ~1e-4 mol/m², a sub-micrometre film).
+     */
+    public int chemicalColour(long partId) {
+        ElectrochemicalCell cell = cells.get(partId);
+        if (cell != null) {
+            Map<String, Double> conc = new java.util.HashMap<>();
+            for (String sp : cell.allMoles(solver).keySet()) conc.put(sp, cell.concentration(sp, solver));
+            return dev.emergence.core.chem.Electrochemistry.standard().solutionColour(conc);
+        }
+        List<Object[]> els = electrodes.get(partId);
+        if (els == null) return -1;
+        Part p = assembly.get(partId);
+        if (p == null) return -1;
+        double r = 0, g = 0, b = 0, total = 0;
+        for (Object[] ce : els) {
+            ElectrochemicalCell cl = (ElectrochemicalCell) ce[0];
+            for (var d : cl.deposits((ElectrochemicalCell.Electrode) ce[1], solver).entrySet()) {
+                var m = dev.emergence.core.materials.MaterialDatabase.standard().getOrNull(d.getKey());
+                if (m == null || d.getValue() <= 0) continue;
+                r += ((m.color() >> 16) & 255) * d.getValue();
+                g += ((m.color() >> 8) & 255) * d.getValue();
+                b += (m.color() & 255) * d.getValue();
+                total += d.getValue();
+            }
+        }
+        if (total <= 0) return -1;
+        double area = Part.CELL * Part.CELL;
+        double f = 1 - Math.exp(-total / (area * 1e-4));
+        int base = p.material().color();
+        int rr = (int) (((base >> 16) & 255) * (1 - f) + r / total * f);
+        int gg = (int) (((base >> 8) & 255) * (1 - f) + g / total * f);
+        int bb = (int) ((base & 255) * (1 - f) + b / total * f);
+        return (rr << 16) | (gg << 8) | bb;
+    }
+
     /** Moles of foreign metal plated onto an electrode part (for rendering its colour). */
     public double depositMoles(long partId) {
         double mol = 0;

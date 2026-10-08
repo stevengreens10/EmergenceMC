@@ -19,9 +19,12 @@ import java.util.Map;
  */
 public final class Electrochemistry {
 
-    /** Reduction half-reaction: stoich_ox·ox + n e⁻ → metal (solid) or gas. */
+    /**
+     * Reduction half-reaction: stoich_ox·ox + n e⁻ → metal (solid) or gas, with cathodic and anodic transfer
+     * coefficients of the overall reaction (α_a + α_c = n for a reversible couple).
+     */
     public record HalfReaction(String id, String speciesOx, int stoichOx, int n, double e0, String metal, String gas,
-                               boolean oxidationOnly) {}
+                               boolean oxidationOnly, double alphaC, double alphaA) {}
 
     public record Solution(String id, String name, Map<String, Double> species, double conductivity) {}
 
@@ -29,7 +32,8 @@ public final class Electrochemistry {
     private final Map<String, Solution> solutions = new LinkedHashMap<>();
     private final Map<String, Map<String, Double>> i0 = new LinkedHashMap<>();
     private Map<String, Double> defaultI0 = Map.of();
-    private double alpha = 0.5, massTransfer = 1e-5;
+    private final Map<String, double[]> absorbance = new LinkedHashMap<>();
+    private double massTransfer = 1e-5;
 
     private static volatile Electrochemistry standard;
 
@@ -53,10 +57,13 @@ public final class Electrochemistry {
         Map<String, Object> root = Json.parseObject(json);
         for (Object o : (List<Object>) root.get("half_reactions")) {
             Map<String, Object> m = (Map<String, Object>) o;
+            int n = ((Double) m.get("n")).intValue();
+            double ac = m.containsKey("alpha_c") ? (Double) m.get("alpha_c") : 0.5 * n;
+            double aa = m.containsKey("alpha_a") ? (Double) m.get("alpha_a") : n - ac;
             reactions.add(new HalfReaction((String) m.get("id"), (String) m.get("species_ox"),
-                    ((Double) m.get("stoich_ox")).intValue(), ((Double) m.get("n")).intValue(),
+                    ((Double) m.get("stoich_ox")).intValue(), n,
                     Units.parse((String) m.get("e0")).si(Dimension.VOLTAGE), (String) m.get("metal"), (String) m.get("gas"),
-                    Boolean.TRUE.equals(m.get("oxidation_only"))));
+                    Boolean.TRUE.equals(m.get("oxidation_only")), ac, aa));
         }
         Map<String, Object> ex = (Map<String, Object>) root.get("exchange_currents");
         for (var en : ex.entrySet()) {
@@ -65,7 +72,11 @@ public final class Electrochemistry {
             if (en.getKey().equals("default_i0")) defaultI0 = vals;
             else i0.put(en.getKey(), vals);
         }
-        alpha = (Double) root.get("transfer_coefficient");
+        Map<String, Object> abs = (Map<String, Object>) root.getOrDefault("ion_absorbance", Map.of());
+        for (var en : abs.entrySet()) {
+            List<Object> v = (List<Object>) en.getValue();
+            absorbance.put(en.getKey(), new double[]{(Double) v.get(0), (Double) v.get(1), (Double) v.get(2)});
+        }
         massTransfer = (Double) root.get("mass_transfer_coefficient");
         for (Object o : (List<Object>) root.get("solutions")) {
             Map<String, Object> m = (Map<String, Object>) o;
@@ -102,8 +113,21 @@ public final class Electrochemistry {
         return defaultI0.getOrDefault(reaction, 1e-6);
     }
 
-    public double transferCoefficient() {
-        return alpha;
+    /**
+     * Colour of light transmitted through a solution of the given ion concentrations [mol/L] (5 cm path,
+     * Beer–Lambert over three bands) as 0xRRGGBB, with water itself a very pale blue.
+     */
+    public int solutionColour(Map<String, Double> concentrations) {
+        double[] a = {0.012, 0.004, 0.0};
+        for (var e : concentrations.entrySet()) {
+            double[] eps = absorbance.get(e.getKey());
+            if (eps == null) continue;
+            double c = Math.max(0, e.getValue());
+            for (int k = 0; k < 3; k++) a[k] += eps[k] * c;
+        }
+        int rgb = 0;
+        for (int k = 0; k < 3; k++) rgb = (rgb << 8) | (int) Math.round(242 * Math.pow(10, -a[k]));
+        return rgb;
     }
 
     public double massTransferCoefficient() {

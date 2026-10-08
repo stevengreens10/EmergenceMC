@@ -7,17 +7,21 @@
   //
   // half_reactions: reduction written as  ox + n e- -> red.  "metal" names the solid material produced/consumed
   // (null for gas/solution products). "species_ox" is the dissolved species consumed by reduction.
+  // "alpha_c" is the cathodic transfer coefficient of the overall reaction (Butler–Volmer: i_c ∝ exp(−α_c F η / RT));
+  // the anodic one is α_a = n − α_c (detailed balance). Multi-electron reactions proceed through a single-electron
+  // rate-determining step, so α_c ≈ 0.5 (≈118 mV/decade cathodic Tafel slope) [BOCK]; for Cu2+/Cu the measured
+  // α_c ≈ 0.5, α_a ≈ 1.5 (Mattsson & Bockris 1959). Oxygen evolution: α_a ≈ 1 (≈60 mV/decade) [BOCK].
   "half_reactions": [
-    {"id": "zn", "species_ox": "Zn2+", "n": 2, "e0": "-0.762 V", "metal": "zinc",   "stoich_ox": 1, "source": "BARD"},
-    {"id": "fe", "species_ox": "Fe2+", "n": 2, "e0": "-0.447 V", "metal": "iron",   "stoich_ox": 1, "source": "BARD"},
-    {"id": "ni", "species_ox": "Ni2+", "n": 2, "e0": "-0.257 V", "metal": "nickel", "stoich_ox": 1, "source": "BARD"},
-    {"id": "sn", "species_ox": "Sn2+", "n": 2, "e0": "-0.138 V", "metal": "tin",    "stoich_ox": 1, "source": "BARD"},
-    {"id": "pb", "species_ox": "Pb2+", "n": 2, "e0": "-0.126 V", "metal": "lead",   "stoich_ox": 1, "source": "BARD"},
-    {"id": "h2", "species_ox": "H+",   "n": 2, "e0": "0.000 V",  "metal": null,     "stoich_ox": 2, "gas": "H2", "source": "definition"},
-    {"id": "cu", "species_ox": "Cu2+", "n": 2, "e0": "0.342 V",  "metal": "copper", "stoich_ox": 1, "source": "BARD"},
-    {"id": "ag", "species_ox": "Ag+",  "n": 1, "e0": "0.7996 V", "metal": "silver", "stoich_ox": 1, "source": "BARD"},
+    {"id": "zn", "species_ox": "Zn2+", "n": 2, "e0": "-0.762 V", "metal": "zinc",   "stoich_ox": 1, "alpha_c": 0.5, "source": "BARD"},
+    {"id": "fe", "species_ox": "Fe2+", "n": 2, "e0": "-0.447 V", "metal": "iron",   "stoich_ox": 1, "alpha_c": 0.5, "source": "BARD"},
+    {"id": "ni", "species_ox": "Ni2+", "n": 2, "e0": "-0.257 V", "metal": "nickel", "stoich_ox": 1, "alpha_c": 0.5, "source": "BARD"},
+    {"id": "sn", "species_ox": "Sn2+", "n": 2, "e0": "-0.138 V", "metal": "tin",    "stoich_ox": 1, "alpha_c": 0.5, "source": "BARD"},
+    {"id": "pb", "species_ox": "Pb2+", "n": 2, "e0": "-0.126 V", "metal": "lead",   "stoich_ox": 1, "alpha_c": 0.5, "source": "BARD"},
+    {"id": "h2", "species_ox": "H+",   "n": 2, "e0": "0.000 V",  "metal": null,     "stoich_ox": 2, "gas": "H2", "alpha_c": 0.5, "source": "definition"},
+    {"id": "cu", "species_ox": "Cu2+", "n": 2, "e0": "0.342 V",  "metal": "copper", "stoich_ox": 1, "alpha_c": 0.5, "source": "BARD"},
+    {"id": "ag", "species_ox": "Ag+",  "n": 1, "e0": "0.7996 V", "metal": "silver", "stoich_ox": 1, "alpha_c": 0.5, "source": "BARD"},
     // O2 + 4H+ + 4e- -> 2H2O (reverse = water oxidation at an anode, producing H+)
-    {"id": "o2", "species_ox": "H+",   "n": 4, "e0": "1.229 V",  "metal": null,     "stoich_ox": 4, "gas": "O2", "oxidation_only": true, "source": "BARD"}
+    {"id": "o2", "species_ox": "H+",   "n": 4, "e0": "1.229 V",  "metal": null,     "stoich_ox": 4, "gas": "O2", "oxidation_only": true, "alpha_a": 1.0, "source": "BARD"}
   ],
 
   // Exchange current densities i0 [A/m^2] for a reaction on an electrode material (order-of-magnitude
@@ -28,9 +32,19 @@
            "copper": 1e-3, "graphite": 1e-3, "silver": 0.01, "gold": 0.01, "tin": 1e-5, "zinc": 1e-7, "lead": 1e-9},
     "o2": {"platinum": 1e-6, "graphite": 1e-7, "nickel": 1e-6, "stainless_304": 1e-7}
   },
-  "transfer_coefficient": 0.5,
   // Mass-transfer coefficient for reducible species at an unstirred electrode [m/s] (diffusion layer ~0.1 mm)
   "mass_transfer_coefficient": 1e-5,
+
+  // Visible colour of dissolved ions (Beer–Lambert): decadic absorbance per mol/L over a 5 cm path, in the red,
+  // green and blue bands, so a solution transmits 10^(-A·c) of each band. Estimated from the aqua complexes'
+  // absorption spectra: [Cu(H2O)6]2+ absorbs broadly around 800 nm (ε ≈ 12 L/mol/cm, blue solutions);
+  // [Ni(H2O)6]2+ absorbs ~400 and ~720 nm (green); [Fe(H2O)6]2+ is a pale blue-green. Other ions here are
+  // colourless. Approximate (display only).
+  "ion_absorbance": {
+    "Cu2+": [1.30, 0.38, 0.06],
+    "Ni2+": [0.55, 0.10, 0.60],
+    "Fe2+": [0.12, 0.04, 0.08]
+  },
 
   // Electrolyte solutions: concentrations [mol/L] of electroactive ions and conductivity at 25 °C.
   "solutions": [

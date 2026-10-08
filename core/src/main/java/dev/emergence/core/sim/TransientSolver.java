@@ -21,6 +21,7 @@ import java.util.List;
  * error of the discretisation.
  */
 public final class TransientSolver implements StateView {
+    private static final boolean DEBUG = Boolean.getBoolean("emergence.debugSolver");
     private final Network net;
     private final List<Element> elements;
     private final int n, ns;
@@ -240,6 +241,7 @@ public final class TransientSolver implements StateView {
     /** @return 0 accepted, 1 Newton failure, 2 LTE rejection */
     private int tryStep(double h) {
         boolean be = restart || forceBE || validHistory == 0 || method == IntegrationMethod.BACKWARD_EULER;
+        boolean wasRestart = restart;
         IntegrationMethod m = be ? IntegrationMethod.BACKWARD_EULER : method;
         ctx.method = m;
         ctx.h = h;
@@ -300,6 +302,7 @@ public final class TransientSolver implements StateView {
                     lastBadUnknown = net.unknownName(i);
                 }
             }
+            if (DEBUG) System.out.println("t=" + t + " h=" + h + " it=" + it + " m=" + m + " x=" + Arrays.toString(xTrial) + " dx=" + Arrays.toString(dx));
             if (small) {
                 converged = true;
                 break;
@@ -363,7 +366,10 @@ public final class TransientSolver implements StateView {
         System.arraycopy(xTrial, 0, x, 0, n);
         t += h;
         hPrev = h;
-        validHistory++;
+        // The first step after a restart absorbs any discontinuity (inconsistent initial conditions,
+        // a switched source): its derivative q̇ spans the jump and must not seed the trapezoidal
+        // history or the error estimator, so history counting begins with the following step.
+        validHistory = wasRestart ? 0 : validHistory + 1;
         restart = false;
         double grow = err == 0.0 ? 2.0 : Math.min(2.0, 0.9 * Math.pow(err, -exponent));
         hNext = Math.max(h * Math.max(grow, 0.5), hMin * 10);

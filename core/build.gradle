@@ -24,7 +24,8 @@ tasks.withType(JavaCompile).configureEach {
 
 test {
     useJUnitPlatform()
-    maxHeapSize = '2G'
+    maxHeapSize = "2G"
+    systemProperty "emergence.debugSolver", System.getProperty("emergence.debugSolver", "false")
     testLogging {
         events 'failed'
         exceptionFormat 'full'

@@ -10,6 +10,8 @@ import dev.emergence.core.sim.elements.AngleTracker;
 import dev.emergence.core.sim.elements.Capacitor;
 import dev.emergence.core.sim.elements.Diode;
 import dev.emergence.core.sim.elements.ElectrochemicalCell;
+import dev.emergence.core.sim.elements.FluidBranch;
+import dev.emergence.core.sim.elements.FluidVolume;
 import dev.emergence.core.sim.elements.FlowSource;
 import dev.emergence.core.sim.elements.Resistor;
 import dev.emergence.core.sim.elements.Switch;
@@ -67,6 +69,13 @@ public final class CompiledAssembly {
     final Map<Long, dev.emergence.core.sim.elements.HumanCrank> cranks = new HashMap<>();
     MagneticSystem magnetics;
     final Map<Long, ElectrochemicalCell> cells = new HashMap<>();
+    final Map<Long, FluidVolume> fluidOfPart = new HashMap<>();
+    final Map<Long, List<FluidBranch>> valveBranches = new HashMap<>();
+    final Map<Long, FluidBranch> rotorBranches = new HashMap<>();
+    final List<Vent> vents = new ArrayList<>();
+
+    /** An open end of a fluid part into the surrounding air: cell, outward face and its branch. */
+    public record Vent(long partId, int[] cell, Dir face, FluidBranch branch) {}
     /** electrode part id -> {cell, electrode, electrolyte part id} entries */
     final Map<Long, List<Object[]>> electrodes = new HashMap<>();
     final List<String> warnings = new ArrayList<>();
@@ -163,8 +172,17 @@ public final class CompiledAssembly {
         h.set(direction, sprint);
     }
 
-    /** Applies a toggle to a switch part; returns its new state. */
+    /** Applies a toggle to a switch (closes/opens the contact) or a valve (opens/shuts it); returns its new state. */
     public boolean toggleSwitch(long partId) {
+        List<FluidBranch> vb = valveBranches.get(partId);
+        if (vb != null) {
+            Part p = assembly.get(partId);
+            boolean open = p == null || !p.switchClosed();
+            if (p != null) p.setSwitchClosed(open);
+            for (FluidBranch b : vb) b.setOpening(open ? 1 : 0);
+            solver.markDiscontinuity();
+            return open;
+        }
         Object d = deviceOfPart.get(partId);
         if (!(d instanceof Switch s)) return false;
         boolean c = !s.isClosed();
@@ -173,6 +191,42 @@ public final class CompiledAssembly {
         if (p != null) p.setSwitchClosed(c);
         solver.markDiscontinuity();
         return c;
+    }
+
+    /** Fluid state held by a part: {pressure [Pa], fluid temperature [K], mass [kg], mean |mass flow| [kg/s]}, or null. */
+    public double[] fluid(long partId) {
+        FluidVolume v = fluidOfPart.get(partId);
+        if (v == null) return null;
+        double flow = 0;
+        int n = 0;
+        for (FluidBranch b : branchesOf(partId)) {
+            flow += Math.abs(b.massFlow(solver));
+            n++;
+        }
+        return new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode()), v.mass(solver), n == 0 ? 0 : flow / n};
+    }
+
+    /** Name of the fluid in a part, or null. */
+    public String fluidName(long partId) {
+        FluidVolume v = fluidOfPart.get(partId);
+        return v == null ? null : v.fluid().name();
+    }
+
+    private List<FluidBranch> branchesOf(long partId) {
+        List<FluidBranch> out = new ArrayList<>();
+        for (dev.emergence.core.sim.Element e : network.elements()) {
+            if (e instanceof FluidBranch b && b.touches(fluidOfPart.get(partId))) out.add(b);
+        }
+        return out;
+    }
+
+    /** Open ends of fluid parts to the surrounding air, with their current outflow [kg/s] (negative = intake). */
+    public List<Vent> vents() {
+        return Collections.unmodifiableList(vents);
+    }
+
+    public double ventOutflow(Vent v) {
+        return v.branch().massFlow(solver);
     }
 
     /** Chemical readouts: concentrations in an electrolyte; dissolved metal, deposits, current and gas at an electrode. */
@@ -296,6 +350,10 @@ public final class CompiledAssembly {
         for (var e : deviceOfPart.entrySet()) {
             if (e.getValue() instanceof MagneticSystem.Coil c) s.coilCurrents().put(e.getKey(), magnetics.current(c, solver));
             if (e.getValue() instanceof Capacitor c) s.capacitorVoltages().put(e.getKey(), c.voltage(solver));
+        }
+        for (var e : fluidOfPart.entrySet()) {
+            FluidVolume v = e.getValue();
+            s.fluids().put(e.getKey(), new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode())});
         }
         for (var e : cells.entrySet()) {
             for (var sp : e.getValue().allMoles(solver).entrySet()) {

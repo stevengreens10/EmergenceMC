@@ -182,7 +182,7 @@ class FluidValidationTest {
             reservoir(n, a, P0, t);
             reservoir(n, b, P0, t);
             FluidBranch fan = n.add(new FluidBranch(a.p, a.t, b.p, b.t, air, 0.1, d, 0, 0.5, 0)
-                    .withRotor(w, r, beta, 1, 0.1));
+                    .withRotor(w, r, Math.PI * d * d / 4, beta, 1, 0.1));
             TransientSolver s = new TransientSolver(n);
             s.advance(5);
             assertTrue(s.x(w) > 1, "spun up: " + s.x(w));
@@ -199,7 +199,7 @@ class FluidValidationTest {
             reservoir(n, a, P0 + 200, t);
             reservoir(n, b, P0, t);
             FluidBranch tur = n.add(new FluidBranch(a.p, a.t, b.p, b.t, air, 0.1, d, 0, 0.5, 0)
-                    .withRotor(w, r, beta, 1, 0.1));
+                    .withRotor(w, r, Math.PI * d * d / 4, beta, 1, 0.1));
             TransientSolver s = new TransientSolver(n);
             s.advance(10);
             double rho = air.density(P0 + 100, t);

@@ -101,6 +101,7 @@ public final class AssemblyCompiler {
             buildBodies();
             buildThermal();
             buildMechanics();
+            buildFluids();
             buildElectrical();
             c.network.compile();
             applyPreviousElectricalState();
@@ -126,6 +127,10 @@ public final class AssemblyCompiler {
                     if (isBearingShaftNoJoint(p, q)) continue;
                     if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
                     if (p.kind() == PartKind.GEAR && q.kind() == PartKind.GEAR) continue; // mesh, not weld
+                    if (isGland(p, q) || isGland(q, p)) continue; // shaft through a pipe's seal
+                    // a bladed rotor spins inside its housing without touching it
+                    if ((p.kind() == PartKind.ROTOR && (q.kind().holdsFluid() || q.kind() == PartKind.ROTOR))
+                            || (q.kind() == PartKind.ROTOR && p.kind().holdsFluid())) continue;
                     // A brush is spring-loaded in its holder and merely slides on what it touches: it never
                     // joins rigid bodies (brushes always belong to the stationary frame — see KNOWN_LIMITATIONS).
                     if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) continue;
@@ -133,6 +138,14 @@ public final class AssemblyCompiler {
                     joinedPairs.add(pairKey(p.id(), q.id()));
                 }
             }
+        }
+
+        /**
+         * A shaft passing through a pipe, valve or tank runs in a gland seal, and a shaft end abutting one is
+         * merely close to it: neither forms a rigid joint (only mounted rotors ride on shafts).
+         */
+        boolean isGland(Part s, Part q) {
+            return s.kind() == PartKind.SHAFT && q.kind().holdsFluid() && q.kind() != PartKind.ROTOR;
         }
 
         boolean isBearingJoint(Part p, Part q) {
@@ -857,6 +870,163 @@ public final class AssemblyCompiler {
             for (Part p : magnets) ms.addMagnet(PartGeometry.magnet(p), em.get(c.bodyOfPart.get(p.id())));
             c.magnetics = c.network.add(ms);
             c.warnings.addAll(ms.warnings());
+        }
+
+        // ------------------------------------------------------------ fluids
+        /**
+         * Every fluid-holding part is a control volume; volumes sharing a face are joined by a flow branch
+         * (pipes and valves along their axis or sideways as a tee; tanks on every face; rotors along their
+         * axis). An open axial end of a pipe, valve or rotor facing free air vents to the atmosphere. A rotor
+         * adds its blade row to the branch on its +axis face, acting through its rigid body's rotation.
+         */
+        void buildFluids() {
+            var db = dev.emergence.core.fluids.FluidDatabase.standard();
+            List<Part> fluids = new ArrayList<>();
+            for (Part p : parts) if (p.kind().holdsFluid()) fluids.add(p);
+            if (fluids.isEmpty()) return;
+            double pAtm = a.ambientPressure();
+            for (Part p : fluids) {
+                var f = db.byCode(PartGeometry.fluidCode(p));
+                double[] st = prev.fluids().get(p.id());
+                double p0 = st != null ? st[0] : p.param("pressure", pAtm);
+                double t0 = st != null ? st[1] : prev.temperatures().getOrDefault(p.id(), ambientT);
+                Node pn = c.network.node(Domain.FLUID, "p" + p.id(), p0);
+                Node tn = c.network.node(Domain.THERMAL, "Tf" + p.id(), t0);
+                FluidVolume v = c.network.add(new FluidVolume(pn, tn, f, Math.max(PartGeometry.fluidVolume(p), 1e-9)));
+                c.fluidOfPart.put(p.id(), v);
+            }
+            Map<Long, List<FluidBranch>> through = new HashMap<>();
+            Set<Long> seen = new HashSet<>();
+            Node[] atm = new Node[2];
+            for (Part p : fluids) {
+                for (int x = p.minX(); x <= p.maxX(); x++)
+                    for (int y = p.minY(); y <= p.maxY(); y++)
+                        for (int z = p.minZ(); z <= p.maxZ(); z++)
+                            for (Dir d : Dir.values()) {
+                                int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
+                                if (p.containsCell(nx, ny, nz)) continue;
+                                boolean axial = d.axis() == p.axis().axis();
+                                Part q = null;
+                                for (Part o : a.at(nx, ny, nz)) if (o.kind().holdsFluid() && o != p) q = o;
+                                if (q == null) {
+                                    // an open end: along the axis of a tube-like part, into a cell that is neither
+                                    // occupied by a part nor solid surroundings
+                                    if (!axial || p.kind() == PartKind.TANK || !a.at(nx, ny, nz).isEmpty() || a.isSolidCell(nx, ny, nz)) continue;
+                                    addVent(p, new int[]{x, y, z}, d, atm, pAtm, through);
+                                    continue;
+                                }
+                                if (!ports(p, d, q) || !ports(q, d.opposite(), p)) continue;
+                                if (!seen.add(pairKey(p.id(), q.id()))) continue;
+                                FluidVolume va = c.fluidOfPart.get(p.id()), vb = c.fluidOfPart.get(q.id());
+                                if (va.fluid() != vb.fluid()) {
+                                    c.warnings.add("Parts #" + p.id() + " and #" + q.id() + " hold different fluids and are not connected");
+                                    continue;
+                                }
+                                double ap = PartGeometry.passageArea(p), aq = PartGeometry.passageArea(q);
+                                double amin = Math.min(ap, aq), sigma = amin / Math.max(ap, aq);
+                                // sudden contraction + expansion (Borda-Carnot) at a change of section, plus a
+                                // tee/elbow loss where the flow turns into or out of a tube's side
+                                double k = 0.5 * (1 - sigma) + (1 - sigma) * (1 - sigma);
+                                if (!axial && p.kind() != PartKind.TANK) k += 0.9;
+                                if (d.axis() != q.axis().axis() && q.kind() != PartKind.TANK) k += 0.9;
+                                double len = halfExtent(p, d) + halfExtent(q, d.opposite());
+                                double dz = q.center().y() - p.center().y();
+                                FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(),
+                                        vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin),
+                                        Math.max(roughness(p), roughness(q)), k, dz);
+                                Part rotor = rotorFor(p, d, q);
+                                if (rotor != null) attachRotor(b, rotor, rotor == p ? d : d.opposite(), rotor == p);
+                                for (Part valve : new Part[]{p, q}) {
+                                    if (valve.kind() != PartKind.VALVE) continue;
+                                    b.setOpening(valve.switchClosed() ? 1 : 0);
+                                    c.valveBranches.computeIfAbsent(valve.id(), kk -> new ArrayList<>()).add(b);
+                                }
+                                c.network.add(b);
+                                through.computeIfAbsent(p.id(), kk -> new ArrayList<>()).add(b);
+                                through.computeIfAbsent(q.id(), kk -> new ArrayList<>()).add(b);
+                            }
+            }
+            // heat exchange between each fluid volume and its own wall
+            for (Part p : fluids) {
+                FluidVolume v = c.fluidOfPart.get(p.id());
+                c.network.add(new FluidWallConvection(v.temperatureNode(), c.thermalOfPart.get(p.id()), v.fluid(),
+                        PartGeometry.wettedArea(p), PartGeometry.hydraulicDiameter(p), PartGeometry.passageArea(p),
+                        through.getOrDefault(p.id(), List.of())));
+            }
+        }
+
+        void addVent(Part p, int[] cell, Dir d, Node[] atm, double pAtm, Map<Long, List<FluidBranch>> through) {
+            if (atm[0] == null) {
+                atm[0] = c.network.node(Domain.FLUID, "atm.p", pAtm);
+                atm[1] = c.network.node(Domain.THERMAL, "atm.T", ambientT);
+                c.network.add(new FluidReservoir(atm[0], atm[1], pAtm, ambientT));
+            }
+            FluidVolume v = c.fluidOfPart.get(p.id());
+            double half = halfExtent(p, d);
+            // exit (or entry) loss K = 1 of a free jet
+            FluidBranch b = new FluidBranch(v.pressureNode(), v.temperatureNode(), atm[0], atm[1], v.fluid(), half,
+                    equivalentDiameter(PartGeometry.passageArea(p)), roughness(p), 1.0, d.dy * half);
+            if (p.kind() == PartKind.VALVE) {
+                b.setOpening(p.switchClosed() ? 1 : 0);
+                c.valveBranches.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(b);
+            }
+            if (p.kind() == PartKind.ROTOR && d == Dir.fromAxis(p.axis().axis(), true)) attachRotor(b, p, d, true);
+            c.network.add(b);
+            through.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(b);
+            c.vents.add(new CompiledAssembly.Vent(p.id(), cell, d, b));
+        }
+
+        /**
+         * Puts rotor {@code r}'s blade row on branch b, which leaves the rotor through its face {@code face}
+         * when {@code rotorIsA} (a = rotor), or enters it through that face otherwise.
+         */
+        void attachRotor(FluidBranch b, Part r, Dir face, boolean rotorIsA) {
+            CompiledAssembly.Body body = c.bodyOfPart.get(r.id());
+            // flow a -> b runs along +axis when it leaves through the +axis face from the rotor, or enters the
+            // rotor through its -axis face
+            double flowAlongAxis = (rotorIsA ? 1 : -1) * face.sign() * r.axis().sign();
+            double bodySense = body.isStatic ? 1 : Math.signum(body.axis.dot(r.axis().vec()));
+            double hand = Math.signum(r.param("pitch", 1)) * bodySense * flowAlongAxis;
+            double rt = PartGeometry.rotorTipRadius(r), rh = PartGeometry.rotorHubRadius(r);
+            b.withRotor(body.isStatic ? refR : body.node, Math.sqrt((rt * rt + rh * rh) / 2), PartGeometry.passageArea(r),
+                    PartGeometry.rotorBladeAngle(r), hand, r.param("blade_loss", 0.1));
+            c.rotorBranches.put(r.id(), b);
+        }
+
+        /** Whether part p has a fluid port on its face d towards fluid part q. */
+        boolean ports(Part p, Dir d, Part q) {
+            boolean axial = d.axis() == p.axis().axis();
+            return switch (p.kind()) {
+                case TANK -> true;
+                case ROTOR -> axial;
+                // tubes connect along their axis, and sideways into a tank or into another tube's end
+                case PIPE, VALVE -> axial || q.kind() == PartKind.TANK || d.axis() == q.axis().axis();
+                default -> false;
+            };
+        }
+
+        /** The rotor whose +axis face this branch crosses, if any. */
+        Part rotorFor(Part p, Dir d, Part q) {
+            if (p.kind() == PartKind.ROTOR && d == Dir.fromAxis(p.axis().axis(), true)) return p;
+            if (q.kind() == PartKind.ROTOR && d.opposite() == Dir.fromAxis(q.axis().axis(), true)) return q;
+            return null;
+        }
+
+        /** Distance from the part's centre to its face d [m]. */
+        double halfExtent(Part p, Dir d) {
+            return p.boxSize(d.axis()) / 2;
+        }
+
+        double equivalentDiameter(double area) {
+            return Math.sqrt(4 * Math.max(area, 1e-12) / Math.PI);
+        }
+
+        /** Absolute wall roughness [m] (Moody chart values: drawn tube 1.5 µm, stainless 15 µm, steel 45 µm). */
+        double roughness(Part p) {
+            String m = p.material().id();
+            if (m.contains("copper") || m.contains("brass") || m.contains("pvc") || m.contains("glass")) return 1.5e-6;
+            if (m.contains("stainless")) return 1.5e-5;
+            return 4.5e-5;
         }
 
         void applyPreviousElectricalState() {

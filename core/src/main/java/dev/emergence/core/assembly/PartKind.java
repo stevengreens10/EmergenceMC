@@ -39,7 +39,27 @@ public enum PartKind {
      * A body of liquid electrolyte (in a glass vessel). Conductors touching it become electrodes whose
      * interface reactions follow electrochemical kinetics.
      */
-    ELECTROLYTE(false, false);
+    ELECTROLYTE(false, false),
+    /**
+     * Pipe: a tube along its axis (bore and wall thickness as parameters) holding a fluid. Connects to fluid
+     * parts at its ends and, as a tee, at its sides; an open end vents to the surrounding air. A shaft may
+     * pass through it (gland seal).
+     */
+    PIPE(true, false),
+    /** Pressure vessel: a hollow cell (or box of cells) of fluid, connecting to fluid parts on every face. */
+    TANK(true, false),
+    /** Valve: a pipe with a closure; right-click opens or shuts it. Placed shut. */
+    VALVE(true, false),
+    /**
+     * Bladed rotor (fan, propeller, impeller or turbine wheel) mounted on a shaft inside a fluid passage:
+     * it exchanges work with the flow along its axis (Euler turbomachine equation).
+     */
+    ROTOR(true, false);
+
+    /** True for parts that hold a working fluid. */
+    public boolean holdsFluid() {
+        return this == PIPE || this == TANK || this == VALVE || this == ROTOR;
+    }
 
     /** Structural parts carry load and rigidly join every part they touch into one body. */
     public final boolean structural;

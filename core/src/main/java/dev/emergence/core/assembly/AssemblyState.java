@@ -11,12 +11,13 @@ import java.util.Map;
  * @param bodyMotion        part id → {ω [rad/s], θ [rad]} of the body containing that part
  * @param coilCurrents      coil part id → current [A]
  * @param capacitorVoltages capacitor part id → voltage [V]
+ * @param fluids            fluid part id → {pressure [Pa], fluid temperature [K]}
  */
 public record AssemblyState(Map<Long, Double> temperatures, Map<Long, double[]> bodyMotion,
                             Map<Long, Double> coilCurrents, Map<Long, Double> capacitorVoltages,
-                            Map<String, Double> chemistry) {
+                            Map<String, Double> chemistry, Map<Long, double[]> fluids) {
     public static AssemblyState empty() {
-        return new AssemblyState(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+        return new AssemblyState(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
 
     /**

@@ -20,6 +20,14 @@ public final class Assembly {
     private final Map<Long, List<Part>> cellIndex = new HashMap<>();
     private Predicate<Part> anchored = p -> false;
     private double ambientTemperature = 293.15;
+    private double ambientPressure = 101_325;
+    private CellPredicate solid = (x, y, z) -> false;
+
+    /** Tests a grid cell (global cell coordinates). */
+    @FunctionalInterface
+    public interface CellPredicate {
+        boolean test(int x, int y, int z);
+    }
 
     public static long cellKey(int x, int y, int z) {
         return ((long) (x & 0x1FFFFF) << 42) | ((long) (y & 0x1FFFFF) << 21) | (z & 0x1FFFFF);
@@ -53,6 +61,26 @@ public final class Assembly {
 
     public boolean isAnchored(Part p) {
         return anchored.test(p);
+    }
+
+    /** Cells occupied by solid surroundings (in Minecraft: world blocks); open pipe ends there are capped. */
+    public Assembly solidWhen(CellPredicate pred) {
+        this.solid = pred;
+        return this;
+    }
+
+    public boolean isSolidCell(int x, int y, int z) {
+        return solid.test(x, y, z);
+    }
+
+    /** Pressure of the surrounding air [Pa]. */
+    public double ambientPressure() {
+        return ambientPressure;
+    }
+
+    public Assembly ambientPressure(double p) {
+        this.ambientPressure = p;
+        return this;
     }
 
     public double ambientTemperature() {

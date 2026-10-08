@@ -110,6 +110,93 @@ public final class PartGeometry {
         return (int) Math.round(p.param("teeth", DEFAULT_GEAR_TEETH));
     }
 
+    // ----- fluid parts
+
+    public static final double DEFAULT_PIPE_BORE = 0.025, DEFAULT_WALL = 0.002;
+
+    /** Working fluid code (see FluidDatabase). */
+    public static int fluidCode(Part p) {
+        return (int) Math.round(p.param("fluid", 0));
+    }
+
+    /** Inner diameter of a pipe or valve [m] (parameter "bore", default 25 mm, at most 90 % of the cell). */
+    public static double pipeBore(Part p) {
+        return Math.min(p.param("bore", DEFAULT_PIPE_BORE), 0.9 * transverseSize(p) - 2 * wallThickness(p));
+    }
+
+    /** Wall thickness of a pipe, valve or tank [m] (parameter "wall", default 2 mm). */
+    public static double wallThickness(Part p) {
+        return Math.min(p.param("wall", DEFAULT_WALL), 0.2 * transverseSize(p));
+    }
+
+    /** Cross-section of the tube wall [m²]. */
+    static double tubeWall(Part p) {
+        double d = pipeBore(p), w = wallThickness(p);
+        return Math.PI / 4 * ((d + 2 * w) * (d + 2 * w) - d * d);
+    }
+
+    public static double rotorTipRadius(Part p) {
+        return 0.45 * transverseSize(p);
+    }
+
+    public static double rotorHubRadius(Part p) {
+        return 0.35 * rotorTipRadius(p);
+    }
+
+    /** Blade exit angle from the axial direction [rad] (parameter "blade_angle" in degrees, default 45°). */
+    public static double rotorBladeAngle(Part p) {
+        return Math.toRadians(Math.max(0, Math.min(80, p.param("blade_angle", 45))));
+    }
+
+    /** Free flow area through the part across its faces [m²]. */
+    public static double passageArea(Part p) {
+        return switch (p.kind()) {
+            case PIPE, VALVE -> Math.PI * pipeBore(p) * pipeBore(p) / 4;
+            case ROTOR -> {
+                double rt = rotorTipRadius(p), rh = rotorHubRadius(p);
+                yield Math.PI * (rt * rt - rh * rh);
+            }
+            case TANK -> {
+                double w = wallThickness(p);
+                yield Math.pow(CELL - 2 * w, 2);
+            }
+            default -> 0;
+        };
+    }
+
+    /** Volume of fluid held [m³]. */
+    public static double fluidVolume(Part p) {
+        return switch (p.kind()) {
+            case PIPE, VALVE -> passageArea(p) * axialLength(p);
+            case ROTOR -> passageArea(p) * axialLength(p) * 0.85;
+            case TANK -> {
+                double w = wallThickness(p);
+                yield (p.boxSize(0) - 2 * w) * (p.boxSize(1) - 2 * w) * (p.boxSize(2) - 2 * w);
+            }
+            default -> 0;
+        };
+    }
+
+    /** Wetted wall area inside the part [m²]. */
+    public static double wettedArea(Part p) {
+        return switch (p.kind()) {
+            case PIPE, VALVE -> Math.PI * pipeBore(p) * axialLength(p);
+            case ROTOR -> 2 * Math.PI * (rotorTipRadius(p) + rotorHubRadius(p)) * axialLength(p);
+            case TANK -> 2 * (p.boxSize(0) * p.boxSize(1) + p.boxSize(1) * p.boxSize(2) + p.boxSize(0) * p.boxSize(2));
+            default -> 0;
+        };
+    }
+
+    /** Hydraulic diameter 4A/P of the passage [m]. */
+    public static double hydraulicDiameter(Part p) {
+        return switch (p.kind()) {
+            case PIPE, VALVE -> pipeBore(p);
+            case ROTOR -> 2 * (rotorTipRadius(p) - rotorHubRadius(p));
+            case TANK -> transverseSize(p) - 2 * wallThickness(p);
+            default -> CELL;
+        };
+    }
+
     public static double crankRadius(Part p) {
         return p.param("radius", 0.15);
     }
@@ -146,6 +233,16 @@ public final class PartGeometry {
             case BRUSH -> 0.6 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
             // liquid volume: the vessel wall and headspace take the rest of the cells
             case ELECTROLYTE -> p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * p.param("fill", 0.8);
+            case PIPE -> tubeWall(p) * axialLength(p);
+            case VALVE -> 2.5 * tubeWall(p) * axialLength(p); // body, seat and stem
+            case TANK -> {
+                double w = wallThickness(p), sx = p.boxSize(0), sy = p.boxSize(1), sz = p.boxSize(2);
+                yield sx * sy * sz - (sx - 2 * w) * (sy - 2 * w) * (sz - 2 * w);
+            }
+            case ROTOR -> {
+                double rt = rotorTipRadius(p), rh = rotorHubRadius(p), l = axialLength(p) * 0.6;
+                yield Math.PI * rh * rh * l + 0.12 * Math.PI * (rt * rt - rh * rh) * l; // hub + blades (12 % solidity·thickness)
+            }
         };
     }
 
@@ -168,6 +265,7 @@ public final class PartGeometry {
         switch (p.kind()) {
             case SHAFT -> icm = cylinder(m, shaftDiameter(p) / 2, axialLength(p), cosA);
             case GEAR -> icm = cylinder(m, gearPitchRadius(p), gearThickness(p), cosA);
+            case ROTOR -> icm = cylinder(m, 0.6 * rotorTipRadius(p), axialLength(p), cosA);
             case COIL -> {
                 CoilGeometry g = coil(p);
                 double r = g.meanRadius();
@@ -212,6 +310,9 @@ public final class PartGeometry {
                 yield 2 * (s[0] * s[1] + s[1] * s[2] + s[0] * s[2]);
             }
             case RESISTOR, DIODE, CAPACITOR, SWITCH -> p.param("surface_area", 3e-4);
+            case PIPE -> Math.PI * (pipeBore(p) + 2 * wallThickness(p)) * axialLength(p);
+            case VALVE -> 2 * Math.PI * (pipeBore(p) + 2 * wallThickness(p)) * axialLength(p);
+            case ROTOR -> 1e-6; // inside its housing
             default -> 2 * (p.boxSize(0) * p.boxSize(1) + p.boxSize(1) * p.boxSize(2) + p.boxSize(0) * p.boxSize(2)) * 0.5;
         };
     }
@@ -233,6 +334,8 @@ public final class PartGeometry {
             case COIL -> 1e-5;
             case RESISTOR, DIODE, CAPACITOR, SWITCH -> 1e-6;
             case BLOCK -> CELL * CELL * p.param("fill", 1.0);
+            case PIPE, VALVE -> tubeWall(p);
+            case TANK -> 4 * CELL * wallThickness(p);
             default -> CELL * CELL * 0.5;
         };
     }

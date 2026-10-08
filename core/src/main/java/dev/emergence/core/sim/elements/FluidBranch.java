@@ -36,7 +36,7 @@ public final class FluidBranch implements Element {
     private final double length, diameter, area, roughness, minorK, dz;
     private double opening = 1.0;
     private Node rotor;
-    private double rotorRadius, tanBeta, hand = 1, lossCoefficient = 0.1;
+    private double rotorRadius, rotorArea, tanBeta, hand = 1, lossCoefficient = 0.1;
     private int mIdx;
     private double mScale;
 
@@ -71,12 +71,15 @@ public final class FluidBranch implements Element {
      * Adds a bladed rotor on the rotating body whose angular-velocity node is {@code omega}.
      *
      * @param meanRadius  mean blade radius [m]
+     * @param annulusArea flow area through the blade row [m²] (sets the axial velocity there)
      * @param exitAngle   blade exit angle β from the axial direction [rad]
      * @param handedness  +1 if positive ω pumps a → b, −1 otherwise
      */
-    public FluidBranch withRotor(Node omega, double meanRadius, double exitAngle, double handedness, double lossCoefficient) {
+    public FluidBranch withRotor(Node omega, double meanRadius, double annulusArea, double exitAngle, double handedness,
+                                 double lossCoefficient) {
         this.rotor = omega;
         this.rotorRadius = meanRadius;
+        this.rotorArea = annulusArea;
         this.tanBeta = Math.tan(exitAngle);
         this.hand = Math.signum(handedness);
         this.lossCoefficient = lossCoefficient;
@@ -85,6 +88,11 @@ public final class FluidBranch implements Element {
 
     public int flowIndex() {
         return mIdx;
+    }
+
+    /** True if this branch connects to the given control volume. */
+    public boolean touches(FluidVolume v) {
+        return v != null && (v.pressureNode() == pa || v.pressureNode() == pb);
     }
 
     @Override
@@ -112,7 +120,7 @@ public final class FluidBranch implements Element {
         double power = 0, torque = 0;
         if (rotor != null) {
             double u = hand * w * rotorRadius;
-            double cx = v;
+            double cx = m / (rho * rotorArea);
             double ct = u - cx * tanBeta; // swirl given to the flow
             double dh0 = u * ct;
             double w2 = cx * cx + (u - ct) * (u - ct);

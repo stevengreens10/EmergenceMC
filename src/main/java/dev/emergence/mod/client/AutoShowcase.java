@@ -93,7 +93,7 @@ public final class AutoShowcase {
         if (level.getBlockEntity(plot) instanceof AssemblyBlockEntity be) {
             PlacedPart c = find(be, PartKind.CRANK);
             var compiled = SimulationManager.get(level).compiledAt(plot);
-            if (c != null && compiled != null) compiled.setCrankTorque(c.id, 15.0);
+            if (c != null && compiled != null) compiled.setCrankEffort(c.id, 1, true);
         }
     }
 

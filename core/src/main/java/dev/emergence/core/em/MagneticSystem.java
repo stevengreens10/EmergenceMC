@@ -1,7 +1,8 @@
 package dev.emergence.core.em;
 
 import dev.emergence.core.materials.Material;
-import dev.emergence.core.math.PeriodicSpline;
+import dev.emergence.core.math.PeriodicFourier;
+import dev.emergence.core.math.PeriodicFunction;
 import dev.emergence.core.math.Vec3;
 import dev.emergence.core.sim.Element;
 import dev.emergence.core.sim.LoadContext;
@@ -89,7 +90,7 @@ public final class MagneticSystem implements Element {
         int j = -1, k = -1;      // coils
         int bodyA = -1, bodyB = -1;
         double cA, cB;          // φ = cA·θ_A + cB·θ_B
-        PeriodicSpline spline;  // null → constant
+        PeriodicFunction spline;  // tabulated coupling vs relative angle
         double constant;
     }
 
@@ -170,7 +171,7 @@ public final class MagneticSystem implements Element {
                     t.j = j;
                     t.k = k;
                     final Vec3[] ax = commonAxis(cj.body, ck.body);
-                    t.spline = new PeriodicSpline(sample(phi -> cj.geom.mutualInductance(ck.geom.rotated(ax[0], ax[1], phi))));
+                    t.spline = new PeriodicFourier(sample(phi -> cj.geom.mutualInductance(ck.geom.rotated(ax[0], ax[1], phi))));
                     terms.add(t);
                 }
             }
@@ -188,7 +189,7 @@ public final class MagneticSystem implements Element {
                 t.kind = Kind.FLUX;
                 t.j = j;
                 Vec3[] ax = commonAxis(cj.body, mb);
-                t.spline = new PeriodicSpline(sample(phi -> {
+                t.spline = new PeriodicFourier(sample(phi -> {
                     List<CuboidMagnet> rot = new ArrayList<>(ms.size());
                     for (CuboidMagnet m : ms) rot.add(m.rotated(ax[0], ax[1], phi));
                     return cj.geom.fluxLinkage(composite(rot));
@@ -207,7 +208,7 @@ public final class MagneticSystem implements Element {
                 if (t == null) continue;
                 t.kind = Kind.MAGNET;
                 Vec3[] ax = commonAxis(ba, bb);
-                t.spline = new PeriodicSpline(sample(phi -> {
+                t.spline = new PeriodicFourier(sample(phi -> {
                     List<CuboidMagnet> rot = new ArrayList<>(mbs.size());
                     for (CuboidMagnet m : mbs) rot.add(m.rotated(ax[0], ax[1], phi));
                     return interactionEnergy(ma, composite(rot));
@@ -305,9 +306,15 @@ public final class MagneticSystem implements Element {
     public void setup(SetupContext ctx) {
         build();
         for (Coil c : coils) {
+            int j = coils.indexOf(c);
             c.iIdx = ctx.allocUnknown("I(" + c.name + ")", 1e-9);
-            double l = lConst[coils.indexOf(c)][coils.indexOf(c)];
-            c.slot = ctx.allocState(Math.max(l * 1e-9, 1e-15));
+            double l = lConst[j][j];
+            // Truncation-error tolerance on the flux linkage scaled to the signal: 1e-4 of the largest
+            // permanent-magnet flux swing this coil sees, or L·1 µA, whichever is larger. (An absolute
+            // tolerance far below the signal forces needlessly tiny steps whenever λ crosses zero.)
+            double swing = 0;
+            for (Term t : terms) if (t.kind == Kind.FLUX && t.j == j) swing = Math.max(swing, t.spline.range());
+            c.slot = ctx.allocState(Math.max(Math.max(l * 1e-6, 1e-4 * swing), 1e-12));
         }
     }
 

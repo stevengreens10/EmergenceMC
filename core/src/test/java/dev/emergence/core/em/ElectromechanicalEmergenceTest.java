@@ -27,7 +27,7 @@ class ElectromechanicalEmergenceTest {
         final Node w;
         final AngleTracker angle;
         final EmBody rotor, stator = EmBody.fixed("stator");
-        final MagneticSystem mag = new MagneticSystem().tableResolution(128);
+        final MagneticSystem mag = new MagneticSystem().tableResolution(256);
 
         Rig(double inertia, double w0) {
             w = net.node(Domain.ROTATIONAL, "shaft", w0);

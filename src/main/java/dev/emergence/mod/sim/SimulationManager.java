@@ -52,7 +52,6 @@ public final class SimulationManager {
         final Map<Long, BlockPos> partPos = new HashMap<>();
         CompiledAssembly compiled;
         final Map<Long, Integer> crankTicks = new HashMap<>();
-        final Map<Long, Double> crankTorque = new HashMap<>();
         final Map<BlockPos, Integer> light = new HashMap<>();
         double ambient;
     }
@@ -255,22 +254,12 @@ public final class SimulationManager {
         return islandOf.get(pos);
     }
 
-    /**
-     * Player effort on a crank. A person can sustain roughly 75–100 W at the hand and exert a peak
-     * crank force of ~200 N; torque is limited by both (τ ≤ F·r and τ·ω ≤ P).
-     */
+    /** A player holds the crank: effort follows the human model inside the solver while held. */
     public void turnCrank(BlockPos pos, long partId, Player player) {
         Island isl = islandAt(pos);
         if (isl == null || isl.compiled == null) return;
-        Part p = isl.compiled.assembly().get(partId);
-        double r = p == null ? 0.15 : p.param("radius", 0.15);
-        double maxForce = 200, power = player.isSprinting() ? 250 : 100;
-        Probe pr = isl.compiled.probe(partId);
-        double w = pr == null ? 0 : Math.abs(pr.angularVelocity());
-        double tau = Math.min(maxForce * r, power / Math.max(w, 1e-3));
-        if (player.isShiftKeyDown()) tau = -tau;
-        isl.crankTorque.put(partId, tau);
-        isl.crankTicks.put(partId, 6);
+        isl.compiled.setCrankEffort(partId, player.isShiftKeyDown() ? -1 : 1, player.isSprinting());
+        isl.crankTicks.put(partId, 6); // right-click repeats every 4 ticks while held
     }
 
     private void updateCranks(Island isl) {
@@ -278,10 +267,12 @@ public final class SimulationManager {
         while (it.hasNext()) {
             var e = it.next();
             int left = e.getValue() - 1;
-            double tau = left > 0 ? isl.crankTorque.getOrDefault(e.getKey(), 0.0) : 0.0;
-            isl.compiled.setCrankTorque(e.getKey(), tau);
-            if (left <= 0) it.remove();
-            else e.setValue(left);
+            if (left <= 0) {
+                isl.compiled.setCrankEffort(e.getKey(), 0, false);
+                it.remove();
+            } else {
+                e.setValue(left);
+            }
         }
     }
 

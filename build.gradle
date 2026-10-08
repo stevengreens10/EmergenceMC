@@ -48,6 +48,7 @@ tasks.register('coreTest', Test) {
     useJUnitPlatform()
     maxHeapSize = '2G'
     systemProperty 'emergence.debugSolver', System.getProperty('emergence.debugSolver', 'false')
+    if (System.getProperty('emergence.method')) systemProperty 'emergence.method', System.getProperty('emergence.method')
     testLogging {
         events 'failed'
         exceptionFormat 'full'

@@ -105,6 +105,8 @@ public final class AssemblyCompiler {
             c.network.compile();
             applyPreviousElectricalState();
             c.solver = new TransientSolver(c.network);
+            String m = System.getProperty("emergence.method");
+            if (m != null) c.solver.method(dev.emergence.core.sim.IntegrationMethod.valueOf(m));
         }
 
         // ------------------------------------------------------------ 1. rigid groups
@@ -407,11 +409,15 @@ public final class AssemblyCompiler {
                     if (joinedPairs.contains(pairKey(p.id(), q.id())) && !isBearingJointPair(p, q)) thermalLink(p, q);
                 }
             }
-            // cranks register as player input points
+            // cranks are where a person can put work in
             for (Part p : parts) {
-                if (p.kind() == PartKind.CRANK && c.bodyOfPart.get(p.id()).isStatic) {
+                if (p.kind() != PartKind.CRANK) continue;
+                CompiledAssembly.Body b = c.bodyOfPart.get(p.id());
+                if (b.isStatic) {
                     c.warnings.add("Crank #" + p.id() + " is on a body that cannot rotate");
+                    continue;
                 }
+                c.cranks.put(p.id(), c.network.add(new HumanCrank(b.node, refR, PartGeometry.crankRadius(p))));
             }
         }
 
@@ -692,7 +698,7 @@ public final class AssemblyCompiler {
                 if (p.kind() == PartKind.MAGNET && p.material().has(MaterialProperty.REMANENCE)) magnets.add(p);
             }
             if (coils.isEmpty() && magnets.size() < 2) return;
-            MagneticSystem ms = new MagneticSystem().tableResolution(128);
+            MagneticSystem ms = new MagneticSystem().tableResolution(256);
             Map<CompiledAssembly.Body, EmBody> em = new HashMap<>();
             for (CompiledAssembly.Body b : c.bodies) {
                 em.put(b, b.isStatic ? EmBody.fixed("frame") : EmBody.rotor("rotor" + b.index, b.pivot, b.axis, b.node, b.tracker));

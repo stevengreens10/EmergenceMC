@@ -5,7 +5,7 @@ package dev.emergence.core.math;
  * first and second derivatives of the interpolant — needed because coupling torques are derivatives of
  * tabulated flux linkages and the Newton Jacobian needs their derivatives in turn.
  */
-public final class PeriodicSpline {
+public final class PeriodicSpline implements PeriodicFunction {
     private final int n;
     private final double h;
     private final double[] y, m;
@@ -59,6 +59,7 @@ public final class PeriodicSpline {
     }
 
     /** Writes {f(φ), f'(φ), f''(φ)} into out. */
+    @Override
     public void eval(double phi, double[] out) {
         double p = phi % (2 * Math.PI);
         if (p < 0) p += 2 * Math.PI;
@@ -80,6 +81,7 @@ public final class PeriodicSpline {
     }
 
     /** Peak-to-peak amplitude of the samples (useful for diagnostics). */
+    @Override
     public double range() {
         double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
         for (double v : y) {

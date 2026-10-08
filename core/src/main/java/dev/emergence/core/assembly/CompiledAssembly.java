@@ -63,6 +63,7 @@ public final class CompiledAssembly {
     final Map<Long, Object> deviceOfPart = new HashMap<>(); // Resistor, Diode, Switch, Capacitor, MagneticSystem.Coil
     final Map<Long, Double> failureTemp = new HashMap<>();
     final Map<Long, Double> crankTorque = new HashMap<>();
+    final Map<Long, dev.emergence.core.sim.elements.HumanCrank> cranks = new HashMap<>();
     MagneticSystem magnetics;
     final List<String> warnings = new ArrayList<>();
     Node ambient;
@@ -135,6 +136,17 @@ public final class CompiledAssembly {
         double total = 0;
         for (var e : crankTorque.entrySet()) if (bodyOfPart.get(e.getKey()) == b) total += e.getValue();
         b.drive.setValue(total);
+    }
+
+    /**
+     * A person turns (or stops turning) a crank: +1 / −1 for the direction, 0 to let go. The torque
+     * follows the human force–velocity–power model inside the solver.
+     */
+    public void setCrankEffort(long crankPartId, int direction, boolean sprint) {
+        var h = cranks.get(crankPartId);
+        if (h == null) return;
+        if (h.direction() != Integer.signum(direction)) solver.markDiscontinuity();
+        h.set(direction, sprint);
     }
 
     /** Applies a toggle to a switch part; returns its new state. */

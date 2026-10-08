@@ -239,6 +239,13 @@ public final class TransientSolver implements StateView {
     }
 
     private String lastBadUnknown = "";
+    private int worstSlot = -1;
+    private final java.util.Map<String, Integer> limiterCounts = new java.util.HashMap<>();
+
+    /** How often each element's truncation error limited the step (diagnostics). */
+    public java.util.Map<String, Integer> stepLimiters() {
+        return limiterCounts;
+    }
 
     private String worstNewtonDiagnostic() {
         return "Last non-converging unknown: " + lastBadUnknown;
@@ -338,10 +345,14 @@ public final class TransientSolver implements StateView {
                     est = m.errorConstant * h * h * h * Math.abs(q3);
                 }
                 double tol = lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s];
-                err = Math.max(err, est / tol);
+                if (est / tol > err) {
+                    err = est / tol;
+                    worstSlot = s;
+                }
             }
         }
         double exponent = 1.0 / ((validHistory >= 2 ? p : 1) + 1);
+        if (worstSlot >= 0 && err > 0.5) limiterCounts.merge(net.slotOwner(worstSlot) + "#" + worstSlot, 1, Integer::sum);
         if (err > 1.0) {
             hNext = h * Math.max(0.1, 0.9 * Math.pow(err, -exponent));
             return 2;

@@ -24,6 +24,8 @@ public final class Network {
     private final List<Double> unknownAbsTol = new ArrayList<>();
     private final List<Double> initial = new ArrayList<>();
     private final List<Double> slotAbsTol = new ArrayList<>();
+    private final List<String> slotOwner = new ArrayList<>();
+    private String currentOwner = "";
 
     public Node node(Domain d, String name) {
         return node(d, name, 0.0);
@@ -88,6 +90,7 @@ public final class Network {
             @Override
             public int allocState(double absTol) {
                 slotAbsTol.add(absTol);
+                slotOwner.add(currentOwner);
                 return slotAbsTol.size() - 1;
             }
 
@@ -96,7 +99,10 @@ public final class Network {
                 initial.set(index, value);
             }
         };
-        for (Element e : elements) e.setup(ctx);
+        for (Element e : elements) {
+            currentOwner = e.label();
+            e.setup(ctx);
+        }
         compiled = true;
     }
 
@@ -123,6 +129,11 @@ public final class Network {
 
     double initialValue(int i) {
         return initial.get(i);
+    }
+
+    /** Label of the element owning an integration slot (diagnostics). */
+    public String slotOwner(int s) {
+        return slotOwner.get(s);
     }
 
     double slotAbsTol(int s) {

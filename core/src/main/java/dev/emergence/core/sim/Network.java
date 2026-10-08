@@ -25,6 +25,7 @@ public final class Network {
     private final List<Double> initial = new ArrayList<>();
     private final List<Double> slotAbsTol = new ArrayList<>();
     private final List<String> slotOwner = new ArrayList<>();
+    private final java.util.Map<Integer, Double> stepLimits = new java.util.HashMap<>();
     private String currentOwner = "";
 
     public Node node(Domain d, String name) {
@@ -98,6 +99,11 @@ public final class Network {
             public void setInitial(int index, double value) {
                 initial.set(index, value);
             }
+
+            @Override
+            public void limitNewtonStep(int index, double maxDelta) {
+                if (index >= 0) stepLimits.merge(index, maxDelta, Math::min);
+            }
         };
         for (Element e : elements) {
             currentOwner = e.label();
@@ -129,6 +135,11 @@ public final class Network {
 
     double initialValue(int i) {
         return initial.get(i);
+    }
+
+    /** Per-iteration Newton step limit of an unknown (+∞ if none). */
+    double stepLimit(int i) {
+        return stepLimits.getOrDefault(i, Double.POSITIVE_INFINITY);
     }
 
     /** Label of the element owning an integration slot (diagnostics). */

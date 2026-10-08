@@ -9,6 +9,7 @@ import dev.emergence.core.sim.TransientSolver;
 import dev.emergence.core.sim.elements.AngleTracker;
 import dev.emergence.core.sim.elements.Capacitor;
 import dev.emergence.core.sim.elements.Diode;
+import dev.emergence.core.sim.elements.ElectrochemicalCell;
 import dev.emergence.core.sim.elements.FlowSource;
 import dev.emergence.core.sim.elements.Resistor;
 import dev.emergence.core.sim.elements.Switch;
@@ -65,6 +66,9 @@ public final class CompiledAssembly {
     final Map<Long, Double> crankTorque = new HashMap<>();
     final Map<Long, dev.emergence.core.sim.elements.HumanCrank> cranks = new HashMap<>();
     MagneticSystem magnetics;
+    final Map<Long, ElectrochemicalCell> cells = new HashMap<>();
+    /** electrode part id -> {cell, electrode, electrolyte part id} entries */
+    final Map<Long, List<Object[]>> electrodes = new HashMap<>();
     final List<String> warnings = new ArrayList<>();
     Node ambient;
     private double lag;
@@ -120,6 +124,16 @@ public final class CompiledAssembly {
         for (var e : failureTemp.entrySet()) {
             if (temperature(e.getKey()) > e.getValue()) failed.add(e.getKey());
         }
+        // electrodes whose metal has completely dissolved are gone
+        for (var en : electrodes.entrySet()) {
+            for (Object[] ce : en.getValue()) {
+                ElectrochemicalCell cell = (ElectrochemicalCell) ce[0];
+                ElectrochemicalCell.Electrode el = (ElectrochemicalCell.Electrode) ce[1];
+                if (cell.initialMetal(el) > 0 && cell.remainingMetal(el, solver) < 1e-7 && !failed.contains(en.getKey())) {
+                    failed.add(en.getKey());
+                }
+            }
+        }
         return failed;
     }
 
@@ -159,6 +173,47 @@ public final class CompiledAssembly {
         if (p != null) p.setSwitchClosed(c);
         solver.markDiscontinuity();
         return c;
+    }
+
+    /** Chemical readouts: concentrations in an electrolyte; dissolved metal, deposits, current and gas at an electrode. */
+    public Map<String, Double> chemistry(long partId) {
+        Map<String, Double> out = new java.util.LinkedHashMap<>();
+        ElectrochemicalCell cell = cells.get(partId);
+        if (cell != null) {
+            for (var sp : cell.allMoles(solver).entrySet()) {
+                double c = cell.concentration(sp.getKey(), solver);
+                if (c > 1e-6) out.put("[" + sp.getKey() + "] mol/L", c);
+            }
+        }
+        for (Object[] ce : electrodes.getOrDefault(partId, List.of())) {
+            ElectrochemicalCell cl = (ElectrochemicalCell) ce[0];
+            ElectrochemicalCell.Electrode el = (ElectrochemicalCell.Electrode) ce[1];
+            double m = cl.remainingMetal(el, solver);
+            if (!Double.isNaN(m)) out.merge("metal dissolved mol", cl.initialMetal(el) - m, Double::sum);
+            for (var d : cl.deposits(el, solver).entrySet()) out.merge(d.getKey() + " deposited mol", d.getValue(), Double::sum);
+            out.merge("interface current A", cl.electrodeCurrent(el, solver), Double::sum);
+            out.merge("gas evolution mol/s", cl.gasEvolution(el, solver), Double::sum);
+        }
+        return out;
+    }
+
+    /** Moles of foreign metal plated onto an electrode part (for rendering its colour). */
+    public double depositMoles(long partId) {
+        double mol = 0;
+        for (Object[] ce : electrodes.getOrDefault(partId, List.of())) {
+            ElectrochemicalCell cl = (ElectrochemicalCell) ce[0];
+            for (double d : cl.deposits((ElectrochemicalCell.Electrode) ce[1], solver).values()) mol += d;
+        }
+        return mol;
+    }
+
+    /** Gas evolution rate at an electrode part [mol/s]. */
+    public double gasEvolution(long partId) {
+        double r = 0;
+        for (Object[] ce : electrodes.getOrDefault(partId, List.of())) {
+            r += ((ElectrochemicalCell) ce[0]).gasEvolution((ElectrochemicalCell.Electrode) ce[1], solver);
+        }
+        return r;
     }
 
     public Probe probe(long partId) {
@@ -203,6 +258,22 @@ public final class CompiledAssembly {
         for (var e : deviceOfPart.entrySet()) {
             if (e.getValue() instanceof MagneticSystem.Coil c) s.coilCurrents().put(e.getKey(), magnetics.current(c, solver));
             if (e.getValue() instanceof Capacitor c) s.capacitorVoltages().put(e.getKey(), c.voltage(solver));
+        }
+        for (var e : cells.entrySet()) {
+            for (var sp : e.getValue().allMoles(solver).entrySet()) {
+                s.chemistry().put(AssemblyState.speciesKey(e.getKey(), sp.getKey()), sp.getValue());
+            }
+        }
+        for (var en : electrodes.entrySet()) {
+            for (Object[] ce : en.getValue()) {
+                ElectrochemicalCell cell = (ElectrochemicalCell) ce[0];
+                ElectrochemicalCell.Electrode el = (ElectrochemicalCell.Electrode) ce[1];
+                double m = cell.remainingMetal(el, solver);
+                if (!Double.isNaN(m)) s.chemistry().put("M" + en.getKey() + ":" + ce[2], m);
+                for (var d : cell.deposits(el, solver).entrySet()) {
+                    s.chemistry().merge("D" + en.getKey() + ":" + d.getKey(), d.getValue(), Double::sum);
+                }
+            }
         }
         return s;
     }

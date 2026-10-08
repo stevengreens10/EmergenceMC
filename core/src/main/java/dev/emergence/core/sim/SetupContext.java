@@ -22,4 +22,11 @@ public interface SetupContext {
 
     /** Sets the initial value of an unknown (e.g. an inductor's initial current). */
     void setInitial(int index, double value);
+
+    /**
+     * Limits the change of an unknown per Newton iteration (junction/interface "voltage limiting" for
+     * strongly exponential elements). The smallest limit requested for an unknown wins.
+     */
+    default void limitNewtonStep(int index, double maxDelta) {
+    }
 }

@@ -32,6 +32,7 @@ public final class TransientSolver implements StateView {
     private final double[] q0, q1, qd0, qd1, qNew, qdNew;
     private final double[] absTol, slotTol;
     private final double[] gmin;
+    private final double[] stepLimit;
     /** Electrical nodes get a GMIN relative to their diagonal (floating conductive islands). */
     private final boolean[] relGmin;
 
@@ -95,6 +96,8 @@ public final class TransientSolver implements StateView {
             relGmin[node.index] = node.domain == Domain.ELECTRICAL;
         }
         for (int s = 0; s < ns; s++) slotTol[s] = net.slotAbsTol(s);
+        stepLimit = new double[n];
+        for (int i = 0; i < n; i++) stepLimit[i] = net.stepLimit(i);
         ctx.q0 = q0;
         ctx.q1 = q1;
         ctx.qd0 = qd0;
@@ -311,6 +314,13 @@ public final class TransientSolver implements StateView {
                     return 1;
                 }
             }
+            boolean limited = false;
+            for (int i = 0; i < n; i++) {
+                if (Math.abs(dx[i]) > stepLimit[i]) {
+                    dx[i] = Math.copySign(stepLimit[i], dx[i]);
+                    limited = true;
+                }
+            }
             for (int i = 0; i < n; i++) {
                 xTrial[i] += scale * dx[i];
                 double tol = relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i];
@@ -320,7 +330,7 @@ public final class TransientSolver implements StateView {
                 }
             }
             if (DEBUG) System.out.println("t=" + t + " h=" + h + " it=" + it + " m=" + m + " x=" + Arrays.toString(xTrial) + " dx=" + Arrays.toString(dx));
-            if (small) {
+            if (small && !limited) {
                 converged = true;
                 break;
             }

@@ -638,7 +638,84 @@ public final class AssemblyCompiler {
                 }
             }
             buildBrushContacts();
+            buildElectrochemistry();
             buildMagnetics();
+        }
+
+        /**
+         * Electrolytes: every conductor touching an electrolyte body becomes an electrode of that body;
+         * touching electrolyte bodies are joined by ionic conduction (a porous partition / salt bridge).
+         */
+        void buildElectrochemistry() {
+            var db = dev.emergence.core.chem.Electrochemistry.standard();
+            for (Part el : parts) {
+                if (el.kind() != PartKind.ELECTROLYTE) continue;
+                var sol = db.solution(el.material().id());
+                if (sol == null) continue;
+                double litres = PartGeometry.volume(el) * 1000;
+                Node bulk = enode("e" + el.id());
+                ElectrochemicalCell cell = new ElectrochemicalCell(bulk, c.thermalOfPart.get(el.id()), litres, sol.species());
+                String sPrefix = "S" + el.id() + ":";
+                for (var k : prev.chemistry().entrySet()) {
+                    if (k.getKey().startsWith(sPrefix)) cell.setInitialMoles(k.getKey().substring(sPrefix.length()), k.getValue());
+                }
+                double kappa = sol.conductivity();
+                for (Part q : a.neighbors(el)) {
+                    if (q.kind() == PartKind.ELECTROLYTE) {
+                        if (q.id() < el.id()) continue;
+                        var s2 = db.solution(q.material().id());
+                        if (s2 == null) continue;
+                        double area = sharedFaces(el, q) * CELL * CELL;
+                        double r = (halfDepth(el, q) / kappa + halfDepth(q, el) / s2.conductivity()) / Math.max(area, 1e-8);
+                        c.network.add(new Resistor(bulk, enode("e" + q.id()), r));
+                        thermalLink(el, q);
+                        continue;
+                    }
+                    // insulated wire's jacket keeps its copper out of the liquid
+                    if (!conductive(q) || q.kind() == PartKind.INSULATED_WIRE || (q.kind().leaded && !isWire(q))) continue;
+                    double faces = sharedFaces(el, q);
+                    if (faces == 0) continue;
+                    double area = isWire(q) ? faces * Math.PI * PartGeometry.wireDiameter(q) * CELL
+                            : faces * CELL * CELL * (q.kind() == PartKind.BLOCK ? Math.min(1, q.param("fill", 1.0) + 0.2) : 1);
+                    String mat = q.material().id();
+                    double mm = q.material().get(MaterialProperty.MOLAR_MASS, 0);
+                    double metalMoles = mm > 0 ? PartGeometry.mass(q) / mm : 0;
+                    var electrode = cell.addElectrode(enode("p" + q.id()), c.thermalOfPart.get(q.id()), mat, area,
+                            halfDepth(el, q), kappa, metalMoles, q.id());
+                    Double prevMetal = prev.chemistry().get("M" + q.id() + ":" + el.id());
+                    if (prevMetal != null) cell.setRemainingMetal(electrode, prevMetal);
+                    String dPrefix = "D" + q.id() + ":";
+                    for (var k : prev.chemistry().entrySet()) {
+                        if (k.getKey().startsWith(dPrefix)) cell.setDeposit(q.id() + ":" + k.getKey().substring(dPrefix.length()), k.getValue());
+                    }
+                    c.electrodes.computeIfAbsent(q.id(), x -> new ArrayList<>()).add(new Object[]{cell, electrode, el.id()});
+                    if (!c.leadsOfPart.containsKey(q.id())) c.leadsOfPart.put(q.id(), new Node[]{enode("p" + q.id())});
+                    thermalLink(el, q);
+                }
+                c.network.add(cell);
+                c.cells.put(el.id(), cell);
+                c.leadsOfPart.put(el.id(), new Node[]{bulk});
+            }
+        }
+
+        /** Number of cell faces shared between two parts. */
+        int sharedFaces(Part p, Part q) {
+            int n = 0;
+            for (int x = p.minX(); x <= p.maxX(); x++)
+                for (int y = p.minY(); y <= p.maxY(); y++)
+                    for (int z = p.minZ(); z <= p.maxZ(); z++)
+                        for (Dir d : Dir.values()) {
+                            int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
+                            if (!p.containsCell(nx, ny, nz) && q.containsCell(nx, ny, nz)) n++;
+                        }
+            return n;
+        }
+
+        /** Ionic path from the faces shared with q to the middle of electrolyte el [m]. */
+        double halfDepth(Part el, Part q) {
+            Vec3 d = q.center().sub(el.center());
+            int ax = Math.abs(d.x()) >= Math.abs(d.y()) && Math.abs(d.x()) >= Math.abs(d.z()) ? 0 : Math.abs(d.y()) >= Math.abs(d.z()) ? 1 : 2;
+            return Math.max(el.boxSize(ax) / 2, CELL / 4);
         }
 
         /**

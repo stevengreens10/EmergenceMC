@@ -1,0 +1,43 @@
+{
+  // Aqueous electrochemistry data at 25 °C.
+  //  [BARD]  Bard, Parsons & Jordan, Standard Potentials in Aqueous Solution (1985); CRC Handbook 97th ed. §5
+  //  [BF]    Bard & Faulkner, Electrochemical Methods, 2nd ed. (2001), Table 3.4.1 (exchange currents)
+  //  [BOCK]  Bockris & Reddy, Modern Electrochemistry Vol. 2A (2000), hydrogen-evolution exchange currents
+  //  [CRC]   CRC Handbook §5 "Electrical conductivity of aqueous solutions"
+  //
+  // half_reactions: reduction written as  ox + n e- -> red.  "metal" names the solid material produced/consumed
+  // (null for gas/solution products). "species_ox" is the dissolved species consumed by reduction.
+  "half_reactions": [
+    {"id": "zn", "species_ox": "Zn2+", "n": 2, "e0": "-0.762 V", "metal": "zinc",   "stoich_ox": 1, "source": "BARD"},
+    {"id": "fe", "species_ox": "Fe2+", "n": 2, "e0": "-0.447 V", "metal": "iron",   "stoich_ox": 1, "source": "BARD"},
+    {"id": "ni", "species_ox": "Ni2+", "n": 2, "e0": "-0.257 V", "metal": "nickel", "stoich_ox": 1, "source": "BARD"},
+    {"id": "sn", "species_ox": "Sn2+", "n": 2, "e0": "-0.138 V", "metal": "tin",    "stoich_ox": 1, "source": "BARD"},
+    {"id": "pb", "species_ox": "Pb2+", "n": 2, "e0": "-0.126 V", "metal": "lead",   "stoich_ox": 1, "source": "BARD"},
+    {"id": "h2", "species_ox": "H+",   "n": 2, "e0": "0.000 V",  "metal": null,     "stoich_ox": 2, "gas": "H2", "source": "definition"},
+    {"id": "cu", "species_ox": "Cu2+", "n": 2, "e0": "0.342 V",  "metal": "copper", "stoich_ox": 1, "source": "BARD"},
+    {"id": "ag", "species_ox": "Ag+",  "n": 1, "e0": "0.7996 V", "metal": "silver", "stoich_ox": 1, "source": "BARD"},
+    // O2 + 4H+ + 4e- -> 2H2O (reverse = water oxidation at an anode, producing H+)
+    {"id": "o2", "species_ox": "H+",   "n": 4, "e0": "1.229 V",  "metal": null,     "stoich_ox": 4, "gas": "O2", "oxidation_only": true, "source": "BARD"}
+  ],
+
+  // Exchange current densities i0 [A/m^2] for a reaction on an electrode material (order-of-magnitude
+  // literature values, 1 M reactant). Missing combinations fall back to "default_i0".
+  "exchange_currents": {
+    "default_i0": {"zn": 0.3, "fe": 0.01, "ni": 0.01, "sn": 0.1, "pb": 0.1, "cu": 10.0, "ag": 10.0, "h2": 1e-3, "o2": 1e-7},
+    "h2": {"platinum": 10.0, "nickel": 0.06, "iron": 0.01, "steel_1045": 0.01, "stainless_304": 0.005,
+           "copper": 1e-3, "graphite": 1e-3, "silver": 0.01, "gold": 0.01, "tin": 1e-5, "zinc": 1e-7, "lead": 1e-9},
+    "o2": {"platinum": 1e-6, "graphite": 1e-7, "nickel": 1e-6, "stainless_304": 1e-7}
+  },
+  "transfer_coefficient": 0.5,
+  // Mass-transfer coefficient for reducible species at an unstirred electrode [m/s] (diffusion layer ~0.1 mm)
+  "mass_transfer_coefficient": 1e-5,
+
+  // Electrolyte solutions: concentrations [mol/L] of electroactive ions and conductivity at 25 °C.
+  "solutions": [
+    {"id": "sulfuric_acid_1m", "name": "Dilute sulfuric acid (1 M)", "species": {"H+": 2.0}, "conductivity": "37 S/m", "source": "CRC"},
+    {"id": "copper_sulfate_1m", "name": "Copper(II) sulfate (1 M)", "species": {"Cu2+": 1.0}, "conductivity": "4.5 S/m", "source": "CRC"},
+    {"id": "zinc_sulfate_1m", "name": "Zinc sulfate (1 M)", "species": {"Zn2+": 1.0}, "conductivity": "4.5 S/m", "source": "CRC"},
+    {"id": "brine", "name": "Sodium chloride brine (0.5 M, seawater-like)", "species": {"H+": 1e-7}, "conductivity": "4.8 S/m", "source": "CRC"},
+    {"id": "silver_nitrate_01m", "name": "Silver nitrate (0.1 M)", "species": {"Ag+": 0.1}, "conductivity": "1.1 S/m", "source": "CRC"}
+  ]
+}

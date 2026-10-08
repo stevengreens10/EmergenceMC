@@ -131,6 +131,8 @@ public final class PartGeometry {
             case WIRE, INSULATED_WIRE -> wireArea(p) * CELL * Math.max(p.extent(0), Math.max(p.extent(1), p.extent(2)));
             case RESISTOR, DIODE, CAPACITOR, SWITCH -> p.param("mass", 0.002) / p.material().density();
             case BRUSH -> 0.6 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
+            // liquid volume: the vessel wall and headspace take the rest of the cells
+            case ELECTROLYTE -> p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * p.param("fill", 0.8);
         };
     }
 

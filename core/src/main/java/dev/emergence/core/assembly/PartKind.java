@@ -34,7 +34,12 @@ public enum PartKind {
     /** Manual contact switch, two leads along its axis. */
     SWITCH(false, true),
     /** Graphite brush on a stationary holder; makes sliding contact with a rotating conductor. */
-    BRUSH(false, true);
+    BRUSH(false, true),
+    /**
+     * A body of liquid electrolyte (in a glass vessel). Conductors touching it become electrodes whose
+     * interface reactions follow electrochemical kinetics.
+     */
+    ELECTROLYTE(false, false);
 
     /** Structural parts carry load and rigidly join every part they touch into one body. */
     public final boolean structural;

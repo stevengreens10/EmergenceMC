@@ -13,8 +13,17 @@ import java.util.Map;
  * @param capacitorVoltages capacitor part id → voltage [V]
  */
 public record AssemblyState(Map<Long, Double> temperatures, Map<Long, double[]> bodyMotion,
-                            Map<Long, Double> coilCurrents, Map<Long, Double> capacitorVoltages) {
+                            Map<Long, Double> coilCurrents, Map<Long, Double> capacitorVoltages,
+                            Map<String, Double> chemistry) {
     public static AssemblyState empty() {
-        return new AssemblyState(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+        return new AssemblyState(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+    }
+
+    /**
+     * Chemistry keys: "S{electrolyteId}:{species}" dissolved moles, "M{electrodeId}:{electrolyteId}" remaining
+     * electrode metal, "D{electrodeId}:{metal}" deposited foreign metal.
+     */
+    public static String speciesKey(long electrolyte, String species) {
+        return "S" + electrolyte + ":" + species;
     }
 }

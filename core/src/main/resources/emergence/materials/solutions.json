@@ -1,0 +1,28 @@
+{
+  // Aqueous electrolyte solutions as bulk materials (thermal/mechanical properties; electrochemical
+  // composition lives in chemistry/electrochemistry.json under the same id). "melting_point" is used as the
+  // failure (boiling) limit of a liquid part. Electrical resistivity = 1 / ionic conductivity.
+  //  [CRC] CRC Handbook 97th ed. (densities, conductivities); water-like heat capacity scaled by solute fraction.
+  "materials": [
+    {"id": "sulfuric_acid_1m", "name": "Dilute sulfuric acid (1 M)", "category": "fluid", "color": "#D8E4C8",
+     "properties": {"density": "1.06 g/cm^3", "specific_heat": "3900 J/(kg*K)", "thermal_conductivity": "0.59 W/(m*K)",
+       "melting_point": "375 K", "electrical_resistivity": "0.027 ohm*m", "relative_permittivity": 78, "emissivity": 0.95},
+     "sources": ["CRC"]},
+    {"id": "copper_sulfate_1m", "name": "Copper(II) sulfate solution (1 M)", "category": "fluid", "color": "#2E86DE",
+     "properties": {"density": "1.16 g/cm^3", "specific_heat": "3700 J/(kg*K)", "thermal_conductivity": "0.58 W/(m*K)",
+       "melting_point": "374 K", "electrical_resistivity": "0.22 ohm*m", "relative_permittivity": 78, "emissivity": 0.95},
+     "sources": ["CRC"]},
+    {"id": "zinc_sulfate_1m", "name": "Zinc sulfate solution (1 M)", "category": "fluid", "color": "#E8EEF2",
+     "properties": {"density": "1.16 g/cm^3", "specific_heat": "3700 J/(kg*K)", "thermal_conductivity": "0.58 W/(m*K)",
+       "melting_point": "374 K", "electrical_resistivity": "0.22 ohm*m", "relative_permittivity": 78, "emissivity": 0.95},
+     "sources": ["CRC"]},
+    {"id": "brine", "name": "Sodium chloride brine (0.5 M)", "category": "fluid", "color": "#C9DDEA",
+     "properties": {"density": "1.02 g/cm^3", "specific_heat": "3990 J/(kg*K)", "thermal_conductivity": "0.60 W/(m*K)",
+       "melting_point": "373.6 K", "electrical_resistivity": "0.21 ohm*m", "relative_permittivity": 78, "emissivity": 0.95},
+     "sources": ["CRC"]},
+    {"id": "silver_nitrate_01m", "name": "Silver nitrate solution (0.1 M)", "category": "fluid", "color": "#EEF0F2",
+     "properties": {"density": "1.01 g/cm^3", "specific_heat": "4150 J/(kg*K)", "thermal_conductivity": "0.60 W/(m*K)",
+       "melting_point": "373.3 K", "electrical_resistivity": "0.91 ohm*m", "relative_permittivity": 78, "emissivity": 0.95},
+     "sources": ["CRC"]}
+  ]
+}

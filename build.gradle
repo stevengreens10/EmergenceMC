@@ -67,6 +67,17 @@ neoForge {
         client {
             client()
         }
+        // Boots straight into the generated demo world (run ./gradlew generateDemoWorld first).
+        demoClient {
+            client()
+            programArguments.addAll('--quickPlaySingleplayer', 'Emergence Demo', '--width', '1280', '--height', '720')
+        }
+        // Automated visual check: tours the demo world, saves run/screenshots/showcase-*.png, quits.
+        showcaseClient {
+            client()
+            programArguments.addAll('--quickPlaySingleplayer', 'Emergence Demo', '--width', '1280', '--height', '720')
+            systemProperty 'emergence.autoShowcase', 'true'
+        }
         server {
             server()
             programArgument '--nogui'
@@ -76,6 +87,14 @@ neoForge {
             gameDirectory = project.file('run-gametest')
             systemProperty 'emergence.debugIslands', 'true'
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        // Generates the showcase world: a game-test server (no EULA prompt, creative flat world) that
+        // builds the exhibit gallery at spawn on start-up, runs the in-world tests and saves.
+        demoWorld {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-demo')
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            systemProperty 'emergence.buildDemo', 'true'
         }
     }
 
@@ -108,4 +127,18 @@ processResources {
     filesMatching(['META-INF/neoforge.mods.toml']) {
         expand replaceProperties
     }
+}
+
+tasks.named('runDemoWorld') {
+    doFirst { delete 'run-demo/world' }
+}
+
+// ./gradlew generateDemoWorld  ->  run/saves/Emergence Demo (open it from Singleplayer)
+tasks.register('generateDemoWorld', Copy) {
+    group = 'emergence'
+    description = 'Builds the demo world with all exhibits and installs it into run/saves.'
+    dependsOn 'runDemoWorld'
+    from 'run-demo/world'
+    into 'run/saves/Emergence Demo'
+    doFirst { delete 'run/saves/Emergence Demo' }
 }

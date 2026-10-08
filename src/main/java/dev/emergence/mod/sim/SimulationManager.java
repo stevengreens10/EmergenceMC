@@ -111,7 +111,7 @@ public final class SimulationManager {
             Profiler.record(System.nanoTime() - t0, isl.compiled.network().size());
             if (!failed.isEmpty()) destroyParts(isl, failed);
             updateLight(isl);
-            if (tickCount % 2 == 0) sync(isl);
+            sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
         }
     }
@@ -171,7 +171,7 @@ public final class SimulationManager {
             if (be == null) continue;
             for (var e : be.savedState().entrySet()) {
                 double[] v = e.getValue();
-                st.temperatures().put(e.getKey(), v[0]);
+                if (v[0] > 0) st.temperatures().put(e.getKey(), v[0]);
                 st.bodyMotion().put(e.getKey(), new double[]{v[1], v[2]});
                 st.coilCurrents().put(e.getKey(), v[3]);
                 st.capacitorVoltages().put(e.getKey(), v[4]);
@@ -217,6 +217,8 @@ public final class SimulationManager {
 
     /** True if the part's cell box reaches a face of its block that touches a solid world block. */
     private boolean touchesWorld(BlockPos pos, PlacedPart p) {
+        // a thin shaft resting on a block is a point contact (a pivot), not a rigid mounting
+        if (p.kind == PartKind.SHAFT) return false;
         for (Direction d : Direction.values()) {
             boolean atFace = switch (d) {
                 case DOWN -> p.y0 == 0;
@@ -293,6 +295,7 @@ public final class SimulationManager {
             if (p != null) {
                 p.closed = closed;
                 be.setChanged();
+                level.sendBlockUpdated(pos, be.getBlockState(), be.getBlockState(), 3); // clients redraw the lever
             }
         }
         level.playSound(null, pos, SoundEvents.LEVER_CLICK, SoundSource.BLOCKS, 0.4f, closed ? 0.8f : 0.6f);

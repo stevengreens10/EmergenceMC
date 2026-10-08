@@ -86,6 +86,34 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** The demo glow exhibit, placed through the real builder path, flash-heats its wire when switched. */
+    @GameTest(template = "arena", timeoutTicks = 100)
+    public static void demoCapacitorExhibitGlowsInWorld(GameTestHelper h) {
+        BlockPos rel = new BlockPos(4, 2, 4);
+        BlockPos abs = h.absolutePos(rel);
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.capacitorGlow();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), abs, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        AssemblyBlockEntity be = (AssemblyBlockEntity) h.getBlockEntity(rel);
+        PlacedPart sw = be.parts().stream().filter(p -> p.kind == PartKind.SWITCH).findFirst().orElseThrow();
+        PlacedPart wire = be.parts().stream().filter(p -> p.kind == PartKind.WIRE).findFirst().orElseThrow();
+        PlacedPart cap = be.parts().stream().filter(p -> p.kind == PartKind.CAPACITOR).findFirst().orElseThrow();
+        double[] peak = {0};
+        h.runAtTickTime(10, () -> {
+            Probe pc = sim.probe(abs, cap.id);
+            h.assertTrue(pc != null && Math.abs(pc.voltage()) > 70, "capacitor should be charged, probe=" + pc);
+            sim.toggleSwitch(abs, sw.id);
+        });
+        h.onEachTick(() -> {
+            Probe pw = sim.probe(abs, wire.id);
+            if (pw != null) peak[0] = Math.max(peak[0], pw.temperature());
+        });
+        h.runAtTickTime(30, () -> {
+            h.assertTrue(peak[0] > 900, "wire should flash-heat, peak " + peak[0] + " K");
+            h.succeed();
+        });
+    }
+
     /** A thin tungsten wire across a strong source glows (incandescence emerges from Joule heating + radiation). */
     @GameTest(template = "arena", timeoutTicks = 120)
     public static void partsSurviveSaveAndReload(GameTestHelper h) {

@@ -88,6 +88,11 @@ public final class PartGeometry {
         return p.param("pitch_radius", 0.5 * transverseSize(p));
     }
 
+    /** Face width of a gear [m] (defaults to 80 % of its cell). */
+    public static double gearThickness(Part p) {
+        return Math.min(p.param("thickness", 0.8 * axialLength(p)), axialLength(p));
+    }
+
     public static int gearTeeth(Part p) {
         return (int) Math.round(p.param("teeth", DEFAULT_GEAR_TEETH));
     }
@@ -109,7 +114,7 @@ public final class PartGeometry {
             case BEARING -> 0.4 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
             case GEAR -> {
                 double r = gearPitchRadius(p) * 1.05;
-                yield Math.PI * r * r * 0.8 * axialLength(p);
+                yield Math.PI * r * r * gearThickness(p);
             }
             case CRANK -> {
                 double r = crankRadius(p);
@@ -147,7 +152,7 @@ public final class PartGeometry {
         double cosA = Math.abs(u.dot(a));
         switch (p.kind()) {
             case SHAFT -> icm = cylinder(m, shaftDiameter(p) / 2, axialLength(p), cosA);
-            case GEAR -> icm = cylinder(m, gearPitchRadius(p), 0.8 * axialLength(p), cosA);
+            case GEAR -> icm = cylinder(m, gearPitchRadius(p), gearThickness(p), cosA);
             case COIL -> {
                 CoilGeometry g = coil(p);
                 double r = g.meanRadius();
@@ -212,6 +217,7 @@ public final class PartGeometry {
             case WIRE, INSULATED_WIRE -> wireArea(p);
             case COIL -> 1e-5;
             case RESISTOR, DIODE, CAPACITOR, SWITCH -> 1e-6;
+            case BLOCK -> CELL * CELL * p.param("fill", 1.0);
             default -> CELL * CELL * 0.5;
         };
     }

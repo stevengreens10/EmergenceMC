@@ -40,6 +40,9 @@ public final class EmergenceMod {
         NeoForge.EVENT_BUS.addListener(EmergenceMod::onLevelSave);
         NeoForge.EVENT_BUS.addListener(EmergenceMod::onLeftClickBlock);
         NeoForge.EVENT_BUS.addListener(EmergenceMod::onRegisterCommands);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) -> {
+            if (Boolean.getBoolean("emergence.buildDemo")) dev.emergence.mod.demo.DemoBuilder.generateWorld(e.getServer());
+        });
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -82,6 +85,13 @@ public final class EmergenceMod {
         event.getDispatcher().register(Commands.literal("emergence")
                 .then(Commands.literal("perf").executes(ctx -> {
                     ctx.getSource().sendSuccess(() -> Component.literal(Profiler.report()), false);
+                    return Command.SINGLE_SUCCESS;
+                }))
+                .then(Commands.literal("demo").requires(s -> s.hasPermission(2)).executes(ctx -> {
+                    var src = ctx.getSource();
+                    net.minecraft.core.BlockPos at = net.minecraft.core.BlockPos.containing(src.getPosition()).offset(3, 0, -6);
+                    dev.emergence.mod.demo.DemoBuilder.build(src.getLevel(), at);
+                    src.sendSuccess(() -> Component.literal("Built the Emergence exhibit gallery in front of you. Read the signs; use the Multimeter."), true);
                     return Command.SINGLE_SUCCESS;
                 })));
     }

@@ -578,6 +578,20 @@ public final class AssemblyCompiler {
                     continue;
                 }
                 double rHalfP = halfLength(p), rHalfQ = halfLength(q);
+                if (rHalfP >= CELL / 2 && rHalfQ >= CELL / 2) {
+                    // two bulk/wire conductors: split at the contact face so each half's Joule heat goes
+                    // into its own part (exact heat allocation, e.g. along a filament)
+                    Node mid = enode("m" + k.pk + "|" + k.qk);
+                    c.network.add(new Conductor(np, mid, conductorMaterial(p), rHalfP, conductorArea(p),
+                            c.thermalOfPart.get(p.id()), ambientT));
+                    c.network.add(new Conductor(mid, nq, conductorMaterial(q), rHalfQ, conductorArea(q),
+                            c.thermalOfPart.get(q.id()), ambientT));
+                    if (!joinedPairs.contains(pairKey(p.id(), q.id())) && c.bodyOfPart.get(p.id()) == c.bodyOfPart.get(q.id())) {
+                        thermalLink(p, q);
+                        joinedPairs.add(pairKey(p.id(), q.id()));
+                    }
+                    continue;
+                }
                 // series conductor halves; the dominant (more resistive) side receives the heat
                 Part dom = segmentResistance(p, rHalfP) >= segmentResistance(q, rHalfQ) ? p : q;
                 double rTotal20 = segmentResistance(p, rHalfP) + segmentResistance(q, rHalfQ);
@@ -637,14 +651,17 @@ public final class AssemblyCompiler {
         }
 
         double segmentResistance(Part p, double len) {
-            double area = switch (p.kind()) {
+            return conductorMaterial(p).resistivity(293.15) * len / conductorArea(p);
+        }
+
+        double conductorArea(Part p) {
+            return switch (p.kind()) {
                 case WIRE, INSULATED_WIRE -> PartGeometry.wireArea(p);
                 case SHAFT -> Math.PI * Math.pow(PartGeometry.shaftDiameter(p) / 2, 2);
                 case COIL -> Math.PI * Math.pow(PartGeometry.coilWireDiameter(p) / 2, 2);
                 case RESISTOR, CAPACITOR, DIODE, SWITCH, BRUSH -> 1e-6;
                 default -> CELL * CELL;
             };
-            return conductorMaterial(p).resistivity(293.15) * len / area;
         }
 
         /**

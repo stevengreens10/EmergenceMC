@@ -137,7 +137,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 box(mat, vc, core, 0x3A2A1A, light);
             }
             case WIRE, INSULATED_WIRE -> {
-                float r = (float) Math.max(prm.getOrDefault("diameter", 1.5e-3) / 2, 0.004);
+                // drawn at least 8 mm thick so fine wires and filaments remain visible
+                float r = (float) Math.max(prm.getOrDefault("diameter", 1.5e-3) / 2, 0.008);
                 if (p.kind == PartKind.INSULATED_WIRE) r = Math.max(r * 1.8f, 0.006f);
                 int col = p.kind == PartKind.INSULATED_WIRE ? 0x2F6FB0 : rgb;
                 box(mat, vc, new float[]{cx - r, cy - r, cz - r, cx + r, cy + r, cz + r}, col, light);
@@ -180,11 +181,18 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             }
             case GEAR -> {
                 float rr = (float) (prm.getOrDefault("pitch_radius", 0.5 * (x1 - x0)) * 0.92);
-                float[] disk = axialBox(a, x0, y0, z0, x1, y1, z1, cx, cy, cz, rr);
-                float len = disk[a + 3] - disk[a];
-                disk[a] += len * 0.1f;
-                disk[a + 3] -= len * 0.1f;
-                box(mat, vc, disk, rgb, light);
+                float[] disk = axialBox(a, x0, y0, z0, x1, y1, z1, cx, cy, cz, rr * 0.7071f);
+                double th = prm.getOrDefault("thickness", 0.8 * (disk[a + 3] - disk[a]));
+                float mid = (disk[a] + disk[a + 3]) / 2;
+                disk[a] = (float) (mid - Math.max(th, 0.004) / 2);
+                disk[a + 3] = (float) (mid + Math.max(th, 0.004) / 2);
+                // a round disk from several copies of its inscribed square rotated about the gear axis
+                for (int k = 0; k < 6; k++) {
+                    Matrix4f rot = new Matrix4f(mat).translate(cx, cy, cz)
+                            .rotate((float) (k * Math.PI / 12), a == 0 ? 1 : 0, a == 1 ? 1 : 0, a == 2 ? 1 : 0)
+                            .translate(-cx, -cy, -cz);
+                    box(rot, vc, disk, k == 0 ? rgb : darken(rgb, 0.97f), light);
+                }
                 int teeth = (int) Math.round(prm.getOrDefault("teeth", 24.0));
                 float tw = (float) (Math.PI * rr / teeth) * 0.9f;
                 for (int t = 0; t < teeth; t++) {
@@ -310,7 +318,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             b = 255;
         }
         // perceived brightness rises steeply with T (Stefan–Boltzmann + visible fraction)
-        double intensity = Math.min(1.0, Math.pow(Math.max(0, (t - 700) / 900.0), 1.5));
+        double intensity = Math.min(1.0, Math.pow(Math.max(0, (t - 700) / 600.0), 1.2));
         int bb = ((int) clamp(r) << 16) | ((int) clamp(g) << 8) | (int) clamp(b);
         return mix(base, bb, (float) intensity);
     }

@@ -12,6 +12,7 @@ public final class ClientSetup {
     public static void init(IEventBus modBus) {
         modBus.addListener(ClientSetup::registerRenderers);
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> ClientSimState.clear());
+        AutoShowcase.init();
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {

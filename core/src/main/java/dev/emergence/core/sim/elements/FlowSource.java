@@ -41,8 +41,15 @@ public final class FlowSource implements Element {
         ctx.addF(to.index(), -i);
     }
 
+    /**
+     * Power delivered: through × across for power-conjugate domains; in the thermal domain the through
+     * variable (heat flow) is itself the power. A bare mass source carries no defined energy (0).
+     */
     @Override
     public double externalPower(StateView s) {
-        return waveform.applyAsDouble(s.time()) * s.across(to, from);
+        double v = waveform.applyAsDouble(s.time());
+        if (to.domain() == dev.emergence.core.sim.Domain.THERMAL) return v;
+        if (!to.domain().isPowerConjugate()) return 0;
+        return v * s.across(to, from);
     }
 }

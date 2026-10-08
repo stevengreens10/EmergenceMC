@@ -1,0 +1,44 @@
+{
+  // Working fluids. Gases are thermally perfect ideal gases: p = ρ R T with c_p(T) a polynomial in x = T/1000 K
+  // (coefficients a0..a4 in J/(kg·K)), u(T) = ∫ c_v dT. Transport properties from Sutherland's law
+  // μ = μ0 (T/T0)^1.5 (T0 + S)/(T + S), same form for conductivity.
+  // Liquids: linearised equation of state ρ = ρ0 [1 + (p − p0)/K − β (T − T0)], c_v ≈ c_p, viscosity by
+  // Vogel's equation μ = A·10^(B/(T − C)) (water) or Andrade's μ = A·exp(B/T) (oil).
+  //
+  // Sources:
+  //  [INC]   Incropera et al., Fundamentals of Heat and Mass Transfer, 7th ed., Tables A.4 (gases), A.6 (water)
+  //  [WHITE] F. M. White, Viscous Fluid Flow, 3rd ed., Tables 1-2 and 1-3 (Sutherland constants)
+  //  [CRC]   CRC Handbook of Chemistry and Physics, 97th ed.
+  //  [ISO]   ISO 3448 viscosity grade VG 46 (kinematic viscosity 46 cSt at 40 °C, ~6.8 cSt at 100 °C)
+  // Every fluid has a stable integer "code" used to tag parts (do not renumber).
+  "fluids": [
+    {"id": "air", "code": 0, "name": "Air", "phase": "gas", "molar_mass": "0.0289647 kg/mol",
+     "cp_poly": [1076.9, -575.0, 1422.4, -1053.0, 269.8], "cp_range": "250-1400 K (fit ±0.1 % to INC A.4)",
+     "mu_sutherland": ["1.716e-5 Pa*s", "273.15 K", "110.4 K"], "k_sutherland": ["0.02414 W/(m*K)", "273.15 K", "194 K"],
+     "source": "INC, WHITE"},
+    {"id": "water", "code": 1, "name": "Water (liquid)", "phase": "liquid",
+     "rho0": "997.05 kg/m^3", "p0": "101325 Pa", "t0": "298.15 K", "bulk_modulus": "2.2e9 Pa", "expansion": "2.57e-4 1/K",
+     "cp": "4181 J/(kg*K)", "k": "0.607 W/(m*K)", "mu_vogel": [2.414e-5, 247.8, 140.0], "range": "275-370 K, no phase change",
+     "source": "INC, CRC"},
+    {"id": "helium", "code": 2, "name": "Helium", "phase": "gas", "molar_mass": "0.0040026 kg/mol",
+     "cp_poly": [5193.0, 0, 0, 0, 0],
+     "mu_sutherland": ["1.87e-5 Pa*s", "273.15 K", "79.4 K"], "k_sutherland": ["0.1426 W/(m*K)", "273.15 K", "79.4 K"],
+     "source": "INC, WHITE (k Sutherland constant assumed equal to the viscosity one, ±5 %)"},
+    {"id": "nitrogen", "code": 3, "name": "Nitrogen", "phase": "gas", "molar_mass": "0.0280134 kg/mol",
+     "cp_poly": [1086.3, -342.8, 714.5, -289.7, 0],
+     "mu_sutherland": ["1.663e-5 Pa*s", "273.15 K", "107 K"], "k_sutherland": ["0.0242 W/(m*K)", "273.15 K", "150 K"],
+     "source": "INC, WHITE (c_p fit ±0.2 % 200-1200 K)"},
+    {"id": "hydraulic_oil", "code": 4, "name": "Hydraulic oil (ISO VG 46)", "phase": "liquid",
+     "rho0": "870 kg/m^3", "p0": "101325 Pa", "t0": "288.15 K", "bulk_modulus": "1.5e9 Pa", "expansion": "7.0e-4 1/K",
+     "cp": "1900 J/(kg*K)", "k": "0.13 W/(m*K)", "mu_andrade": [2.2e-7, 3790.0], "range": "270-390 K",
+     "source": "ISO, typical mineral oil data"},
+    {"id": "argon", "code": 5, "name": "Argon", "phase": "gas", "molar_mass": "0.039948 kg/mol",
+     "cp_poly": [520.3, 0, 0, 0, 0],
+     "mu_sutherland": ["2.125e-5 Pa*s", "273.15 K", "144.4 K"], "k_sutherland": ["0.0163 W/(m*K)", "273.15 K", "170 K"],
+     "source": "INC, WHITE"},
+    {"id": "carbon_dioxide", "code": 6, "name": "Carbon dioxide", "phase": "gas", "molar_mass": "0.04401 kg/mol",
+     "cp_poly": [421.2, 1869.4, -1667.0, 611.2, 0],
+     "mu_sutherland": ["1.370e-5 Pa*s", "273.15 K", "222 K"], "k_sutherland": ["0.0146 W/(m*K)", "273.15 K", "1800 K"],
+     "source": "INC (c_p fit ±0.6 % 250-1000 K), WHITE"}
+  ]
+}

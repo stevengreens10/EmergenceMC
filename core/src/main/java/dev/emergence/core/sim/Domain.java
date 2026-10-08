@@ -17,7 +17,13 @@ public enum Domain {
     ROTATIONAL("rotational", Dimension.ANGULAR_VELOCITY, Dimension.TORQUE, 1e-6, 1e-12),
     TRANSLATIONAL("translational", Dimension.VELOCITY, Dimension.FORCE, 1e-7, 1e-12),
     THERMAL("thermal", Dimension.TEMPERATURE, Dimension.POWER, 1e-6, 1e-12),
-    HYDRAULIC("hydraulic", Dimension.PRESSURE, Dimension.VOLUMETRIC_FLOW, 1e-3, 1e-15);
+    HYDRAULIC("hydraulic", Dimension.PRESSURE, Dimension.VOLUMETRIC_FLOW, 1e-3, 1e-15),
+    /**
+     * Compressible fluid networks: absolute pressure and mass flow (mass is the conserved through
+     * quantity). Not power-conjugate: energy travels with the flow as enthalpy on the paired thermal
+     * node of each control volume. No GMIN — a shunt to vacuum would leak mass.
+     */
+    FLUID("fluid", Dimension.PRESSURE, Dimension.MASS_FLOW, 1e-2, 0.0);
 
     public final String id;
     public final Dimension across;

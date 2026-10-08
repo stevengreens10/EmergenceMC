@@ -499,6 +499,7 @@ public final class AssemblyCompiler {
                     int lo = a0 == 0 ? p.minX() : a0 == 1 ? p.minY() : p.minZ();
                     int hi = a0 == 0 ? p.maxX() : a0 == 1 ? p.maxY() : p.maxZ();
                     boolean posAxis = ax.sign() > 0;
+                    if (p.kind() == PartKind.BRUSH && d == ax) return null; // the brush face slides: see buildBrushContacts
                     if (d.axis() == a0) {
                         // end faces: lead exits at the transverse centre of the end face
                         if (!isLeadCell(p, cell)) return null;
@@ -506,12 +507,16 @@ public final class AssemblyCompiler {
                         if (d.sign() < 0 && cell[a0] == lo) return "p" + p.id() + (posAxis ? "-" : "+");
                         return null;
                     }
-                    if (p.kind() == PartKind.BRUSH && d == ax) return null; // the brush face slides: see buildBrushContacts
-                    // side faces of the two end layers (only for parts at least 2 cells long): a lead
-                    // brought out sideways, as on a real coil former
-                    if (p.kind() == PartKind.BRUSH || hi == lo) return null;
-                    if (cell[a0] == hi) return "p" + p.id() + (posAxis ? "+" : "-");
-                    if (cell[a0] == lo) return "p" + p.id() + (posAxis ? "-" : "+");
+                    if (p.kind() == PartKind.BRUSH) return null;
+                    if (hi != lo) {
+                        // multi-cell part: side faces of the two end layers reach that end's lead
+                        if (cell[a0] == hi) return "p" + p.id() + (posAxis ? "+" : "-");
+                        if (cell[a0] == lo) return "p" + p.id() + (posAxis ? "-" : "+");
+                        return null;
+                    }
+                    // single-cell part: its leads are brought out sideways along the lead axis L
+                    // (− lead on the −L face, + lead on the +L face), as on a real coil former
+                    if (d.axis() == PartGeometry.leadAxis(p)) return "p" + p.id() + (d.sign() > 0 ? "+" : "-");
                     return null;
                 }
                 default -> {

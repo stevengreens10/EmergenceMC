@@ -22,7 +22,20 @@ public final class PartGeometry {
     public static final int DEFAULT_COIL_TURNS = 200;
     public static final int DEFAULT_GEAR_TEETH = 24;
 
-    /** Extent of the box along the part axis [m]. */
+    /**
+     * Grid axis (0 = x, 1 = y, 2 = z) along which a single-cell leaded part brings its leads out sideways:
+     * the − lead on the −L face, the + lead on the +L face. Parameter "lead_axis"; by default x for
+     * vertical parts and the horizontal axis perpendicular to horizontal parts... (x for z-axis parts,
+     * z for x-axis parts).
+     */
+    public static int leadAxis(Part p) {
+        int a = p.axis().axis();
+        int def = a == 0 ? 2 : 0;
+        int l = (int) Math.round(p.param("lead_axis", def));
+        return l == a || l < 0 || l > 2 ? def : l;
+    }
+
+        /** Extent of the box along the part axis [m]. */
     public static double axialLength(Part p) {
         return p.boxSize(p.axis().axis());
     }

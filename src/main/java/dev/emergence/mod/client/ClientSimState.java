@@ -16,17 +16,22 @@ public final class ClientSimState {
 
     private static final Map<Long, Pose> POSE = new HashMap<>();
     private static final Map<Long, Float> TEMP = new HashMap<>();
+    private static final Map<Long, Integer> TINT = new HashMap<>();
 
     public static synchronized void apply(IslandSyncPayload p) {
         for (long id : p.partIds()) {
             POSE.remove(id);
             TEMP.remove(id);
+            TINT.remove(id);
         }
+        double s = p.worldScale();
         for (IslandSyncPayload.BodyState b : p.bodies()) {
-            Pose pose = new Pose(b.px(), b.py(), b.pz(), b.ax(), b.ay(), b.az(), b.angle(), b.omega(), p.gameTime());
+            // pivot arrives in physical metres; convert to world block coordinates
+            Pose pose = new Pose(b.px() * s, b.py() * s, b.pz() * s, b.ax(), b.ay(), b.az(), b.angle(), b.omega(), p.gameTime());
             for (long id : b.partIds()) POSE.put(id, pose);
         }
         for (int i = 0; i < p.hotIds().length; i++) TEMP.put(p.hotIds()[i], p.hotTemps()[i]);
+        for (int i = 0; i < p.tintIds().length; i++) TINT.put(p.tintIds()[i], p.tints()[i]);
     }
 
     public static synchronized Pose pose(long partId) {
@@ -38,8 +43,15 @@ public final class ClientSimState {
         return t == null ? fallback : t;
     }
 
+    /** Colour as changed by chemistry (0xRRGGBB), or {@code fallback}. */
+    public static synchronized int colour(long partId, int fallback) {
+        Integer t = TINT.get(partId);
+        return t == null ? fallback : t;
+    }
+
     public static synchronized void clear() {
         POSE.clear();
         TEMP.clear();
+        TINT.clear();
     }
 }

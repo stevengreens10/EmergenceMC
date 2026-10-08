@@ -38,12 +38,23 @@ public final class MultimeterItem extends Item {
     @Override
     public InteractionResult useOn(UseOnContext ctx) {
         if (!(ctx.getLevel().getBlockEntity(ctx.getClickedPos()) instanceof AssemblyBlockEntity be)) return InteractionResult.PASS;
-        int[] c = AssemblyBlock.cellAt(ctx.getClickedPos(), ctx.getClickLocation(), ctx.getClickedFace());
+        int[] c = AssemblyBlock.cellAt(be, ctx.getClickLocation(), ctx.getClickedFace());
         PlacedPart part = be.partAt(c[0], c[1], c[2]);
         if (part == null) return InteractionResult.PASS;
         if (ctx.getLevel() instanceof ServerLevel sl && ctx.getPlayer() != null) {
-            Probe pr = SimulationManager.get(sl).probe(ctx.getClickedPos(), part.id);
+            SimulationManager sm = SimulationManager.get(sl);
+            Probe pr = sm.probe(ctx.getClickedPos(), part.id);
             report(ctx.getPlayer(), part, pr);
+            var compiled = sm.compiledAt(ctx.getClickedPos());
+            if (pr != null && compiled != null) {
+                // electrochemistry: concentrations in a jar; dissolution, deposits and gas at an electrode
+                for (var e : compiled.chemistry(part.id).entrySet()) {
+                    String[] kv = e.getKey().split(" (?=[^ ]+$)");
+                    double v = e.getValue();
+                    if (Math.abs(v) < 1e-12) continue;
+                    line(ctx.getPlayer(), kv[0], String.format("%.4g %s", v, kv.length > 1 ? kv[1] : ""));
+                }
+            }
         }
         return InteractionResult.sidedSuccess(ctx.getLevel().isClientSide);
     }

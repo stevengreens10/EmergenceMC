@@ -74,23 +74,27 @@ public final class AssemblyBlock extends BaseEntityBlock {
         return 1.0f;
     }
 
-    /** Cell (0..15)³ of the part under a hit location, nudged inside the surface that was hit. */
-    public static int[] cellAt(BlockPos pos, Vec3 hit, net.minecraft.core.Direction face) {
+    /** Cell of the part under a hit location (in the block's own resolution), nudged inside the hit surface. */
+    public static int[] cellAt(BlockPos pos, Vec3 hit, net.minecraft.core.Direction face, int res) {
         Vec3 p = hit.subtract(face.getStepX() * 0.01, face.getStepY() * 0.01, face.getStepZ() * 0.01);
         return new int[]{
-                clamp((int) Math.floor((p.x - pos.getX()) * 16)),
-                clamp((int) Math.floor((p.y - pos.getY()) * 16)),
-                clamp((int) Math.floor((p.z - pos.getZ()) * 16))};
+                clamp((int) Math.floor((p.x - pos.getX()) * res), res),
+                clamp((int) Math.floor((p.y - pos.getY()) * res), res),
+                clamp((int) Math.floor((p.z - pos.getZ()) * res), res)};
     }
 
-    private static int clamp(int v) {
-        return Math.max(0, Math.min(15, v));
+    public static int[] cellAt(AssemblyBlockEntity be, Vec3 hit, net.minecraft.core.Direction face) {
+        return cellAt(be.getBlockPos(), hit, face, be.resolution());
+    }
+
+    private static int clamp(int v, int res) {
+        return Math.max(0, Math.min(res - 1, v));
     }
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!(level.getBlockEntity(pos) instanceof AssemblyBlockEntity be)) return InteractionResult.PASS;
-        int[] c = cellAt(pos, hit.getLocation(), hit.getDirection());
+        int[] c = cellAt(be, hit.getLocation(), hit.getDirection());
         PlacedPart part = be.partAt(c[0], c[1], c[2]);
         if (part == null) return InteractionResult.PASS;
         if (part.kind == PartKind.CRANK || part.kind == PartKind.SWITCH) {
@@ -113,7 +117,7 @@ public final class AssemblyBlock extends BaseEntityBlock {
         if (!(level.getBlockEntity(pos) instanceof AssemblyBlockEntity be)) return false;
         var hr = player.pick(player.blockInteractionRange() + 1, 1.0f, false);
         if (!(hr instanceof BlockHitResult bhr) || !bhr.getBlockPos().equals(pos)) return false;
-        int[] c = cellAt(pos, bhr.getLocation(), bhr.getDirection());
+        int[] c = cellAt(be, bhr.getLocation(), bhr.getDirection());
         PlacedPart part = be.partAt(c[0], c[1], c[2]);
         if (part == null) return false;
         be.removePart(part.id);

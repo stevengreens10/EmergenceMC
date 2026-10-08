@@ -46,26 +46,29 @@ public final class AutoShowcase {
         var server = mc.getSingleplayerServer();
         ServerLevel level = server.overworld();
         BlockPos spawn = level.getSharedSpawnPos();
-        int n = Exhibits.all().size();
-        BlockPos origin = spawn.offset(-(n * DemoBuilder.PLOT_SPACING) / 2, 0, -4);
-        STEPS.add(new Step(60, () -> look(server, origin.getX() + 12.5, origin.getY() + 4, origin.getZ() + 9.5, 180, 25), "showcase-0-overview"));
         var ex = Exhibits.all();
+        int n = ex.size();
+        BlockPos origin = spawn.offset(-8, 0, -(DemoBuilder.SIGN_Z + 3));
+        STEPS.add(new Step(80, () -> look(server, origin.getX() + 26, origin.getY() + 16, origin.getZ() + 38, 160, 28), "showcase-0-overview"));
         for (int i = 0; i < n; i++) {
             BlockPos plot = origin.offset(i * DemoBuilder.PLOT_SPACING, 0, 0);
             var e = ex.get(i);
             String id = e.id;
-            Runnable view = () -> look(server, plot.getX() + 0.5, plot.getY() + e.viewHeight, plot.getZ() + 0.5 + e.viewDistance,
+            Runnable view = () -> look(server, plot.getX() + e.viewX, plot.getY() + e.viewHeight, plot.getZ() + e.viewZ,
                     180, (float) e.viewPitch);
             STEPS.add(new Step(50, view, "showcase-" + (i + 1) + "-" + id));
             if (id.equals("glow") || id.equals("fuse")) {
-                STEPS.add(new Step(40, () -> closeSwitch(server.overworld(), plot), "showcase-" + (i + 1) + "-" + id + "-discharged",
-                        () -> hottest(plot) > 950 || gone(plot)));
+                BlockPos wire = DemoBuilder.partBlock(plot, e, "wire");
+                STEPS.add(new Step(40, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-discharged", () -> hottest(wire) > 950 || gone(wire)));
             }
-            if (id.equals("dcmotor")) {
-                STEPS.add(new Step(30, () -> closeSwitch(server.overworld(), plot), "showcase-" + (i + 1) + "-" + id + "-running"));
+            if (id.equals("dcmotor") || id.equals("corrosion")) {
+                STEPS.add(new Step(id.equals("corrosion") ? 60 : 30, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-on"));
             }
-            if (id.equals("generator") || id.equals("gears")) {
-                STEPS.add(new Step(40, () -> crank(server.overworld(), plot), "showcase-" + (i + 1) + "-" + id + "-cranked"));
+            if (id.equals("generator") || id.equals("gears") || id.equals("miniature")) {
+                STEPS.add(new Step(40, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank")),
+                        "showcase-" + (i + 1) + "-" + id + "-cranked"));
             }
         }
     }
@@ -82,36 +85,33 @@ public final class AutoShowcase {
         return null;
     }
 
-    private static void closeSwitch(ServerLevel level, BlockPos plot) {
-        if (level.getBlockEntity(plot) instanceof AssemblyBlockEntity be) {
+    private static void toggle(ServerLevel level, BlockPos at) {
+        if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
             PlacedPart s = find(be, PartKind.SWITCH);
-            PlacedPart cap = find(be, PartKind.CAPACITOR);
-            SimulationManager sim = SimulationManager.get(level);
-            if (cap != null) EmergenceMod.LOG.info("Showcase: before discharge at {}: capacitor {}", plot, sim.probe(plot, cap.id));
-            if (s != null) EmergenceMod.LOG.info("Showcase: switch now closed={}", sim.toggleSwitch(plot, s.id));
+            if (s != null) EmergenceMod.LOG.info("Showcase: switch at {} now closed={}", at, SimulationManager.get(level).toggleSwitch(at, s.id));
         }
     }
 
-    private static void crank(ServerLevel level, BlockPos plot) {
-        if (level.getBlockEntity(plot) instanceof AssemblyBlockEntity be) {
+    private static void crank(ServerLevel level, BlockPos at) {
+        if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
             PlacedPart c = find(be, PartKind.CRANK);
-            var compiled = SimulationManager.get(level).compiledAt(plot);
+            var compiled = SimulationManager.get(level).compiledAt(at);
             if (c != null && compiled != null) compiled.setCrankEffort(c.id, 1, true);
         }
     }
 
-    private static double hottest(BlockPos plot) {
+    private static double hottest(BlockPos at) {
         double t = 0;
-        if (Minecraft.getInstance().level.getBlockEntity(plot) instanceof AssemblyBlockEntity be) {
+        if (Minecraft.getInstance().level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
             for (PlacedPart p : be.parts()) t = Math.max(t, ClientSimState.temperature(p.id, 0f));
         }
         return t;
     }
 
     /** True once the fuse wire has been destroyed. */
-    private static boolean gone(BlockPos plot) {
-        return Minecraft.getInstance().level.getBlockEntity(plot) instanceof AssemblyBlockEntity be
-                && be.parts().stream().filter(p -> p.kind == PartKind.WIRE).count() < 2;
+    private static boolean gone(BlockPos at) {
+        return !(Minecraft.getInstance().level.getBlockEntity(at) instanceof AssemblyBlockEntity be)
+                || be.parts().stream().noneMatch(p -> p.kind == PartKind.WIRE);
     }
 
     private static void tick() {

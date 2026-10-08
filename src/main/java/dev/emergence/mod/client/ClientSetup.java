@@ -11,6 +11,8 @@ public final class ClientSetup {
 
     public static void init(IEventBus modBus) {
         modBus.addListener(ClientSetup::registerRenderers);
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent e) ->
+                e.registerReloadListener(dev.emergence.mod.client.model.PartModels.RELOAD));
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> ClientSimState.clear());
         AutoShowcase.init();
     }

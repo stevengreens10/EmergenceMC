@@ -89,15 +89,16 @@ public final class EmergenceGameTests {
     /** The demo glow exhibit, placed through the real builder path, flash-heats its wire when switched. */
     @GameTest(template = "arena", timeoutTicks = 100)
     public static void demoCapacitorExhibitGlowsInWorld(GameTestHelper h) {
-        BlockPos rel = new BlockPos(4, 2, 4);
-        BlockPos abs = h.absolutePos(rel);
+        // the block-scale exhibit spans cells x 3..8, z 8..10: it fits the 12³ arena from its corner
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.capacitorGlow();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), abs, ex);
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
-        AssemblyBlockEntity be = (AssemblyBlockEntity) h.getBlockEntity(rel);
-        PlacedPart sw = be.parts().stream().filter(p -> p.kind == PartKind.SWITCH).findFirst().orElseThrow();
-        PlacedPart wire = be.parts().stream().filter(p -> p.kind == PartKind.WIRE).findFirst().orElseThrow();
-        PlacedPart cap = be.parts().stream().filter(p -> p.kind == PartKind.CAPACITOR).findFirst().orElseThrow();
+        BlockPos abs = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "switch");
+        PlacedPart sw = only(h, abs, PartKind.SWITCH);
+        BlockPos wireAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "wire");
+        PlacedPart wire = only(h, wireAt, PartKind.WIRE);
+        PlacedPart cap = only(h, dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "capacitor"), PartKind.CAPACITOR);
         double[] peak = {0};
         h.runAtTickTime(10, () -> {
             Probe pc = sim.probe(abs, cap.id);
@@ -112,6 +113,41 @@ public final class EmergenceGameTests {
             h.assertTrue(peak[0] > 900, "wire should flash-heat, peak " + peak[0] + " K");
             h.succeed();
         });
+    }
+
+    /**
+     * Block-scale gear train: gears in blocks two and four blocks apart mesh through their pitch circles,
+     * so the island must take in blocks across the air gaps between them.
+     */
+    @GameTest(template = "arena", timeoutTicks = 200)
+    public static void blockScaleGearTrainMeshesAcrossGaps(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.gearTrain();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos crankAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "crank");
+        BlockPos outAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "output");
+        BlockPos inAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "input");
+        PlacedPart crank = only(h, crankAt, PartKind.CRANK);
+        PlacedPart in = only(h, inAt, PartKind.SHAFT);
+        PlacedPart out = only(h, outAt, PartKind.SHAFT);
+        h.onEachTick(() -> {
+            var c = sim.compiledAt(crankAt);
+            if (c != null) c.setCrankEffort(crank.id, 1, true);
+        });
+        h.runAtTickTime(60, () -> {
+            Probe pi = sim.probe(inAt, in.id), po = sim.probe(outAt, out.id);
+            h.assertTrue(pi != null && po != null, "gears in one island");
+            h.assertTrue(Math.abs(pi.angularVelocity()) > 1, "input turning: " + pi.angularVelocity());
+            double ratio = po.angularVelocity() / pi.angularVelocity();
+            h.assertTrue(Math.abs(ratio - 0.2) < 0.01, "8:40 tooth ratio, got " + ratio);
+            h.succeed();
+        });
+    }
+
+    private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
+        AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
+        return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();
     }
 
     /** A thin tungsten wire across a strong source glows (incandescence emerges from Joule heating + radiation). */

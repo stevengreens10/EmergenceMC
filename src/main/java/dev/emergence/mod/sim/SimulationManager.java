@@ -54,6 +54,7 @@ public final class SimulationManager {
         final Map<Long, Integer> crankTicks = new HashMap<>();
         final Map<BlockPos, Integer> light = new HashMap<>();
         double ambient;
+        int resolution = AssemblyBlockEntity.MINIATURE;
     }
 
     private SimulationManager(ServerLevel level) {
@@ -110,6 +111,7 @@ public final class SimulationManager {
             Profiler.record(System.nanoTime() - t0, isl.compiled.network().size());
             if (!failed.isEmpty()) destroyParts(isl, failed);
             updateLight(isl);
+            bubbles(isl);
             sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
         }
@@ -120,11 +122,17 @@ public final class SimulationManager {
         Set<BlockPos> seeds = new HashSet<>(dirty);
         dirty.clear();
         Set<Island> old = new HashSet<>();
+        // block-scale parts interact across air gaps (gear rims reaching into the next blocks, magnets near
+        // coils); a symmetric reach keeps island membership independent of the flood order
+        int blockReach = 1;
+        for (AssemblyBlockEntity be : blocks.values()) {
+            if (be.resolution() == AssemblyBlockEntity.BLOCK_SCALE) blockReach = Math.max(blockReach, reach(be));
+        }
         for (BlockPos p : seeds) {
-            for (Direction d : Direction.values()) {
-                Island i = islandOf.get(p.relative(d));
+            forNeighbours(p, blockReach, n -> {
+                Island i = islandOf.get(n);
                 if (i != null) old.add(i);
-            }
+            });
             Island i = islandOf.get(p);
             if (i != null) old.add(i);
         }
@@ -136,6 +144,7 @@ public final class SimulationManager {
                 merged.bodyMotion().putAll(s.bodyMotion());
                 merged.coilCurrents().putAll(s.coilCurrents());
                 merged.capacitorVoltages().putAll(s.capacitorVoltages());
+                merged.chemistry().putAll(s.chemistry());
             }
             for (BlockPos b : i.blocks) {
                 islandOf.remove(b);
@@ -146,20 +155,47 @@ public final class SimulationManager {
         for (BlockPos seed : seeds) {
             if (!blocks.containsKey(seed) || visited.contains(seed)) continue;
             Island isl = new Island();
+            isl.resolution = blocks.get(seed).resolution();
             Deque<BlockPos> q = new ArrayDeque<>(List.of(seed));
             visited.add(seed);
             while (!q.isEmpty()) {
                 BlockPos b = q.poll();
                 isl.blocks.add(b);
                 islandOf.put(b, isl);
-                for (Direction d : Direction.values()) {
-                    BlockPos n = b.relative(d);
-                    if (blocks.containsKey(n) && visited.add(n)) q.add(n);
-                }
+                // only blocks of the same grid resolution form one machine
+                forNeighbours(b, isl.resolution == AssemblyBlockEntity.BLOCK_SCALE ? blockReach : 1, n -> {
+                    if (blocks.containsKey(n) && blocks.get(n).resolution() == isl.resolution && visited.add(n)) q.add(n);
+                });
             }
             AssemblyState st = mergeWithSaved(isl, merged);
             isl.compiled = compile(isl, st);
         }
+    }
+
+    /** Face neighbours for reach 1, otherwise every block within the cube of that half-width. */
+    private static void forNeighbours(BlockPos b, int reach, java.util.function.Consumer<BlockPos> f) {
+        if (reach <= 1) {
+            for (Direction d : Direction.values()) f.accept(b.relative(d));
+            return;
+        }
+        for (int dx = -reach; dx <= reach; dx++)
+            for (int dy = -reach; dy <= reach; dy++)
+                for (int dz = -reach; dz <= reach; dz++) if (dx != 0 || dy != 0 || dz != 0) f.accept(b.offset(dx, dy, dz));
+    }
+
+    /**
+     * Interaction reach of a block-scale block [blocks]: 2 by default (magnetic coupling across a one-block
+     * gap), more for large gears whose rims extend into neighbouring blocks.
+     */
+    private static int reach(AssemblyBlockEntity be) {
+        int r = 2;
+        for (PlacedPart p : be.parts()) {
+            if (p.kind == PartKind.GEAR) {
+                double rp = p.spec.params().getOrDefault("pitch_radius", 0.5 / 16.0) * 16.0;
+                r = Math.max(r, (int) Math.ceil(rp + 3.0));
+            }
+        }
+        return r;
     }
 
     /** State from the previous compilation, falling back to what the block entities persisted. */
@@ -175,11 +211,13 @@ public final class SimulationManager {
                 st.coilCurrents().put(e.getKey(), v[3]);
                 st.capacitorVoltages().put(e.getKey(), v[4]);
             }
+            st.chemistry().putAll(be.savedChemistry());
         }
         st.temperatures().putAll(fromOld.temperatures());
         st.bodyMotion().putAll(fromOld.bodyMotion());
         st.coilCurrents().putAll(fromOld.coilCurrents());
         st.capacitorVoltages().putAll(fromOld.capacitorVoltages());
+        st.chemistry().putAll(fromOld.chemistry());
         return st;
     }
 
@@ -191,9 +229,9 @@ public final class SimulationManager {
             AssemblyBlockEntity be = be(b);
             if (be == null) continue;
             for (PlacedPart pp : be.parts()) {
-                asm.add(pp.toCore(b));
+                asm.add(pp.toCore(b, be.resolution()));
                 isl.partPos.put(pp.id, b);
-                if (touchesWorld(b, pp)) anchored.put(pp.id, null);
+                if (touchesWorld(b, pp, be.resolution())) anchored.put(pp.id, null);
             }
         }
         isl.ambient = ambientTemperature(isl.blocks.iterator().next());
@@ -215,17 +253,19 @@ public final class SimulationManager {
     }
 
     /** True if the part's cell box reaches a face of its block that touches a solid world block. */
-    private boolean touchesWorld(BlockPos pos, PlacedPart p) {
+    private boolean touchesWorld(BlockPos pos, PlacedPart p, int res) {
         // a thin shaft resting on a block is a point contact (a pivot), not a rigid mounting
-        if (p.kind == PartKind.SHAFT) return false;
+        if (p.kind == PartKind.SHAFT || p.kind == PartKind.WIRE || p.kind == PartKind.INSULATED_WIRE) return false;
+        if (!p.kind.structural && p.kind != PartKind.ELECTROLYTE) return false;
+        int m = res - 1;
         for (Direction d : Direction.values()) {
             boolean atFace = switch (d) {
                 case DOWN -> p.y0 == 0;
-                case UP -> p.y1 == 15;
+                case UP -> p.y1 == m;
                 case NORTH -> p.z0 == 0;
-                case SOUTH -> p.z1 == 15;
+                case SOUTH -> p.z1 == m;
                 case WEST -> p.x0 == 0;
-                case EAST -> p.x1 == 15;
+                case EAST -> p.x1 == m;
             };
             if (!atFace) continue;
             BlockPos n = pos.relative(d);
@@ -313,8 +353,9 @@ public final class SimulationManager {
             PlacedPart p = be.removePart(id);
             if (p == null) continue;
             level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.7f, 1.2f);
-            level.sendParticles(ParticleTypes.LARGE_SMOKE, pos.getX() + (p.x0 + 0.5) / 16, pos.getY() + (p.y0 + 0.5) / 16,
-                    pos.getZ() + (p.z0 + 0.5) / 16, 8, 0.05, 0.05, 0.05, 0.01);
+            double r = be.resolution();
+            level.sendParticles(ParticleTypes.LARGE_SMOKE, pos.getX() + (p.x0 + 0.5) / r, pos.getY() + (p.y0 + 0.5) / r,
+                    pos.getZ() + (p.z0 + 0.5) / r, 8, 0.05 * 16 / r, 0.05 * 16 / r, 0.05 * 16 / r, 0.01);
             if (be.parts().isEmpty()) level.removeBlock(pos, false);
         }
     }
@@ -342,6 +383,34 @@ public final class SimulationManager {
         }
     }
 
+    /**
+     * Gas evolved at electrodes (hydrogen on a corroding or cathodic metal, oxygen at an anode) rises as
+     * bubbles through the electrolyte it touches; the particle rate follows the evolution rate.
+     */
+    private void bubbles(Island isl) {
+        if (tickCount % 4 != 0) return;
+        CompiledAssembly c = isl.compiled;
+        double toWorld = 1.0 / (Part.CELL * isl.resolution); // metres → world blocks
+        for (long id : isl.partPos.keySet()) {
+            double rate = c.gasEvolution(id);
+            if (!(rate > 2e-8)) continue;
+            Part p = c.assembly().get(id);
+            if (p == null) continue;
+            // 1 particle per 4 ticks at ~20 nmol/s, rising logarithmically
+            int n = (int) Math.min(6, 1 + Math.log10(rate / 2e-8) * 1.5);
+            Vec3 pc = p.center();
+            for (Part q : c.assembly().neighbors(p)) {
+                if (q.kind() != PartKind.ELECTROLYTE) continue;
+                Vec3 qc = q.center();
+                // at the electrode surface, inside the liquid
+                Vec3 at = pc.add(qc.sub(pc).mul(0.55));
+                double spread = 0.25 / isl.resolution;
+                level.sendParticles(ParticleTypes.BUBBLE_POP, at.x() * toWorld, at.y() * toWorld, at.z() * toWorld,
+                        n, spread, spread, spread, 0.02);
+            }
+        }
+    }
+
     private void saveIsland(Island isl) {
         if (isl.compiled == null) return;
         AssemblyState s = isl.compiled.exportState();
@@ -349,6 +418,12 @@ public final class SimulationManager {
             AssemblyBlockEntity be = be(b);
             if (be == null) continue;
             be.savedState().clear();
+            be.savedChemistry().clear();
+            for (var ce : s.chemistry().entrySet()) {
+                String k = ce.getKey();
+                long owner = Long.parseLong(k.substring(1, k.indexOf(':')));
+                if (be.byId(owner) != null) be.savedChemistry().put(k, ce.getValue());
+            }
             for (PlacedPart p : be.parts()) {
                 double[] m = s.bodyMotion().getOrDefault(p.id, new double[]{0, 0});
                 be.savedState().put(p.id, new double[]{s.temperatures().getOrDefault(p.id, isl.ambient), m[0], m[1],
@@ -384,8 +459,20 @@ public final class SimulationManager {
         long[] hid = hotIds.stream().mapToLong(Long::longValue).toArray();
         float[] ht = new float[hotT.size()];
         for (int i = 0; i < ht.length; i++) ht[i] = hotT.get(i);
+        List<Long> tintIds = new ArrayList<>();
+        List<Integer> tints = new ArrayList<>();
+        for (long id : isl.partPos.keySet()) {
+            int col = c.chemicalColour(id);
+            if (col >= 0) {
+                tintIds.add(id);
+                tints.add(col);
+            }
+        }
         long[] all = isl.partPos.keySet().stream().mapToLong(Long::longValue).toArray();
-        IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime());
+        // world blocks per physical metre: 1 for miniature (true scale), 16 for block-scale models
+        float scale = 16f / isl.resolution;
+        IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime(), scale,
+                tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray());
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
     }

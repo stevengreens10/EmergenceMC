@@ -54,9 +54,16 @@ copper bar end warms > 10× faster than stainless; ball bearing keeps > 50 of 60
 stops (< 5 rad/s) and warms; the DC motor idles with the switch open and runs > 1 revolution without
 reversing when closed.
 
+Electrochemistry exhibits: the Daniell cell gives 0.4–1.1 V with copper positive, drives > 5 mA through
+10 Ω and consumes Cu²⁺ (solution starts visibly blue); displacement plates copper on zinc and silver on
+copper with no circuit; connecting copper to zinc in acid speeds zinc corrosion > 10× and moves hydrogen
+evolution onto the copper. Every block-scale exhibit is made of single-cell parts; the miniature generator
+(true scale, one block) still produces current.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
-capacitor exhibit placed through the real builder path flash-heats its wire.
+capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the
+block-scale gear train meshes across air gaps (island reach) with the 8:40 ratio within 1 %.
 
 ## Visual (`runShowcaseClient`)
 Automated tour of the demo world saving screenshots of every exhibit (including discharge and cranked

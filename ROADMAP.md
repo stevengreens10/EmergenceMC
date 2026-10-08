@@ -11,7 +11,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Unified multi-domain network and adaptive implicit solver, sparse/dense LU
 ✅ Persistence (part lists and dynamic state per block entity)
 ✅ Testing framework (JUnit core suite, in-world GameTests, automated visual tour)
-✅ Basic visualisation (true-size rendering, rotation, incandescence) and multimeter
+✅ Visualisation: Blender-authored part meshes and textures, procedural gears/shafts/wires, rotation,
+   incandescence, chemical colours, bubbles; multimeter (incl. chemistry)
+✅ Two build scales: block scale (default, 1 block = 6.25 cm cell) and miniature (tweezers, true scale)
 🟡 Simulation scheduler: per-tick islands; multirate and async compilation pending
 
 ## Phase 2 — Mechanical and electrical foundations
@@ -35,7 +37,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ⬜ Milestone: programmable computer controlling a machine
 
 ## Phase 5 — Chemistry and manufacturing
-⬜ Substance database, reaction networks, equilibrium, electrochemistry (batteries), processing, manufacturing
+✅ Electrochemistry: Butler–Volmer/Nernst electrodes, galvanic cells, corrosion, displacement plating,
+   electrolysis, Faraday bookkeeping (exhibits: Daniell cell, plating, galvanic corrosion)
+⬜ Substance database, general reaction networks, equilibrium, processing, manufacturing
 
 ## Phase 6 — Advanced multiphysics
 ⬜ Structural analysis, advanced EM, aerodynamics, control systems, robotics
@@ -45,5 +49,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 
 ## Demo world
 ✅ Gallery generator (`./gradlew generateDemoWorld`), `/emergence demo`, automated screenshot tour.
-Exhibits: hand generator, gear train, capacitor glow, fuse, conduction race, bearing friction, DC motor.
+Exhibits (block scale): hand generator, gear train, capacitor glow, fuse, conduction race, bearing
+friction, DC motor, Daniell cell, displacement plating, galvanic corrosion; plus a true-scale miniature
+generator.
 New mechanics must add an exhibit (core `Exhibits` + `DemoExhibitsTest`).

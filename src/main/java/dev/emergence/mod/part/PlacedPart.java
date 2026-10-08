@@ -38,15 +38,19 @@ public final class PlacedPart {
         return x >= x0 && x <= x1 && y >= y0 && y <= y1 && z >= z0 && z <= z1;
     }
 
-    /** Collision/selection box in block-local coordinates (full cells). */
-    public AABB localBox() {
-        double s = 1.0 / Part.CELLS_PER_BLOCK;
+    /** Collision/selection box in block-local coordinates (full cells) for a block of the given resolution. */
+    public AABB localBox(int resolution) {
+        double s = 1.0 / resolution;
         return new AABB(x0 * s, y0 * s, z0 * s, (x1 + 1) * s, (y1 + 1) * s, (z1 + 1) * s);
     }
 
-    /** Converts to a core part in global cell coordinates for the block at {@code pos}. */
-    public Part toCore(BlockPos pos) {
-        int ox = pos.getX() * Part.CELLS_PER_BLOCK, oy = pos.getY() * Part.CELLS_PER_BLOCK, oz = pos.getZ() * Part.CELLS_PER_BLOCK;
+    /**
+     * Converts to a core part in global cell coordinates for the block at {@code pos}. With resolution 16
+     * (miniature) a block holds 16³ cells; with resolution 1 (block scale) the block is one cell. Either
+     * way a cell is 1/16 m physically, so block-scale builds are 16× magnified scale models.
+     */
+    public Part toCore(BlockPos pos, int resolution) {
+        int ox = pos.getX() * resolution, oy = pos.getY() * resolution, oz = pos.getZ() * resolution;
         Part p = new Part(id, kind, spec.resolveMaterial(), ox + x0, oy + y0, oz + z0, ox + x1, oy + y1, oz + z1, axis, spec.params());
         p.setSwitchClosed(closed);
         return p;

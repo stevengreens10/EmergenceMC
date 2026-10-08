@@ -1,8 +1,10 @@
 # Emergence: Engineering Universe
 
 A Minecraft (NeoForge 1.21.1) mod that is a scientifically grounded engineering sandbox: you build machines
-from primitive physical parts — shafts, bearings, magnets, coils, wires, resistors, gears — and they behave
-according to simulated physics. There is no "generator block": a generator *emerges* when magnets turn past
+from primitive physical parts — shafts, bearings, magnets, coils, wires, resistors, gears, electrodes and
+electrolytes — and they behave according to simulated physics. Each part fills one block (a scale model,
+1 block = 6.25 cm); with precision tweezers in the off-hand you can also build at true scale, 16 cells per
+block. There is no "generator block": a generator *emerges* when magnets turn past
 coils.
 
 * **Play the demo:** `./gradlew generateDemoWorld` then `./gradlew runDemoClient`

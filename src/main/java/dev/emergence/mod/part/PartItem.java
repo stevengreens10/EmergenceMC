@@ -28,11 +28,13 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * An item that places one primitive part into the sub-block grid.
+ * An item that places one primitive part.
  * <p>
- * Placement: the part starts in the cell just outside the clicked surface and extends along its axis,
- * which is the clicked face's normal (or, while sneaking, the direction the player looks). Shaft-mounted
- * parts (bearings, gears, disks, cranks) clicked onto the side of a shaft are mounted coaxially on it.
+ * <b>Block scale (default):</b> the part fills the block in front of the clicked face — one part per
+ * block, each block a 6.25 cm cell of a magnified scale model. <b>Miniature</b> (precision tweezers in the
+ * off-hand): the part goes into the 1/16-block cell grid at true scale. In both modes the part's axis is
+ * the clicked face normal (or, while sneaking, the look direction), and bearings, gears, cranks and plates
+ * clicked onto the side of a shaft are mounted coaxially on it.
  */
 public final class PartItem extends Item {
     private final PartKind kind;
@@ -60,6 +62,7 @@ public final class PartItem extends Item {
             case BRUSH -> PartSpec.of("graphite", 1, 1);
             case SWITCH -> PartSpec.of("brass", 1, 1);
             case SHAFT -> PartSpec.of("steel_1045", 4, 1);
+            case ELECTROLYTE -> PartSpec.of("copper_sulfate_1m", 1, 1);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -68,7 +71,7 @@ public final class PartItem extends Item {
     public Component getName(ItemStack stack) {
         PartSpec s = spec(stack);
         Material m = s.resolveMaterial();
-        String size = s.cross() > 1 || s.length() > 1 ? " " + s.cross() + "×" + s.cross() + "×" + s.length() : "";
+        String size = s.cross() > 1 || (s.length() > 1 && kind != PartKind.SHAFT) ? " " + s.cross() + "×" + s.cross() + "×" + s.length() : "";
         return Component.translatable("item.emergence." + kind.name().toLowerCase())
                 .append(Component.literal(" (" + m.name().split(" \\(")[0] + size + detail(s) + ")"));
     }
@@ -82,6 +85,7 @@ public final class PartItem extends Item {
             case GEAR -> ", " + p.getOrDefault("teeth", 24.0).intValue() + " teeth";
             case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m");
             case BEARING -> p.getOrDefault("type", 0.0) >= 1 ? ", plain bushing" : ", ball";
+            case SHAFT -> ", " + s.length() + " long";
             default -> "";
         };
     }
@@ -112,12 +116,15 @@ public final class PartItem extends Item {
         Vec3 hit = ctx.getClickLocation();
         BlockPos clicked = ctx.getClickedPos();
 
+        boolean miniature = player != null && player.getOffhandItem().is(ModRegistries.TWEEZERS.get());
+        if (!miniature) return placeBlockScale(ctx, level, player, stack, spec, clicked, face);
+
         BlockPos pos;
         Dir axis;
         int cx, cy, cz; // anchor cell (local to pos)
 
-        if (level.getBlockEntity(clicked) instanceof AssemblyBlockEntity cbe) {
-            int[] c = AssemblyBlock.cellAt(clicked, hit, face);
+        if (level.getBlockEntity(clicked) instanceof AssemblyBlockEntity cbe && cbe.resolution() == AssemblyBlockEntity.MINIATURE) {
+            int[] c = AssemblyBlock.cellAt(cbe, hit, face);
             PlacedPart t = cbe.partAt(c[0], c[1], c[2]);
             boolean mountable = kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK
                     || (kind == PartKind.BLOCK && spec.cross() > 1);
@@ -175,7 +182,9 @@ public final class PartItem extends Item {
         BlockState state = level.getBlockState(pos);
         AssemblyBlockEntity be = level.getBlockEntity(pos) instanceof AssemblyBlockEntity e ? e : null;
         if (be == null && !state.canBeReplaced()) return fail(player, "message.emergence.blocked");
-        if (be != null && !be.canPlace(kind, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])) return fail(player, "message.emergence.occupied");
+        if (be != null && (be.resolution() != AssemblyBlockEntity.MINIATURE || !be.canPlace(kind, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]))) {
+            return fail(player, "message.emergence.occupied");
+        }
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (be == null) {
             level.setBlock(pos, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
@@ -185,6 +194,69 @@ public final class PartItem extends Item {
         long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
         be.addPart(new PlacedPart(id, kind, spec, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2], axis, false));
         level.playSound(null, pos, SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 0.6f, 1.4f);
+        if (player == null || !player.getAbilities().instabuild) stack.shrink(1);
+        return InteractionResult.CONSUME;
+    }
+
+    private boolean mountable(PartSpec spec) {
+        return kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK || kind == PartKind.BLOCK;
+    }
+
+    /** Block-scale placement: one part per block. */
+    private InteractionResult placeBlockScale(UseOnContext ctx, Level level, Player player, ItemStack stack, PartSpec spec,
+                                              BlockPos clicked, Direction face) {
+        Dir axis = player != null && player.isShiftKeyDown()
+                ? Dir.values()[Direction.getNearest(player.getLookAngle().x, player.getLookAngle().y, player.getLookAngle().z).ordinal()]
+                : Dir.values()[face.ordinal()];
+        BlockPos target;
+        AssemblyBlockEntity be = null;
+        // mount on the side of a block-scale shaft
+        if (level.getBlockEntity(clicked) instanceof AssemblyBlockEntity cbe && cbe.resolution() == AssemblyBlockEntity.BLOCK_SCALE
+                && mountable(spec)) {
+            PlacedPart shaft = cbe.parts().stream().filter(p -> p.kind == PartKind.SHAFT).findFirst().orElse(null);
+            if (shaft != null && face.getAxis().ordinal() != shaft.axis.axis() && cbe.canPlace(kind, 0, 0, 0, 0, 0, 0)) {
+                return finishBlockScale(level, player, stack, spec, clicked, cbe, shaft.axis);
+            }
+        }
+        target = level.getBlockState(clicked).canBeReplaced() && !(level.getBlockEntity(clicked) instanceof AssemblyBlockEntity)
+                ? clicked : clicked.relative(face);
+        if (level.getBlockEntity(target) instanceof AssemblyBlockEntity tbe) {
+            if (tbe.resolution() != AssemblyBlockEntity.BLOCK_SCALE || !tbe.canPlace(kind, 0, 0, 0, 0, 0, 0)) {
+                return fail(player, "message.emergence.occupied");
+            }
+            be = tbe;
+            // a shaft placed into a block holding a mounted part follows that part's axis
+            for (PlacedPart p : tbe.parts()) if (kind == PartKind.SHAFT) axis = p.axis;
+        } else if (!level.getBlockState(target).canBeReplaced()) {
+            return fail(player, "message.emergence.blocked");
+        }
+        return finishBlockScale(level, player, stack, spec, target, be, axis);
+    }
+
+    private InteractionResult finishBlockScale(Level level, Player player, ItemStack stack, PartSpec spec, BlockPos pos,
+                                               AssemblyBlockEntity be, Dir axis) {
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (be == null) {
+            level.setBlock(pos, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+            be = level.getBlockEntity(pos) instanceof AssemblyBlockEntity e ? e : null;
+            if (be == null) return InteractionResult.FAIL;
+            be.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
+        }
+        long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
+        be.addPart(new PlacedPart(id, kind, spec, 0, 0, 0, 0, 0, 0, axis, false));
+        if (kind == PartKind.SHAFT) {
+            // long shaft stock lays down one shaft cell per block along its axis, up to its length
+            BlockPos next = pos;
+            for (int i = 1; i < spec.length(); i++) {
+                next = next.offset(axis.dx, axis.dy, axis.dz);
+                if (!level.getBlockState(next).canBeReplaced() || level.getBlockEntity(next) != null) break;
+                level.setBlock(next, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+                if (!(level.getBlockEntity(next) instanceof AssemblyBlockEntity nbe)) break;
+                nbe.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
+                nbe.addPart(new PlacedPart(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE), kind, spec, 0, 0, 0, 0, 0, 0, axis, false));
+            }
+        }
+        level.playSound(null, pos, SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 0.7f, 1.0f);
         if (player == null || !player.getAbilities().instabuild) stack.shrink(1);
         return InteractionResult.CONSUME;
     }

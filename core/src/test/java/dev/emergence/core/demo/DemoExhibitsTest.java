@@ -131,4 +131,77 @@ class DemoExhibitsTest {
         assertTrue(plain < 5, "bushing nearly stopped: " + plain);
         assertTrue(c.temperature(b.id(e, "plainBearing")) > AMBIENT + 0.5, "bushing warmed by friction");
     }
+
+    @Test
+    void exhibitsAreBlockScaleBuilds() {
+        for (Exhibit e : Exhibits.all()) {
+            if (e.miniature) continue;
+            for (Exhibit.PartDef d : e.parts) {
+                assertTrue(d.x0() == d.x1() && d.y0() == d.y1() && d.z0() == d.z1(), e.id + ": part " + d.index() + " is not single-cell");
+            }
+        }
+    }
+
+    @Test
+    void daniellCellDrivesCurrentAndUsesUpCopperIons() {
+        Exhibit e = Exhibits.daniellCell();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        c.step(0.05);
+        double v = c.probe(b.id(e, "copper")).voltage() - c.probe(b.id(e, "zinc")).voltage();
+        assertTrue(v > 0.4 && v < 1.11, "copper positive, below the 1.10 V open-circuit EMF: " + v);
+        assertTrue(Math.abs(c.probe(b.id(e, "load")).current()) > 5e-3, "load current " + c.probe(b.id(e, "load")).current());
+        double cu0 = c.chemistry(b.id(e, "cuSol")).get("[Cu2+] mol/L");
+        int col0 = c.chemicalColour(b.id(e, "cuSol"));
+        run(c, 60);
+        assertTrue(c.chemistry(b.id(e, "cuSol")).get("[Cu2+] mol/L") < cu0, "Cu2+ consumed");
+        assertTrue((col0 & 0xFF) > ((col0 >> 16) & 0xFF) + 100, "copper sulfate looks blue: " + Integer.toHexString(col0));
+    }
+
+    @Test
+    void displacementPlatesCopperOnZincAndSilverOnCopper() {
+        Exhibit e = Exhibits.plating();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        run(c, 60);
+        assertTrue(c.depositMoles(b.id(e, "zinc")) > 1e-6, "copper on zinc: " + c.depositMoles(b.id(e, "zinc")));
+        assertTrue(c.depositMoles(b.id(e, "copper")) > 1e-7, "silver on copper: " + c.depositMoles(b.id(e, "copper")));
+        int zincColour = c.chemicalColour(b.id(e, "zinc"));
+        assertTrue(zincColour >= 0, "plated zinc changes colour");
+    }
+
+    @Test
+    void connectingCopperSpeedsZincCorrosionAndMovesHydrogenToCopper() {
+        Exhibit e = Exhibits.galvanicCorrosion();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        run(c, 1);
+        long zn = b.id(e, "zinc"), cu = b.id(e, "copper");
+        double gasCuOpen = c.gasEvolution(cu);
+        double rateOpen = c.chemistry(zn).get("metal dissolved mol");
+        run(c, 5);
+        rateOpen = (c.chemistry(zn).get("metal dissolved mol") - rateOpen) / 5;
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 1);
+        double d0 = c.chemistry(zn).get("metal dissolved mol");
+        run(c, 5);
+        double rateClosed = (c.chemistry(zn).get("metal dissolved mol") - d0) / 5;
+        assertTrue(rateClosed > 10 * Math.max(rateOpen, 1e-15), "corrosion " + rateOpen + " → " + rateClosed + " mol/s");
+        assertTrue(c.gasEvolution(cu) > 10 * Math.max(gasCuOpen, 1e-15), "H2 on copper " + gasCuOpen + " → " + c.gasEvolution(cu));
+    }
+
+    @Test
+    void miniatureGeneratorWorksAtTrueScale() {
+        Exhibit e = Exhibits.miniatureGenerator();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertEquals(2, c.bodies().size());
+        double peak = 0;
+        for (int i = 0; i < 60; i++) {
+            c.setCrankEffort(b.id(e, "crank"), 1, true);
+            c.step(0.05);
+            peak = Math.max(peak, Math.abs(c.probe(b.id(e, "load")).current()));
+        }
+        assertTrue(peak > 1e-5, "a small but real current: " + peak);
+    }
 }

@@ -70,11 +70,11 @@ compiler recognises machines. See PHYSICS_MODELS.md §Assembly.
 
 | Class | Role |
 |---|---|
-| `AssemblyBlock` / `AssemblyBlockEntity` | Container block for up to 16³ sub-block parts; collision shape = union of parts; persisted part list and dynamic state. |
-| `PartItem` + `PartSpec` data component | One item per part kind; spec = material, size, SI parameters. Face/axis placement and shaft mounting. |
-| `SimulationManager` | Per-level islands of face-adjacent assembly blocks; compiles via the core, steps 50 ms per tick, anchoring to world blocks, biome ambient temperature, failures, incandescent block light, persistence, client sync. Holds block-entity references (never queries the level from unload paths). |
-| `IslandSyncPayload` / `ClientSimState` | Server-authoritative body poses (with ω for extrapolation) and part temperatures. |
-| `AssemblyRenderer` | True-size part rendering, rigid-body rotation, black-body glow. |
+| `AssemblyBlock` / `AssemblyBlockEntity` | Container block with a grid **resolution**: block scale (1 cell = the whole block, the default) or miniature (16³ cells). Collision shape = union of parts; persisted part list, dynamic and chemical state. |
+| `PartItem` + `PartSpec` data component | One item per part kind; spec = material, size, SI parameters. Block-scale placement (one part per block, mounting on a shaft's side, long shaft stock laid block by block); miniature placement into the 1/16-block grid when precision tweezers are in the off-hand. |
+| `SimulationManager` | Per-level islands of assembly blocks of one resolution (face-adjacent in miniature; at block scale every block within interaction reach — 2 blocks, more around large gears — since parts couple across air gaps); compiles via the core, steps 50 ms per tick, anchoring to world blocks, biome ambient temperature, failures, incandescent block light, persistence, client sync. Holds block-entity references (never queries the level from unload paths). |
+| `IslandSyncPayload` / `ClientSimState` | Server-authoritative body poses (with ω for extrapolation), part temperatures, chemically changed colours, world scale. |
+| `AssemblyRenderer`, `GearPhasing`, `model.ObjModel`/`PartModels` | Part meshes authored in Blender (`tools/blender/build_parts.py` → `assets/emergence/models/part/*.obj`, textures in `textures/block/part/`) plus procedural gears (from tooth count and pitch radius), shafts and wires at their physical dimensions; rigid-body rotation; black-body glow; resistor colour codes; switch state; tooth phasing of meshing gears. Works at both resolutions. |
 | `MultimeterItem` | Instrument reading probes from simulated state. |
 | `DemoBuilder`, `AutoShowcase` | Demo-world gallery and automated visual verification. |
 

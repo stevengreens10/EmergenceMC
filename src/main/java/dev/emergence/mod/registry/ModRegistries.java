@@ -63,11 +63,21 @@ public final class ModRegistries {
     public static final DeferredItem<MultimeterItem> MULTIMETER = ITEMS.register("multimeter",
             () -> new MultimeterItem(new Item.Properties().stacksTo(1)));
 
+    /** Held in the off-hand, part items place miniature (1/16-block, true-scale) parts. */
+    public static final DeferredItem<Item> TWEEZERS = ITEMS.register("precision_tweezers",
+            () -> new Item(new Item.Properties().stacksTo(1)) {
+                @Override
+                public void appendHoverText(ItemStack stack, TooltipContext ctx, java.util.List<Component> tip, net.minecraft.world.item.TooltipFlag flag) {
+                    tip.add(Component.translatable("tooltip.emergence.precision_tweezers").withStyle(net.minecraft.ChatFormatting.GRAY));
+                }
+            });
+
     public static final Supplier<CreativeModeTab> TAB = TABS.register("parts", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.emergence.parts"))
             .icon(() -> new ItemStack(PART_ITEMS.get(PartKind.COIL).get()))
             .displayItems((params, out) -> {
                 out.accept(MULTIMETER.get());
+                out.accept(TWEEZERS.get());
                 PartPresets.all().forEach(out::accept);
             })
             .build());

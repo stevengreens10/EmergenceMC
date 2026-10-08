@@ -11,10 +11,12 @@ import java.util.List;
 
 /**
  * Server → client snapshot of one simulation island: rigid-body poses (for rendering rotation, with ω
- * for smooth interpolation between packets) and temperatures of parts away from ambient (for glow).
+ * for smooth interpolation between packets), temperatures of parts away from ambient (for glow) and
+ * colours changed by chemistry (electrolyte concentrations, plated electrodes).
  * The server is authoritative; clients never simulate.
  */
-public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] hotIds, float[] hotTemps, long gameTime)
+public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] hotIds, float[] hotTemps, long gameTime,
+                                float worldScale, long[] tintIds, int[] tints)
         implements CustomPacketPayload {
 
     public record BodyState(double px, double py, double pz, double ax, double ay, double az,
@@ -44,6 +46,9 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         buf.writeVarInt(p.hotTemps.length);
         for (float t : p.hotTemps) buf.writeFloat(t);
         buf.writeLong(p.gameTime);
+        buf.writeFloat(p.worldScale);
+        buf.writeLongArray(p.tintIds);
+        buf.writeVarIntArray(p.tints);
     }
 
     private static IslandSyncPayload read(FriendlyByteBuf buf) {
@@ -58,7 +63,9 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         int m = buf.readVarInt();
         float[] temps = new float[m];
         for (int i = 0; i < m; i++) temps[i] = buf.readFloat();
-        return new IslandSyncPayload(all, bodies, hot, temps, buf.readLong());
+        long time = buf.readLong();
+        float scale = buf.readFloat();
+        return new IslandSyncPayload(all, bodies, hot, temps, time, scale, buf.readLongArray(), buf.readVarIntArray());
     }
 
     @Override

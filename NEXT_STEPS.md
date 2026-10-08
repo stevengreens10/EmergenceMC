@@ -4,8 +4,8 @@
 2. **Ferromagnetic materials**: induced magnetisation of soft-iron parts (magnetic equivalent circuit or
    volume-integral method) → iron-cored coils, transformers, reluctance torque, magnet attraction to steel;
    exhibit "transformer".
-3. **Electrochemical cell** (electrodes + electrolyte from the database: E° differences, internal
-   resistance, capacity from reactant mass) → a sustained DC source; exhibit "voltaic pile lights a filament".
+3. **Voltaic pile / battery bank** exhibit: series Daniell cells driving the DC motor (sustained DC source
+   built from the electrochemistry already in place); electroplating with an external source.
 4. **Performance for large circuits**: factorisation reuse for linear islands, accuracy levels, async island
    compilation, multirate thermal stepping (PERFORMANCE.md plan).
 5. **Instruments**: two-probe voltmeter, oscilloscope/data logger with CSV export.

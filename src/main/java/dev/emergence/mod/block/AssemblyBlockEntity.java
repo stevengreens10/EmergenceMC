@@ -36,6 +36,14 @@ public final class AssemblyBlockEntity extends BlockEntity {
     private final List<PlacedPart> parts = new ArrayList<>();
     /** Persisted dynamic state per part: {T, ω, θ, coil current, capacitor voltage}. */
     private final Map<Long, double[]> savedState = new HashMap<>();
+    /** Persisted chemistry state of this block's parts (keys as in AssemblyState.chemistry). */
+    private final Map<String, Double> savedChemistry = new HashMap<>();
+    /**
+     * Cells per block edge: {@link #BLOCK_SCALE} (one part per block, the default) or {@link #MINIATURE}
+     * (16³ cells per block). A cell is always 1/16 m physically.
+     */
+    private int resolution = MINIATURE;
+    public static final int BLOCK_SCALE = 1, MINIATURE = 16;
     private VoxelShape shape;
 
     public AssemblyBlockEntity(BlockPos pos, BlockState state) {
@@ -48,6 +56,19 @@ public final class AssemblyBlockEntity extends BlockEntity {
 
     public Map<Long, double[]> savedState() {
         return savedState;
+    }
+
+    public Map<String, Double> savedChemistry() {
+        return savedChemistry;
+    }
+
+    public int resolution() {
+        return resolution;
+    }
+
+    /** Sets the grid resolution of a freshly placed (empty) assembly block. */
+    public void setResolution(int res) {
+        if (parts.isEmpty()) resolution = res;
     }
 
     public PlacedPart partAt(int x, int y, int z) {
@@ -78,7 +99,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
     }
 
     public boolean canPlace(PartKind kind, int x0, int y0, int z0, int x1, int y1, int z1) {
-        if (x0 < 0 || y0 < 0 || z0 < 0 || x1 > 15 || y1 > 15 || z1 > 15) return false;
+        if (x0 < 0 || y0 < 0 || z0 < 0 || x1 >= resolution || y1 >= resolution || z1 >= resolution) return false;
         for (PlacedPart p : parts) {
             boolean overlap = p.x0 <= x1 && x0 <= p.x1 && p.y0 <= y1 && y0 <= p.y1 && p.z0 <= z1 && z0 <= p.z1;
             if (overlap && !mayOverlap(kind, p.kind)) return false;
@@ -114,7 +135,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
         if (shape == null) {
             VoxelShape s = Shapes.empty();
             for (PlacedPart p : parts) {
-                AABB b = p.localBox();
+                AABB b = p.localBox(resolution);
                 s = Shapes.or(s, Shapes.box(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ));
             }
             shape = s;
@@ -124,7 +145,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
 
     public List<Part> coreParts() {
         List<Part> l = new ArrayList<>(parts.size());
-        for (PlacedPart p : parts) l.add(p.toCore(worldPosition));
+        for (PlacedPart p : parts) l.add(p.toCore(worldPosition, resolution));
         return l;
     }
 
@@ -173,6 +194,9 @@ public final class AssemblyBlockEntity extends BlockEntity {
             st.add(t);
         }
         tag.put("state", st);
+        CompoundTag chem = new CompoundTag();
+        for (var e : savedChemistry.entrySet()) chem.putDouble(e.getKey(), e.getValue());
+        tag.put("chem", chem);
     }
 
     @Override
@@ -184,16 +208,21 @@ public final class AssemblyBlockEntity extends BlockEntity {
             CompoundTag t = (CompoundTag) x;
             savedState.put(t.getLong("id"), new double[]{t.getDouble("T"), t.getDouble("w"), t.getDouble("a"), t.getDouble("i"), t.getDouble("v")});
         }
+        savedChemistry.clear();
+        CompoundTag chem = tag.getCompound("chem");
+        for (String k : chem.getAllKeys()) savedChemistry.put(k, chem.getDouble(k));
         shape = null;
     }
 
     private void writeParts(CompoundTag tag) {
+        tag.putInt("res", resolution);
         ListTag list = new ListTag();
         for (PlacedPart p : parts) list.add(p.save());
         tag.put("parts", list);
     }
 
     private void readParts(CompoundTag tag) {
+        resolution = tag.contains("res") ? tag.getInt("res") : MINIATURE;
         parts.clear();
         for (Tag t : tag.getList("parts", Tag.TAG_COMPOUND)) parts.add(PlacedPart.load((CompoundTag) t));
     }

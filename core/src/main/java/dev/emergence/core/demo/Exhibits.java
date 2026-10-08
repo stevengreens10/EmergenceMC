@@ -15,61 +15,72 @@ import static dev.emergence.core.assembly.PartKind.*;
 /**
  * The demo-world exhibits. Every exhibit is built only from primitive parts; the behaviour on display
  * is whatever the physics produces. Each is covered by a core validation test (DemoExhibitsTest).
+ * Exhibits are block-scale builds (every part a single cell, one block in the world), except the
+ * miniature exhibit, built at true scale inside a single block.
  */
 public final class Exhibits {
     private Exhibits() {}
 
     public static List<Exhibit> all() {
-        return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor());
+        return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
+                daniellCell(), plating(), galvanicCorrosion(), miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
     public static Exhibit generator() {
         Exhibit e = new Exhibit("generator", "Hand-cranked generator",
                 List.of("HAND GENERATOR", "Hold right-click", "on the crank.", "Meter the resistor"),
-                "Two NdFeB magnets on an aluminium rotor sweep past two copper coils. Their changing flux "
+                "Two NdFeB magnets on an aluminium rotor sweep under two copper coils. Their changing flux "
                         + "linkage induces an EMF (Faraday), current flows through the 20 Ω resistor and heats it, "
                         + "and the current's magnetic field brakes the rotor (Lenz). Use the multimeter on the "
                         + "resistor and on the rotor.");
         String st = "steel_1045";
-        e.add(BLOCK, st, 9, 0, 8, 9, 2, 8, Dir.UP);
-        e.add(BLOCK, st, 7, 0, 8, 7, 2, 8, Dir.UP);
-        e.add(SHAFT, st, 8, 2, 8, 8, 10, 8, Dir.UP, "diameter", 0.02);
+        // frame: base pillars holding the lower bearing, two posts and top bars holding the upper one
+        e.fill(BLOCK, st, 9, 0, 8, 9, 2, 8, Dir.UP);
+        e.fill(BLOCK, st, 7, 0, 8, 7, 2, 8, Dir.UP);
+        e.fill(BLOCK, st, 11, 0, 12, 11, 7, 12, Dir.UP);
+        e.fill(BLOCK, st, 5, 0, 12, 5, 7, 12, Dir.UP);
+        e.fill(BLOCK, st, 9, 8, 8, 11, 8, 8, Dir.UP);
+        e.fill(BLOCK, st, 11, 8, 9, 11, 8, 12, Dir.UP);
+        e.fill(BLOCK, st, 5, 8, 8, 7, 8, 8, Dir.UP);
+        e.fill(BLOCK, st, 5, 8, 9, 5, 8, 12, Dir.UP);
+        // rotor: shaft in two bearings, a thin aluminium disk carrying the magnets, crank on top
+        e.fill(SHAFT, st, 8, 2, 8, 8, 10, 8, Dir.UP, "diameter", 0.02);
         e.add(BEARING, st, 8, 2, 8, Dir.UP);
         e.add(BEARING, st, 8, 8, 8, Dir.UP);
-        e.add(BLOCK, st, 9, 8, 7, 11, 8, 12, Dir.UP);
-        e.add(BLOCK, st, 5, 8, 7, 7, 8, 12, Dir.UP);
-        e.add(BLOCK, st, 11, 0, 12, 11, 7, 12, Dir.UP);
-        e.add(BLOCK, st, 5, 0, 12, 5, 7, 12, Dir.UP);
         e.name("crank", e.add(CRANK, st, 8, 11, 8, Dir.UP, "radius", 0.15));
-        e.add(BLOCK, "aluminium_6061", 6, 4, 6, 10, 4, 10, Dir.UP, "fill", 0.04);
+        e.fill(BLOCK, "aluminium_6061", 6, 4, 6, 10, 4, 10, Dir.UP, "fill", 0.08);
         e.add(MAGNET, "ndfeb_n42", 10, 5, 8, Dir.UP);
         e.add(MAGNET, "ndfeb_n42", 6, 5, 8, Dir.DOWN);
-        e.name("coil", e.add(COIL, "copper", 10, 6, 8, 10, 7, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3));
-        e.add(COIL, "copper", 6, 6, 8, 6, 7, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
-        int[][] path = {{11, 6, 8}, {11, 6, 9}, {11, 6, 10}, {10, 6, 10}, {9, 6, 10}, {7, 6, 10}, {6, 6, 10}, {5, 6, 10}, {5, 6, 9}, {5, 6, 8}};
-        for (int[] c : path) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "diameter", 1.5e-3);
-        e.name("load", e.add(RESISTOR, "alumina", 8, 6, 10, Dir.EAST, "resistance", 20));
-        return e.view(0.42, 1.05, 14);
+        // stationary coils just above the magnets' path; coil B faces the other way so the two EMFs (from
+        // magnets of opposite polarity) add in series
+        e.name("coil", e.add(COIL, "copper", 10, 6, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3));
+        e.add(COIL, "copper", 6, 6, 8, Dir.DOWN, "turns", 300, "wire_diameter", 0.8e-3);
+        // A+ → B− around the outside; B+ → resistor → A− across the middle
+        e.path(INSULATED_WIRE, "copper", new int[][]{{11, 6, 8}, {11, 6, 9}, {11, 6, 10}, {11, 6, 11}, {10, 6, 11},
+                {9, 6, 11}, {8, 6, 11}, {7, 6, 11}, {6, 6, 11}, {5, 6, 11}, {5, 6, 10}, {5, 6, 9}, {5, 6, 8}}, "diameter", 1.5e-3);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{9, 6, 8}, {9, 6, 9}, {7, 6, 9}, {7, 6, 8}}, "diameter", 1.5e-3);
+        e.name("load", e.add(RESISTOR, "alumina", 8, 6, 9, Dir.EAST, "resistance", 20));
+        return e.view(8.5, 10.5, 21, 22);
     }
 
     /** Three meshing spur gears (8 : 24 : 40 teeth) — speed ratios and direction reversal. */
     public static Exhibit gearTrain() {
         Exhibit e = new Exhibit("gears", "Spur gear train",
                 List.of("GEAR TRAIN", "8 : 24 : 40 teeth", "Crank the small", "gear. Compare rpm"),
-                "Three spur gears with the same tooth module mesh because their pitch circles touch. Turning "
-                        + "the 8-tooth pinion turns the 24-tooth gear backwards at 1/3 speed and the 40-tooth gear "
-                        + "forwards at 1/5 speed, with 5× the torque minus a little tooth friction.");
+                "Three spur gears with the same tooth module (7.8 mm) mesh because their pitch circles touch. "
+                        + "Turning the 8-tooth pinion turns the 24-tooth gear backwards at 1/3 speed and the "
+                        + "40-tooth gear forwards at 1/5 speed, with 5× the torque minus a little tooth friction.");
         String st = "steel_1045";
-        e.name("input", e.add(SHAFT, st, 4, 0, 8, 4, 5, 8, Dir.UP, "diameter", 0.015));
-        e.add(SHAFT, st, 6, 0, 8, 6, 5, 8, Dir.UP, "diameter", 0.015);
-        e.name("output", e.add(SHAFT, st, 10, 0, 8, 10, 5, 8, Dir.UP, "diameter", 0.015));
+        e.name("input", e.fill(SHAFT, st, 4, 0, 8, 4, 5, 8, Dir.UP, "diameter", 0.015));
+        e.fill(SHAFT, st, 6, 0, 8, 6, 5, 8, Dir.UP, "diameter", 0.015);
+        e.name("output", e.fill(SHAFT, st, 10, 0, 8, 10, 5, 8, Dir.UP, "diameter", 0.015));
         for (int x : new int[]{4, 6, 10}) e.add(BEARING, st, x, 0, 8, Dir.UP);
-        e.add(GEAR, st, 4, 3, 8, Dir.UP, "teeth", 8, "thickness", 0.012);
-        e.name("middle", e.add(GEAR, st, 5, 3, 7, 7, 3, 9, Dir.UP, "teeth", 24, "thickness", 0.012));
-        e.add(GEAR, st, 8, 3, 6, 12, 3, 10, Dir.UP, "teeth", 40, "thickness", 0.012);
+        e.add(GEAR, st, 4, 3, 8, Dir.UP, "teeth", 8, "pitch_radius", 0.5 / 16, "thickness", 0.012);
+        e.name("middle", e.add(GEAR, st, 6, 3, 8, Dir.UP, "teeth", 24, "pitch_radius", 1.5 / 16, "thickness", 0.012));
+        e.add(GEAR, "brass", 10, 3, 8, Dir.UP, "teeth", 40, "pitch_radius", 2.5 / 16, "thickness", 0.012);
         e.name("crank", e.add(CRANK, st, 4, 6, 8, Dir.UP, "radius", 0.12));
-        return e.view(0.5, 0.85, 28);
+        return e.view(7.5, 8.5, 15.5, 32);
     }
 
     /** A pre-charged capacitor dumped through a nichrome wire: incandescence from Joule heating. */
@@ -80,7 +91,7 @@ public final class Exhibits {
                         + "two cells of 0.3 mm nichrome (≈2 Ω). The wire heats to ~1100 K and glows orange, then "
                         + "cools by radiation (Stefan–Boltzmann) and convection.");
         buildDischarge(e, 0.3e-3);
-        return e.view(0.32, 0.62, 42);
+        return e.view(5.5, 4, 13.5, 30);
     }
 
     /** The same discharge through a much thinner wire: it melts, opening the circuit. */
@@ -91,7 +102,7 @@ public final class Exhibits {
                         + "and one ninth of the heat capacity. The same energy drives it past its melting point "
                         + "(1673 K) and it fails, interrupting the circuit — a fuse emerges from material properties.");
         buildDischarge(e, 0.1e-3);
-        return e.view(0.32, 0.62, 42);
+        return e.view(5.5, 4, 13.5, 30);
     }
 
     private static void buildDischarge(Exhibit e, double wireDiameter) {
@@ -101,8 +112,8 @@ public final class Exhibits {
         e.name("switch", e.add(SWITCH, "brass", 5, 0, 8, Dir.EAST));
         e.name("wire", e.add(WIRE, "nichrome", 6, 0, 8, Dir.UP, "diameter", wireDiameter));
         e.add(WIRE, "nichrome", 7, 0, 8, Dir.UP, "diameter", wireDiameter);
-        int[][] ret = {{8, 0, 8}, {8, 0, 9}, {8, 0, 10}, {7, 0, 10}, {6, 0, 10}, {5, 0, 10}, {4, 0, 10}, {3, 0, 10}, {3, 0, 9}, {3, 0, 8}};
-        for (int[] c : ret) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "diameter", 1.5e-3);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 0, 8}, {8, 0, 9}, {8, 0, 10}, {7, 0, 10}, {6, 0, 10}, {5, 0, 10},
+                {4, 0, 10}, {3, 0, 10}, {3, 0, 9}, {3, 0, 8}}, "diameter", 1.5e-3);
     }
 
     /** A glowing-hot copper block feeding heat into a copper bar and a stainless-steel bar. */
@@ -123,7 +134,7 @@ public final class Exhibits {
                 e.name("steelEnd", s);
             }
         }
-        return e.view(0.3, 0.7, 35);
+        return e.view(7.5, 4, 13, 32);
     }
 
     /** Identical flywheels spun to 60 rad/s, one on ball bearings, one on a lubricated bronze bushing. */
@@ -138,14 +149,14 @@ public final class Exhibits {
         int[] xs = {4, 11};
         for (int k = 0; k < 2; k++) {
             int x = xs[k];
-            int shaft = e.add(SHAFT, st, x, 0, 8, x, 4, 8, Dir.UP, "diameter", 0.02);
+            int shaft = e.fill(SHAFT, st, x, 0, 8, x, 4, 8, Dir.UP, "diameter", 0.02);
             int bearing = e.add(BEARING, k == 0 ? st : "bronze", x, 0, 8, Dir.UP, "type", k);
             e.name(k == 0 ? "ballBearing" : "plainBearing", bearing);
-            e.add(BLOCK, "aluminium_6061", x - 2, 2, 6, x + 2, 2, 10, Dir.UP, "fill", 0.25);
+            e.fill(BLOCK, "aluminium_6061", x - 2, 2, 6, x + 2, 2, 10, Dir.UP, "fill", 0.25);
             e.name(k == 0 ? "ball" : "plain", shaft);
             e.init(shaft, new Exhibit.Initial(Double.NaN, 60, 0));
         }
-        return e;
+        return e.view(7.5, 7, 17, 25);
     }
 
     /**
@@ -162,49 +173,141 @@ public final class Exhibits {
                         + "segment gap passes the brushes exactly then. A 1 F, 24 V capacitor bank powers it for a "
                         + "few seconds; rebuild the gallery (/emergence demo) to recharge.");
         String st = "steel_1045", ny = "nylon_66";
-        e.add(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
-        e.add(BLOCK, st, 7, 0, 8, 7, 1, 8, Dir.UP);
-        int shaft = e.add(SHAFT, st, 8, 1, 8, 8, 12, 8, Dir.UP, "diameter", 0.02);
+        // frame
+        e.fill(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 7, 0, 8, 7, 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 11, 0, 12, 11, 11, 12, Dir.UP);
+        e.fill(BLOCK, st, 5, 0, 12, 5, 11, 12, Dir.UP);
+        e.fill(BLOCK, st, 9, 12, 8, 11, 12, 8, Dir.UP);
+        e.fill(BLOCK, st, 11, 12, 9, 11, 12, 12, Dir.UP);
+        e.fill(BLOCK, st, 5, 12, 8, 7, 12, 8, Dir.UP);
+        e.fill(BLOCK, st, 5, 12, 9, 5, 12, 12, Dir.UP);
+        e.fill(BLOCK, st, 10, 3, 8, 10, 3, 12, Dir.UP);
+        e.fill(BLOCK, st, 6, 3, 8, 6, 3, 12, Dir.UP);
+        e.add(MAGNET, "ndfeb_n42", 10, 4, 8, Dir.UP);
+        e.add(MAGNET, "ndfeb_n42", 6, 4, 8, Dir.DOWN);
+        // rotor
+        int shaft = e.fill(SHAFT, st, 8, 1, 8, 8, 12, 8, Dir.UP, "diameter", 0.02);
         e.name("rotor", shaft);
         e.init(shaft, new Exhibit.Initial(Double.NaN, 0, 0, 0.3)); // just past the dead point
         e.add(BEARING, st, 8, 1, 8, Dir.UP);
         e.add(BEARING, st, 8, 12, 8, Dir.UP);
-        e.add(BLOCK, st, 11, 0, 12, 11, 11, 12, Dir.UP);
-        e.add(BLOCK, st, 5, 0, 12, 5, 11, 12, Dir.UP);
-        e.add(BLOCK, st, 9, 12, 7, 11, 12, 12, Dir.UP);
-        e.add(BLOCK, st, 5, 12, 7, 7, 12, 12, Dir.UP);
-        e.add(BLOCK, st, 9, 3, 7, 11, 3, 11, Dir.UP);
-        e.add(BLOCK, st, 5, 3, 7, 7, 3, 11, Dir.UP);
-        e.add(MAGNET, "ndfeb_n42", 10, 4, 8, Dir.UP);
-        e.add(MAGNET, "ndfeb_n42", 6, 4, 8, Dir.DOWN);
-        e.add(BLOCK, ny, 6, 7, 6, 10, 7, 10, Dir.UP, "fill", 0.3);
-        e.add(COIL, "copper", 10, 5, 8, 10, 6, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
-        e.add(COIL, "copper", 6, 5, 8, 6, 6, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
+        e.fill(BLOCK, ny, 6, 6, 6, 10, 6, 10, Dir.UP, "fill", 0.3);
+        e.add(COIL, "copper", 10, 5, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
+        // coil B brings its leads out along z (− towards the north, + towards the south)
+        e.add(COIL, "copper", 6, 5, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3, "lead_axis", 2);
+        // commutator: nylon hub with two copper segments, one each side of the gap
         e.add(BLOCK, ny, 8, 8, 8, Dir.UP);
-        e.add(BLOCK, "copper", 7, 8, 9, 9, 8, 9, Dir.EAST, "fill", 0.6);
-        e.add(BLOCK, "copper", 7, 8, 7, 9, 8, 7, Dir.EAST, "fill", 0.6);
+        e.fill(BLOCK, "copper", 7, 8, 9, 9, 8, 9, Dir.UP, "fill", 0.6);
+        e.fill(BLOCK, "copper", 7, 8, 7, 9, 8, 7, Dir.UP, "fill", 0.6);
+        // rotor wiring: segment → coil A+; A− → B−; B+ → other segment
         e.add(WIRE, "copper", 8, 9, 9, Dir.UP);
-        int[][] a = {{8, 9, 10}, {8, 9, 11}, {8, 8, 11}, {8, 7, 11}, {8, 6, 11}, {9, 6, 11}, {10, 6, 11},
-                {10, 6, 10}, {11, 6, 10}, {11, 6, 9}, {11, 6, 8}};
-        for (int[] c : a) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
+                {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
+        e.path(INSULATED_WIRE, "copper", new int[][]{{9, 5, 8}, {9, 5, 7}, {8, 5, 7}, {7, 5, 7}, {6, 5, 7}});
         e.add(WIRE, "copper", 8, 9, 7, Dir.UP);
-        int[][] b = {{8, 9, 6}, {8, 9, 5}, {8, 8, 5}, {8, 7, 5}, {8, 6, 5}, {7, 6, 5}, {6, 6, 5}, {6, 6, 6}, {6, 6, 7}};
-        for (int[] c : b) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
-        int[][] mid = {{10, 5, 9}, {9, 5, 9}, {8, 5, 9}, {7, 5, 9}, {6, 5, 9}};
-        for (int[] c : mid) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 6}, {8, 8, 6}, {8, 7, 6}, {7, 7, 6}, {6, 7, 6}, {5, 7, 6},
+                {5, 6, 6}, {5, 6, 7}, {5, 6, 8}, {5, 6, 9}, {5, 5, 9}, {6, 5, 9}});
+        // brushes in nylon holders hung from the top bars
         e.add(BRUSH, "graphite", 10, 8, 8, Dir.WEST);
-        e.add(BLOCK, ny, 10, 9, 8, 10, 11, 8, Dir.UP);
+        e.fill(BLOCK, ny, 10, 9, 8, 10, 11, 8, Dir.UP);
         e.add(BRUSH, "graphite", 6, 8, 8, Dir.EAST);
-        e.add(BLOCK, ny, 6, 9, 8, 6, 11, 8, Dir.UP);
-        int[][] sup = {{11, 8, 8}, {12, 8, 8}, {12, 8, 9}, {12, 8, 10}, {12, 8, 11}, {12, 8, 12}, {12, 8, 13},
-                {11, 8, 13}, {9, 8, 13}, {7, 8, 13}, {6, 8, 13}, {5, 8, 13}, {4, 8, 13},
-                {4, 8, 12}, {4, 8, 11}, {4, 8, 10}, {4, 8, 9}, {4, 8, 8}, {5, 8, 8}};
-        for (int[] c : sup) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
+        e.fill(BLOCK, ny, 6, 9, 8, 6, 11, 8, Dir.UP);
+        // supply: capacitor bank and switch in a loop between the brushes
+        e.path(INSULATED_WIRE, "copper", new int[][]{{11, 8, 8}, {12, 8, 8}, {12, 8, 9}, {12, 8, 10}, {12, 8, 11}, {12, 8, 12},
+                {12, 8, 13}, {11, 8, 13}, {9, 8, 13}, {7, 8, 13}, {6, 8, 13}, {5, 8, 13}, {4, 8, 13},
+                {4, 8, 12}, {4, 8, 11}, {4, 8, 10}, {4, 8, 9}, {4, 8, 8}, {5, 8, 8}});
         e.name("switch", e.add(SWITCH, "brass", 10, 8, 13, Dir.EAST));
         int cap = e.add(CAPACITOR, "alumina", 8, 8, 13, Dir.EAST, "capacitance", 1.0);
         e.name("capacitor", cap);
         e.init(cap, new Exhibit.Initial(Double.NaN, 0, 24));
-        return e.view(0.55, 1.15, 18);
+        return e.view(8.5, 11, 22, 22);
+    }
+
+    /** Daniell cell: zinc in zinc sulfate, copper in copper sulfate, the two solutions in contact. */
+    public static Exhibit daniellCell() {
+        Exhibit e = new Exhibit("daniell", "Daniell cell",
+                List.of("DANIELL CELL", "Zn|ZnSO4|CuSO4|Cu", "about 1 V. Meter", "resistor and jars"),
+                "A zinc electrode in zinc sulfate and a copper electrode in copper sulfate, the two solutions "
+                        + "touching. Zinc is oxidised (Zn → Zn²⁺ + 2e⁻) and copper ions are reduced (Cu²⁺ + 2e⁻ → Cu), "
+                        + "so electrons flow through the 10 Ω resistor from zinc to copper. The cell voltage comes "
+                        + "from the Nernst potentials minus activation and IR losses; over time the copper sulfate "
+                        + "pales as Cu²⁺ is used up.");
+        e.name("zinc", e.add(BLOCK, "zinc", 5, 0, 8, Dir.EAST, "fill", 0.3));
+        e.name("znSol", e.add(ELECTROLYTE, "zinc_sulfate_1m", 6, 0, 8, Dir.UP));
+        e.name("cuSol", e.add(ELECTROLYTE, "copper_sulfate_1m", 7, 0, 8, Dir.UP));
+        e.name("copper", e.add(BLOCK, "copper", 8, 0, 8, Dir.EAST, "fill", 0.3));
+        e.add(WIRE, "copper", 5, 1, 8, Dir.UP);
+        e.add(WIRE, "copper", 8, 1, 8, Dir.UP);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{5, 2, 8}, {7, 2, 8}, {8, 2, 8}});
+        e.name("load", e.add(RESISTOR, "alumina", 6, 2, 8, Dir.EAST, "resistance", 10));
+        return e.view(6.5, 4, 12.5, 28);
+    }
+
+    /** Displacement plating: zinc in copper sulfate, copper in silver nitrate — no circuit at all. */
+    public static Exhibit plating() {
+        Exhibit e = new Exhibit("plating", "Displacement plating",
+                List.of("PLATING", "Zinc in CuSO4,", "copper in AgNO3:", "no wires needed"),
+                "A more reactive metal reduces the ions of a less reactive one at its own surface: zinc in "
+                        + "copper sulfate becomes coated with copper (Zn + Cu²⁺ → Zn²⁺ + Cu) and copper in silver "
+                        + "nitrate with silver (Cu + 2Ag⁺ → Cu²⁺ + 2Ag). Both happen without any external circuit; "
+                        + "the multimeter shows the deposits and the ions appearing in solution.");
+        e.name("zinc", e.add(BLOCK, "zinc", 5, 0, 8, Dir.EAST, "fill", 0.3));
+        e.name("cuSol", e.add(ELECTROLYTE, "copper_sulfate_1m", 6, 0, 8, Dir.UP));
+        e.name("copper", e.add(BLOCK, "copper", 9, 0, 8, Dir.EAST, "fill", 0.3));
+        e.name("agSol", e.add(ELECTROLYTE, "silver_nitrate_01m", 10, 0, 8, Dir.UP));
+        return e.view(7.5, 3.5, 12.5, 28);
+    }
+
+    /** Zinc and copper in acid: connecting them moves hydrogen evolution onto the copper (galvanic corrosion). */
+    public static Exhibit galvanicCorrosion() {
+        Exhibit e = new Exhibit("corrosion", "Galvanic corrosion",
+                List.of("CORROSION", "Zn and Cu in acid.", "Close the switch:", "H2 bubbles on Cu"),
+                "Zinc and copper stand in dilute sulfuric acid. Alone, zinc corrodes only slowly because hydrogen "
+                        + "evolution on zinc is very sluggish (exchange current ~1e-7 A/m²). Closing the switch "
+                        + "connects it to copper, where hydrogen evolves far more easily: the zinc now corrodes "
+                        + "much faster and bubbles stream from the copper — the principle behind sacrificial anodes.");
+        e.name("zinc", e.add(BLOCK, "zinc", 6, 0, 8, Dir.EAST, "fill", 0.3));
+        e.name("acid", e.add(ELECTROLYTE, "sulfuric_acid_1m", 7, 0, 8, Dir.UP));
+        e.name("copper", e.add(BLOCK, "copper", 8, 0, 8, Dir.EAST, "fill", 0.3));
+        e.add(WIRE, "copper", 6, 1, 8, Dir.UP);
+        e.add(WIRE, "copper", 8, 1, 8, Dir.UP);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{6, 2, 8}, {8, 2, 8}});
+        e.name("switch", e.add(SWITCH, "brass", 7, 2, 8, Dir.EAST));
+        return e.view(7.5, 3.5, 12, 28);
+    }
+
+    /**
+     * The hand generator again, as a true-scale miniature inside one block (6.25 mm cells): magnets,
+     * coils and wiring a sixteenth of the size. Same physics, much smaller EMF and torques.
+     */
+    public static Exhibit miniatureGenerator() {
+        Exhibit e = new Exhibit("miniature", "Miniature generator",
+                List.of("MINIATURE", "True-scale hand", "generator in one", "block (tweezers)"),
+                "Everything in the gallery can also be built at true scale: with precision tweezers in the "
+                        + "off-hand, parts go into a 16×16×16 grid of 6.25 mm cells inside a single block. This "
+                        + "is the hand generator at that scale — 6 cm across. Crank it and meter the resistor.");
+        e.miniature = true;
+        String st = "steel_1045";
+        e.box(BLOCK, st, 9, 0, 8, 9, 2, 8, Dir.UP);
+        e.box(BLOCK, st, 7, 0, 8, 7, 2, 8, Dir.UP);
+        e.box(SHAFT, st, 8, 2, 8, 8, 10, 8, Dir.UP, "diameter", 0.004);
+        e.add(BEARING, st, 8, 2, 8, Dir.UP);
+        e.add(BEARING, st, 8, 8, 8, Dir.UP);
+        e.box(BLOCK, st, 9, 8, 7, 11, 8, 12, Dir.UP);
+        e.box(BLOCK, st, 5, 8, 7, 7, 8, 12, Dir.UP);
+        e.box(BLOCK, st, 11, 0, 12, 11, 7, 12, Dir.UP);
+        e.box(BLOCK, st, 5, 0, 12, 5, 7, 12, Dir.UP);
+        e.name("crank", e.add(CRANK, st, 8, 11, 8, Dir.UP, "radius", 0.02));
+        e.box(BLOCK, "aluminium_6061", 6, 4, 6, 10, 4, 10, Dir.UP, "fill", 0.25);
+        e.add(MAGNET, "ndfeb_n42", 10, 5, 8, Dir.UP);
+        e.add(MAGNET, "ndfeb_n42", 6, 5, 8, Dir.DOWN);
+        e.name("coil", e.box(COIL, "copper", 10, 6, 8, 10, 7, 8, Dir.UP, "turns", 300, "wire_diameter", 0.1e-3));
+        e.box(COIL, "copper", 6, 6, 8, 6, 7, 8, Dir.UP, "turns", 300, "wire_diameter", 0.1e-3);
+        int[][] path = {{11, 6, 8}, {11, 6, 9}, {11, 6, 10}, {10, 6, 10}, {9, 6, 10}, {7, 6, 10}, {6, 6, 10}, {5, 6, 10}, {5, 6, 9}, {5, 6, 8}};
+        for (int[] c : path) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "diameter", 0.3e-3);
+        e.name("load", e.add(RESISTOR, "alumina", 8, 6, 10, Dir.EAST, "resistance", 20));
+        return e.view(8.5, 1.05, 9.55, 32);
     }
 
     // ------------------------------------------------------------------ conversion for tests/tools

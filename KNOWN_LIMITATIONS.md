@@ -35,14 +35,25 @@ behaviour; where physics is missing the effect is simply absent.
   only with the ambient, not between parts.
 * Ambient is a fixed reservoir per island (biome-based); world blocks are not thermal masses.
 
+## Electrochemistry
+* Activities equal concentrations; no passivation films, no pH-dependent speciation or complexation.
+* Exchange current densities are order-of-magnitude literature values; impurities (which make commercial
+  zinc corrode much faster in acid than pure zinc) are not represented.
+* Solution colour uses three-band absorbance estimates (display only); deposits are not drawn as
+  crystals, and dissolving electrodes do not visibly shrink.
+
 ## Not yet started (see ROADMAP.md)
-Fluids/hydraulics, phase change, combustion/chemistry, electrochemistry (batteries), semiconductors beyond
+Fluids/hydraulics, phase change, combustion/general chemistry, semiconductors beyond
 the diode, digital logic, optics, acoustics, structural analysis, manufacturing, sensors beyond the
 multimeter, oscilloscope/data logging.
 
 ## Gameplay / UI
 * Parts are obtained from the creative tab; there are no survival recipes or manufacturing yet.
 * No in-game reference book; signs in the demo world and tooltips only.
-* Parts must fit within a single block (multi-block parts are built from segments).
+* Block scale (default): one part per block (plus a part mounted on a shaft); long parts are rows of
+  single-cell parts. Miniature (tweezers): parts must fit within a single block.
+* Block-scale islands include every block within interaction reach (2 blocks, up to ~6 around large
+  gears): separate machines built closer than that are simulated as one island (correct, but costlier).
 * Simulation stops in unloaded chunks (state is saved and resumes on load).
-* Visual minimum sizes: wires render at least 8 mm thick so thin filaments stay visible.
+* Visual minimum sizes: wires and shafts are drawn at least ~0.14–0.18 cell thick so thin filaments stay
+  visible. Gear teeth are drawn with a simplified trapezoidal profile; their phase is cosmetic.

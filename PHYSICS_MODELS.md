@@ -69,7 +69,9 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   (< 3 % for 200–1000 K vs Incropera Table A.4).
 
 ## Assembly compiler (`assembly.AssemblyCompiler`)
-* **Grid**: 1/16 m cells; topology from cells, physics from parametric dimensions.
+* **Grid**: 1/16 m cells; topology from cells, physics from parametric dimensions. In the world a cell is
+  either a whole block (block scale: a 16× magnified scale model, the default for building) or 1/16 of a
+  block (miniature, true scale). The physics is identical; only the rendering and world mapping differ.
 * **Rigid bodies**: structural parts join everything they touch except: shaft through a coaxial bearing
   (revolute joint), gear–gear contact (mesh), brush–conductor contact (sliding), thin shafts (< 0.9 cell)
   only touch at their end faces or where mounted parts overlap them; wires never carry load.
@@ -77,7 +79,9 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   static body or a coaxial rotor become rotors; free-standing machines use their heaviest group as frame;
   over-constrained groups lock (with a warning).
 * **Electrical contact**: wires connect on all faces (insulated wire only to wires/leads); components have
-  leads at their axial ends (end-face centre, plus side faces of end layers when ≥ 2 cells long); bulk metal
+  leads at their axial ends (end-face centre, plus side faces of end layers when ≥ 2 cells long; a
+  single-cell component also brings its − and + leads out on the −L and +L side faces of its lead axis L,
+  parameter `lead_axis`, as on a real coil former); bulk metal
   conducts; only brushes conduct across a moving joint. Contacts are split at the face so each half's
   Joule heat goes to its own part.
 * **Failure**: parts are destroyed above their failure temperature (melting point; insulation, enamel,
@@ -87,3 +91,23 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
 * Ambient air temperature from biome climate: −5 °C (snowy, 0.0) … 20 °C (plains, 0.8) … 40 °C (desert, 2.0).
 * Incandescence: block light from parts above the Draper point (798 K); rendered colour from a fit to
   CIE black-body chromaticities.
+
+## Electrochemistry (`chem.Electrochemistry`, `sim.elements.ElectrochemicalCell`)
+* An `ELECTROLYTE` part is a body of solution (80 % of its cells by volume); every conductor touching it is
+  an electrode. Adjacent electrolytes share an ionic junction (no liquid-junction potential).
+* **Electrode kinetics** (Butler–Volmer, every half-reaction in the database at every electrode):
+  i = A·i0·[a_red·exp(α_a F η / RT) − (c_ox/c°)·exp(−α_c F η / RT)], η = (V_metal − φ_solution) − E_eq,
+  E_eq from Nernst with the current concentrations. The anodic branch exists only where the electrode's own
+  metal (or water, for O₂ evolution) can be oxidised. α_c is the transfer coefficient of the overall reaction
+  (single-electron rate-determining step: α_c ≈ 0.5, ≈ 118 mV/decade) and α_a = n − α_c by detailed
+  balance (Cu²⁺/Cu: α_a ≈ 1.5 measured). The mixed (corrosion) potential of an isolated electrode follows
+  from zero net current.
+* **Mass transport**: cathodic currents are limited by i_lim = nF·k_m·c·A (k_m = 1e-5 m/s, unstirred).
+* **Bookkeeping**: Faraday's law moves moles between metal, solution and deposits; elements are conserved
+  exactly; reaction heat (−i·E_eq chemical power, i·η losses, i²R ionic) goes to the thermal nodes.
+* **Ionic resistance**: R = L/(κA) per electrode from the solution conductivity (CRC data).
+* **Colour** (display): Beer–Lambert, transmitted fraction 10^(−A·c) per R/G/B band for 5 cm path with band
+  absorbances estimated from the aqua-complex spectra (Cu²⁺ blue, Ni²⁺ green); plated electrodes take the
+  deposit colour as the film reaches ~1e-4 mol/m². Gas evolution shows as bubbles at the electrode.
+* **Validity**: dilute-solution activities (a = c), 25 °C reference data with Nernst T dependence, exchange
+  currents order-of-magnitude, no passivation, no pH-dependent speciation, uniform current over a face.

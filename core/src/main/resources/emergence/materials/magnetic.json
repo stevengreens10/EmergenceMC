@@ -1,0 +1,76 @@
+{
+  // Permanent and soft magnetic materials.
+  //  [ARN] Arnold Magnetic Technologies datasheets; [MMPA] MMPA Standard 0100-00;
+  //  [COEY] J.M.D. Coey, Magnetism and Magnetic Materials (2010).
+  "materials": [
+    {
+      "id": "ndfeb_n42", "name": "Sintered NdFeB, grade N42", "category": "magnetic", "color": "#9DA3A8",
+      "properties": {
+        "density": "7.5 g/cm^3", "youngs_modulus": "160 GPa", "poisson_ratio": 0.24,
+        "ultimate_tensile_strength": "75 MPa", "hardness": "5.6 GPa", "fracture_toughness_pa_sqrt_m": "4 MPa",
+        "thermal_conductivity": "7.6 W/(m*K)", "specific_heat": "440 J/(kg*K)", "thermal_expansion": "5.2e-6 1/K",
+        "melting_point": "1588 K",
+        "electrical_resistivity": "1.5e-6 ohm*m", "resistivity_temperature_coefficient": "0.0005 1/K",
+        "remanence": "1.30 T", "coercivity": "955 kA/m", "recoil_permeability": 1.05,
+        "curie_temperature": "583 K", "remanence_temperature_coefficient": "-0.0012 1/K",
+        "emissivity": 0.3
+      },
+      "sources": ["ARN N42 datasheet", "MMPA 0100-00"]
+    },
+    {
+      "id": "ferrite_c8", "name": "Hard ferrite (strontium hexaferrite), grade C8", "category": "magnetic", "color": "#3A3A3C",
+      "properties": {
+        "density": "4.9 g/cm^3", "youngs_modulus": "180 GPa", "poisson_ratio": 0.28,
+        "ultimate_tensile_strength": "34 MPa", "hardness": "5.3 GPa",
+        "thermal_conductivity": "4.0 W/(m*K)", "specific_heat": "800 J/(kg*K)", "thermal_expansion": "10e-6 1/K",
+        "melting_point": "1700 K",
+        "electrical_resistivity": "1e4 ohm*m",
+        "remanence": "0.39 T", "coercivity": "250 kA/m", "recoil_permeability": 1.1,
+        "curie_temperature": "723 K", "remanence_temperature_coefficient": "-0.002 1/K",
+        "relative_permittivity": 15, "emissivity": 0.9
+      },
+      "sources": ["ARN ceramic 8 datasheet", "MMPA 0100-00"]
+    },
+    {
+      "id": "alnico_5", "name": "Cast Alnico 5", "category": "magnetic", "color": "#7B7F82",
+      "properties": {
+        "density": "7.3 g/cm^3", "youngs_modulus": "160 GPa",
+        "ultimate_tensile_strength": "37 MPa",
+        "thermal_conductivity": "25 W/(m*K)", "specific_heat": "420 J/(kg*K)", "thermal_expansion": "11.4e-6 1/K",
+        "melting_point": "1600 K",
+        "electrical_resistivity": "4.7e-7 ohm*m",
+        "remanence": "1.25 T", "coercivity": "51 kA/m", "recoil_permeability": 3.0,
+        "curie_temperature": "1133 K", "remanence_temperature_coefficient": "-0.0002 1/K",
+        "emissivity": 0.3
+      },
+      "sources": ["ARN Alnico 5 datasheet", "MMPA 0100-00"]
+    },
+    {
+      "id": "smco_2_17", "name": "Sintered Sm2Co17", "category": "magnetic", "color": "#8C8E92",
+      "properties": {
+        "density": "8.4 g/cm^3", "youngs_modulus": "120 GPa",
+        "ultimate_tensile_strength": "35 MPa",
+        "thermal_conductivity": "10 W/(m*K)", "specific_heat": "370 J/(kg*K)", "thermal_expansion": "9e-6 1/K",
+        "melting_point": "1600 K",
+        "electrical_resistivity": "8.5e-7 ohm*m",
+        "remanence": "1.08 T", "coercivity": "2000 kA/m", "recoil_permeability": 1.03,
+        "curie_temperature": "1093 K", "remanence_temperature_coefficient": "-0.00035 1/K",
+        "emissivity": 0.3
+      },
+      "sources": ["ARN Recoma 28 datasheet"]
+    },
+    {
+      "id": "electrical_steel", "name": "Non-oriented electrical steel M19 (3% Si)", "category": "magnetic", "color": "#5B6066",
+      "properties": {
+        "density": "7.65 g/cm^3", "youngs_modulus": "185 GPa", "shear_modulus": "71 GPa", "poisson_ratio": 0.3,
+        "yield_strength": "350 MPa", "ultimate_tensile_strength": "480 MPa",
+        "thermal_conductivity": "25 W/(m*K)", "specific_heat": "490 J/(kg*K)", "thermal_expansion": "12e-6 1/K",
+        "melting_point": "1773 K", "latent_heat_fusion": "260 kJ/kg",
+        "electrical_resistivity": "5.2e-7 ohm*m", "resistivity_temperature_coefficient": "0.001 1/K",
+        "relative_permeability": 5000, "saturation_flux_density": "2.0 T", "curie_temperature": "1013 K",
+        "emissivity": 0.4
+      },
+      "sources": ["AK Steel M19 datasheet", "COEY ch.13"]
+    }
+  ]
+}

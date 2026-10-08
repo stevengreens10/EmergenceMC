@@ -1,0 +1,271 @@
+{
+  // Room-temperature (20 °C) properties unless noted. Primary sources:
+  //  [CRC] CRC Handbook of Chemistry and Physics, 97th ed. (2016)
+  //  [ASM] ASM Handbook Vol. 2 (non-ferrous) and Vol. 1 (irons/steels), ASM International
+  //  [MW]  MatWeb material datasheets (aggregated manufacturer data)
+  //  [IC]  Incropera, DeWitt et al., Fundamentals of Heat and Mass Transfer, 7th ed., Table A.1
+  "materials": [
+    {
+      "id": "copper", "name": "Copper (C11000 ETP, annealed)", "category": "metal", "color": "#B87333",
+      "properties": {
+        "density": "8.94 g/cm^3",
+        "youngs_modulus": "115 GPa", "shear_modulus": "44 GPa", "poisson_ratio": 0.34,
+        "yield_strength": "69 MPa", "ultimate_tensile_strength": "220 MPa", "fatigue_limit": "76 MPa",
+        "hardness": "0.49 GPa",
+        "thermal_conductivity": "391 W/(m*K)", "specific_heat": "385 J/(kg*K)", "thermal_expansion": "17.0e-6 1/K",
+        "melting_point": "1357.77 K", "boiling_point": "2835 K", "latent_heat_fusion": "208.7 kJ/kg",
+        "electrical_resistivity": "1.71e-8 ohm*m", "resistivity_temperature_coefficient": "0.00393 1/K",
+        "relative_permeability": 0.999994, "emissivity": 0.15,
+        "seebeck_coefficient": "6.5e-6 V/K", "friction_coefficient": 0.36,
+        "standard_electrode_potential": "0.337 V", "molar_mass": "63.546 g/mol"
+      },
+      "sources": ["CRC", "ASM Vol.2 C11000", "IC Table A.1"]
+    },
+    {
+      "id": "aluminium", "name": "Aluminium (1350 EC grade, conductor)", "category": "metal", "color": "#C9CDD1",
+      "properties": {
+        "density": "2.705 g/cm^3",
+        "youngs_modulus": "69 GPa", "shear_modulus": "26 GPa", "poisson_ratio": 0.33,
+        "yield_strength": "28 MPa", "ultimate_tensile_strength": "83 MPa", "fatigue_limit": "35 MPa",
+        "hardness": "0.23 GPa",
+        "thermal_conductivity": "234 W/(m*K)", "specific_heat": "900 J/(kg*K)", "thermal_expansion": "23.8e-6 1/K",
+        "melting_point": "933.47 K", "boiling_point": "2743 K", "latent_heat_fusion": "397 kJ/kg",
+        "electrical_resistivity": "2.82e-8 ohm*m", "resistivity_temperature_coefficient": "0.00403 1/K",
+        "relative_permeability": 1.000022, "emissivity": 0.09,
+        "seebeck_coefficient": "-1.7e-6 V/K", "friction_coefficient": 0.47,
+        "standard_electrode_potential": "-1.662 V", "molar_mass": "26.982 g/mol"
+      },
+      "sources": ["CRC", "ASM Vol.2 1350-O"]
+    },
+    {
+      "id": "aluminium_6061", "name": "Aluminium alloy 6061-T6", "category": "alloy", "color": "#B8BEC4",
+      "properties": {
+        "density": "2.70 g/cm^3",
+        "youngs_modulus": "68.9 GPa", "shear_modulus": "26 GPa", "poisson_ratio": 0.33,
+        "yield_strength": "276 MPa", "ultimate_tensile_strength": "310 MPa", "fatigue_limit": "96.5 MPa",
+        "hardness": "1.05 GPa", "fracture_toughness_pa_sqrt_m": "29 MPa",
+        "thermal_conductivity": "167 W/(m*K)", "specific_heat": "896 J/(kg*K)", "thermal_expansion": "23.6e-6 1/K",
+        "melting_point": "855 K", "latent_heat_fusion": "390 kJ/kg",
+        "electrical_resistivity": "3.99e-8 ohm*m", "resistivity_temperature_coefficient": "0.0035 1/K",
+        "relative_permeability": 1.00002, "emissivity": 0.09, "friction_coefficient": 0.47,
+        "standard_electrode_potential": "-1.662 V", "molar_mass": "26.982 g/mol"
+      },
+      "sources": ["ASM Vol.2 6061-T6", "MW"]
+    },
+    {
+      "id": "iron", "name": "Iron (commercially pure, annealed)", "category": "metal", "color": "#8A8D91",
+      "properties": {
+        "density": "7.874 g/cm^3",
+        "youngs_modulus": "211 GPa", "shear_modulus": "82 GPa", "poisson_ratio": 0.29,
+        "yield_strength": "150 MPa", "ultimate_tensile_strength": "290 MPa", "fatigue_limit": "140 MPa",
+        "hardness": "0.89 GPa",
+        "thermal_conductivity": "80.2 W/(m*K)", "specific_heat": "447 J/(kg*K)", "thermal_expansion": "11.8e-6 1/K",
+        "melting_point": "1811 K", "boiling_point": "3134 K", "latent_heat_fusion": "247 kJ/kg",
+        "electrical_resistivity": "9.71e-8 ohm*m", "resistivity_temperature_coefficient": "0.00651 1/K",
+        "relative_permeability": 2000, "saturation_flux_density": "2.15 T", "curie_temperature": "1043 K",
+        "emissivity": 0.3, "seebeck_coefficient": "19e-6 V/K", "friction_coefficient": 0.4,
+        "standard_electrode_potential": "-0.44 V", "molar_mass": "55.845 g/mol"
+      },
+      "sources": ["CRC", "ASM Vol.1", "IC Table A.1"]
+    },
+    {
+      "id": "steel_1045", "name": "Carbon steel AISI 1045 (cold drawn)", "category": "alloy", "color": "#6E7378",
+      "properties": {
+        "density": "7.85 g/cm^3",
+        "youngs_modulus": "205 GPa", "shear_modulus": "80 GPa", "poisson_ratio": 0.29,
+        "yield_strength": "530 MPa", "ultimate_tensile_strength": "625 MPa", "fatigue_limit": "280 MPa",
+        "hardness": "1.67 GPa", "fracture_toughness_pa_sqrt_m": "50 MPa",
+        "thermal_conductivity": "49.8 W/(m*K)", "specific_heat": "486 J/(kg*K)", "thermal_expansion": "11.5e-6 1/K",
+        "melting_point": "1700 K", "latent_heat_fusion": "250 kJ/kg",
+        "electrical_resistivity": "1.62e-7 ohm*m", "resistivity_temperature_coefficient": "0.0030 1/K",
+        "relative_permeability": 100, "saturation_flux_density": "1.8 T", "curie_temperature": "1043 K",
+        "emissivity": 0.35, "friction_coefficient": 0.42,
+        "standard_electrode_potential": "-0.44 V", "molar_mass": "55.845 g/mol"
+      },
+      "sources": ["ASM Vol.1 1045 CD", "MW"]
+    },
+    {
+      "id": "stainless_304", "name": "Stainless steel AISI 304 (annealed)", "category": "alloy", "color": "#A7ABAF",
+      "properties": {
+        "density": "8.00 g/cm^3",
+        "youngs_modulus": "193 GPa", "shear_modulus": "77 GPa", "poisson_ratio": 0.29,
+        "yield_strength": "215 MPa", "ultimate_tensile_strength": "505 MPa", "fatigue_limit": "240 MPa",
+        "hardness": "1.27 GPa", "fracture_toughness_pa_sqrt_m": "100 MPa",
+        "thermal_conductivity": "16.2 W/(m*K)", "specific_heat": "500 J/(kg*K)", "thermal_expansion": "17.3e-6 1/K",
+        "melting_point": "1673 K", "latent_heat_fusion": "270 kJ/kg",
+        "electrical_resistivity": "7.2e-7 ohm*m", "resistivity_temperature_coefficient": "0.00094 1/K",
+        "relative_permeability": 1.008, "emissivity": 0.35, "friction_coefficient": 0.5,
+        "molar_mass": "55.845 g/mol"
+      },
+      "sources": ["ASM Vol.1 304", "MW"]
+    },
+    {
+      "id": "tungsten", "name": "Tungsten (drawn wire)", "category": "metal", "color": "#5E6266",
+      "properties": {
+        "density": "19.25 g/cm^3",
+        "youngs_modulus": "411 GPa", "shear_modulus": "161 GPa", "poisson_ratio": 0.28,
+        "yield_strength": "750 MPa", "ultimate_tensile_strength": "980 MPa",
+        "hardness": "3.43 GPa",
+        "thermal_conductivity": "173 W/(m*K)", "specific_heat": "132 J/(kg*K)", "thermal_expansion": "4.5e-6 1/K",
+        "melting_point": "3695 K", "boiling_point": "5828 K", "latent_heat_fusion": "284.5 kJ/kg",
+        "electrical_resistivity": "5.28e-8 ohm*m", "resistivity_temperature_coefficient": "0.0045 1/K",
+        "resistivity_exponent": 1.215,
+        "relative_permeability": 1.000068, "emissivity": 0.30,
+        "seebeck_coefficient": "7.5e-6 V/K", "molar_mass": "183.84 g/mol"
+      },
+      "sources": ["CRC", "Forsythe & Worthing, Astrophys. J. 61 (1925) 146", "IC Table A.1"]
+    },
+    {
+      "id": "nichrome", "name": "Nichrome 80/20 (NiCr resistance alloy)", "category": "alloy", "color": "#8F8A80",
+      "properties": {
+        "density": "8.40 g/cm^3",
+        "youngs_modulus": "214 GPa", "shear_modulus": "83 GPa", "poisson_ratio": 0.3,
+        "yield_strength": "340 MPa", "ultimate_tensile_strength": "700 MPa",
+        "thermal_conductivity": "11.3 W/(m*K)", "specific_heat": "450 J/(kg*K)", "thermal_expansion": "14.0e-6 1/K",
+        "melting_point": "1673 K", "latent_heat_fusion": "300 kJ/kg",
+        "electrical_resistivity": "1.09e-6 ohm*m", "resistivity_temperature_coefficient": "0.00008 1/K",
+        "relative_permeability": 1.001, "emissivity": 0.85, "molar_mass": "57.4 g/mol"
+      },
+      "sources": ["Kanthal Nikrothal 80 datasheet", "MW"]
+    },
+    {
+      "id": "constantan", "name": "Constantan (Cu55Ni45)", "category": "alloy", "color": "#B49A7A",
+      "properties": {
+        "density": "8.90 g/cm^3",
+        "youngs_modulus": "162 GPa", "shear_modulus": "61 GPa", "poisson_ratio": 0.33,
+        "yield_strength": "200 MPa", "ultimate_tensile_strength": "450 MPa",
+        "thermal_conductivity": "21.2 W/(m*K)", "specific_heat": "390 J/(kg*K)", "thermal_expansion": "14.9e-6 1/K",
+        "melting_point": "1483 K",
+        "electrical_resistivity": "4.9e-7 ohm*m", "resistivity_temperature_coefficient": "0.00001 1/K",
+        "relative_permeability": 1.0, "emissivity": 0.2, "seebeck_coefficient": "-35e-6 V/K",
+        "molar_mass": "61.3 g/mol"
+      },
+      "sources": ["CRC", "NIST ITS-90 thermocouple tables (Type T)"]
+    },
+    {
+      "id": "silver", "name": "Silver (fine)", "category": "metal", "color": "#D9DADC",
+      "properties": {
+        "density": "10.49 g/cm^3", "youngs_modulus": "83 GPa", "shear_modulus": "30 GPa", "poisson_ratio": 0.37,
+        "yield_strength": "55 MPa", "ultimate_tensile_strength": "170 MPa",
+        "thermal_conductivity": "429 W/(m*K)", "specific_heat": "235 J/(kg*K)", "thermal_expansion": "18.9e-6 1/K",
+        "melting_point": "1234.93 K", "boiling_point": "2435 K", "latent_heat_fusion": "104.6 kJ/kg",
+        "electrical_resistivity": "1.59e-8 ohm*m", "resistivity_temperature_coefficient": "0.0038 1/K",
+        "relative_permeability": 0.99998, "emissivity": 0.03, "seebeck_coefficient": "6.5e-6 V/K",
+        "standard_electrode_potential": "0.7996 V", "molar_mass": "107.868 g/mol"
+      },
+      "sources": ["CRC"]
+    },
+    {
+      "id": "gold", "name": "Gold (fine)", "category": "metal", "color": "#D4AF37",
+      "properties": {
+        "density": "19.30 g/cm^3", "youngs_modulus": "79 GPa", "shear_modulus": "27 GPa", "poisson_ratio": 0.44,
+        "yield_strength": "30 MPa", "ultimate_tensile_strength": "120 MPa",
+        "thermal_conductivity": "318 W/(m*K)", "specific_heat": "129 J/(kg*K)", "thermal_expansion": "14.2e-6 1/K",
+        "melting_point": "1337.33 K", "boiling_point": "3129 K", "latent_heat_fusion": "63.7 kJ/kg",
+        "electrical_resistivity": "2.44e-8 ohm*m", "resistivity_temperature_coefficient": "0.0034 1/K",
+        "relative_permeability": 0.99996, "emissivity": 0.02, "seebeck_coefficient": "6.5e-6 V/K",
+        "standard_electrode_potential": "1.50 V", "molar_mass": "196.967 g/mol"
+      },
+      "sources": ["CRC"]
+    },
+    {
+      "id": "nickel", "name": "Nickel 200", "category": "metal", "color": "#A8A49A",
+      "properties": {
+        "density": "8.908 g/cm^3", "youngs_modulus": "200 GPa", "shear_modulus": "76 GPa", "poisson_ratio": 0.31,
+        "yield_strength": "148 MPa", "ultimate_tensile_strength": "462 MPa",
+        "thermal_conductivity": "90.9 W/(m*K)", "specific_heat": "444 J/(kg*K)", "thermal_expansion": "13.4e-6 1/K",
+        "melting_point": "1728 K", "boiling_point": "3186 K", "latent_heat_fusion": "297.9 kJ/kg",
+        "electrical_resistivity": "6.99e-8 ohm*m", "resistivity_temperature_coefficient": "0.006 1/K",
+        "relative_permeability": 300, "saturation_flux_density": "0.61 T", "curie_temperature": "627 K",
+        "emissivity": 0.1, "seebeck_coefficient": "-15e-6 V/K",
+        "standard_electrode_potential": "-0.257 V", "molar_mass": "58.693 g/mol"
+      },
+      "sources": ["CRC", "Special Metals Nickel 200 datasheet"]
+    },
+    {
+      "id": "zinc", "name": "Zinc", "category": "metal", "color": "#B7BEC2",
+      "properties": {
+        "density": "7.14 g/cm^3", "youngs_modulus": "108 GPa", "shear_modulus": "43 GPa", "poisson_ratio": 0.25,
+        "yield_strength": "100 MPa", "ultimate_tensile_strength": "120 MPa",
+        "thermal_conductivity": "116 W/(m*K)", "specific_heat": "388 J/(kg*K)", "thermal_expansion": "30.2e-6 1/K",
+        "melting_point": "692.68 K", "boiling_point": "1180 K", "latent_heat_fusion": "112 kJ/kg",
+        "electrical_resistivity": "5.90e-8 ohm*m", "resistivity_temperature_coefficient": "0.0037 1/K",
+        "emissivity": 0.05, "standard_electrode_potential": "-0.762 V", "molar_mass": "65.38 g/mol"
+      },
+      "sources": ["CRC"]
+    },
+    {
+      "id": "lead", "name": "Lead", "category": "metal", "color": "#6C7078",
+      "properties": {
+        "density": "11.34 g/cm^3", "youngs_modulus": "16 GPa", "shear_modulus": "5.6 GPa", "poisson_ratio": 0.44,
+        "yield_strength": "5.5 MPa", "ultimate_tensile_strength": "17 MPa",
+        "thermal_conductivity": "35.3 W/(m*K)", "specific_heat": "129 J/(kg*K)", "thermal_expansion": "28.9e-6 1/K",
+        "melting_point": "600.61 K", "boiling_point": "2022 K", "latent_heat_fusion": "23.0 kJ/kg",
+        "electrical_resistivity": "2.08e-7 ohm*m", "resistivity_temperature_coefficient": "0.0039 1/K",
+        "emissivity": 0.28, "standard_electrode_potential": "-0.126 V", "molar_mass": "207.2 g/mol"
+      },
+      "sources": ["CRC"]
+    },
+    {
+      "id": "tin", "name": "Tin (white, β)", "category": "metal", "color": "#C8C8C0",
+      "properties": {
+        "density": "7.265 g/cm^3", "youngs_modulus": "50 GPa", "shear_modulus": "18 GPa", "poisson_ratio": 0.36,
+        "yield_strength": "14 MPa", "ultimate_tensile_strength": "220 MPa",
+        "thermal_conductivity": "66.8 W/(m*K)", "specific_heat": "228 J/(kg*K)", "thermal_expansion": "22.0e-6 1/K",
+        "melting_point": "505.08 K", "boiling_point": "2875 K", "latent_heat_fusion": "59.2 kJ/kg",
+        "electrical_resistivity": "1.09e-7 ohm*m", "resistivity_temperature_coefficient": "0.0045 1/K",
+        "emissivity": 0.06, "standard_electrode_potential": "-0.138 V", "molar_mass": "118.71 g/mol"
+      },
+      "sources": ["CRC"]
+    },
+    {
+      "id": "solder_sn63pb37", "name": "Eutectic solder Sn63/Pb37", "category": "alloy", "color": "#B0B0AA",
+      "properties": {
+        "density": "8.40 g/cm^3", "youngs_modulus": "30 GPa", "poisson_ratio": 0.4,
+        "yield_strength": "27 MPa", "ultimate_tensile_strength": "52 MPa",
+        "thermal_conductivity": "50 W/(m*K)", "specific_heat": "176 J/(kg*K)", "thermal_expansion": "24.7e-6 1/K",
+        "melting_point": "456 K", "latent_heat_fusion": "41 kJ/kg",
+        "electrical_resistivity": "1.45e-7 ohm*m", "resistivity_temperature_coefficient": "0.004 1/K",
+        "emissivity": 0.1
+      },
+      "sources": ["NIST Solder Properties Database", "MW"]
+    },
+    {
+      "id": "brass", "name": "Cartridge brass C26000 (annealed)", "category": "alloy", "color": "#C8A951",
+      "properties": {
+        "density": "8.53 g/cm^3", "youngs_modulus": "110 GPa", "shear_modulus": "40 GPa", "poisson_ratio": 0.375,
+        "yield_strength": "75 MPa", "ultimate_tensile_strength": "300 MPa", "fatigue_limit": "90 MPa",
+        "thermal_conductivity": "120 W/(m*K)", "specific_heat": "375 J/(kg*K)", "thermal_expansion": "20.0e-6 1/K",
+        "melting_point": "1188 K", "latent_heat_fusion": "168 kJ/kg",
+        "electrical_resistivity": "6.2e-8 ohm*m", "resistivity_temperature_coefficient": "0.0015 1/K",
+        "relative_permeability": 1.0, "emissivity": 0.2, "friction_coefficient": 0.35
+      },
+      "sources": ["ASM Vol.2 C26000"]
+    },
+    {
+      "id": "bronze", "name": "Phosphor bronze C51000 (bearing grade)", "category": "alloy", "color": "#A97142",
+      "properties": {
+        "density": "8.86 g/cm^3", "youngs_modulus": "110 GPa", "shear_modulus": "41.4 GPa", "poisson_ratio": 0.34,
+        "yield_strength": "130 MPa", "ultimate_tensile_strength": "340 MPa", "fatigue_limit": "150 MPa",
+        "thermal_conductivity": "84 W/(m*K)", "specific_heat": "380 J/(kg*K)", "thermal_expansion": "17.8e-6 1/K",
+        "melting_point": "1248 K", "latent_heat_fusion": "190 kJ/kg",
+        "electrical_resistivity": "1.15e-7 ohm*m", "resistivity_temperature_coefficient": "0.001 1/K",
+        "relative_permeability": 1.0, "emissivity": 0.2, "friction_coefficient": 0.15
+      },
+      "sources": ["ASM Vol.2 C51000"]
+    },
+    {
+      "id": "titanium_6al4v", "name": "Titanium Ti-6Al-4V (annealed)", "category": "alloy", "color": "#878A8C",
+      "properties": {
+        "density": "4.43 g/cm^3", "youngs_modulus": "113.8 GPa", "shear_modulus": "44 GPa", "poisson_ratio": 0.342,
+        "yield_strength": "880 MPa", "ultimate_tensile_strength": "950 MPa", "fatigue_limit": "510 MPa",
+        "hardness": "3.40 GPa", "fracture_toughness_pa_sqrt_m": "75 MPa",
+        "thermal_conductivity": "6.7 W/(m*K)", "specific_heat": "526 J/(kg*K)", "thermal_expansion": "8.6e-6 1/K",
+        "melting_point": "1878 K", "latent_heat_fusion": "365 kJ/kg",
+        "electrical_resistivity": "1.78e-6 ohm*m", "resistivity_temperature_coefficient": "0.0004 1/K",
+        "relative_permeability": 1.00005, "emissivity": 0.3, "friction_coefficient": 0.36
+      },
+      "sources": ["ASM Vol.2 Ti-6Al-4V", "MW"]
+    }
+  ]
+}

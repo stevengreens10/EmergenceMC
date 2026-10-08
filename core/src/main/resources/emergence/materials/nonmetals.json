@@ -1,0 +1,162 @@
+{
+  // Insulators, ceramics, polymers, semiconductors and natural materials.
+  //  [CRC] CRC Handbook 97th ed.; [IC] Incropera Table A.3; [MW] MatWeb; [SZE] Sze, Physics of Semiconductor Devices, 3rd ed.
+  "materials": [
+    {
+      "id": "glass", "name": "Soda-lime glass", "category": "glass", "color": "#CFE8EE",
+      "properties": {
+        "density": "2.50 g/cm^3", "youngs_modulus": "72 GPa", "shear_modulus": "29.5 GPa", "poisson_ratio": 0.22,
+        "ultimate_tensile_strength": "45 MPa", "hardness": "5.4 GPa", "fracture_toughness_pa_sqrt_m": "0.75 MPa",
+        "thermal_conductivity": "1.0 W/(m*K)", "specific_heat": "840 J/(kg*K)", "thermal_expansion": "9.0e-6 1/K",
+        "melting_point": "993 K",
+        "electrical_resistivity": "1e12 ohm*m", "relative_permittivity": 7.2, "dielectric_strength": "10 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.92, "friction_coefficient": 0.5
+      },
+      "sources": ["CRC", "MW"]
+    },
+    {
+      "id": "alumina", "name": "Alumina ceramic (99.5% Al2O3)", "category": "ceramic", "color": "#F1EEE6",
+      "properties": {
+        "density": "3.89 g/cm^3", "youngs_modulus": "370 GPa", "shear_modulus": "152 GPa", "poisson_ratio": 0.22,
+        "ultimate_tensile_strength": "260 MPa", "hardness": "14.1 GPa", "fracture_toughness_pa_sqrt_m": "4 MPa",
+        "thermal_conductivity": "30 W/(m*K)", "specific_heat": "880 J/(kg*K)", "thermal_expansion": "8.1e-6 1/K",
+        "melting_point": "2345 K", "latent_heat_fusion": "1070 kJ/kg",
+        "electrical_resistivity": "1e14 ohm*m", "relative_permittivity": 9.8, "dielectric_strength": "16.9 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.75, "friction_coefficient": 0.4, "molar_mass": "101.96 g/mol"
+      },
+      "sources": ["CoorsTek AD-995 datasheet", "IC Table A.2"]
+    },
+    {
+      "id": "ptfe", "name": "PTFE (polytetrafluoroethylene)", "category": "polymer", "color": "#F5F5F2",
+      "properties": {
+        "density": "2.20 g/cm^3", "youngs_modulus": "0.5 GPa", "poisson_ratio": 0.46,
+        "yield_strength": "9 MPa", "ultimate_tensile_strength": "23 MPa",
+        "thermal_conductivity": "0.25 W/(m*K)", "specific_heat": "1050 J/(kg*K)", "thermal_expansion": "120e-6 1/K",
+        "melting_point": "600 K",
+        "electrical_resistivity": "1e16 ohm*m", "relative_permittivity": 2.1, "dielectric_strength": "60 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.92, "friction_coefficient": 0.05
+      },
+      "sources": ["DuPont Teflon PTFE handbook", "MW"]
+    },
+    {
+      "id": "nylon_66", "name": "Nylon 6/6 (dry as moulded)", "category": "polymer", "color": "#EDE6D6",
+      "properties": {
+        "density": "1.14 g/cm^3", "youngs_modulus": "2.9 GPa", "poisson_ratio": 0.39,
+        "yield_strength": "82 MPa", "ultimate_tensile_strength": "85 MPa", "fatigue_limit": "25 MPa",
+        "thermal_conductivity": "0.25 W/(m*K)", "specific_heat": "1670 J/(kg*K)", "thermal_expansion": "80e-6 1/K",
+        "melting_point": "538 K",
+        "electrical_resistivity": "1e13 ohm*m", "relative_permittivity": 4.0, "dielectric_strength": "20 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.25
+      },
+      "sources": ["DuPont Zytel 101 datasheet", "MW"]
+    },
+    {
+      "id": "pvc", "name": "PVC (flexible, wire insulation grade)", "category": "polymer", "color": "#2F6FB0",
+      "properties": {
+        "density": "1.38 g/cm^3", "youngs_modulus": "0.02 GPa", "poisson_ratio": 0.45,
+        "ultimate_tensile_strength": "15 MPa",
+        "thermal_conductivity": "0.19 W/(m*K)", "specific_heat": "1000 J/(kg*K)", "thermal_expansion": "100e-6 1/K",
+        "melting_point": "433 K",
+        "electrical_resistivity": "1e12 ohm*m", "relative_permittivity": 5.0, "dielectric_strength": "20 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.5
+      },
+      "sources": ["MW", "IEC 60227"]
+    },
+    {
+      "id": "rubber", "name": "Natural rubber (vulcanised)", "category": "polymer", "color": "#2A2A2A",
+      "properties": {
+        "density": "0.92 g/cm^3", "youngs_modulus": "0.005 GPa", "poisson_ratio": 0.4999,
+        "ultimate_tensile_strength": "25 MPa",
+        "thermal_conductivity": "0.13 W/(m*K)", "specific_heat": "1900 J/(kg*K)", "thermal_expansion": "220e-6 1/K",
+        "melting_point": "453 K",
+        "electrical_resistivity": "1e13 ohm*m", "relative_permittivity": 2.7, "dielectric_strength": "20 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.92, "friction_coefficient": 0.8
+      },
+      "sources": ["CRC", "MW"]
+    },
+    {
+      "id": "mica", "name": "Muscovite mica", "category": "ceramic", "color": "#D7CFB5",
+      "properties": {
+        "density": "2.82 g/cm^3", "youngs_modulus": "172 GPa",
+        "ultimate_tensile_strength": "200 MPa",
+        "thermal_conductivity": "0.71 W/(m*K)", "specific_heat": "880 J/(kg*K)", "thermal_expansion": "9e-6 1/K",
+        "melting_point": "1573 K",
+        "electrical_resistivity": "1e13 ohm*m", "relative_permittivity": 7.0, "dielectric_strength": "100 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.75
+      },
+      "sources": ["CRC", "MW"]
+    },
+    {
+      "id": "graphite", "name": "Electrographite (brush grade)", "category": "ceramic", "color": "#2D2D30",
+      "properties": {
+        "density": "1.75 g/cm^3", "youngs_modulus": "11 GPa", "poisson_ratio": 0.2,
+        "ultimate_tensile_strength": "30 MPa", "hardness": "0.3 GPa",
+        "thermal_conductivity": "100 W/(m*K)", "specific_heat": "710 J/(kg*K)", "thermal_expansion": "4.5e-6 1/K",
+        "melting_point": "3900 K",
+        "electrical_resistivity": "1.0e-5 ohm*m", "resistivity_temperature_coefficient": "-0.0005 1/K",
+        "relative_permeability": 0.99998, "emissivity": 0.85, "friction_coefficient": 0.15,
+        "molar_mass": "12.011 g/mol"
+      },
+      "sources": ["Morgan Advanced Materials brush grade datasheets", "CRC"]
+    },
+    {
+      "id": "silicon", "name": "Silicon (intrinsic, single crystal)", "category": "semiconductor", "color": "#4B4F5C",
+      "properties": {
+        "density": "2.329 g/cm^3", "youngs_modulus": "160 GPa", "poisson_ratio": 0.22,
+        "ultimate_tensile_strength": "150 MPa", "hardness": "11 GPa", "fracture_toughness_pa_sqrt_m": "0.9 MPa",
+        "thermal_conductivity": "149 W/(m*K)", "specific_heat": "705 J/(kg*K)", "thermal_expansion": "2.6e-6 1/K",
+        "melting_point": "1687 K", "latent_heat_fusion": "1787 kJ/kg",
+        "electrical_resistivity": "2.3e3 ohm*m", "relative_permittivity": 11.7,
+        "band_gap": "1.12 eV", "relative_permeability": 1.0, "emissivity": 0.6, "molar_mass": "28.086 g/mol"
+      },
+      "sources": ["SZE App. G", "CRC"]
+    },
+    {
+      "id": "germanium", "name": "Germanium (intrinsic)", "category": "semiconductor", "color": "#6A6C70",
+      "properties": {
+        "density": "5.323 g/cm^3", "youngs_modulus": "103 GPa", "poisson_ratio": 0.26,
+        "thermal_conductivity": "60.2 W/(m*K)", "specific_heat": "320 J/(kg*K)", "thermal_expansion": "5.9e-6 1/K",
+        "melting_point": "1211.4 K", "latent_heat_fusion": "508 kJ/kg",
+        "electrical_resistivity": "0.46 ohm*m", "relative_permittivity": 16.0,
+        "band_gap": "0.66 eV", "relative_permeability": 1.0, "emissivity": 0.5, "molar_mass": "72.63 g/mol"
+      },
+      "sources": ["SZE App. G", "CRC"]
+    },
+    {
+      "id": "oak", "name": "Oak wood (dry, along grain)", "category": "natural", "color": "#9C7A4D",
+      "properties": {
+        "density": "0.75 g/cm^3", "youngs_modulus": "11 GPa", "poisson_ratio": 0.37,
+        "ultimate_tensile_strength": "90 MPa", "yield_strength": "50 MPa",
+        "thermal_conductivity": "0.17 W/(m*K)", "specific_heat": "2000 J/(kg*K)", "thermal_expansion": "5e-6 1/K",
+        "melting_point": "573 K",
+        "electrical_resistivity": "1e13 ohm*m", "relative_permittivity": 2.5, "dielectric_strength": "3 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.4
+      },
+      "sources": ["USDA Wood Handbook FPL-GTR-190 (2010)"]
+    },
+    {
+      "id": "granite", "name": "Granite", "category": "natural", "color": "#8D7F7B",
+      "properties": {
+        "density": "2.70 g/cm^3", "youngs_modulus": "50 GPa", "poisson_ratio": 0.25,
+        "ultimate_tensile_strength": "10 MPa",
+        "thermal_conductivity": "2.8 W/(m*K)", "specific_heat": "790 J/(kg*K)", "thermal_expansion": "8e-6 1/K",
+        "melting_point": "1488 K",
+        "electrical_resistivity": "1e8 ohm*m", "relative_permittivity": 6.0,
+        "relative_permeability": 1.0, "emissivity": 0.45, "friction_coefficient": 0.6
+      },
+      "sources": ["IC Table A.3", "CRC"]
+    },
+    {
+      "id": "cfrp", "name": "Carbon fibre reinforced polymer (quasi-isotropic laminate)", "category": "composite", "color": "#1C1C1E",
+      "properties": {
+        "density": "1.60 g/cm^3", "youngs_modulus": "70 GPa", "poisson_ratio": 0.3,
+        "ultimate_tensile_strength": "600 MPa", "fatigue_limit": "300 MPa",
+        "thermal_conductivity": "5 W/(m*K)", "specific_heat": "1000 J/(kg*K)", "thermal_expansion": "2e-6 1/K",
+        "melting_point": "573 K",
+        "electrical_resistivity": "1e-4 ohm*m",
+        "relative_permeability": 1.0, "emissivity": 0.85, "friction_coefficient": 0.3
+      },
+      "sources": ["MW (T300/epoxy QI)", "Hexcel HexPly datasheets"]
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+package dev.emergence.core.sim;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * A multiphysics lumped network: nodes in several {@link Domain}s plus the elements connecting them.
+ * Build the network, then {@link #compile()} it (done automatically by {@link TransientSolver}).
+ * Topology is immutable after compilation; structural changes produce a new network, and the
+ * Minecraft integration layer maps state across rebuilds by component identity.
+ */
+public final class Network {
+    private final List<Node> nodes = new ArrayList<>();
+    private final List<Element> elements = new ArrayList<>();
+    private final Map<Domain, Node> references = new EnumMap<>(Domain.class);
+    private boolean compiled;
+
+    // compiled layout
+    private int size;
+    private final List<String> unknownNames = new ArrayList<>();
+    private final List<Double> unknownAbsTol = new ArrayList<>();
+    private final List<Double> initial = new ArrayList<>();
+    private final List<Double> slotAbsTol = new ArrayList<>();
+
+    public Node node(Domain d, String name) {
+        return node(d, name, 0.0);
+    }
+
+    /** Creates a node whose across variable starts at {@code initialValue} (e.g. ambient temperature). */
+    public Node node(Domain d, String name, double initialValue) {
+        requireMutable();
+        Node n = new Node(d, name, false);
+        nodes.add(n);
+        initialByNode.put(n, initialValue);
+        return n;
+    }
+
+    private final Map<Node, Double> initialByNode = new java.util.HashMap<>();
+
+    /** The reference node of a domain (ground / stationary frame / absolute zero). */
+    public Node reference(Domain d) {
+        return references.computeIfAbsent(d, dd -> new Node(dd, "ref", true));
+    }
+
+    public <E extends Element> E add(E e) {
+        requireMutable();
+        elements.add(e);
+        return e;
+    }
+
+    public List<Element> elements() {
+        return Collections.unmodifiableList(elements);
+    }
+
+    public List<Node> nodes() {
+        return Collections.unmodifiableList(nodes);
+    }
+
+    public boolean isCompiled() {
+        return compiled;
+    }
+
+    private void requireMutable() {
+        if (compiled) throw new IllegalStateException("Network already compiled");
+    }
+
+    /** Assigns unknown indices to nodes and lets elements allocate their internal unknowns/state. */
+    public void compile() {
+        if (compiled) return;
+        for (Node n : nodes) {
+            n.index = size++;
+            unknownNames.add(n.toString());
+            unknownAbsTol.add(n.domain.acrossAbsTol);
+            initial.add(initialByNode.getOrDefault(n, 0.0));
+        }
+        SetupContext ctx = new SetupContext() {
+            @Override
+            public int allocUnknown(String name, double absTol) {
+                unknownNames.add(name);
+                unknownAbsTol.add(absTol);
+                initial.add(0.0);
+                return size++;
+            }
+
+            @Override
+            public int allocState(double absTol) {
+                slotAbsTol.add(absTol);
+                return slotAbsTol.size() - 1;
+            }
+
+            @Override
+            public void setInitial(int index, double value) {
+                initial.set(index, value);
+            }
+        };
+        for (Element e : elements) e.setup(ctx);
+        compiled = true;
+    }
+
+    /** Overrides the initial value of an unknown (call after compile, before the first step). */
+    public void setInitial(int index, double value) {
+        initial.set(index, value);
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public int slotCount() {
+        return slotAbsTol.size();
+    }
+
+    String unknownName(int i) {
+        return unknownNames.get(i);
+    }
+
+    double unknownAbsTol(int i) {
+        return unknownAbsTol.get(i);
+    }
+
+    double initialValue(int i) {
+        return initial.get(i);
+    }
+
+    double slotAbsTol(int s) {
+        return slotAbsTol.get(s);
+    }
+}

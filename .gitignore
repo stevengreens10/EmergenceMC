@@ -1,0 +1,13 @@
+build/
+.gradle/
+out/
+bin/
+runs/
+run/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.claude/settings.local.json
+.claude/hooks/.last_notified.json
+.claude/next-build-summary.txt

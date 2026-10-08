@@ -13,9 +13,47 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation project(':core')
+// ---------------------------------------------------------------------------------------------
+// The scientific simulation core is a separate source set with NO Minecraft on its classpath,
+// so it cannot depend on the game, and it is tested by plain JUnit without launching Minecraft.
+// ---------------------------------------------------------------------------------------------
+sourceSets {
+    core {
+        java.srcDirs = ['core/src/main/java']
+        resources.srcDirs = ['core/src/main/resources']
+    }
+    coreTest {
+        java.srcDirs = ['core/src/test/java']
+        resources.srcDirs = ['core/src/test/resources']
+        compileClasspath += sourceSets.core.output
+        runtimeClasspath += sourceSets.core.output
+    }
+    main {
+        compileClasspath += sourceSets.core.output
+        runtimeClasspath += sourceSets.core.output
+    }
 }
+
+dependencies {
+    coreTestImplementation platform("org.junit:junit-bom:${junit_version}")
+    coreTestImplementation 'org.junit.jupiter:junit-jupiter'
+    coreTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.register('coreTest', Test) {
+    description = 'Runs the scientific validation suite of the simulation core (no Minecraft).'
+    group = 'verification'
+    testClassesDirs = sourceSets.coreTest.output.classesDirs
+    classpath = sourceSets.coreTest.runtimeClasspath
+    useJUnitPlatform()
+    maxHeapSize = '2G'
+    systemProperty 'emergence.debugSolver', System.getProperty('emergence.debugSolver', 'false')
+    testLogging {
+        events 'failed'
+        exceptionFormat 'full'
+    }
+}
+tasks.named('check') { dependsOn 'coreTest' }
 
 neoForge {
     version = neoforge_version
@@ -35,16 +73,16 @@ neoForge {
         }
         gameTestServer {
             type = 'gameTestServer'
+            gameDirectory = project.file('run-gametest')
+            systemProperty 'emergence.debugIslands', 'true'
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
     }
 
     mods {
-        // The simulation core is compiled separately (so it can never depend on Minecraft)
-        // but is loaded as part of this mod at runtime.
         "${mod_id}" {
             sourceSet sourceSets.main
-            sourceSet project(':core').sourceSets.main
+            sourceSet sourceSets.core
         }
     }
 }
@@ -55,7 +93,7 @@ tasks.withType(JavaCompile).configureEach {
 
 // Ship the simulation core inside the mod jar.
 jar {
-    from(project(':core').sourceSets.main.output)
+    from(sourceSets.core.output)
 }
 
 processResources {

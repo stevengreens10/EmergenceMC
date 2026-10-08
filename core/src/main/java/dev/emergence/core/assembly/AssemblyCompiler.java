@@ -200,8 +200,12 @@ public final class AssemblyCompiler {
                 if (ax.x() + ax.y() + ax.z() < 0) ax = ax.mul(-1);
                 js.add(new J(find(idx.get(jt[0])), find(idx.get(jt[1])), b.center(), ax, b));
             }
-            // resolve rotors breadth-first from the static frame
+            // Resolve rotors breadth-first from the static frame. If some groups are not connected to an
+            // anchored body (a free-standing machine), the heaviest such group serves as their reference
+            // frame and resolution continues from it.
             boolean progress = true;
+            while (true) {
+            progress = true;
             while (progress) {
                 progress = false;
                 for (int g : groups.keySet()) {
@@ -229,6 +233,23 @@ public final class AssemblyCompiler {
                     c.bodies.add(rotor);
                     bodyOfGroup.put(g, rotor);
                 }
+            }
+            Integer heaviest = null;
+            double best = -1;
+            for (var e : groups.entrySet()) {
+                if (bodyOfGroup.containsKey(e.getKey())) continue;
+                boolean jointed = false;
+                for (J j : js) if (j.g1 == e.getKey() || j.g2 == e.getKey()) jointed = true;
+                if (!jointed) continue;
+                double m = 0;
+                for (Part p : e.getValue()) m += PartGeometry.mass(p);
+                if (m > best) {
+                    best = m;
+                    heaviest = e.getKey();
+                }
+            }
+            if (heaviest == null) break;
+            bodyOfGroup.put(heaviest, ground);
             }
             for (int g : groups.keySet()) {
                 if (!bodyOfGroup.containsKey(g)) {

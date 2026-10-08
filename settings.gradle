@@ -6,6 +6,3 @@ pluginManagement {
 }
 
 rootProject.name = 'emergence'
-
-// Platform-independent scientific simulation core (no Minecraft dependency).
-include 'core'

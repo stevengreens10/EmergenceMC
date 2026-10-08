@@ -1,0 +1,45 @@
+package dev.emergence.mod.client;
+
+import dev.emergence.mod.net.IslandSyncPayload;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Client-side cache of the latest server snapshots, used only for rendering. Body angles are
+ * extrapolated with the received angular velocity so rotation looks smooth between packets.
+ */
+public final class ClientSimState {
+    private ClientSimState() {}
+
+    public record Pose(double px, double py, double pz, double ax, double ay, double az, double angle, double omega, long time) {}
+
+    private static final Map<Long, Pose> POSE = new HashMap<>();
+    private static final Map<Long, Float> TEMP = new HashMap<>();
+
+    public static synchronized void apply(IslandSyncPayload p) {
+        for (long id : p.partIds()) {
+            POSE.remove(id);
+            TEMP.remove(id);
+        }
+        for (IslandSyncPayload.BodyState b : p.bodies()) {
+            Pose pose = new Pose(b.px(), b.py(), b.pz(), b.ax(), b.ay(), b.az(), b.angle(), b.omega(), p.gameTime());
+            for (long id : b.partIds()) POSE.put(id, pose);
+        }
+        for (int i = 0; i < p.hotIds().length; i++) TEMP.put(p.hotIds()[i], p.hotTemps()[i]);
+    }
+
+    public static synchronized Pose pose(long partId) {
+        return POSE.get(partId);
+    }
+
+    public static synchronized float temperature(long partId, float fallback) {
+        Float t = TEMP.get(partId);
+        return t == null ? fallback : t;
+    }
+
+    public static synchronized void clear() {
+        POSE.clear();
+        TEMP.clear();
+    }
+}

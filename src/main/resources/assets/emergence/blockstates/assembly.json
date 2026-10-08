@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "light=0": {
+      "model": "emergence:block/assembly"
+    },
+    "light=1": {
+      "model": "emergence:block/assembly"
+    },
+    "light=2": {
+      "model": "emergence:block/assembly"
+    },
+    "light=3": {
+      "model": "emergence:block/assembly"
+    },
+    "light=4": {
+      "model": "emergence:block/assembly"
+    },
+    "light=5": {
+      "model": "emergence:block/assembly"
+    },
+    "light=6": {
+      "model": "emergence:block/assembly"
+    },
+    "light=7": {
+      "model": "emergence:block/assembly"
+    },
+    "light=8": {
+      "model": "emergence:block/assembly"
+    },
+    "light=9": {
+      "model": "emergence:block/assembly"
+    },
+    "light=10": {
+      "model": "emergence:block/assembly"
+    },
+    "light=11": {
+      "model": "emergence:block/assembly"
+    },
+    "light=12": {
+      "model": "emergence:block/assembly"
+    },
+    "light=13": {
+      "model": "emergence:block/assembly"
+    },
+    "light=14": {
+      "model": "emergence:block/assembly"
+    },
+    "light=15": {
+      "model": "emergence:block/assembly"
+    }
+  }
+}

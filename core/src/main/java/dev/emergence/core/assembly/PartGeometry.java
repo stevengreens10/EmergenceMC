@@ -84,7 +84,8 @@ public final class PartGeometry {
     }
 
     public static double gearPitchRadius(Part p) {
-        return p.param("pitch_radius", 0.45 * transverseSize(p));
+        // half the occupied width: gears in touching cell boxes are exactly at r1 + r2 and mesh
+        return p.param("pitch_radius", 0.5 * transverseSize(p));
     }
 
     public static int gearTeeth(Part p) {

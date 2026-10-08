@@ -1,0 +1,196 @@
+package dev.emergence.mod.part;
+
+import dev.emergence.core.assembly.Dir;
+import dev.emergence.core.assembly.PartKind;
+import dev.emergence.core.materials.Material;
+import dev.emergence.core.materials.MaterialProperty;
+import dev.emergence.core.units.Units;
+import dev.emergence.mod.block.AssemblyBlock;
+import dev.emergence.mod.block.AssemblyBlockEntity;
+import dev.emergence.mod.registry.ModRegistries;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
+/**
+ * An item that places one primitive part into the sub-block grid.
+ * <p>
+ * Placement: the part starts in the cell just outside the clicked surface and extends along its axis,
+ * which is the clicked face's normal (or, while sneaking, the direction the player looks). Shaft-mounted
+ * parts (bearings, gears, disks, cranks) clicked onto the side of a shaft are mounted coaxially on it.
+ */
+public final class PartItem extends Item {
+    private final PartKind kind;
+
+    public PartItem(PartKind kind, Properties props) {
+        super(props);
+        this.kind = kind;
+    }
+
+    public PartKind kind() {
+        return kind;
+    }
+
+    public PartSpec spec(ItemStack stack) {
+        PartSpec s = stack.get(ModRegistries.PART_SPEC.get());
+        return s != null ? s : defaultSpec(kind);
+    }
+
+    public static PartSpec defaultSpec(PartKind k) {
+        return switch (k) {
+            case MAGNET -> PartSpec.of("ndfeb_n42", 1, 1);
+            case COIL, WIRE, INSULATED_WIRE -> PartSpec.of("copper", 1, 1);
+            case RESISTOR, CAPACITOR -> PartSpec.of("alumina", 1, 1);
+            case DIODE -> PartSpec.of("silicon", 1, 1);
+            case BRUSH -> PartSpec.of("graphite", 1, 1);
+            case SWITCH -> PartSpec.of("brass", 1, 1);
+            case SHAFT -> PartSpec.of("steel_1045", 4, 1);
+            default -> PartSpec.of("steel_1045", 1, 1);
+        };
+    }
+
+    @Override
+    public Component getName(ItemStack stack) {
+        PartSpec s = spec(stack);
+        Material m = s.resolveMaterial();
+        String size = s.cross() > 1 || s.length() > 1 ? " " + s.cross() + "×" + s.cross() + "×" + s.length() : "";
+        return Component.translatable("item.emergence." + kind.name().toLowerCase())
+                .append(Component.literal(" (" + m.name().split(" \\(")[0] + size + detail(s) + ")"));
+    }
+
+    private String detail(PartSpec s) {
+        var p = s.params();
+        return switch (kind) {
+            case COIL -> ", " + p.getOrDefault("turns", 200.0).intValue() + " turns";
+            case RESISTOR -> ", " + Units.formatSI(p.getOrDefault("resistance", 10.0), "Ω");
+            case CAPACITOR -> ", " + Units.formatSI(p.getOrDefault("capacitance", 1e-4), "F");
+            case GEAR -> ", " + p.getOrDefault("teeth", 24.0).intValue() + " teeth";
+            case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m");
+            case BEARING -> p.getOrDefault("type", 0.0) >= 1 ? ", plain bushing" : ", ball";
+            default -> "";
+        };
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext ctx, List<Component> tooltip, TooltipFlag flag) {
+        PartSpec s = spec(stack);
+        Material m = s.resolveMaterial();
+        tooltip.add(Component.translatable("tooltip.emergence." + kind.name().toLowerCase()).withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.literal(m.name()).withStyle(ChatFormatting.DARK_AQUA));
+        if (m.has(MaterialProperty.ELECTRICAL_RESISTIVITY))
+            tooltip.add(Component.literal("ρ = " + Units.formatSI(m.get(MaterialProperty.ELECTRICAL_RESISTIVITY), "Ω·m")).withStyle(ChatFormatting.DARK_GRAY));
+        if (m.has(MaterialProperty.REMANENCE))
+            tooltip.add(Component.literal("Bᵣ = " + Units.formatSI(m.get(MaterialProperty.REMANENCE), "T")).withStyle(ChatFormatting.DARK_GRAY));
+        for (var e : s.params().entrySet()) {
+            tooltip.add(Component.literal(e.getKey() + " = " + String.format("%.4g", e.getValue())).withStyle(ChatFormatting.DARK_GRAY));
+        }
+        tooltip.add(Component.translatable("tooltip.emergence.place_hint").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+    }
+
+    @Override
+    public InteractionResult useOn(UseOnContext ctx) {
+        Level level = ctx.getLevel();
+        Player player = ctx.getPlayer();
+        ItemStack stack = ctx.getItemInHand();
+        PartSpec spec = spec(stack);
+        Direction face = ctx.getClickedFace();
+        Vec3 hit = ctx.getClickLocation();
+        BlockPos clicked = ctx.getClickedPos();
+
+        BlockPos pos;
+        Dir axis;
+        int cx, cy, cz; // anchor cell (local to pos)
+
+        if (level.getBlockEntity(clicked) instanceof AssemblyBlockEntity cbe) {
+            int[] c = AssemblyBlock.cellAt(clicked, hit, face);
+            PlacedPart t = cbe.partAt(c[0], c[1], c[2]);
+            boolean mountable = kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK
+                    || (kind == PartKind.BLOCK && spec.cross() > 1);
+            // clicking the side of a shaft mounts the part coaxially on that shaft cell
+            if (t != null && t.kind == PartKind.SHAFT && mountable && face.getAxis().ordinal() != t.axis.axis()) {
+                return place(ctx, level, player, stack, spec, clicked, t.axis, c[0], c[1], c[2], true);
+            }
+        }
+        Vec3 p = hit.add(face.getStepX() * 0.01, face.getStepY() * 0.01, face.getStepZ() * 0.01);
+        int gx = (int) Math.floor(p.x * 16), gy = (int) Math.floor(p.y * 16), gz = (int) Math.floor(p.z * 16);
+        pos = new BlockPos(Math.floorDiv(gx, 16), Math.floorDiv(gy, 16), Math.floorDiv(gz, 16));
+        cx = Math.floorMod(gx, 16);
+        cy = Math.floorMod(gy, 16);
+        cz = Math.floorMod(gz, 16);
+        if (player != null && player.isShiftKeyDown()) {
+            axis = Dir.values()[Direction.getNearest(player.getLookAngle().x, player.getLookAngle().y, player.getLookAngle().z).ordinal()];
+        } else {
+            axis = Dir.values()[face.ordinal()];
+        }
+        return place(ctx, level, player, stack, spec, pos, axis, cx, cy, cz, false);
+    }
+
+    private InteractionResult place(UseOnContext ctx, Level level, Player player, ItemStack stack, PartSpec spec, BlockPos pos,
+                                    Dir axis, int cx, int cy, int cz, boolean mounted) {
+        int a = axis.axis();
+        int len = kind == PartKind.SHAFT || kind == PartKind.COIL || kind == PartKind.BLOCK ? spec.length() : 1;
+        if (kind == PartKind.GEAR || kind == PartKind.BEARING || kind == PartKind.CRANK) len = 1;
+        int cross = kind == PartKind.SHAFT || kind == PartKind.WIRE || kind == PartKind.INSULATED_WIRE ? 1 : spec.cross();
+        int[] lo = new int[3], hi = new int[3];
+        int[] c = {cx, cy, cz};
+        for (int k = 0; k < 3; k++) {
+            if (k == a) {
+                if (axis.sign() > 0) {
+                    lo[k] = c[k];
+                    hi[k] = c[k] + len - 1;
+                } else {
+                    hi[k] = c[k];
+                    lo[k] = c[k] - len + 1;
+                }
+            } else {
+                lo[k] = c[k] - (cross - 1) / 2;
+                hi[k] = lo[k] + cross - 1;
+            }
+            // shift into the block, keeping the anchor cell covered
+            if (lo[k] < 0) {
+                hi[k] -= lo[k];
+                lo[k] = 0;
+            }
+            if (hi[k] > 15) {
+                lo[k] -= hi[k] - 15;
+                hi[k] = 15;
+            }
+            if (lo[k] < 0 || c[k] < lo[k] || c[k] > hi[k]) return fail(player, "message.emergence.does_not_fit");
+        }
+        BlockState state = level.getBlockState(pos);
+        AssemblyBlockEntity be = level.getBlockEntity(pos) instanceof AssemblyBlockEntity e ? e : null;
+        if (be == null && !state.canBeReplaced()) return fail(player, "message.emergence.blocked");
+        if (be != null && !be.canPlace(kind, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2])) return fail(player, "message.emergence.occupied");
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (be == null) {
+            level.setBlock(pos, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+            be = level.getBlockEntity(pos) instanceof AssemblyBlockEntity e ? e : null;
+            if (be == null) return InteractionResult.FAIL;
+        }
+        long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
+        be.addPart(new PlacedPart(id, kind, spec, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2], axis, false));
+        level.playSound(null, pos, SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 0.6f, 1.4f);
+        if (player == null || !player.getAbilities().instabuild) stack.shrink(1);
+        return InteractionResult.CONSUME;
+    }
+
+    private static InteractionResult fail(Player player, String key) {
+        if (player != null && player.level().isClientSide) player.displayClientMessage(Component.translatable(key), true);
+        return InteractionResult.FAIL;
+    }
+}

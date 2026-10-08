@@ -11,3 +11,4 @@ run/
 .claude/settings.local.json
 .claude/hooks/.last_notified.json
 .claude/next-build-summary.txt
+run-gametest/

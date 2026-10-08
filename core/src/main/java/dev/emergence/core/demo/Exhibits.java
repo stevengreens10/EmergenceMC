@@ -20,7 +20,7 @@ public final class Exhibits {
     private Exhibits() {}
 
     public static List<Exhibit> all() {
-        return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels());
+        return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -148,6 +148,65 @@ public final class Exhibits {
         return e;
     }
 
+    /**
+     * Brushed DC motor: rotor coils, a two-segment copper commutator on a nylon hub and two graphite
+     * brushes, fed from a 1 F capacitor bank at 24 V through a switch. Commutation emerges from where the
+     * segment gap passes the brushes.
+     */
+    public static Exhibit dcMotor() {
+        Exhibit e = new Exhibit("dcmotor", "Brushed DC motor",
+                List.of("DC MOTOR", "Close the switch.", "Commutator flips", "coil current"),
+                "Two coils on a nylon rotor sit above two NdFeB magnets. Current reaches them through graphite "
+                        + "brushes sliding on two copper commutator segments. Torque i·dΦ/dθ only pushes one way "
+                        + "if the current reverses as each coil passes a magnet — which happens because the "
+                        + "segment gap passes the brushes exactly then. A 1 F, 24 V capacitor bank powers it for a "
+                        + "few seconds; rebuild the gallery (/emergence demo) to recharge.");
+        String st = "steel_1045", ny = "nylon_66";
+        e.add(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
+        e.add(BLOCK, st, 7, 0, 8, 7, 1, 8, Dir.UP);
+        int shaft = e.add(SHAFT, st, 8, 1, 8, 8, 12, 8, Dir.UP, "diameter", 0.02);
+        e.name("rotor", shaft);
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 0, 0, 0.3)); // just past the dead point
+        e.add(BEARING, st, 8, 1, 8, Dir.UP);
+        e.add(BEARING, st, 8, 12, 8, Dir.UP);
+        e.add(BLOCK, st, 11, 0, 12, 11, 11, 12, Dir.UP);
+        e.add(BLOCK, st, 5, 0, 12, 5, 11, 12, Dir.UP);
+        e.add(BLOCK, st, 9, 12, 7, 11, 12, 12, Dir.UP);
+        e.add(BLOCK, st, 5, 12, 7, 7, 12, 12, Dir.UP);
+        e.add(BLOCK, st, 9, 3, 7, 11, 3, 11, Dir.UP);
+        e.add(BLOCK, st, 5, 3, 7, 7, 3, 11, Dir.UP);
+        e.add(MAGNET, "ndfeb_n42", 10, 4, 8, Dir.UP);
+        e.add(MAGNET, "ndfeb_n42", 6, 4, 8, Dir.DOWN);
+        e.add(BLOCK, ny, 6, 7, 6, 10, 7, 10, Dir.UP, "fill", 0.3);
+        e.add(COIL, "copper", 10, 5, 8, 10, 6, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
+        e.add(COIL, "copper", 6, 5, 8, 6, 6, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
+        e.add(BLOCK, ny, 8, 8, 8, Dir.UP);
+        e.add(BLOCK, "copper", 7, 8, 9, 9, 8, 9, Dir.EAST, "fill", 0.6);
+        e.add(BLOCK, "copper", 7, 8, 7, 9, 8, 7, Dir.EAST, "fill", 0.6);
+        e.add(WIRE, "copper", 8, 9, 9, Dir.UP);
+        int[][] a = {{8, 9, 10}, {8, 9, 11}, {8, 8, 11}, {8, 7, 11}, {8, 6, 11}, {9, 6, 11}, {10, 6, 11},
+                {10, 6, 10}, {11, 6, 10}, {11, 6, 9}, {11, 6, 8}};
+        for (int[] c : a) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
+        e.add(WIRE, "copper", 8, 9, 7, Dir.UP);
+        int[][] b = {{8, 9, 6}, {8, 9, 5}, {8, 8, 5}, {8, 7, 5}, {8, 6, 5}, {7, 6, 5}, {6, 6, 5}, {6, 6, 6}, {6, 6, 7}};
+        for (int[] c : b) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
+        int[][] mid = {{10, 5, 9}, {9, 5, 9}, {8, 5, 9}, {7, 5, 9}, {6, 5, 9}};
+        for (int[] c : mid) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
+        e.add(BRUSH, "graphite", 10, 8, 8, Dir.WEST);
+        e.add(BLOCK, ny, 10, 9, 8, 10, 11, 8, Dir.UP);
+        e.add(BRUSH, "graphite", 6, 8, 8, Dir.EAST);
+        e.add(BLOCK, ny, 6, 9, 8, 6, 11, 8, Dir.UP);
+        int[][] sup = {{11, 8, 8}, {12, 8, 8}, {12, 8, 9}, {12, 8, 10}, {12, 8, 11}, {12, 8, 12}, {12, 8, 13},
+                {11, 8, 13}, {9, 8, 13}, {7, 8, 13}, {6, 8, 13}, {5, 8, 13}, {4, 8, 13},
+                {4, 8, 12}, {4, 8, 11}, {4, 8, 10}, {4, 8, 9}, {4, 8, 8}, {5, 8, 8}};
+        for (int[] c : sup) e.add(INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP);
+        e.name("switch", e.add(SWITCH, "brass", 10, 8, 13, Dir.EAST));
+        int cap = e.add(CAPACITOR, "alumina", 8, 8, 13, Dir.EAST, "capacitance", 1.0);
+        e.name("capacitor", cap);
+        e.init(cap, new Exhibit.Initial(Double.NaN, 0, 24));
+        return e.view(0.55, 1.15, 18);
+    }
+
     // ------------------------------------------------------------------ conversion for tests/tools
 
     /** A built assembly plus its initial state and the part-id mapping. */
@@ -173,7 +232,7 @@ public final class Exhibits {
             long id = ids.get(en.getKey());
             Exhibit.Initial in = en.getValue();
             if (!Double.isNaN(in.temperature())) st.temperatures().put(id, in.temperature());
-            if (in.omega() != 0) st.bodyMotion().put(id, new double[]{in.omega(), 0});
+            if (in.omega() != 0 || in.angle() != 0) st.bodyMotion().put(id, new double[]{in.omega(), in.angle()});
             if (in.capacitorVoltage() != 0) st.capacitorVoltages().put(id, in.capacitorVoltage());
         }
         return new Built(a, st, ids);

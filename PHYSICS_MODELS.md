@@ -26,6 +26,7 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
 | `Inductor` | v = R·i + d(L·i)/dt | linear, no core saturation |
 | `Diode` | Shockley i = I_s(T)(e^{v/nV_T} − 1), I_s(T) ∝ T^{3/n}·e^{(E_g/nV_T0)(T/T0−1)}; linear continuation beyond v = 40 nV_T for Newton robustness | no series R, junction capacitance or breakdown yet |
 | `Switch` | R_on = 2 mΩ, R_off = 1 GΩ | contact bounce/arcing not modelled |
+| `SlidingContact` | i = (G_max·c(θ) + G_off)·v; c(θ) = fraction of a 5×5 sample grid on the brush face inside the rotating conductor at angle θ (720-point periodic table) | constant contact resistance (0.02 Ω default) |
 | `VoltageSource`, `FlowSource` | ideal sources (external reservoirs) | test/bench use |
 
 ## Electromagnetism (`em`)

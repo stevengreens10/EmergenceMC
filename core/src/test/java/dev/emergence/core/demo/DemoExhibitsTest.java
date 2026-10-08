@@ -100,6 +100,25 @@ class DemoExhibitsTest {
     }
 
     @Test
+    void dcMotorRunsWhenSwitchedOn() {
+        Exhibit e = Exhibits.dcMotor();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long rotor = b.id(e, "rotor");
+        run(c, 1);
+        assertEquals(0, c.probe(rotor).angularVelocity(), 1e-6, "idle while the switch is open");
+        c.toggleSwitch(b.id(e, "switch"));
+        double th0 = c.probe(rotor).angle(), minW = Double.MAX_VALUE;
+        for (int i = 0; i < 80; i++) {
+            c.step(0.05);
+            if (i > 10) minW = Math.min(minW, c.probe(rotor).angularVelocity());
+        }
+        double turned = c.probe(rotor).angle() - th0;
+        assertTrue(turned > 2 * Math.PI, "more than a revolution: " + turned);
+        assertTrue(minW > 0, "commutated: never reverses (min ω " + minW + ")");
+    }
+
+    @Test
     void ballBearingFlywheelOutlastsBushing() {
         Exhibit e = Exhibits.flywheels();
         Exhibits.Built b = Exhibits.build(e, AMBIENT);

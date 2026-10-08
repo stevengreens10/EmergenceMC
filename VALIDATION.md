@@ -41,11 +41,18 @@ coils, insulated wire, resistor): the compiler finds one rotor; cranking induces
 resistor; the energy ledger closes (< 2 %); an electrical load brakes the rotor and the extracted energy
 equals circuit heating within 10 %; state survives recompilation.
 
+## DC motor (`DcMotorEmergenceTest`)
+Stator magnets, rotor coils, two copper commutator segments on a nylon hub, two graphite brushes and a
+capacitor bank: the rotor turns more than two revolutions in one direction without reversing — commutation
+emerges from brush/segment coverage geometry. (Development found and fixed: thin shafts conducting to
+neighbours they cannot touch; brushes welding rotor to frame; commutator phase at the dead point.)
+
 ## Demo exhibits (`DemoExhibitsTest`)
 Each sign's claim is asserted from the physics: generator current; gear speed ratios −1/3 and +1/5 (0.1 %);
 capacitor discharge heats nichrome to 900–1600 K then cools below 500 K in 30 s; 0.1 mm nichrome melts;
 copper bar end warms > 10× faster than stainless; ball bearing keeps > 50 of 60 rad/s while the bushing
-stops (< 5 rad/s) and warms.
+stops (< 5 rad/s) and warms; the DC motor idles with the switch open and runs > 1 revolution without
+reversing when closed.
 
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo

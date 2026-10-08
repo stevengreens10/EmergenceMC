@@ -61,6 +61,9 @@ public final class AutoShowcase {
                 STEPS.add(new Step(40, () -> closeSwitch(server.overworld(), plot), "showcase-" + (i + 1) + "-" + id + "-discharged",
                         () -> hottest(plot) > 950 || gone(plot)));
             }
+            if (id.equals("dcmotor")) {
+                STEPS.add(new Step(30, () -> closeSwitch(server.overworld(), plot), "showcase-" + (i + 1) + "-" + id + "-running"));
+            }
             if (id.equals("generator") || id.equals("gears")) {
                 STEPS.add(new Step(40, () -> crank(server.overworld(), plot), "showcase-" + (i + 1) + "-" + id + "-cranked"));
             }

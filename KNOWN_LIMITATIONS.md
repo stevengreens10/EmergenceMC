@@ -17,8 +17,8 @@ behaviour; where physics is missing the effect is simply absent.
 * Lumped circuits only (no transmission-line effects); no skin effect.
 * Capacitors have no ESR, leakage or dielectric breakdown; diodes have no junction capacitance, series
   resistance or reverse breakdown; no transistors yet.
-* Brushes conduct to the conductor in front of their face at the θ = 0 geometry; angle-dependent
-  commutation (segment overlap) is not implemented yet, so commutators do not work.
+* Brushes always belong to the stationary frame (brushes on rotating bodies are not supported); brush
+  contact uses a fixed contact resistance (no current-dependent brush drop or arcing).
 * Bulk metal parts are single electrical nodes (internal resistance neglected).
 
 ## Mechanical

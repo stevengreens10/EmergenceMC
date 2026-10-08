@@ -85,7 +85,7 @@ public final class DemoBuilder {
             Exhibit.Initial in = e.initial.get(d.index());
             if (in != null) {
                 double t = Double.isNaN(in.temperature()) ? ambient : in.temperature();
-                be.savedState().put(id, new double[]{t, in.omega(), 0, 0, in.capacitorVoltage()});
+                be.savedState().put(id, new double[]{t, in.omega(), in.angle(), 0, in.capacitorVoltage()});
             }
         }
     }

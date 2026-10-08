@@ -21,8 +21,12 @@ public final class Exhibit {
     public record PartDef(int index, PartKind kind, String material, int x0, int y0, int z0, int x1, int y1, int z1,
                           Dir axis, Map<String, Double> params) {}
 
-    /** Initial dynamic state of a part: temperature [K] (NaN = ambient), body ω [rad/s], capacitor V. */
-    public record Initial(double temperature, double omega, double capacitorVoltage) {}
+    /** Initial dynamic state of a part: temperature [K] (NaN = ambient), body ω [rad/s], capacitor V, body angle [rad]. */
+    public record Initial(double temperature, double omega, double capacitorVoltage, double angle) {
+        public Initial(double temperature, double omega, double capacitorVoltage) {
+            this(temperature, omega, capacitorVoltage, 0);
+        }
+    }
 
     public final String id;
     public final String title;

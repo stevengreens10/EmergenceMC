@@ -1,7 +1,6 @@
 # Next steps (priority order)
 
-1. **Angle-dependent sliding contacts** (brush ↔ rotating conductor overlap tables) → commutators and slip
-   rings → player-built brushed DC motor and dynamo; demo exhibit "dynamo drives motor".
+1. Dynamo exhibit: a cranked commutated machine charging the DC motor's capacitor (DC generation).
 2. **Ferromagnetic materials**: induced magnetisation of soft-iron parts (magnetic equivalent circuit or
    volume-integral method) → iron-cored coils, transformers, reluctance torque, magnet attraction to steel;
    exhibit "transformer".

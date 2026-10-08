@@ -20,7 +20,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Magnetic elements: permanent magnets, coils, field-derived electromechanical coupling
 ✅ **Milestone: player-built generator** (demo exhibit, tests) — motor action demonstrated in core
    (synchronous motor driven by a rotating current pattern)
-🟡 Player-built DC motor needs angle-dependent brush/commutator contacts
+✅ Player-built brushed DC motor: angle-dependent brush/segment contacts → commutation emerges (exhibit)
 ⬜ Ferromagnetic cores (magnetic equivalent circuits / induced magnetisation), eddy currents
 ⬜ Translational bodies, linkages, free rigid bodies, gravity loads
 
@@ -45,5 +45,5 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 
 ## Demo world
 ✅ Gallery generator (`./gradlew generateDemoWorld`), `/emergence demo`, automated screenshot tour.
-Exhibits: hand generator, gear train, capacitor glow, fuse, conduction race, bearing friction.
+Exhibits: hand generator, gear train, capacitor glow, fuse, conduction race, bearing friction, DC motor.
 New mechanics must add an exhibit (core `Exhibits` + `DemoExhibitsTest`).

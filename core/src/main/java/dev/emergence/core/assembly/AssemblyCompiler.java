@@ -126,11 +126,9 @@ public final class AssemblyCompiler {
                     if (isBearingShaftNoJoint(p, q)) continue;
                     if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
                     if (p.kind() == PartKind.GEAR && q.kind() == PartKind.GEAR) continue; // mesh, not weld
-                    if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) {
-                        // a brush is held by its holder but only slides on the conductor in front of it
-                        Part brush = p.kind() == PartKind.BRUSH ? p : q, other = brush == p ? q : p;
-                        if (inFrontOf(brush, other)) continue;
-                    }
+                    // A brush is spring-loaded in its holder and merely slides on what it touches: it never
+                    // joins rigid bodies (brushes always belong to the stationary frame — see KNOWN_LIMITATIONS).
+                    if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) continue;
                     union(idx.get(p.id()), idx.get(q.id()));
                     joinedPairs.add(pairKey(p.id(), q.id()));
                 }
@@ -508,6 +506,7 @@ public final class AssemblyCompiler {
                         if (d.sign() < 0 && cell[a0] == lo) return "p" + p.id() + (posAxis ? "-" : "+");
                         return null;
                     }
+                    if (p.kind() == PartKind.BRUSH && d == ax) return null; // the brush face slides: see buildBrushContacts
                     // side faces of the two end layers (only for parts at least 2 cells long): a lead
                     // brought out sideways, as on a real coil former
                     if (p.kind() == PartKind.BRUSH || hi == lo) return null;
@@ -554,6 +553,8 @@ public final class AssemblyCompiler {
                                     boolean sliding = false;
                                     if (qk == null) continue;
                                     if (!compatible(p, q)) continue;
+                                    // a thin shaft physically touches neighbours only at its ends (or hubs on it)
+                                    if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
                                     CompiledAssembly.Body bp = c.bodyOfPart.get(p.id()), bq = c.bodyOfPart.get(q.id());
                                     if (bp != bq) {
                                         // only a brush may conduct across a moving joint, through its contact face
@@ -630,14 +631,74 @@ public final class AssemblyCompiler {
                         Node[] l = leads(p);
                         c.deviceOfPart.put(p.id(), c.network.add(new Capacitor(l[1], l[0], p.param("capacitance", 1e-4))));
                     }
-                    case BRUSH -> leads(p);
                     case WIRE, INSULATED_WIRE -> c.leadsOfPart.put(p.id(), new Node[]{enode("p" + p.id())});
                     default -> {
                         if (conductive(p) && enodes.containsKey(eroot("p" + p.id()))) c.leadsOfPart.put(p.id(), new Node[]{enode("p" + p.id())});
                     }
                 }
             }
+            buildBrushContacts();
             buildMagnetics();
+        }
+
+        /**
+         * Brush contacts. The brush face (+axis end) is sampled by a 5×5 grid of points just in front of
+         * it. For each conductive part on a rotor, the fraction of those points inside the part (seen in
+         * the rotor's frame at angle θ) gives the contact coverage c(θ) over a revolution; commutators and
+         * slip rings are nothing more than the resulting coverage patterns.
+         */
+        void buildBrushContacts() {
+            for (Part br : parts) {
+                if (br.kind() != PartKind.BRUSH) continue;
+                CompiledAssembly.Body bb = c.bodyOfPart.get(br.id());
+                Node back = enode("p" + br.id() + "-");
+                double rc = br.param("contact_resistance", BRUSH_RESISTANCE);
+                Node th = c.thermalOfPart.get(br.id());
+                // sample points on the brush face, 0.25 cell in front of it
+                Dir ax = br.axis();
+                int a0 = ax.axis(), t1 = (a0 + 1) % 3, t2 = (a0 + 2) % 3;
+                Vec3 ctr = br.center();
+                double front = br.boxSize(a0) / 2 + 0.25 * CELL;
+                java.util.List<Vec3> pts = new ArrayList<>();
+                for (int i = 0; i < 5; i++) for (int j = 0; j < 5; j++) {
+                    double u = (i - 2) / 4.0 * 0.6 * br.boxSize(t1), v = (j - 2) / 4.0 * 0.6 * br.boxSize(t2);
+                    pts.add(ctr.add(ax.vec().mul(front)).add(Vec3.axis(t1).mul(u)).add(Vec3.axis(t2).mul(v)));
+                }
+                for (Part q : parts) {
+                    if (q == br || !isBulk(q) || !conductive(q)) continue;
+                    CompiledAssembly.Body qb = c.bodyOfPart.get(q.id());
+                    if (qb == bb || qb.isStatic) {
+                        if (qb == bb && inFrontOf(br, q)) {
+                            c.network.add(new Resistor(back, enode("p" + q.id()), rc, th));
+                        }
+                        continue;
+                    }
+                    if (!bb.isStatic) continue; // brush on a different moving body: not supported yet
+                    int n = 720;
+                    double[] cov = new double[n];
+                    double max = 0;
+                    for (int k = 0; k < n; k++) {
+                        double theta = 2 * Math.PI * k / n;
+                        int inside = 0;
+                        for (Vec3 pt : pts) {
+                            Vec3 local = pt.sub(qb.pivot).rotateAbout(qb.axis, -theta).add(qb.pivot);
+                            if (insideBox(q, local)) inside++;
+                        }
+                        cov[k] = inside / (double) pts.size();
+                        max = Math.max(max, cov[k]);
+                    }
+                    if (max == 0) continue;
+                    c.network.add(new SlidingContact(back, enode("p" + q.id()), qb.tracker, 1.0,
+                            new dev.emergence.core.math.PeriodicSpline(cov), rc, th));
+                }
+                c.leadsOfPart.put(br.id(), new Node[]{back});
+            }
+        }
+
+        static boolean insideBox(Part q, Vec3 p) {
+            return p.x() >= q.minX() * CELL && p.x() <= (q.maxX() + 1) * CELL
+                    && p.y() >= q.minY() * CELL && p.y() <= (q.maxY() + 1) * CELL
+                    && p.z() >= q.minZ() * CELL && p.z() <= (q.maxZ() + 1) * CELL;
         }
 
         boolean isLeadKey(String k) {

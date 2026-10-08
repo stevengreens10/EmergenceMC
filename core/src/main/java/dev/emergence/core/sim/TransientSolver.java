@@ -32,6 +32,8 @@ public final class TransientSolver implements StateView {
     private final double[] q0, q1, qd0, qd1, qNew, qdNew;
     private final double[] absTol, slotTol;
     private final double[] gmin;
+    /** Electrical nodes get a GMIN relative to their diagonal (floating conductive islands). */
+    private final boolean[] relGmin;
 
     private double t;
     private double hPrev = 1e-6;
@@ -82,12 +84,16 @@ public final class TransientSolver implements StateView {
         absTol = new double[n];
         slotTol = new double[ns];
         gmin = new double[n];
+        relGmin = new boolean[n];
         alternations = new int[ns];
         for (int i = 0; i < n; i++) {
             absTol[i] = net.unknownAbsTol(i);
             x[i] = net.initialValue(i);
         }
-        for (Node node : net.nodes()) gmin[node.index] = node.domain.gmin;
+        for (Node node : net.nodes()) {
+            gmin[node.index] = node.domain.gmin;
+            relGmin[node.index] = node.domain == Domain.ELECTRICAL;
+        }
         for (int s = 0; s < ns; s++) slotTol[s] = net.slotAbsTol(s);
         ctx.q0 = q0;
         ctx.q1 = q1;
@@ -272,8 +278,12 @@ public final class TransientSolver implements StateView {
             for (Element e : elements) e.load(ctx);
             for (int i = 0; i < n; i++) {
                 if (gmin[i] != 0) {
-                    f[i] += gmin[i] * xTrial[i];
-                    jac.add(i, i, gmin[i]);
+                    // Relative shunt: an absolute GMIN vanishes in floating point next to large
+                    // conductances of a floating sub-network (e.g. an isolated steel frame), leaving an
+                    // exactly singular pivot. 1e-12·|J_ii| is still physically negligible.
+                    double g = relGmin[i] ? Math.max(gmin[i], 1e-12 * Math.abs(jac.diagonal(i))) : gmin[i];
+                    f[i] += g * xTrial[i];
+                    jac.add(i, i, g);
                 } else {
                     jac.add(i, i, 0.0); // keep structural diagonal for the sparse pivot search
                 }
@@ -282,7 +292,7 @@ public final class TransientSolver implements StateView {
             try {
                 jac.solve(dx);
             } catch (SingularMatrixException e) {
-                lastBadUnknown = e.row() < n ? "singular near " + net.unknownName(Math.min(e.row(), n - 1)) : "singular";
+                lastBadUnknown = "singular in column of " + net.unknownName(Math.min(e.row(), n - 1));
                 return 1;
             }
             boolean small = true;

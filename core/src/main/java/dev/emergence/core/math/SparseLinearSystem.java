@@ -73,6 +73,12 @@ public final class SparseLinearSystem implements LinearSystem {
         val[idx] += v;
     }
 
+    @Override
+    public double diagonal(int i) {
+        Integer e = pos.get(((long) i << 32) | (i & 0xffffffffL));
+        return e == null ? 0.0 : val[e];
+    }
+
     public int nonZeros() {
         return nnz;
     }
@@ -188,7 +194,9 @@ public final class SparseLinearSystem implements LinearSystem {
                 }
                 if (bestR < 0 || max == 0) {
                     factored = false;
-                    throw new SingularMatrixException(s);
+                    int badCol = 0;
+                    for (int cc = 0; cc < n; cc++) if (!colDone[cc]) { badCol = cc; break; }
+                    throw new SingularMatrixException(badCol);
                 }
             }
             int r = bestR, c = bestC;

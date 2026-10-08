@@ -27,6 +27,11 @@ public final class DenseLinearSystem implements LinearSystem {
         a[row * n + col] += v;
     }
 
+    @Override
+    public double diagonal(int i) {
+        return a[i * n + i];
+    }
+
     public double get(int row, int col) {
         return a[row * n + col];
     }
@@ -45,7 +50,7 @@ public final class DenseLinearSystem implements LinearSystem {
                     p = i;
                 }
             }
-            if (max == 0.0 || !Double.isFinite(max)) throw new SingularMatrixException(k);
+            if (max == 0.0 || !Double.isFinite(max)) throw new SingularMatrixException(k); // column k
             if (p != k) {
                 for (int j = 0; j < n; j++) {
                     double t = a[k * n + j];

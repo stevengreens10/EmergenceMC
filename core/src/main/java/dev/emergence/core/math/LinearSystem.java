@@ -13,6 +13,9 @@ public interface LinearSystem {
     /** Accumulates v into entry (row, col). */
     void add(int row, int col, double v);
 
+    /** Current value of diagonal entry (i, i) (0 if structurally absent). */
+    double diagonal(int i);
+
     /**
      * Factorises the current matrix and solves in place: on return {@code rhs} holds the solution.
      *

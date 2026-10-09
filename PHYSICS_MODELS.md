@@ -280,3 +280,17 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Validated** against the cantilever (δ = PL³/3EI, θ = PL²/2EI, M = PL), the simply supported beam
   (PL³/48EI), axial shortening (PL/EA), bending about both principal axes, and portal-frame sway (24EI/h³);
   the shelves exhibit's root stress against σ = 6M/(bt²).
+
+## Light: photodiodes, optical links, daylight (`Photodiode`, `AssemblyCompiler.buildOptics`)
+* **Photodiode / solar cell**: Shockley junction (I_s 10 fA per mm²) with photocurrent R(λ)·P_in flowing
+  cathode → anode inside it; silicon responsivity R = η_q·λ/1240 nm, η_q 0.8 over 550–950 nm, falling in the
+  blue and to zero past the 1107 nm band edge. Photovoltaic mode follows (V_oc = V_T ln(I_ph/I_s + 1)); large
+  area makes a solar cell. Absorbed light is external power in; what is not delivered heats the part.
+* **Optical links**: every LED–photodiode pair within 16 cells is coupled by radiant intensity × projected solid
+  angle: (m+1)/2π·cos^m θ_s · A·cos θ_r/d² (generalised Lambertian, m = "beam"), times visibility along five rays
+  sampled every 0.01 cell. Opaque parts block; glass, liquids, wires and thin shafts pass; a plate blocks only
+  within its thickness. Parts on a turning body are tested in that body's frame, giving a 360-entry visibility
+  table over its angle (a vane or slotted disk chopping the beam). The photocurrent's Jacobian couples to the LED's
+  junction unknown and to the rotor angle.
+* **Daylight**: 1000 W/m² × cos(zenith) × (1 − 0.75·rain − 0.15·thunder) along the sun's direction from the time
+  of day, on photodiodes whose face turns to the sun and whose block sees the sky; ~0.5 A/W for sunlight on silicon.

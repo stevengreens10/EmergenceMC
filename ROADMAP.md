@@ -47,7 +47,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ⬜ Buckling, dynamic loads (impacts, vibration, resonance), fatigue, creep, plasticity, soil
 
 ## Phase 4 — Electronics and computation
-✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED; ⬜ photodiodes, phototransistors
+✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED, photodiode / solar cell; ⬜ phototransistors
+✅ Optical links with occlusion (light barriers, choppers on rotors) and daylight
 ✅ Logic from transistors (CMOS NAND exhibit) and a validated chip-level model (gates, D flip-flop,
    Schmitt trigger): oscillator + 4-bit counter exhibit
 ✅ NTC thermistor sensor; closed-loop thermostat exhibit (thermistor → Schmitt trigger → MOSFET → heater)

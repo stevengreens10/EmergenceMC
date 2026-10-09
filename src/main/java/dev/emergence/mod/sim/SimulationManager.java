@@ -131,9 +131,25 @@ public final class SimulationManager {
             updateLight(isl);
             bubbles(isl);
             ventPlumes(isl);
+            if (tickCount % 20 == 0) daylight(isl);
             sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
         }
+    }
+
+    /**
+     * Daylight on the island's photodiodes: the sun's direction from the time of day (it rises in the east and
+     * sets in the west), irradiance 1000 W/m² at the zenith scaled by how high it stands and reduced by rain and
+     * thunder; a part sees it only if open sky is above its block.
+     */
+    private void daylight(Island isl) {
+        double angle = level.getSunAngle(1.0f); // 0 at noon
+        dev.emergence.core.math.Vec3 toSun = new dev.emergence.core.math.Vec3(-Math.sin(angle), Math.cos(angle), 0);
+        double irr = toSun.y() > 0 ? 1000 * (1 - 0.75 * level.getRainLevel(1.0f) - 0.15 * level.getThunderLevel(1.0f)) : 0;
+        isl.compiled.setDaylight(toSun.mul(-1), irr, id -> {
+            BlockPos pos = isl.partPos.get(id);
+            return pos != null && level.canSeeSky(pos.above());
+        });
     }
 
     /** Time dilation: shrink an island's simulated step while its cost exceeds the budget, recover when cheap. */

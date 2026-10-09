@@ -105,6 +105,20 @@ public final class Led implements Element {
         return junction(s.x(uIdx))[0];
     }
 
+    /** {junction current, d(current)/d(junction voltage)} at the current iterate (for optical coupling). */
+    public double[] currentAndSlope(StateView s) {
+        return junction(s.x(uIdx));
+    }
+
+    /** Index of the junction-voltage unknown (the current depends on it alone). */
+    public int junctionIndex() {
+        return uIdx;
+    }
+
+    public double quantumEfficiency() {
+        return eta;
+    }
+
     /** Emitted optical power [W]. */
     public double opticalPower(StateView s) {
         return optical(current(s));

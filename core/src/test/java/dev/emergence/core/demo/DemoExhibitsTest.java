@@ -487,4 +487,55 @@ class DemoExhibitsTest {
         assertTrue(r2.failed().contains(b2.id(e, "load3")), "the glass shelf fractures too");
         assertFalse(r2.failed().contains(b2.id(e, "shelf0")) || r2.failed().contains(b2.id(e, "load0")), "the aluminium shelf holds");
     }
+
+    @Test
+    void lightBarrierSeesTheVaneCutTheBeam() {
+        Exhibit e = OpticsExhibits.lightBarrier();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pd = b.id(e, "pd"), led = b.id(e, "beamLed"), crank = b.id(e, "crank");
+        double lit = c.lightInput(pd), seen = 0, cut = Double.MAX_VALUE;
+        int beamLedOn = 0, toggles = 0;
+        boolean qPrev = c.probe(b.id(e, "toggle")).current() > 0.5;
+        for (int i = 0; i < 200; i++) {
+            c.setCrankEffort(crank, 1, true);
+            c.step(0.05);
+            double p = c.lightInput(pd);
+            seen = Math.max(seen, p);
+            cut = Math.min(cut, p);
+            if (c.probe(led).current() > 1e-3) beamLedOn++;
+            boolean q = c.probe(b.id(e, "toggle")).current() > 0.5;
+            if (q != qPrev) toggles++;
+            qPrev = q;
+        }
+        System.out.println("light barrier: light " + seen + " W, cut to " + cut + " W, yellow on " + beamLedOn + "/200 steps, " + toggles + " toggles");
+        assertTrue(seen > 1e-6, "the photodiode sees the IR LED: " + seen);
+        assertTrue(cut < 0.05 * seen, "the vane cuts the beam: " + cut);
+        assertTrue(beamLedOn > 0 && beamLedOn < 200, "the indicator follows the vane");
+        assertTrue(toggles >= 2, "the flip-flop counts passages: " + toggles);
+    }
+
+    @Test
+    void solarPanelLightsItsLedInSunshineOnly() {
+        Exhibit e = OpticsExhibits.solarPanel();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long led = b.id(e, "led");
+        run(c, 0.2);
+        assertTrue(c.probe(led).current() < 1e-5, "dark without daylight");
+        c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
+        run(c, 0.2);
+        double day = c.probe(led).current();
+        System.out.println("solar panel: LED current in full sun " + day + " A");
+        assertTrue(day > 0.005 && day < 0.04, "the string lights the LED: " + day);
+        // a low sun (60° from the zenith) delivers half the irradiance on the horizontal cells
+        c.setDaylight(new dev.emergence.core.math.Vec3(Math.sin(Math.PI / 3), -Math.cos(Math.PI / 3), 0), 1000, id -> true);
+        run(c, 0.2);
+        assertTrue(c.probe(led).current() > 0.003, "still lit by a low sun");
+        // shade one cell: the series string collapses
+        long cell = b.id(e, "cell");
+        c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> id != cell);
+        run(c, 0.2);
+        assertTrue(c.probe(led).current() < 0.2 * day, "one shaded cell starves the string: " + c.probe(led).current());
+    }
 }

@@ -262,6 +262,24 @@ public final class CompiledAssembly {
         return new double[]{tq, pw};
     }
 
+    /**
+     * Daylight: sunlight of the given irradiance [W/m²] travelling along {@code sunDirection} (unit, pointing from the
+     * sun) falls on every photodiode whose face turns towards it and that {@code exposed} reports as seeing the sky.
+     */
+    public void setDaylight(Vec3 sunDirection, double irradiance, java.util.function.LongPredicate exposed) {
+        for (var e : deviceOfPart.entrySet()) {
+            if (!(e.getValue() instanceof dev.emergence.core.sim.elements.Photodiode ph)) continue;
+            Part p = assembly.get(e.getKey());
+            double cos = p == null ? 0 : -PartGeometry.facing(p).dot(sunDirection);
+            ph.setAmbientPower(cos > 0 && exposed.test(e.getKey()) ? irradiance * cos * ph.area() : 0);
+        }
+    }
+
+    /** Light arriving at a photodiode [W], or 0. */
+    public double lightInput(long partId) {
+        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Photodiode ph ? ph.incidentPower(solver) : 0;
+    }
+
     /** Light emitted by a part (an LED) [W], 0 otherwise. */
     public double lightOutput(long partId) {
         return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Led led ? led.opticalPower(solver) : 0;
@@ -421,6 +439,9 @@ public final class CompiledAssembly {
         } else if (d instanceof dev.emergence.core.sim.elements.LogicGate lg) {
             i = lg.state(solver);
             pw = 0;
+        } else if (d instanceof dev.emergence.core.sim.elements.Photodiode ph) {
+            i = ph.current(solver);
+            pw = Math.abs(i * v);
         } else if (d instanceof dev.emergence.core.sim.elements.MsiChip) {
             i = 0;
             pw = 0;

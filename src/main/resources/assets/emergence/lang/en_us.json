@@ -56,6 +56,8 @@
   "message.emergence.brake_off": "Brake released",
   "item.emergence.brake": "Brake Block",
   "item.emergence.chip": "MSI Chip Segment",
+  "item.emergence.photodiode": "Photodiode",
+  "tooltip.emergence.photodiode": "Silicon junction: light on its face drives current out of the anode (−) lead. Large ones are solar cells.",
   "tooltip.emergence.chip": "One pin pair of a 74HC-class chip: lay segments of the same chip in a row along their axis.",
   "tooltip.emergence.brake": "Friction pad: its face presses on whatever turns in front of it (torque μ·F·r). Use it to apply or release.",
   "item.emergence.cylinder": "Piston Cylinder",

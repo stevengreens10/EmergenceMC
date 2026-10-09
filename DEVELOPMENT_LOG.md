@@ -133,3 +133,10 @@ yield or Rankine against fracture. Overloaded parts break and drop, and anything
 falls with them. The shelves exhibit puts the same lead block on four shelves of aluminium, steel, oak and
 glass plate; the showcase stacks a second block and the steel and glass shelves break. GameTests now run large
 exhibits in their own batches (a 40-block exhibit had merged with its neighbour's arena).
+
+**Light that is received.** Photodiodes and solar cells: a junction with responsivity-weighted photocurrent,
+coupled to LEDs by beam geometry and ray-sampled occlusion (with angle tables when a rotor's parts can cut the
+beam) and to daylight from the sun's position and the weather. A light-barrier exhibit counts a cranked vane with
+a Schmitt trigger and a toggle; a solar panel of eight cells in series lights an LED by day. The first ray
+sampling (every 0.2 cell) stepped over a thin steel plate; and the panel was first wired backwards — a lit cell
+drives current out of its anode, so the string's positive end is the first cell's anode.

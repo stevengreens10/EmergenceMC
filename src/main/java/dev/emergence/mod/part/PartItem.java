@@ -71,6 +71,7 @@ public final class PartItem extends Item {
             case ECCENTRIC -> PartSpec.of("steel_1045", 1, 1, "throw", 0.015);
             case TRANSISTOR -> PartSpec.of("silicon", 1, 1, "type", 0);
             case LED -> PartSpec.of("silicon", 1, 1, "wavelength", 630);
+            case PHOTODIODE -> PartSpec.of("silicon", 1, 1, "area", 7.5e-6, "face", 1);
             case LOGIC -> PartSpec.of("silicon", 1, 1, "function", 2);
             case BRAKE -> PartSpec.of("oak", 1, 1, "force", 20);
             case CHIP -> PartSpec.of("silicon", 1, 1, "function", 0);
@@ -108,7 +109,10 @@ public final class PartItem extends Item {
             case CYLINDER -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.04), "m") + (p.getOrDefault("fins", 0.0) > 0 ? ", finned" : "");
             case ECCENTRIC -> ", throw " + Units.formatSI(p.getOrDefault("throw", 0.015), "m");
             case TRANSISTOR -> ", " + new String[]{"NPN", "PNP", "N-MOSFET", "P-MOSFET"}[(int) Math.max(0, Math.min(3, Math.round(p.getOrDefault("type", 0.0))))];
-            case LED -> String.format(", %.0f nm", p.getOrDefault("wavelength", 630.0));
+            case LED -> String.format(", %.0f nm", p.getOrDefault("wavelength", 630.0))
+                    + (p.containsKey("face") ? ", facing " + dev.emergence.core.assembly.Dir.values()[(int) Math.round(p.get("face"))].name().toLowerCase() : "");
+            case PHOTODIODE -> (p.getOrDefault("area", 7.5e-6) > 1e-3 ? ", solar cell " : ", ") + String.format("%.3g mm²", 1e6 * p.getOrDefault("area", 7.5e-6))
+                    + ", facing " + dev.emergence.core.assembly.Dir.values()[(int) Math.round(p.getOrDefault("face", 1.0))].name().toLowerCase();
             case BRAKE -> String.format(", %.0f N spring", p.getOrDefault("force", 20.0));
             case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
                     + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");

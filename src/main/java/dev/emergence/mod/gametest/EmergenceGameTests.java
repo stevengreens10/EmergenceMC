@@ -240,6 +240,32 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** Light in the world: the light barrier's photodiode receives the IR beam, and the cranked vane cuts it. */
+    @GameTest(template = "arena", timeoutTicks = 200, batch = "optics")
+    public static void lightBarrierWorksInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.OpticsExhibits.lightBarrier();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos pdAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "pd");
+        BlockPos crankAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "crank");
+        PlacedPart pd = only(h, pdAt, PartKind.PHOTODIODE), crank = only(h, crankAt, PartKind.CRANK);
+        double[] range = {Double.MAX_VALUE, 0};
+        h.onEachTick(() -> {
+            var c = sim.compiledAt(crankAt);
+            if (c == null) return;
+            c.setCrankEffort(crank.id, 1, true);
+            double p = sim.compiledAt(pdAt).lightInput(pd.id);
+            range[0] = Math.min(range[0], p);
+            range[1] = Math.max(range[1], p);
+        });
+        h.runAtTickTime(160, () -> {
+            h.assertTrue(range[1] > 1e-6, "the photodiode receives the IR beam: " + range[1] + " W");
+            h.assertTrue(range[0] < 0.05 * range[1], "the turning vane cuts it: down to " + range[0] + " W");
+            h.succeed();
+        });
+    }
+
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
         AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
         return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();

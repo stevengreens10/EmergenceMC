@@ -114,6 +114,12 @@ Every gallery exhibit holds its own weight (utilisation < 0.95). Shelves: alumin
 6M/(bt²) (±5 %), steel shelf near but under yield; a second lead block breaks the steel and glass
 shelves (and drops their loads) while the aluminium holds; the same in the world (GameTest).
 
+## Light (`OpticsValidationTest`, `DemoExhibitsTest`)
+Silicon responsivity (850 nm, 630 nm, band edge); LED optical power η·E·I and short-circuit photocurrent R·k·P;
+solar-cell V_oc vs V_T ln(I_ph/I_s + 1); beam coupling vs (m+1)/2π·A/d² (1e-6), blocked by a steel plate,
+passed by glass. Light barrier: the vane cuts the beam, the indicator and toggle follow; solar panel lit by
+full and low sun, starved when one cell is shaded; in-world GameTest of the light barrier.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

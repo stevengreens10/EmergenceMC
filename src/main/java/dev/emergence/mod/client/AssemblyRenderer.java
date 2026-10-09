@@ -210,6 +210,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             }
             case ECCENTRIC -> drawEccentric(c, p, f);
             case BRAKE -> drawBrake(c, p);
+            case PHOTODIODE -> drawPhotodiode(c, p, f);
             case CHIP -> drawChipSegment(c, p);
         }
     }
@@ -227,6 +228,30 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         }
         // a stripe of markings across the top
         box(c, PartModels.sprite("epoxy"), tintOf(c, 0x8A8A8A), -0.16f, -0.18f, -0.06f, 0.16f, -0.175f, 0.06f);
+    }
+
+    /** Photodiode: a small black body with a clear window on its sensitive face; a large-area one is a blue solar
+     *  cell with silver busbars. Drawn in grid axes, turned to face along "face". */
+    private void drawPhotodiode(Ctx c, PlacedPart p, Frame f) {
+        int fi = (int) Math.max(0, Math.min(5, Math.round(p.spec.params().getOrDefault("face", 1.0))));
+        Dir face = Dir.values()[fi];
+        boolean solar = p.spec.params().getOrDefault("area", 7.5e-6) > 1e-3;
+        c.ps.pushPose();
+        c.ps.last().pose().mul(new Matrix4f(f.m4).transpose());
+        c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
+        c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f(face.dx, face.dy, face.dz)));
+        if (solar) {
+            box(c, PartModels.sprite("metal_cast"), tintOf(c, 0x8A9096), -0.48f, -0.48f, -0.5f, 0.48f, 0.48f, -0.38f);
+            box(c, PartModels.sprite("silicon"), tintOf(c, 0x1F3C8C), -0.46f, -0.46f, -0.38f, 0.46f, 0.46f, -0.33f);
+            for (float x : new float[]{-0.25f, 0f, 0.25f})
+                box(c, PartModels.sprite("tinned"), tintOf(c, 0xD8DCE0), x - 0.012f, -0.46f, -0.33f, x + 0.012f, 0.46f, -0.325f);
+        } else {
+            box(c, PartModels.sprite("epoxy"), tintOf(c, 0x161618), -0.2f, -0.2f, -0.2f, 0.2f, 0.2f, 0.12f);
+            box(c, PartModels.sprite("silicon"), tintOf(c, 0x5A6A80), -0.12f, -0.12f, 0.12f, 0.12f, 0.12f, 0.16f);
+            for (float x : new float[]{-0.1f, 0.1f})
+                box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), x - 0.02f, -0.02f, -0.5f, x + 0.02f, 0.02f, -0.2f);
+        }
+        c.ps.popPose();
     }
 
     /** Brake block: a shoe of the pad material with a dark friction lining on its +axis face, sprung from a base

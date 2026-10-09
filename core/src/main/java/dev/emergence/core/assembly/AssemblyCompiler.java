@@ -663,7 +663,7 @@ public final class AssemblyCompiler {
                     if (d.axis() == PartGeometry.leadAxis(p)) return "p" + p.id() + "g";
                     return null;
                 }
-                case RESISTOR, CAPACITOR, DIODE, LED, SWITCH, COIL, BRUSH -> {
+                case RESISTOR, CAPACITOR, DIODE, LED, PHOTODIODE, SWITCH, COIL, BRUSH -> {
                     Dir ax = p.axis();
                     int a0 = ax.axis();
                     int[] cell = {x, y, z};
@@ -868,6 +868,13 @@ public final class AssemblyCompiler {
                         c.network.add(new Capacitor(l[0], l[1], 20e-12));
                     }
                     case CHIP -> buildChip(p, th);
+                    case PHOTODIODE -> {
+                        Node[] l = leads(p);
+                        var pd = c.network.add(new Photodiode(l[0], l[1], p.param("area", 7.5e-6), th));
+                        c.deviceOfPart.put(p.id(), pd);
+                        // junction capacitance ≈ 70 pF per 7.5 mm² at zero bias
+                        c.network.add(new Capacitor(l[0], l[1], Math.max(5e-12, 70e-12 * p.param("area", 7.5e-6) / 7.5e-6)));
+                    }
                     case LOGIC -> {
                         int fn = (int) Math.round(p.param("function", 2));
                         var f = dev.emergence.core.sim.elements.LogicGate.Function.values()[Math.max(0, Math.min(8, fn))];
@@ -916,6 +923,7 @@ public final class AssemblyCompiler {
                 }
             }
             buildBrushContacts();
+            buildOptics();
             buildElectrochemistry();
             buildMagnetics();
         }
@@ -1095,7 +1103,7 @@ public final class AssemblyCompiler {
         Material conductorMaterial(Part p) {
             return switch (p.kind()) {
                 // manufactured components carry (tinned) copper leads, whatever their body is made of
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP -> MaterialDatabase.standard().get("copper");
+                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE -> MaterialDatabase.standard().get("copper");
                 default -> p.material();
             };
         }
@@ -1168,6 +1176,145 @@ public final class AssemblyCompiler {
                     c.brakeElements.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(f);
                 }
             }
+        }
+
+        // ------------------------------------------------------------ optics
+        /** True if light passes through the cell point q held by part o (glass, liquids, wires and thin shafts pass). */
+        boolean blocks(Part o, Vec3 q) {
+            switch (o.kind()) {
+                case WIRE, INSULATED_WIRE, ELECTROLYTE -> {
+                    return false;
+                }
+                case SHAFT -> {
+                    if (PartGeometry.shaftDiameter(o) < 0.4 * CELL) return false;
+                }
+                case BLOCK -> {
+                    int ax = o.axis().axis();
+                    double half = 0.5 * o.boxSize(ax) * Math.max(0.01, Math.min(1, o.param("fill", 1.0)));
+                    double rel = StructuralAnalysis.component(q.sub(o.center()), ax);
+                    if (Math.abs(rel) > half) return false;
+                }
+                default -> {
+                }
+            }
+            return !o.material().id().contains("glass");
+        }
+
+        int cellOf(double v) {
+            return (int) Math.floor(v / CELL);
+        }
+
+        /**
+         * Optical links: each photodiode receives a fraction of every LED's light — radiant intensity of the LED
+         * (generalised Lambertian, (m+1)/2π·cos^m θ, m = "beam", default 6: ±27° half power) times the receiver's
+         * projected solid angle A·cos θ_r/d², times the visibility of the path. Visibility is sampled on five rays
+         * through the assembly's cells; parts on a turning body are tested in that body's frame, giving a visibility
+         * table over its angle (a slotted disk chopping the beam).
+         */
+        void buildOptics() {
+            List<Part> leds = new ArrayList<>(), pds = new ArrayList<>();
+            for (Part p : parts) {
+                if (p.kind() == PartKind.LED) leds.add(p);
+                if (p.kind() == PartKind.PHOTODIODE) pds.add(p);
+            }
+            if (leds.isEmpty() || pds.isEmpty()) return;
+            for (Part rx : pds) {
+                if (!(c.deviceOfPart.get(rx.id()) instanceof Photodiode pd)) continue;
+                Vec3 fr = PartGeometry.facing(rx), r0 = rx.center().add(fr.mul(0.3 * CELL));
+                for (Part tx : leds) {
+                    if (!(c.deviceOfPart.get(tx.id()) instanceof Led led)) continue;
+                    Vec3 ft = PartGeometry.facing(tx), s0 = tx.center().add(ft.mul(0.3 * CELL));
+                    Vec3 dv = r0.sub(s0);
+                    double d = dv.length();
+                    if (d < 1e-6 || d > 16 * CELL) continue;
+                    Vec3 u = dv.mul(1 / d);
+                    double cs = ft.dot(u), cr = -fr.dot(u);
+                    if (cs <= 0 || cr <= 0) continue;
+                    double m = tx.param("beam", 6);
+                    double geo = (m + 1) / (2 * Math.PI) * Math.pow(cs, m) * pd.area() * cr / (d * d);
+                    // five rays: centre and four offsets across the beam
+                    Vec3 e1 = Math.abs(u.y()) < 0.9 ? u.cross(new Vec3(0, 1, 0)) : u.cross(new Vec3(1, 0, 0));
+                    e1 = e1.mul(1 / e1.length());
+                    Vec3 e2 = u.cross(e1);
+                    double off = 0.08 * CELL;
+                    Vec3[] offs = {new Vec3(0, 0, 0), e1.mul(off), e1.mul(-off), e2.mul(off), e2.mul(-off)};
+                    // static visibility, and the body (if any) whose parts can cut the rays
+                    CompiledAssembly.Body mover = null;
+                    int n = 0;
+                    boolean[] staticBlocked = new boolean[offs.length];
+                    List<List<Vec3>> samples = new ArrayList<>();
+                    for (int k = 0; k < offs.length; k++) {
+                        List<Vec3> pts = new ArrayList<>();
+                        for (double t = 0.02; t < 0.98; t += 0.01 * CELL / d) { // fine enough to catch thin plates
+                            Vec3 q = s0.add(dv.mul(t)).add(offs[k]);
+                            pts.add(q);
+                            for (Part o : a.at(cellOf(q.x()), cellOf(q.y()), cellOf(q.z()))) {
+                                if (o == tx || o == rx || !blocks(o, q)) continue;
+                                CompiledAssembly.Body b = c.bodyOfPart.get(o.id());
+                                if (b != null && !b.isStatic) mover = b;
+                                else staticBlocked[k] = true;
+                            }
+                        }
+                        samples.add(pts);
+                    }
+                    // a turning body may also sweep into the path at other angles: test every body with off-axis parts
+                    for (CompiledAssembly.Body b : c.bodies) if (!b.isStatic && mover == null && sweeps(b, samples)) mover = b;
+                    if (mover == null) {
+                        int open = 0;
+                        for (boolean bl : staticBlocked) if (!bl) open++;
+                        double vis = open / (double) offs.length;
+                        if (vis > 0) pd.addSource(led, th -> geo * vis, null);
+                        continue;
+                    }
+                    double[] table = new double[360];
+                    for (int deg = 0; deg < 360; deg++) {
+                        double ang = Math.toRadians(deg);
+                        int open = 0;
+                        for (int k = 0; k < offs.length; k++) {
+                            if (staticBlocked[k]) continue;
+                            boolean blocked = false;
+                            for (Vec3 q : samples.get(k)) {
+                                Vec3 local = rotate(q.sub(mover.pivot), mover.axis, -ang).add(mover.pivot);
+                                for (Part o : a.at(cellOf(local.x()), cellOf(local.y()), cellOf(local.z()))) {
+                                    if (o != tx && o != rx && c.bodyOfPart.get(o.id()) == mover && blocks(o, local)) blocked = true;
+                                }
+                                if (blocked) break;
+                            }
+                            if (!blocked) open++;
+                        }
+                        table[deg] = geo * open / offs.length;
+                    }
+                    pd.addSource(led, th -> {
+                        double x = Math.toDegrees(th) % 360;
+                        if (x < 0) x += 360;
+                        int i0 = (int) Math.floor(x) % 360, i1 = (i0 + 1) % 360;
+                        double f = x - Math.floor(x);
+                        return table[i0] * (1 - f) + table[i1] * f;
+                    }, mover.tracker);
+                }
+            }
+        }
+
+        /** True if some part of body b, turned to some angle, lands on one of the sample points. */
+        boolean sweeps(CompiledAssembly.Body b, List<List<Vec3>> samples) {
+            for (List<Vec3> pts : samples)
+                for (Vec3 q : pts) {
+                    Vec3 rel = q.sub(b.pivot);
+                    double along = rel.dot(b.axis), radius = rel.sub(b.axis.mul(along)).length();
+                    for (long id : b.parts) {
+                        Part o = a.get(id);
+                        Vec3 orel = o.center().sub(b.pivot);
+                        double oa = orel.dot(b.axis), orad = orel.sub(b.axis.mul(oa)).length();
+                        if (Math.abs(oa - along) < 0.6 * CELL && Math.abs(orad - radius) < 0.8 * CELL) return true;
+                    }
+                }
+            return false;
+        }
+
+        /** Rotates v about the unit axis n by angle t (Rodrigues). */
+        static Vec3 rotate(Vec3 v, Vec3 n, double t) {
+            double ct = Math.cos(t), st = Math.sin(t);
+            return v.mul(ct).add(n.cross(v).mul(st)).add(n.mul(n.dot(v) * (1 - ct)));
         }
 
         // ------------------------------------------------------------ fluids

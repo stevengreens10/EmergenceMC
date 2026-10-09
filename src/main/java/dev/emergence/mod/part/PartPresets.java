@@ -112,6 +112,11 @@ public final class PartPresets {
         l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 10_000, "ntc_beta", 3950)));
         l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 6)));
         for (int fn = 0; fn <= 8; fn++) l.add(stack(PartKind.LOGIC, PartSpec.of("silicon", 1, 1, "function", fn)));
+        // light: IR and visible LEDs pointing in each direction, photodiodes, solar cells
+        l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", 850, "efficiency", 0.3, "beam", 20)));
+        l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", 850, "efficiency", 0.3, "beam", 20, "face", 5)));
+        for (int face = 0; face < 6; face++) l.add(stack(PartKind.PHOTODIODE, PartSpec.of("silicon", 1, 1, "area", 7.5e-6, "face", face)));
+        l.add(stack(PartKind.PHOTODIODE, PartSpec.of("silicon", 1, 1, "area", 0.0035, "face", 1)));
         // MSI chips (counter, register, adder, blank ROM) and a ROM holding the EM-4 stepper program
         for (int fn = 0; fn <= 3; fn++) l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, "function", fn)));
         Object[] prog = new Object[2 + 32];

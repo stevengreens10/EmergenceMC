@@ -75,7 +75,10 @@ behaviour; where physics is missing the effect is simply absent.
 * Transistors: no breakdown, high-injection or short-channel effects; MOSFET body tied to source.
 * Logic chips are a reduced-order model (thresholds of ratioed 74HC parts, fixed 10 ns delay, no input
   leakage or ESD diodes); large digital systems still run in the analog solver (no event-driven engine).
-* No photodiodes/phototransistors yet; LED light is not received by anything.
+* Light: only LEDs (and daylight) illuminate photodiodes — incandescent parts and torches do not; no lenses,
+  mirrors, refraction or diffuse reflection; one turning body per optical path can chop the beam; spectra are
+  monochromatic (LEDs) or a fixed sunlight responsivity. Daylight exposure is whole-block sky visibility.
+  The LED model is drawn dome-up whatever its "face" direction.
 * MSI chips are behavioural (multilinear logic, single propagation delay, no setup/hold violation model
   beyond the master–slave windows). A ROM's contents are set when it is made (item parameters/presets);
   there is no in-game programmer yet.

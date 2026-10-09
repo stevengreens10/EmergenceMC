@@ -1,5 +1,8 @@
 # Next steps (priority order)
 
+0. **Light**: lenses and mirrors (ray optics), incandescent sources, phototransistors and optocouplers; use the
+   light barrier as an encoder for closed-loop motor control by the EM-4.
+
 0. **Structures**: Euler buckling of slender columns (linear buckling eigenproblem with geometric
    stiffness), pressure-vessel bursting (hoop stress p·r/t vs strength — a boiler that over-pressures
    ruptures), dynamic loads/resonance; a crane or bridge exhibit.

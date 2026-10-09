@@ -111,7 +111,7 @@ public final class AutoShowcase {
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }
-            if (id.equals("generator") || id.equals("gears") || id.equals("miniature") || id.equals("fan")) {
+            if (id.equals("generator") || id.equals("gears") || id.equals("miniature") || id.equals("fan") || id.equals("lightbarrier")) {
                 STEPS.add(new Step(40, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank")),
                         "showcase-" + (i + 1) + "-" + id + "-cranked"));
             }

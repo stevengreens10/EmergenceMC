@@ -90,7 +90,13 @@ public enum PartKind {
      * along their axis; segment k carries input k on its −lead-axis side and output k on its +lead-axis side, and
      * the last segment carries GND (−) and V_DD (+). See {@code MsiChip.Type} for the pin order.
      */
-    CHIP(false, true);
+    CHIP(false, true),
+    /**
+     * Silicon photodiode / solar cell (manufactured): anode on the −axis lead, cathode on the +axis lead; its
+     * sensitive face looks along "face" (a direction index: 0 down, 1 up, 2 north, 3 south, 4 west, 5 east; default
+     * up); "area" is the junction area [m²] (a BPW34 photodiode 7.5 mm², a solar cell a whole face).
+     */
+    PHOTODIODE(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

@@ -10,9 +10,10 @@ import java.util.List;
  * Adaptive implicit transient solver for a {@link Network}.
  * <p>
  * Each step solves the nonlinear residual system F(x_{n+1}) = 0 by damped Newton–Raphson with a sparse
- * (or small dense) LU factorisation. Stored quantities are integrated with {@link IntegrationMethod#BDF2}
- * by default (L-stable, second order) and with backward Euler on the first step and after any
- * discontinuity. The step size is controlled by an estimate of the local truncation error of every
+ * (or small dense) LU factorisation. Stored quantities are integrated with the trapezoidal rule by default
+ * (A-stable, second order, conserving the energy of linear oscillators) or {@link IntegrationMethod#BDF2}
+ * (L-stable: damps unresolved stiff modes — the choice for switching electronics), and with backward Euler
+ * on the first step and after any discontinuity. The step size is controlled by an estimate of the local truncation error of every
  * stored quantity (computed from divided differences of its time derivative) against mixed
  * relative/absolute tolerances.
  * <p>
@@ -227,6 +228,23 @@ public final class TransientSolver implements StateView {
         double h = hTry;
         while (true) {
             if (h < hMin) {
+                // Last resort before giving up: Newton stalls at round-off level on an ill-conditioned variable (a
+                // nearly closed valve's flow, a floating node) can collapse the step although the state is sound.
+                // Take one backward-Euler step of 1 µs with the Newton tolerances relaxed 100× and no truncation-
+                // error test; it is accepted only if Newton converges, and counted.
+                double hr = Math.max(1e-6, hMin * 1e4);
+                tolScale = 100;
+                skipLte = true;
+                restart = true;
+                validHistory = 0;
+                int rr = tryStep(Math.min(hr, Math.max(hTry, hMin)));
+                tolScale = 1;
+                skipLte = false;
+                if (rr == 0) {
+                    rescues++;
+                    hNext = Math.max(hr, hNext);
+                    return;
+                }
                 throw new SimulationException(String.format(
                         "Time step underflow at t=%.6g s (h=%.3g s). %s", t, h, worstNewtonDiagnostic()));
             }
@@ -252,6 +270,14 @@ public final class TransientSolver implements StateView {
     }
 
     private String lastBadUnknown = "";
+    private double tolScale = 1;
+    private boolean skipLte;
+    private long rescues;
+
+    /** Steps accepted by the underflow rescue (relaxed-tolerance backward Euler) — should stay rare. */
+    public long rescuedSteps() {
+        return rescues;
+    }
     /** Diagnostics: print the worst unknowns of each Newton iteration once the step has collapsed. */
     public static boolean TRACE = false;
     private int worstSlot = -1;
@@ -379,7 +405,7 @@ public final class TransientSolver implements StateView {
                     dx[i] = (lim - xTrial[i]) / scale;
                 }
                 xTrial[i] += scale * dx[i];
-                double tol = relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i];
+                double tol = (relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i]) * tolScale;
                 if (Math.abs(dx[i]) > tol) {
                     small = false;
                     lastBadUnknown = net.unknownName(i) + " = " + xTrial[i] + " (step " + dx[i] + ")";
@@ -429,7 +455,7 @@ public final class TransientSolver implements StateView {
         }
         double exponent = 1.0 / ((validHistory >= 2 ? p : 1) + 1);
         if (worstSlot >= 0 && err > 0.5) limiterCounts.merge(net.slotOwner(worstSlot) + "#" + worstSlot, 1, Integer::sum);
-        if (err > 1.0) {
+        if (err > 1.0 && !skipLte) {
             hNext = h * Math.max(0.1, 0.9 * Math.pow(err, -exponent));
             if (TRACE && h < 1e-8) System.out.println("TRACE LTE reject h=" + h + " err=" + err + " slot " + net.slotOwner(worstSlot)
                     + "#" + worstSlot + " q=" + qNew[worstSlot] + " qd " + qd0[worstSlot] + " -> " + qdNew[worstSlot] + " validHistory " + validHistory);

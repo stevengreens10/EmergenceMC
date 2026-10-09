@@ -221,3 +221,45 @@ Dry Coulomb friction τ = μ·F·r between the turning body in front of the pad 
 (tanh-regularised at 0.01 rad/s), r the contact point's distance from that body's axis, μ the pad
 material's friction coefficient, F the spring force. The dissipated power heats the pad: a Prony-brake
 dynamometer, a brake, or a constant-torque load.
+
+## MSI chips (`MsiChip`, `CHIP` parts) — counter, register, adder, programmable ROM
+Same pin physics as the logic gates (sigmoid input thresholds about V_DD/2, 50 Ω output stages fed from the
+supply, 10 ns relaxation, master–slave flip-flops with non-overlapping windows and latch regeneration). The
+internal logic is the **multilinear extension** of each Boolean function — exact at every logic corner,
+smooth between — evaluated with finite-difference Jacobians in level space:
+* COUNTER4 (74HC163): synchronous; CLR̄ low clears, else LOAD̄ low loads P, else EN counts; TC = Q0·Q1·Q2·Q3·EN.
+* REGISTER4: loads D while EN is high.
+* ADDER4 (74HC283): ripple of full adders, carry = ab + c(a⊕b).
+* ROM16X8: word w is selected by Π(a_j or 1 − a_j) over the address bits; contents "w0".."w15" (mask PROM).
+A chip is a row of single-block segments (one pin pair each: input on the −lead-axis side, output on the +;
+the last segment carries GND/V_DD).
+
+## Schmitt trigger input gain
+The Schmitt inverter's input transition is 0.5 % of V_DD wide (gain ≈ 200, as for a 74HC14), so with its
+hysteresis feedback the output edge stays fast however slowly the input moves. (At the 3 % width of the
+plain gates, an RC oscillator's output sagged for seconds before switching, giving the clocked logic
+seconds-long edges in which supply offsets between chips decided what was latched.)
+
+## Rotary viscous damper (bearing `type` 2)
+A rotor in a silicone-filled housing: Couette shear across a 0.5 mm gap, torque c·Δω with
+c = μ·2π·r³·L/gap (r = 40 % of the cell, L = 80 % of its length, μ the fluid's viscosity, default 10 Pa·s);
+no dry friction. It damps without the dead band that Coulomb friction gives (a stalled stepper).
+
+## Insulated wire colours
+Insulated wires of different insulation colours lying side by side do not make contact; wires of the same
+colour are taken as spliced. Any wire still connects to a component terminal it touches. Bare wire joins
+everything it touches.
+
+## Wire runs (reduced-order wiring)
+A chain of identical single-cell wires, each touching exactly two others, carries one current through every
+cell: the compiler represents it as one electrical node and one thermal mass (summed heat capacity and
+surface), with half of the run's total resistance at each end. Series resistance and Joule heat are exact;
+only the temperature profile along the run is lumped.
+
+## Integration method per island
+Islands that contain switching electronics (CHIP, LOGIC, TRANSISTOR) integrate with L-stable BDF2: their
+sub-nanosecond modes (input capacitance against output resistance) are far below the step size, and the
+trapezoidal rule rings on them (amplification → −1), forcing tiny steps. Other islands keep the trapezoidal
+rule, which conserves the energy of mechanical and electromagnetic oscillations. A time step that collapses
+below 10⁻¹⁰ s (a Newton stall at round-off level) gets one rescue: a 1 µs backward-Euler step with Newton
+tolerances relaxed 100×, accepted only if it converges, and counted (`TransientSolver.rescuedSteps`).

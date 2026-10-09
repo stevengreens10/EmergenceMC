@@ -196,6 +196,32 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** Phase 4 in the world: the EM-4 computer's chips run the ROM program (PC advances, ACC follows it). */
+    @GameTest(template = "arena", timeoutTicks = 400)
+    public static void computerRunsItsProgramInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ComputerExhibit.build();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos pcAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "pc");
+        BlockPos accAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "acc");
+        PlacedPart pc = only(h, pcAt, PartKind.CHIP), acc = only(h, accAt, PartKind.CHIP);
+        h.runAtTickTime(300, () -> {
+            var c = sim.compiledAt(pcAt);
+            h.assertTrue(c != null && c.warnings().isEmpty(), "computer compiles without warnings: " + (c == null ? "-" : c.warnings()));
+            double[] q = c.chipState(pc.id), a = sim.compiledAt(accAt).chipState(acc.id);
+            int pcv = 0, accv = 0;
+            for (int k = 0; k < 4; k++) {
+                if (q[k] > 0.5) pcv |= 1 << k;
+                if (a[k] > 0.5) accv |= 1 << k;
+            }
+            h.assertTrue(pcv >= 1, "the program counter advanced: " + pcv);
+            h.assertTrue(accv == java.util.List.of(0, 1, 2, 4, 8, 8, 1).get(Math.min(pcv, 6)) || pcv > 6,
+                    "ACC follows the program: PC " + pcv + ", ACC " + accv);
+            h.succeed();
+        });
+    }
+
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
         AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
         return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();

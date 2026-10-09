@@ -112,3 +112,16 @@ seat-sized body held 0.07 cm³ of steam (valves now have a chamber). The engine 
 cylinder with condensate — hydraulic lock, a real failure — so the gallery starts it warm. Profiling then
 took it from 3.8× to 1.5× real time, and islands over budget now run in slow motion rather than stall the
 server.
+
+**A programmable computer controls a machine (Phase 4 milestone).** MSI chips (counter, register, adder,
+programmable ROM) as multi-block DIP packages with the logic gates' pin physics and multilinear internal
+logic, validated at the pins. The EM-4 — PC, ROM program, adder and accumulator, with add/jump/jump-if-SENSE —
+drives a stepper through four MOSFETs. Building it took: colour-coded insulation (adjacent pins of a chip are
+adjacent cells, and touching insulated wires used to short); an exhibit maze router with rip-and-retry; wire
+runs in the compiler (2639 → 722 unknowns); BDF2 for electronics islands (trapezoidal ringing on 5 pF input
+nodes cost 20× the steps); and a high-gain Schmitt input — the RC clock's seconds-long edges let supply
+offsets between chips corrupt the accumulator (ACC = 4 + 7 when it should have been 8). The motor was the
+hardest part: a radial air-core stepper had too little torque at a quarter-turn offset, and Coulomb friction
+stalled it in the weak zone; an axial-flux layout (magnet sweeping directly under the coils, inner leads at a
+star point) with a silicone rotary damper (new bearing type) steps cleanly. The thermostat test also exposed
+real behaviour: as its supercapacitor ran down, the heater could no longer reach the upper threshold.

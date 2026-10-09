@@ -100,6 +100,13 @@ edges.
 Thermostat exhibit: the plate temperature cycles inside a band set by the Schmitt hysteresis (≥ 4
 switchings, band > 5 K, inside 22–62 °C). Wiring check: insulated wires of different nets never touch.
 
+## MSI chips and the computer (`MsiChipValidationTest`, `DemoExhibitsTest`)
+Adder over 4 × 16 × 6 operand combinations (exact sums at valid logic levels); ROM reads a 16-word program;
+counter counts 10 edges, wraps with TC, holds with EN low, loads with LOAD̄, clears with CLR̄; register loads
+only when enabled; outputs drive 10 kΩ through the 50 Ω stage from the supply. EM-4 exhibit: the program
+steps the rotor more than a full turn forward in 40 s and more than a full turn backward with SENSE on;
+the in-world GameTest checks the PC advances and the accumulator follows the program.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

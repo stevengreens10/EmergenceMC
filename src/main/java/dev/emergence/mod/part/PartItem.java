@@ -73,6 +73,7 @@ public final class PartItem extends Item {
             case LED -> PartSpec.of("silicon", 1, 1, "wavelength", 630);
             case LOGIC -> PartSpec.of("silicon", 1, 1, "function", 2);
             case BRAKE -> PartSpec.of("oak", 1, 1, "force", 20);
+            case CHIP -> PartSpec.of("silicon", 1, 1, "function", 0);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -109,10 +110,17 @@ public final class PartItem extends Item {
             case TRANSISTOR -> ", " + new String[]{"NPN", "PNP", "N-MOSFET", "P-MOSFET"}[(int) Math.max(0, Math.min(3, Math.round(p.getOrDefault("type", 0.0))))];
             case LED -> String.format(", %.0f nm", p.getOrDefault("wavelength", 630.0));
             case BRAKE -> String.format(", %.0f N spring", p.getOrDefault("force", 20.0));
+            case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
+                    + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[
                     (int) Math.max(0, Math.min(8, Math.round(p.getOrDefault("function", 2.0))))];
             default -> "";
         };
+    }
+
+    static dev.emergence.core.sim.elements.MsiChip.Type chipType(java.util.Map<String, Double> p) {
+        var types = dev.emergence.core.sim.elements.MsiChip.Type.values();
+        return types[(int) Math.max(0, Math.min(types.length - 1, Math.round(p.getOrDefault("function", 0.0))))];
     }
 
     private static String fluidLabel(java.util.Map<String, Double> p) {
@@ -125,6 +133,11 @@ public final class PartItem extends Item {
         PartSpec s = spec(stack);
         Material m = s.resolveMaterial();
         tooltip.add(Component.translatable("tooltip.emergence." + kind.name().toLowerCase()).withStyle(ChatFormatting.GRAY));
+        if (kind == PartKind.CHIP) {
+            var t = chipType(s.params());
+            tooltip.add(Component.literal(t.length() + " segments in a row. Inputs (−side): " + String.join(" ", t.inputs)).withStyle(ChatFormatting.DARK_AQUA));
+            tooltip.add(Component.literal("Outputs (+side): " + String.join(" ", t.outputs) + "; last segment: GND / V_DD").withStyle(ChatFormatting.DARK_AQUA));
+        }
         tooltip.add(Component.literal(m.name()).withStyle(ChatFormatting.DARK_AQUA));
         if (m.has(MaterialProperty.ELECTRICAL_RESISTIVITY))
             tooltip.add(Component.literal("ρ = " + Units.formatSI(m.get(MaterialProperty.ELECTRICAL_RESISTIVITY), "Ω·m")).withStyle(ChatFormatting.DARK_GRAY));

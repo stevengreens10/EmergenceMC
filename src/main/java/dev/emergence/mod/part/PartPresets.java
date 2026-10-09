@@ -107,6 +107,17 @@ public final class PartPresets {
         l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 10_000, "ntc_beta", 3950)));
         l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 6)));
         for (int fn = 0; fn <= 8; fn++) l.add(stack(PartKind.LOGIC, PartSpec.of("silicon", 1, 1, "function", fn)));
+        // MSI chips (counter, register, adder, blank ROM) and a ROM holding the EM-4 stepper program
+        for (int fn = 0; fn <= 3; fn++) l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, "function", fn)));
+        Object[] prog = new Object[2 + 32];
+        prog[0] = "function";
+        prog[1] = 3;
+        for (int w = 0; w < 16; w++) {
+            prog[2 + 2 * w] = "w" + w;
+            prog[3 + 2 * w] = dev.emergence.core.demo.ComputerExhibit.PROGRAM[w];
+        }
+        l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, prog)));
+        l.add(stack(PartKind.BEARING, PartSpec.of("bronze", 1, 1, "type", 2, "viscosity", 1.5)));
         return l;
     }
 }

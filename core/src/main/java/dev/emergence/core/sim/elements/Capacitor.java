@@ -20,6 +20,11 @@ public final class Capacitor implements Element {
     }
 
     @Override
+    public String label() {
+        return "Capacitor(" + c + " F, " + a.name() + "–" + b.name() + ")";
+    }
+
+    @Override
     public void setup(SetupContext ctx) {
         // truncation-error floor: the charge of 1 mV. Newton resolves node voltages only to ~1e-4 relative, so a
         // tighter floor makes the step controller chase Newton noise on nearly floating nodes (e.g. the

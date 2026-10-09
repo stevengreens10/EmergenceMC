@@ -55,6 +55,8 @@
   "message.emergence.brake_on": "Brake applied",
   "message.emergence.brake_off": "Brake released",
   "item.emergence.brake": "Brake Block",
+  "item.emergence.chip": "MSI Chip Segment",
+  "tooltip.emergence.chip": "One pin pair of a 74HC-class chip: lay segments of the same chip in a row along their axis.",
   "tooltip.emergence.brake": "Friction pad: its face presses on whatever turns in front of it (torque μ·F·r). Use it to apply or release.",
   "item.emergence.cylinder": "Piston Cylinder",
   "item.emergence.eccentric": "Crank Throw",

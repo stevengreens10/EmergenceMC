@@ -352,8 +352,10 @@ class DemoExhibitsTest {
                 Exhibit.PartDef d = e.parts.get(en.getValue());
                 for (int[] o : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
                     Integer q = at.get(key(d.x0() + o[0], d.y0() + o[1], d.z0() + o[2]));
-                    if (q != null) assertEquals(e.nets.get(d.index()), e.nets.get(q),
-                            e.id + ": wires of different nets touch at " + d.x0() + "," + d.y0() + "," + d.z0());
+                    // touching wires of different nets are fine only if their insulation colours differ
+                    if (q != null && Math.round(d.params().getOrDefault("color", 0.0)) == Math.round(e.parts.get(q).params().getOrDefault("color", 0.0)))
+                        assertEquals(e.nets.get(d.index()), e.nets.get(q),
+                                e.id + ": same-colour wires of different nets touch at " + d.x0() + "," + d.y0() + "," + d.z0());
                 }
             }
         }
@@ -372,7 +374,7 @@ class DemoExhibitsTest {
         double tMin = 1e9, tMax = 0;
         int switches = 0;
         boolean on = c.probe(led).current() > 1e-3;
-        for (int i = 0; i < 1600; i++) {
+        for (int i = 0; i < 2400; i++) {
             c.step(1.0);
             double t = c.temperature(plate);
             if (i > 300) {
@@ -425,5 +427,29 @@ class DemoExhibitsTest {
         run(c, 20);
         assertTrue(Math.abs(c.probe(shaft).angularVelocity()) < 0.2 * Math.abs(mean),
                 "regulator shut: the engine stops, ω " + c.probe(shaft).angularVelocity());
+    }
+
+    @Test
+    void computerRunsItsProgramAndStepsTheMotor() {
+        Exhibit e = ComputerExhibit.build();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var rotor = c.bodyOf(b.id(e, "rotor"));
+        double start = c.angle(rotor);
+        java.util.List<Double> angles = new java.util.ArrayList<>();
+        for (int i = 0; i < 800; i++) {
+            c.step(0.05);
+            if (i % 72 == 71) angles.add((double) Math.round(Math.toDegrees(c.angle(rotor))));
+        }
+        double fwd = c.angle(rotor) - start;
+        System.out.println("computer: forward rotor angles (deg, about one per instruction) " + angles + " (moved " + fwd + " rad)");
+        assertTrue(fwd > 2 * Math.PI, "the program steps the rotor round: " + fwd + " rad in 40 s");
+        // SENSE on: the program branches into the reverse loop
+        c.toggleSwitch(b.id(e, "sense"));
+        double mid = c.angle(rotor);
+        run(c, 40);
+        double rev = c.angle(rotor) - mid;
+        System.out.println("computer: reverse moved " + rev + " rad");
+        assertTrue(rev * fwd < 0 && Math.abs(rev) > 2 * Math.PI, "with SENSE on it steps the other way: " + rev);
     }
 }

@@ -46,7 +46,10 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Logic from transistors (CMOS NAND exhibit) and a validated chip-level model (gates, D flip-flop,
    Schmitt trigger): oscillator + 4-bit counter exhibit
 ✅ NTC thermistor sensor; closed-loop thermostat exhibit (thermistor → Schmitt trigger → MOSFET → heater)
-⬜ Memory arrays, CPU, more sensors and actuators; event-driven simulation for thousands of gates
+✅ MSI chips from multi-block packages: counter, register, 4-bit adder, programmable ROM
+✅ **Milestone: a programmable computer controls a physical machine** — the EM-4 (PC, ROM program,
+   adder, accumulator; add / jump / jump-if-SENSE) drives an axial-flux stepper motor through MOSFETs
+⬜ RAM, a richer instruction set, more sensors and actuators; event-driven simulation for thousands of gates
 ⬜ Milestone: programmable computer controlling a machine
 
 ## Phase 5 — Chemistry and manufacturing

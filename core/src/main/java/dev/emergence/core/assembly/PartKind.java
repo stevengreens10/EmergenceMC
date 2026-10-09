@@ -83,7 +83,14 @@ public enum PartKind {
      * the motion and the work becomes heat in the pad; μ is the pad material's friction coefficient. Like a brush
      * it belongs to the stationary frame and never joins bodies.
      */
-    BRAKE(false, false);
+    BRAKE(false, false),
+    /**
+     * One segment (pin pair) of a medium-scale-integration chip (manufactured, 74HC class): "function" 0 4-bit
+     * counter, 1 4-bit register, 2 4-bit adder, 3 16×8 ROM (contents "w0".."w15"). A chip is a row of segments
+     * along their axis; segment k carries input k on its −lead-axis side and output k on its +lead-axis side, and
+     * the last segment carries GND (−) and V_DD (+). See {@code MsiChip.Type} for the pin order.
+     */
+    CHIP(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

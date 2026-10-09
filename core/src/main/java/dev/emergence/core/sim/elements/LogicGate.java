@@ -78,8 +78,13 @@ public final class LogicGate implements Element {
      * chip (span below ~1 V) reads its inputs as low.
      */
     private static double[] level(double v, double span, double frac) {
+        return level(v, span, frac, 0.03);
+    }
+
+    /** As {@link #level(double, double, double)} with the transition width given as a fraction of the supply. */
+    private static double[] level(double v, double span, double frac, double width) {
         double sp = Math.max(span, 1.0);
-        double w = 0.03 * sp;
+        double w = width * sp;
         double x = (v - frac * sp) / w;
         double s = sig(Math.max(-40, Math.min(40, x)));
         return new double[]{s, s * (1 - s) / w};
@@ -94,7 +99,9 @@ public final class LogicGate implements Element {
         // sharply with the output state (a soft dependence would fold the hysteresis loop shut)
         double hs = sig(Math.max(-40, Math.min(40, (s - 0.5) / 0.05)));
         double dhs = hs * (1 - hs) / 0.05;
-        double[] la = level(va, span, fn == Function.SCHMITT_NOT ? 0.4 + 0.2 * hs : 0.5);
+        // a Schmitt trigger's input stage has high gain (a 0.5 %-of-supply transition) so that, with the hysteresis
+        // feedback, its output edge is fast however slowly the input moves — the purpose of the part
+        double[] la = fn == Function.SCHMITT_NOT ? level(va, span, 0.4 + 0.2 * hs, 0.005) : level(va, span, 0.5);
         double[] lb = b != null ? level(vb, span, 0.5) : new double[]{0, 0};
         double x = la[0], y = lb[0];
         // target and its partial derivatives wrt x and y (fuzzy Boolean algebra)

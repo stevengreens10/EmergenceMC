@@ -24,7 +24,7 @@ public final class Exhibits {
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
-                transistorSwitch(), nandGate(), binaryCounter(), thermostat(), miniatureGenerator());
+                transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -511,7 +511,7 @@ public final class Exhibits {
             if (fy == y - 1) e.name("fire", k);
         }
         e.fill(BLOCK, st, 5, 0, 13, 5, y - 3, 13, Dir.UP);
-        return e.view(5.5, 7.5, 19, 25);
+        return e.view(4.5, 11, 18, 42);
     }
 
     /** Parameter list {@code base} followed by {@code more}. */
@@ -672,8 +672,8 @@ public final class Exhibits {
                         + "Schmitt trigger's output drops, the MOSFET turns off and the heater (and LED) go dark; the "
                         + "plate cools by convection and radiation until the voltage falls below 40 %, and the "
                         + "heater comes back on. The temperature cycles between roughly 30 and 50 °C. Watch it with "
-                        + "the multimeter on the plate or the thermistor. Powered by a 1000 F supercapacitor bank at 5 V (about an hour).");
-        int bat = e.add(CAPACITOR, "alumina", 1, 0, 8, Dir.NORTH, "capacitance", 1000);
+                        + "the multimeter on the plate or the thermistor. Powered by a 3000 F supercapacitor bank at 5 V (a few hours; as it runs down the heater weakens until it can no longer reach the upper threshold).");
+        int bat = e.add(CAPACITOR, "alumina", 1, 0, 8, Dir.NORTH, "capacitance", 3000);
         e.name("battery", bat);
         e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         int[][] vdd = new int[14 + 5 + 5 + 7 + 1][];

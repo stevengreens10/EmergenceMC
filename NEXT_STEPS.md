@@ -1,6 +1,8 @@
 # Next steps (priority order)
 
-1. **Computer milestone (Phase 4)**: a small programmable sequencer/CPU from logic chips (register,
+1. ~~Computer milestone (Phase 4)~~ done (EM-4 + stepper). Next in computing: an in-game ROM programmer,
+   RAM chip, instruction-set growth (load/store, conditional on carry), event-driven simulation for large
+   gate counts, photodiodes so light can be sensed. Previously: a small programmable sequencer/CPU from logic chips (register,
    ROM/diode matrix, counter) whose output drives a MOSFET switching a motor or valve; event-driven
    simulation for large gate counts; photodiodes so light can be sensed.
 2. Steam: show the liquid level in tanks; a condenser (Watt) and a feed pump with check valves so the

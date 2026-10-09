@@ -221,6 +221,16 @@ public final class CompiledAssembly {
         return c;
     }
 
+    /** Register bits (or outputs, for chips without registers) of the chip a CHIP part belongs to, as 0..1 levels. */
+    public double[] chipState(long partId) {
+        if (!(deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.MsiChip chip)) return null;
+        var t = chip.type();
+        int n = t.flipFlops > 0 ? t.flipFlops : t.outputs.length;
+        double[] out = new double[n];
+        for (int i = 0; i < n; i++) out[i] = t.flipFlops > 0 ? chip.register(solver, i) : chip.output(solver, i);
+        return out;
+    }
+
     /** Friction torque [N·m] and power [W] a brake pad is absorbing now, or null if the part is not a brake. */
     public double[] brake(long partId) {
         List<dev.emergence.core.sim.elements.CoulombFriction> bf = brakeElements.get(partId);
@@ -392,6 +402,9 @@ public final class CompiledAssembly {
             pw = Math.abs(i * v);
         } else if (d instanceof dev.emergence.core.sim.elements.LogicGate lg) {
             i = lg.state(solver);
+            pw = 0;
+        } else if (d instanceof dev.emergence.core.sim.elements.MsiChip) {
+            i = 0;
             pw = 0;
         } else if (d instanceof dev.emergence.core.sim.elements.Mosfet m) {
             i = m.drainCurrent(solver);

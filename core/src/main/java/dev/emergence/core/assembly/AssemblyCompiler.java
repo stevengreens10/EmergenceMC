@@ -99,6 +99,7 @@ public final class AssemblyCompiler {
         void build() {
             buildRigidGroups();
             buildBodies();
+            buildWireRuns();
             buildThermal();
             buildMechanics();
             buildBrakes();
@@ -107,6 +108,16 @@ public final class AssemblyCompiler {
             c.network.compile();
             applyPreviousElectricalState();
             c.solver = new TransientSolver(c.network);
+            // Switching electronics have sub-nanosecond modes (gate input capacitance against output resistance) that
+            // a millisecond step cannot resolve: the trapezoidal rule rings on them (its amplification → −1), so such
+            // islands integrate with L-stable BDF2, which damps them. Other islands keep the trapezoidal rule, which
+            // conserves the energy of mechanical and electromagnetic oscillations.
+            for (Part p : parts) {
+                if (p.kind() == PartKind.CHIP || p.kind() == PartKind.LOGIC || p.kind() == PartKind.TRANSISTOR) {
+                    c.solver.method(dev.emergence.core.sim.IntegrationMethod.BDF2);
+                    break;
+                }
+            }
             String m = System.getProperty("emergence.method");
             if (m != null) c.solver.method(dev.emergence.core.sim.IntegrationMethod.valueOf(m));
         }
@@ -327,12 +338,16 @@ public final class AssemblyCompiler {
             c.ambient = c.network.node(Domain.THERMAL, "ambient", ambientT);
             c.network.add(new FixedTemperature(c.ambient, ambientT));
             for (Part p : parts) {
+                WireRun run = runOf.get(p.id());
+                if (run != null && run.parts.get(0) != p) continue; // a wire run is one thermal mass, built with its first wire
                 double t0 = prev.temperatures().getOrDefault(p.id(), ambientT);
                 Node n = c.network.node(Domain.THERMAL, "T" + p.id(), t0);
                 c.thermalOfPart.put(p.id(), n);
                 double cp = p.material().get(MaterialProperty.SPECIFIC_HEAT, 500);
-                c.network.add(new HeatCapacity(n, Math.max(PartGeometry.mass(p) * cp, 1e-4)));
-                double area = PartGeometry.surfaceArea(p);
+                int count = run == null ? 1 : run.parts.size();
+                if (run != null) for (Part q : run.parts) c.thermalOfPart.put(q.id(), n);
+                c.network.add(new HeatCapacity(n, Math.max(count * PartGeometry.mass(p) * cp, 1e-4)));
+                double area = count * PartGeometry.surfaceArea(p);
                 NaturalConvection.Shape shape = switch (p.kind()) {
                     case SHAFT, WIRE, INSULATED_WIRE -> NaturalConvection.Shape.HORIZONTAL_CYLINDER;
                     case BLOCK, GEAR -> NaturalConvection.Shape.VERTICAL_PLATE;
@@ -341,7 +356,78 @@ public final class AssemblyCompiler {
                 c.network.add(new NaturalConvection(n, c.ambient, shape, area, PartGeometry.convectionLength(p)));
                 c.network.add(new Radiation(n, c.ambient, PartGeometry.emissivity(p), area));
                 c.failureTemp.put(p.id(), PartGeometry.failureTemperature(p));
+                if (run != null) for (Part q : run.parts) c.failureTemp.put(q.id(), PartGeometry.failureTemperature(q));
             }
+        }
+
+        // ------------------------------------------------------------ wire runs
+        /**
+         * A chain of identical single-cell wires, each touching exactly two others, carries one current through every
+         * cell: it is compiled as one electrical node and one thermal mass (summed heat capacity and surface), with
+         * half the run's total resistance at each end — the series resistance and the Joule heat are exact, only the
+         * temperature profile along the run is lumped. This keeps routed wiring from multiplying the unknowns.
+         */
+        static final class WireRun {
+            final List<Part> parts = new ArrayList<>();
+        }
+
+        final Map<Long, WireRun> runOf = new HashMap<>();
+
+        /** The parts a wire makes electrical contact with (on the same body), or null if it is not a plain wire. */
+        List<Part> wireContacts(Part p) {
+            if (!isWire(p) || p.minX() != p.maxX() || p.minY() != p.maxY() || p.minZ() != p.maxZ()) return null;
+            List<Part> out = new ArrayList<>();
+            int x = p.minX(), y = p.minY(), z = p.minZ();
+            for (Dir d : Dir.values()) {
+                for (Part q : a.at(x + d.dx, y + d.dy, z + d.dz)) {
+                    if (q == p || !(conductive(q) || q.kind().leaded)) continue;
+                    if (port(q, x + d.dx, y + d.dy, z + d.dz, d.opposite()) == null || !compatible(p, q)) continue;
+                    if (c.bodyOfPart.get(p.id()) != c.bodyOfPart.get(q.id())) continue;
+                    out.add(q);
+                }
+            }
+            return out;
+        }
+
+        void buildWireRuns() {
+            Map<Long, List<Part>> links = new HashMap<>();
+            for (Part p : parts) {
+                List<Part> k = wireContacts(p);
+                if (k != null && k.size() == 2) links.put(p.id(), k);
+            }
+            Map<Long, Long> parent = new HashMap<>();
+            for (long id : links.keySet()) parent.put(id, id);
+            java.util.function.LongUnaryOperator find = new java.util.function.LongUnaryOperator() {
+                public long applyAsLong(long v) {
+                    long r = v;
+                    while (parent.get(r) != r) r = parent.get(r);
+                    parent.put(v, r);
+                    return r;
+                }
+            };
+            for (var en : links.entrySet()) {
+                Part p = a.get(en.getKey());
+                for (Part q : en.getValue()) {
+                    if (!links.containsKey(q.id()) || q.kind() != p.kind() || conductorMaterial(q) != conductorMaterial(p)
+                            || conductorArea(q) != conductorArea(p)) continue;
+                    parent.put(find.applyAsLong(p.id()), find.applyAsLong(q.id()));
+                }
+            }
+            Map<Long, WireRun> byRoot = new HashMap<>();
+            for (Part p : parts) {
+                if (!links.containsKey(p.id())) continue;
+                byRoot.computeIfAbsent(find.applyAsLong(p.id()), k -> new WireRun()).parts.add(p);
+            }
+            for (WireRun run : byRoot.values()) {
+                if (run.parts.size() < 2) continue;
+                for (Part p : run.parts) runOf.put(p.id(), run);
+            }
+        }
+
+        /** Conduction length from a part's node to a contact face, a wire run's being half the run. */
+        double nodeToFace(Part p) {
+            WireRun run = runOf.get(p.id());
+            return run != null ? run.parts.size() * CELL / 2 : halfLength(p);
         }
 
         void thermalLink(Part p, Part q) {
@@ -428,10 +514,18 @@ public final class AssemblyCompiler {
                 CompiledAssembly.Body rot = bb.isStatic ? sb : bb;
                 double load = rot.mass * PartGeometry.gravity() / Math.max(1, bearingCount.getOrDefault(rot, 1));
                 double d = PartGeometry.shaftDiameter(shaft);
-                boolean plain = bearing.param("type", 0) >= 1;
+                int btype = (int) Math.round(bearing.param("type", 0));
+                boolean plain = btype == 1;
                 Node th = c.thermalOfPart.get(bearing.id());
                 Node na = bb.isStatic ? refR : bb.node, nb = sb.isStatic ? refR : sb.node;
                 double mu, cv;
+                if (btype == 2) {
+                    // rotary viscous damper: a rotor turning in a silicone-filled housing, Couette shear across a
+                    // 0.5 mm gap: c = μ·2π·r³·L / gap (r 40 % of the cell, L 80 % of its length); no dry friction
+                    double r = 0.4 * PartGeometry.transverseSize(bearing), len = 0.8 * PartGeometry.axialLength(bearing);
+                    c.network.add(new Damper(nb, na, bearing.param("viscosity", 10) * 2 * Math.PI * r * r * r * len / 5e-4, th));
+                    continue;
+                }
                 if (!plain) {
                     // SKF simplified friction model for a deep-groove ball bearing: M = ½·μ·P·d, μ ≈ 0.0015,
                     // plus a small viscous grease-drag term.
@@ -439,10 +533,11 @@ public final class AssemblyCompiler {
                     cv = 2e-7 * Math.pow(d / 0.01, 3);
                 } else {
                     // Lubricated plain bushing: boundary friction μ·P·d/2 plus Petroff hydrodynamic drag
-                    // c = μ_oil·2π·r³·L / clearance with SAE-30-like oil (0.1 Pa·s), clearance 0.1 % of d.
+                    // c = μ_oil·2π·r³·L / clearance, clearance 0.1 % of d; lubricant viscosity "viscosity" (default
+                    // 0.1 Pa·s, SAE-30-like oil; thick damping grease is several Pa·s)
                     mu = bearing.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.15) * 0.4;
                     double r = d / 2, len = PartGeometry.axialLength(bearing);
-                    cv = 0.1 * 2 * Math.PI * r * r * r * len / (0.001 * d);
+                    cv = bearing.param("viscosity", 0.1) * 2 * Math.PI * r * r * r * len / (0.001 * d);
                 }
                 c.network.add(new CoulombFriction(nb, na, 0.5 * mu * load * d, 1e-2, th));
                 c.network.add(new Damper(nb, na, cv, th));
@@ -556,6 +651,11 @@ public final class AssemblyCompiler {
                     if (d.sign() < 0) return fn >= 2 && fn != 7 ? "p" + p.id() + "b" : null;
                     return fn == 8 ? "p" + p.id() + "q" : null;
                 }
+                case CHIP -> {
+                    // input pin on the −lead-axis side, output pin on the +lead-axis side
+                    if (d.axis() != PartGeometry.leadAxis(p)) return null;
+                    return "p" + p.id() + (d.sign() > 0 ? "o" : "i");
+                }
                 case TRANSISTOR -> {
                     // emitter/source (−) and collector/drain (+) on the axial faces, base/gate on the lead-axis sides
                     Dir ax = p.axis();
@@ -594,6 +694,56 @@ public final class AssemblyCompiler {
                     return conductive(p) ? "p" + p.id() : null;
                 }
             }
+        }
+
+        /** The chip segment adjacent to p one cell along {@code dir} that belongs to the same package, or null. */
+        Part chipNeighbour(Part p, int dir) {
+            Dir ax = p.axis();
+            int x = p.minX() + ax.dx * dir, y = p.minY() + ax.dy * dir, z = p.minZ() + ax.dz * dir;
+            for (Part q : a.at(x, y, z)) {
+                if (q.kind() == PartKind.CHIP && q.axis() == ax && PartGeometry.leadAxis(q) == PartGeometry.leadAxis(p)
+                        && Math.round(q.param("function", 0)) == Math.round(p.param("function", 0))) return q;
+            }
+            return null;
+        }
+
+        /**
+         * Builds the chip whose first segment (the −axis end of a row of matching CHIP segments) is p. Segment k
+         * carries input k (−lead side) and output k (+lead side); the last carries GND and V_DD.
+         */
+        void buildChip(Part p, Node th) {
+            if (chipNeighbour(p, -1) != null) return; // not the first segment: built with its package
+            List<Part> seg = new ArrayList<>();
+            for (Part q = p; q != null && seg.size() < 64; q = chipNeighbour(q, 1)) seg.add(q);
+            int fn = (int) Math.round(p.param("function", 0));
+            var types = dev.emergence.core.sim.elements.MsiChip.Type.values();
+            if (fn < 0 || fn >= types.length) {
+                c.warnings.add("Chip #" + p.id() + ": unknown function " + fn);
+                return;
+            }
+            var type = types[fn];
+            if (seg.size() != type.length()) {
+                c.warnings.add("Chip #" + p.id() + " (" + type + ") needs " + type.length() + " segments in a row, has " + seg.size());
+                return;
+            }
+            Node[] in = new Node[type.inputs.length], out = new Node[type.outputs.length];
+            for (int k = 0; k < in.length; k++) in[k] = enode("p" + seg.get(k).id() + "i");
+            for (int k = 0; k < out.length; k++) out[k] = enode("p" + seg.get(k).id() + "o");
+            Part last = seg.get(seg.size() - 1);
+            Node gnd = enode("p" + last.id() + "i"), vdd = enode("p" + last.id() + "o");
+            int[] rom = new int[16];
+            for (Part q : seg) for (int w = 0; w < 16; w++) if (q.params().containsKey("w" + w)) rom[w] = (int) Math.round(q.param("w" + w, 0));
+            var chip = c.network.add(new dev.emergence.core.sim.elements.MsiChip(type, in, out, vdd, gnd, rom,
+                    p.param("delay", 10e-9), p.param("output_resistance", 50), th));
+            for (int k = 0; k < seg.size(); k++) {
+                Part q = seg.get(k);
+                c.deviceOfPart.put(q.id(), chip);
+                Node a = k < in.length ? in[k] : q == last ? gnd : null, b = k < out.length ? out[k] : q == last ? vdd : null;
+                c.leadsOfPart.put(q.id(), new Node[]{a != null ? a : gnd, b != null ? b : gnd});
+            }
+            // CMOS input capacitance and the supply bypass capacitor beside every chip
+            for (Node n : in) c.network.add(new Capacitor(n, gnd, 5e-12));
+            c.network.add(new Capacitor(vdd, gnd, 100e-9));
         }
 
         /** Leads are at the transverse centre cell of each end face. */
@@ -650,6 +800,11 @@ public final class AssemblyCompiler {
             for (Contact k : contacts) {
                 if (!k.sliding && isLeadKey(k.pk) && isLeadKey(k.qk)) emerge(k.pk, k.qk);
             }
+            // a wire run is one node
+            for (Part p : parts) {
+                WireRun run = runOf.get(p.id());
+                if (run != null && run.parts.get(0) != p) emerge("p" + p.id(), "p" + run.parts.get(0).id());
+            }
             // ---- conductors between contacts
             for (Contact k : contacts) {
                 Part p = k.p, q = k.q;
@@ -660,7 +815,7 @@ public final class AssemblyCompiler {
                     c.network.add(new Resistor(np, nq, brush.param("contact_resistance", BRUSH_RESISTANCE), c.thermalOfPart.get(brush.id())));
                     continue;
                 }
-                double rHalfP = halfLength(p), rHalfQ = halfLength(q);
+                double rHalfP = nodeToFace(p), rHalfQ = nodeToFace(q);
                 if (rHalfP >= CELL / 2 && rHalfQ >= CELL / 2) {
                     // two bulk/wire conductors: split at the contact face so each half's Joule heat goes
                     // into its own part (exact heat allocation, e.g. along a filament)
@@ -712,6 +867,7 @@ public final class AssemblyCompiler {
                                 p.param("efficiency", 0.2), th)));
                         c.network.add(new Capacitor(l[0], l[1], 20e-12));
                     }
+                    case CHIP -> buildChip(p, th);
                     case LOGIC -> {
                         int fn = (int) Math.round(p.param("function", 2));
                         var f = dev.emergence.core.sim.elements.LogicGate.Function.values()[Math.max(0, Math.min(8, fn))];
@@ -939,7 +1095,7 @@ public final class AssemblyCompiler {
         Material conductorMaterial(Part p) {
             return switch (p.kind()) {
                 // manufactured components carry (tinned) copper leads, whatever their body is made of
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC -> MaterialDatabase.standard().get("copper");
+                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP -> MaterialDatabase.standard().get("copper");
                 default -> p.material();
             };
         }
@@ -948,6 +1104,10 @@ public final class AssemblyCompiler {
             // insulation: an insulated wire only connects to wires and component leads
             if (p.kind() == PartKind.INSULATED_WIRE && !(q.kind().leaded)) return false;
             if (q.kind() == PartKind.INSULATED_WIRE && !(p.kind().leaded)) return false;
+            // insulated wires lying side by side do not touch conductor to conductor; runs of the same insulation
+            // colour are taken as spliced together, so colour-coding separates neighbouring nets
+            if (p.kind() == PartKind.INSULATED_WIRE && q.kind() == PartKind.INSULATED_WIRE
+                    && Math.round(p.param("color", 0)) != Math.round(q.param("color", 0))) return false;
             boolean pc = conductive(p) || p.kind().leaded, qc = conductive(q) || q.kind().leaded;
             return pc && qc;
         }

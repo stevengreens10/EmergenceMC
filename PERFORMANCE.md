@@ -34,6 +34,10 @@ server keeps its tick rate, but that machine runs in slow motion. The steam engi
   ln p evaluation, memoised port states (finite differences perturb p and ṁ more than T and s), cached
   Hermite-join ends, Fibonacci hashing in the sparse matrix's (row, col) table (the old hash clustered).
 
+* EM-4 computer (4 MSI chips, ~800 wire cells): 40× slower than real time → 2.7× faster. Wire runs cut the
+  network from 2639 to 722 unknowns; BDF2 for electronics islands removed trapezoidal ringing on 5 pF input
+  nodes (3254 → 143 steps in the first 0.4 s); a steep Schmitt input gave the clock fast edges.
+
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC
    states) and each step refactorises. Plan: (a) per-island accuracy level / relaxed tolerances for

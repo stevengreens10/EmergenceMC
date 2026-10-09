@@ -68,6 +68,12 @@ behaviour; where physics is missing the effect is simply absent.
 * Logic chips are a reduced-order model (thresholds of ratioed 74HC parts, fixed 10 ns delay, no input
   leakage or ESD diodes); large digital systems still run in the analog solver (no event-driven engine).
 * No photodiodes/phototransistors yet; LED light is not received by anything.
+* MSI chips are behavioural (multilinear logic, single propagation delay, no setup/hold violation model
+  beyond the master–slave windows). A ROM's contents are set when it is made (item parameters/presets);
+  there is no in-game programmer yet.
+* The stepper is air-cored (no ferromagnetic teeth are modelled), so its torque is peaked near alignment and a
+  quarter-turn step takes ~3 s; two-coil ("two-phase on") drive gives no midway detent with this torque curve.
+* `Router` is an exhibit-building aid (maze routing with insulation colouring), not an in-game tool.
 
 ## Not yet started (see ROADMAP.md)
 Combustion/general chemistry, CPUs and memory arrays, optics, acoustics, structural analysis, manufacturing, sensors beyond the

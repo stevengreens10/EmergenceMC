@@ -145,7 +145,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         Vector3f x = new Vector3f(l == 0 ? 1 : 0, l == 1 ? 1 : 0, l == 2 ? 1 : 0);
         Vector3f y = new Vector3f(z).cross(x);
         if ((p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE || p.kind == PartKind.LED || p.kind == PartKind.TRANSISTOR
-                || p.kind == PartKind.LOGIC) && a != 1) {
+                || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP) && a != 1) {
             // a knife switch lying on its side: base down (model −Y), whatever the lead axis
             y.set(0, 1, 0);
             x.set(new Vector3f(y).cross(z));
@@ -210,7 +210,23 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             }
             case ECCENTRIC -> drawEccentric(c, p, f);
             case BRAKE -> drawBrake(c, p);
+            case CHIP -> drawChipSegment(c, p);
         }
+    }
+
+    /** One pin pair of a DIP package: epoxy body continuous along the axis, a tinned leg on each lead-axis side. */
+    private void drawChipSegment(Ctx c, PlacedPart p) {
+        int fn = (int) Math.round(p.spec.params().getOrDefault("function", 0.0));
+        int body = fn == 3 ? 0x2A2630 : 0x1C1C1E; // the ROM's ceramic package is a little lighter
+        box(c, PartModels.sprite("epoxy"), tintOf(c, body), -0.3f, -0.42f, -0.5f, 0.3f, -0.18f, 0.5f);
+        for (float side : new float[]{-1, 1}) {
+            box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), side > 0 ? 0.3f : -0.5f, -0.3f, -0.09f,
+                    side > 0 ? 0.5f : -0.3f, -0.24f, 0.09f);
+            box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), side > 0 ? 0.42f : -0.5f, -0.5f, -0.09f,
+                    side > 0 ? 0.5f : -0.42f, -0.3f, 0.09f);
+        }
+        // a stripe of markings across the top
+        box(c, PartModels.sprite("epoxy"), tintOf(c, 0x8A8A8A), -0.16f, -0.18f, -0.06f, 0.16f, -0.175f, 0.06f);
     }
 
     /** Brake block: a shoe of the pad material with a dark friction lining on its +axis face, sprung from a base
@@ -407,7 +423,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         // wire shows its black-body colour on a light surface
         boolean copperLook = !insulated && p.spec.material().contains("copper") && c.glowRgb < 0;
         TextureAtlasSprite s = PartModels.sprite(insulated ? "pvc" : copperLook ? "wire_copper" : "metal_smooth");
-        int rgb = tintOf(c, insulated ? 0x3A78C8 : copperLook ? (c.materialRgb | 0x202020) : c.materialRgb);
+        int rgb = tintOf(c, insulated ? insulationRgb(p) : copperLook ? (c.materialRgb | 0x202020) : c.materialRgb);
         float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
         // undo the part frame: wires are drawn in grid axes
         c.ps.pushPose();
@@ -426,6 +442,15 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         // joint
         box(c, s, rgb, -r * 1.05f, -r * 1.05f, -r * 1.05f, r * 1.05f, r * 1.05f, r * 1.05f);
         c.ps.popPose();
+    }
+
+    /** Insulation colours (parameter "color" 0–15): blue (default), then the usual wiring colours. */
+    static final int[] INSULATION = {0x3A78C8, 0xC83A3A, 0x2A2A2A, 0xE0C030, 0x3AA040, 0xE8E8E8, 0xE07A20, 0x8A4AC0,
+            0x7A4A2A, 0x40B8C0, 0xE070A0, 0x808080, 0x90C840, 0x1E3C8C, 0xB01E1E, 0x5A5A20};
+
+    static int insulationRgb(PlacedPart p) {
+        int k = (int) Math.round(p.spec.params().getOrDefault("color", 0.0));
+        return INSULATION[Math.floorMod(k, INSULATION.length)];
     }
 
     private void arm(Ctx c, TextureAtlasSprite s, int rgb, Dir d, float r, float len) {
@@ -679,6 +704,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         }
         for (PlacedPart q : target.parts()) {
             if (!q.contains(cell[0], cell[1], cell[2])) continue;
+            if (p.kind == PartKind.INSULATED_WIRE && q.kind == PartKind.INSULATED_WIRE
+                    && Math.round(p.spec.params().getOrDefault("color", 0.0)) != Math.round(q.spec.params().getOrDefault("color", 0.0))) continue;
             if (q.kind == PartKind.WIRE || q.kind == PartKind.INSULATED_WIRE || q.kind.leaded || q.kind == PartKind.ELECTROLYTE) return true;
             if (p.kind == PartKind.WIRE && q.spec.resolveMaterial().isConductor()) return true;
         }

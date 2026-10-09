@@ -149,8 +149,11 @@ public final class LogicGate implements Element {
                 ctx.addJ(sIdx, gnd.index(), ty * lb[1]);
             }
         }
-        stage(ctx, out, Math.max(0, Math.min(1, s)), sIdx, 1);
-        if (outBar != null) stage(ctx, outBar, Math.max(0, Math.min(1, 1 - s)), sIdx, -1);
+        // the state may stray marginally outside [0, 1]; the output stage saturates there, and its derivative with
+        // it (a derivative that ignores the clamp makes Newton cycle at a fully driven output)
+        double inside = s > 0 && s < 1 ? 1 : 0;
+        stage(ctx, out, Math.max(0, Math.min(1, s)), sIdx, inside);
+        if (outBar != null) stage(ctx, outBar, Math.max(0, Math.min(1, 1 - s)), sIdx, -inside);
     }
 
     /** Regeneration target of a holding latch: a steep sigmoid of its own state, and its slope. */

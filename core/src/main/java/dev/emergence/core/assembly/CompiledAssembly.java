@@ -357,6 +357,9 @@ public final class CompiledAssembly {
         } else if (d instanceof dev.emergence.core.sim.elements.Bjt q) {
             i = q.collectorCurrent(solver);
             pw = Math.abs(i * v);
+        } else if (d instanceof dev.emergence.core.sim.elements.Thermistor nt) {
+            i = -nt.current(solver);
+            pw = Math.abs(i * v);
         } else if (d instanceof dev.emergence.core.sim.elements.LogicGate lg) {
             i = lg.state(solver);
             pw = 0;

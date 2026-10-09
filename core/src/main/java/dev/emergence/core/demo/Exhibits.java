@@ -24,7 +24,7 @@ public final class Exhibits {
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(),
-                transistorSwitch(), nandGate(), binaryCounter(), miniatureGenerator());
+                transistorSwitch(), nandGate(), binaryCounter(), thermostat(), miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -568,6 +568,62 @@ public final class Exhibits {
             }
         }
         return e.view(20, 9, 20, 40);
+    }
+
+    /**
+     * A thermostat — a closed control loop from parts. An NTC thermistor clamped to a small aluminium plate
+     * forms a divider with 5.1 kΩ; a Schmitt-trigger chip compares it with its thresholds and drives a power
+     * MOSFET that switches a 6 Ω heater under the plate. The loop holds the plate between two temperatures
+     * set by the Schmitt hysteresis; an LED shows when the heater is on.
+     */
+    public static Exhibit thermostat() {
+        Exhibit e = new Exhibit("thermostat", "Thermostat",
+                List.of("THERMOSTAT", "Sensor -> logic ->", "MOSFET -> heater.", "Meter the plate"),
+                "Feedback control from physical parts. The thermistor's resistance falls ~4 % per kelvin (β = 3950 K); "
+                        + "with 5.1 kΩ it makes a voltage that rises as the plate warms. Above 60 % of the supply the "
+                        + "Schmitt trigger's output drops, the MOSFET turns off and the heater (and LED) go dark; the "
+                        + "plate cools by convection and radiation until the voltage falls below 40 %, and the "
+                        + "heater comes back on. The temperature cycles between roughly 30 and 50 °C. Watch it with "
+                        + "the multimeter on the plate or the thermistor. Powered by a 1000 F supercapacitor bank at 5 V (about an hour).");
+        int bat = e.add(CAPACITOR, "alumina", 1, 0, 8, Dir.NORTH, "capacitance", 1000);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        int[][] vdd = new int[14 + 5 + 5 + 7 + 1][];
+        int k = 0;
+        for (int x = 1; x <= 14; x++) vdd[k++] = new int[]{x, 0, 2};
+        for (int z = 3; z <= 7; z++) vdd[k++] = new int[]{1, 0, z};
+        for (int z = 3; z <= 7; z++) vdd[k++] = new int[]{4, 0, z};
+        for (int z = 3; z <= 9; z++) vdd[k++] = new int[]{9, 4, z};
+        vdd[k] = new int[]{9, 3, 9};
+        e.net("vdd", vdd);
+        e.net("vdd", new int[][]{{9, 0, 3}, {9, 1, 3}, {9, 2, 3}, {9, 3, 3}, {4, 1, 7}, {4, 2, 7}});
+        int[][] gnd = new int[14 + 5][];
+        k = 0;
+        for (int x = 1; x <= 14; x++) gnd[k++] = new int[]{x, 0, 14};
+        for (int z = 9; z <= 13; z++) gnd[k++] = new int[]{1, 0, z};
+        e.net("gnd", gnd);
+        e.net("gnd", new int[][]{{6, 2, 11}, {6, 1, 11}, {6, 0, 11}, {6, 0, 12}, {6, 0, 13},
+                {9, 1, 9}, {9, 0, 9}, {9, 0, 10}, {9, 0, 11}, {9, 0, 12}, {9, 0, 13},
+                {13, 2, 9}, {13, 1, 9}, {13, 0, 9}, {13, 0, 10}, {13, 0, 11}, {13, 0, 12}, {13, 0, 13}});
+        // heater under a thin aluminium plate, thermistor clamped on top
+        e.name("heater", e.add(RESISTOR, "alumina", 4, 0, 8, Dir.SOUTH, "resistance", 6));
+        int plate = e.add(BLOCK, "aluminium_6061", 4, 1, 8, Dir.UP, "fill", 0.05);
+        e.name("plate", plate);
+        int ntc = e.add(RESISTOR, "alumina", 4, 2, 8, Dir.SOUTH, "resistance", 10_000, "ntc_beta", 3950);
+        e.name("thermistor", ntc);
+        for (int idx : new int[]{plate, ntc, e.named.get("heater")}) e.init(idx, new Exhibit.Initial(318, 0, 0));
+        e.net("heaterLow", new int[][]{{4, 0, 9}, {5, 0, 9}, {6, 0, 9}, {7, 0, 9}});
+        e.name("mosfet", e.add(TRANSISTOR, "silicon", 8, 0, 9, Dir.WEST, "type", 2, "transconductance", 2.0));
+        // sensing divider and the Schmitt trigger (supply on its lower and upper faces)
+        e.net("sense", new int[][]{{4, 2, 9}, {5, 2, 9}, {6, 2, 9}, {7, 2, 9}, {8, 2, 9}});
+        e.add(RESISTOR, "alumina", 6, 2, 10, Dir.SOUTH, "resistance", 5_100);
+        e.name("schmitt", e.add(LOGIC, "silicon", 9, 2, 9, Dir.EAST, "function", 7, "lead_axis", 1));
+        // gate drive: output → around the north → MOSFET gate; and the heater-on LED
+        e.net("gate", new int[][]{{10, 2, 9}, {10, 2, 8}, {10, 2, 7}, {10, 2, 6}, {9, 2, 6}, {8, 2, 6}, {8, 1, 6}, {8, 0, 6},
+                {8, 0, 7}, {8, 0, 8}});
+        e.name("led", e.add(LED, "silicon", 11, 2, 9, Dir.EAST, "wavelength", 610));
+        e.add(RESISTOR, "alumina", 12, 2, 9, Dir.EAST, "resistance", 470);
+        return e.view(7.5, 7, 19, 35);
     }
 
     /** Supply connections of a chip at (x, y, 8): GND face → column x−2 down to the GND bus, V_DD face → column x+2 up to V_DD. */

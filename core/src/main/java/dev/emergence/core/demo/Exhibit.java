@@ -98,6 +98,14 @@ public final class Exhibit {
         return first;
     }
 
+    /** Electrical net label of wire parts (by part index), used to check layouts for accidental shorts. */
+    public final Map<Integer, String> nets = new LinkedHashMap<>();
+
+    /** Lays insulated copper wire along cells, all belonging to the named net. */
+    public void net(String name, int[][] cells) {
+        for (int[] c : cells) nets.put(add(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP), name);
+    }
+
     /** Adds single-cell parts at the listed cells. */
     public void path(PartKind k, String material, int[][] cells, Object... kv) {
         for (int[] c : cells) add(k, material, c[0], c[1], c[2], Dir.UP, kv);

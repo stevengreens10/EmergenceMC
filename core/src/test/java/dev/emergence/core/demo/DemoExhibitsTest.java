@@ -339,4 +339,53 @@ class DemoExhibitsTest {
         assertEquals(edges % 16, v, "counter value after " + edges + " clock edges");
         assertTrue(c.lightOutput(b.id(e, "led0")) > 0 || c.lightOutput(b.id(e, "led1")) > 0 || v == 0, "LEDs show the count");
     }
+
+    @Test
+    void wiringHasNoAccidentalShorts() {
+        // touching insulated wires join electrically: wires labelled with different nets must never touch
+        for (Exhibit e : Exhibits.all()) {
+            java.util.Map<Long, Integer> at = new java.util.HashMap<>();
+            for (Exhibit.PartDef d : e.parts) {
+                if (e.nets.containsKey(d.index())) at.put(key(d.x0(), d.y0(), d.z0()), d.index());
+            }
+            for (var en : at.entrySet()) {
+                Exhibit.PartDef d = e.parts.get(en.getValue());
+                for (int[] o : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+                    Integer q = at.get(key(d.x0() + o[0], d.y0() + o[1], d.z0() + o[2]));
+                    if (q != null) assertEquals(e.nets.get(d.index()), e.nets.get(q),
+                            e.id + ": wires of different nets touch at " + d.x0() + "," + d.y0() + "," + d.z0());
+                }
+            }
+        }
+    }
+
+    static long key(int x, int y, int z) {
+        return ((long) (x + 512) << 20) | ((long) (y + 512) << 10) | (z + 512);
+    }
+
+    @Test
+    void thermostatHoldsThePlateBetweenItsThresholds() {
+        Exhibit e = Exhibits.thermostat();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long plate = b.id(e, "plate"), led = b.id(e, "led");
+        double tMin = 1e9, tMax = 0;
+        int switches = 0;
+        boolean on = c.probe(led).current() > 1e-3;
+        for (int i = 0; i < 1600; i++) {
+            c.step(1.0);
+            double t = c.temperature(plate);
+            if (i > 300) {
+                tMin = Math.min(tMin, t);
+                tMax = Math.max(tMax, t);
+            }
+            boolean now = c.probe(led).current() > 1e-3;
+            if (now != on) switches++;
+            on = now;
+        }
+        System.out.println("thermostat: " + (tMin - 273.15) + " .. " + (tMax - 273.15) + " °C, " + switches + " switchings");
+        assertTrue(switches >= 4, "the heater cycles on and off: " + switches);
+        assertTrue(tMin > 295 && tMax < 335, "regulated band " + tMin + " .. " + tMax + " K");
+        assertTrue(tMax - tMin > 5, "Schmitt hysteresis gives a temperature band: " + (tMax - tMin));
+    }
 }

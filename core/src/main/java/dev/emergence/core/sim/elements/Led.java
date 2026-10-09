@@ -86,7 +86,15 @@ public final class Led implements Element {
         // cathode: the junction current arrives
         ctx.addF(k.index(), -j[0]);
         ctx.addJ(k.index(), uIdx, -j[1]);
-        if (thermal != null) ctx.addF(thermal.index(), -((va - vk) * j[0] - optical(j[0])));
+        if (thermal != null) {
+            // heat = V·I − optical power, with its derivatives
+            double i = j[0], th = thermal.index();
+            double eff = i > 0 ? eta * photonEv : 0;
+            ctx.addF(thermal.index(), -((va - vk) * i - eff * i));
+            ctx.addJ(thermal.index(), a.index(), -i);
+            ctx.addJ(thermal.index(), k.index(), i);
+            ctx.addJ(thermal.index(), uIdx, -((va - vk) - eff) * j[1]);
+        }
     }
 
     private double optical(double i) {

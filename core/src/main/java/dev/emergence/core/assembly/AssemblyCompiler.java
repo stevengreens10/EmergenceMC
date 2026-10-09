@@ -356,6 +356,11 @@ public final class AssemblyCompiler {
          * through the tube wall's cross-section; solid parts conduct over half a cell.
          */
         double[] conductionPath(Part p, Part q) {
+            // a manufactured component whose body is clamped against a structure (a heat sink, a heater mounted on
+            // a plate) conducts through its body face, not through its leads: ~2 mm of body over its contact area
+            if (p.kind().leaded && !isWire(p) && p.kind() != PartKind.COIL && q.kind().structural) {
+                return new double[]{2e-3, p.param("contact_area", 2e-4)};
+            }
             if (p.kind() == PartKind.TANK) {
                 return new double[]{PartGeometry.wallThickness(p), CELL * CELL};
             }
@@ -685,7 +690,10 @@ public final class AssemblyCompiler {
                 switch (p.kind()) {
                     case RESISTOR -> {
                         Node[] l = leads(p);
-                        c.deviceOfPart.put(p.id(), c.network.add(new Resistor(l[0], l[1], p.param("resistance", 10), th)));
+                        double beta = p.param("ntc_beta", 0);
+                        c.deviceOfPart.put(p.id(), beta > 0
+                                ? c.network.add(new Thermistor(l[0], l[1], p.param("resistance", 10_000), beta, th))
+                                : c.network.add(new Resistor(l[0], l[1], p.param("resistance", 10), th)));
                     }
                     case SWITCH -> {
                         Node[] l = leads(p);

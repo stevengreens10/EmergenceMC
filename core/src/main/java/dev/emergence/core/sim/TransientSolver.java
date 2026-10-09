@@ -240,11 +240,20 @@ public final class TransientSolver implements StateView {
             } else { // LTE rejection: hNext already set
                 rejectedSteps++;
                 h = Math.min(hNext, h * 0.9);
+                // An estimate that still fails after the step has shrunk by orders of magnitude compares against
+                // stale history (e.g. a derivative left by ringing across a fast edge): restart the integration
+                // there, as after any discontinuity, rather than chase it down to underflow.
+                if (h < 1e-4 * hTry || h < 1e3 * hMin) {
+                    restart = true;
+                    validHistory = 0;
+                }
             }
         }
     }
 
     private String lastBadUnknown = "";
+    /** Diagnostics: print the worst unknowns of each Newton iteration once the step has collapsed. */
+    public static boolean TRACE = false;
     private int worstSlot = -1;
     private final java.util.Map<String, Integer> limiterCounts = new java.util.HashMap<>();
 
@@ -338,6 +347,16 @@ public final class TransientSolver implements StateView {
                 }
             }
             if (DEBUG) System.out.println("t=" + t + " h=" + h + " it=" + it + " m=" + m + " x=" + Arrays.toString(xTrial) + " dx=" + Arrays.toString(dx));
+            if (TRACE && h < 1e-9) {
+                Integer[] order = new Integer[n];
+                for (int i = 0; i < n; i++) order[i] = i;
+                final double[] ratio = new double[n];
+                for (int i = 0; i < n; i++) ratio[i] = Math.abs(dx[i]) / (relTol * Math.abs(xTrial[i]) + absTol[i]);
+                Arrays.sort(order, (p1, p2) -> Double.compare(ratio[p2], ratio[p1]));
+                StringBuilder sb = new StringBuilder("TRACE h=" + h + " it=" + it + ":");
+                for (int k = 0; k < 5; k++) sb.append(" ").append(net.unknownName(order[k])).append("=").append(String.format("%.6g(dx %.3g)", xTrial[order[k]], dx[order[k]]));
+                System.out.println(sb);
+            }
             if (small && !limited) {
                 converged = true;
                 break;
@@ -373,6 +392,8 @@ public final class TransientSolver implements StateView {
         if (worstSlot >= 0 && err > 0.5) limiterCounts.merge(net.slotOwner(worstSlot) + "#" + worstSlot, 1, Integer::sum);
         if (err > 1.0) {
             hNext = h * Math.max(0.1, 0.9 * Math.pow(err, -exponent));
+            if (TRACE && h < 1e-8) System.out.println("TRACE LTE reject h=" + h + " err=" + err + " slot " + net.slotOwner(worstSlot)
+                    + "#" + worstSlot + " q=" + qNew[worstSlot] + " qd " + qd0[worstSlot] + " -> " + qdNew[worstSlot] + " validHistory " + validHistory);
             return 2;
         }
 

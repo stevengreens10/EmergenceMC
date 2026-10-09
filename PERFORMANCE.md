@@ -50,6 +50,13 @@ out of sight. In-world tests and demo generation lift both budgets (they test ti
   µs steps (4000-step cap per tick) — physically plausible, and costly in game if a chunk boundary splits
   the servo.
 
+* Matrix assembly replay: each element's sequence of Jacobian entries is recorded and replayed (a comparison and an
+  array read per stamp instead of a hash lookup). Steam engine profile (JFR): hash lookups/inserts ~520 → ~110 of
+  ~2700 samples. Its remaining cost: water/steam properties (~30 %), the thermoelectric junctions of its dissimilar-
+  metal frame, LU refactorisation; ~16 700 Newton iterations per 5 simulated seconds (4.5 per step, a third of the
+  steps rejected — set by a 1.85 mL valve volume; relaxing that only moved the work into more Newton iterations).
+  Profile with `./gradlew coreTest --tests … -Demergence.jfr=<file>.jfr`.
+
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC
    states) and each step refactorises. Plan: (a) per-island accuracy level / relaxed tolerances for

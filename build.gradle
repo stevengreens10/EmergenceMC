@@ -50,6 +50,8 @@ tasks.register('coreTest', Test) {
     maxHeapSize = '6G'
     systemProperty 'emergence.debugSolver', System.getProperty('emergence.debugSolver', 'false')
     if (System.getProperty('emergence.method')) systemProperty 'emergence.method', System.getProperty('emergence.method')
+    // profiling: -Demergence.jfr=<file.jfr> records a Java Flight Recording of the test run
+    if (System.getProperty('emergence.jfr')) jvmArgs "-XX:StartFlightRecording=filename=${System.getProperty('emergence.jfr')},settings=profile"
     testLogging {
         events 'failed'
         exceptionFormat 'full'

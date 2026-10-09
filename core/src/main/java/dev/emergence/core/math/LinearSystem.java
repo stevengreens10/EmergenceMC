@@ -13,6 +13,13 @@ public interface LinearSystem {
     /** Accumulates v into entry (row, col). */
     void add(int row, int col, double v);
 
+    /**
+     * The following adds come from stamping source {@code s} (an element's index; −1 for none): a system may record
+     * each source's sequence of entries to replay it on the next assembly.
+     */
+    default void beginSegment(int s) {
+    }
+
     /** Current value of diagonal entry (i, i) (0 if structurally absent). */
     double diagonal(int i);
 

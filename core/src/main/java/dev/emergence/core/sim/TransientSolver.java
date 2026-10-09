@@ -118,6 +118,15 @@ public final class TransientSolver implements StateView {
 
     // ------------------------------------------------------------------ configuration
 
+    /** Every element stamps the Jacobian and residual, each in a segment of its own (see SparseLinearSystem). */
+    private void loadAll() {
+        for (int k = 0; k < elements.size(); k++) {
+            jac.beginSegment(k);
+            elements.get(k).load(ctx);
+        }
+        jac.beginSegment(-1);
+    }
+
     public TransientSolver method(IntegrationMethod m) {
         this.method = m;
         return this;
@@ -173,7 +182,7 @@ public final class TransientSolver implements StateView {
         ctx.alpha = 0;
         Arrays.fill(f, 0);
         jac.clear();
-        for (Element e : elements) e.load(ctx);
+        loadAll();
         ctx.initializing = false;
         System.arraycopy(qNew, 0, q0, 0, ns);
         System.arraycopy(qNew, 0, q1, 0, ns);
@@ -340,7 +349,7 @@ public final class TransientSolver implements StateView {
             xTrial[j] += d;
             Arrays.fill(f, 0.0);
             jac.clear();
-            for (Element e : elements) e.load(ctx);
+            loadAll();
             for (int i = 0; i < n; i++) if (gmin[i] != 0) f[i] += (relGmin[i] ? Math.max(gmin[i], 1e-12 * Math.abs(jac.diagonal(i))) : gmin[i]) * xTrial[i];
             for (int i = 0; i < n; i++) {
                 double fd = (f[i] - f0[i]) / d;
@@ -356,7 +365,7 @@ public final class TransientSolver implements StateView {
         System.arraycopy(x0, 0, xTrial, 0, n);
         Arrays.fill(f, 0.0);
         jac.clear();
-        for (Element e : elements) e.load(ctx);
+        loadAll();
         for (int i = 0; i < n; i++) if (gmin[i] != 0) {
             double g = relGmin[i] ? Math.max(gmin[i], 1e-12 * Math.abs(jac.diagonal(i))) : gmin[i];
             f[i] += g * xTrial[i];
@@ -395,7 +404,7 @@ public final class TransientSolver implements StateView {
             newtonIterations++;
             Arrays.fill(f, 0.0);
             jac.clear();
-            for (Element e : elements) e.load(ctx);
+            loadAll();
             for (int i = 0; i < n; i++) {
                 if (gmin[i] != 0) {
                     // Relative shunt: an absolute GMIN vanishes in floating point next to large
@@ -466,7 +475,7 @@ public final class TransientSolver implements StateView {
         // Re-evaluate stored quantities at the converged point so the history is exact.
         Arrays.fill(f, 0.0);
         jac.clear();
-        for (Element e : elements) e.load(ctx);
+        loadAll();
 
         // ---- local truncation error control
         double err = 0.0;

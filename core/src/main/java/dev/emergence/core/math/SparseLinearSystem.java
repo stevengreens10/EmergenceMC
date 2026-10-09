@@ -49,6 +49,45 @@ public final class SparseLinearSystem implements LinearSystem {
     @Override
     public void clear() {
         Arrays.fill(val, 0, nnz, 0.0);
+        beginSegment(-1);
+    }
+
+    /*
+     * Assembly replay: each element stamps the same (row, col) entries in the same order on every pass (every Newton
+     * iteration of every step), so each element's sequence of entry indices is recorded and replayed — an add costs a
+     * comparison and an array read instead of a hash lookup. Where an element's sequence differs (it stamps
+     * conditionally), the hash table answers and that element's record is rewritten from there; the others are
+     * unaffected. Adds outside any segment always use the hash table.
+     */
+    private long[][] segKey = new long[0][];
+    private int[][] segIdx = new int[0][];
+    private int[] segLen = new int[0];
+    private long[] seqKey;
+    private int[] seqIdx;
+    private int seg = -1, cursor;
+
+    @Override
+    public void beginSegment(int s) {
+        if (seg >= 0) {
+            segKey[seg] = seqKey;
+            segIdx[seg] = seqIdx;
+            segLen[seg] = Math.max(segLen[seg], cursor);
+        }
+        seg = s;
+        cursor = 0;
+        if (s < 0) return;
+        if (s >= segKey.length) {
+            int cap = Math.max(s + 1, segKey.length * 2);
+            segKey = Arrays.copyOf(segKey, cap);
+            segIdx = Arrays.copyOf(segIdx, cap);
+            segLen = Arrays.copyOf(segLen, cap);
+        }
+        if (segKey[s] == null) {
+            segKey[s] = new long[8];
+            segIdx[s] = new int[8];
+        }
+        seqKey = segKey[s];
+        seqIdx = segIdx[s];
     }
 
     // primitive open-addressing (row,col) → entry index table; avoids boxing in the hot assembly path
@@ -92,6 +131,28 @@ public final class SparseLinearSystem implements LinearSystem {
     @Override
     public void add(int row, int col, double v) {
         long key = (((long) row + 1) << 32) | (col & 0xffffffffL); // +1 so no key is 0 (empty marker)
+        if (seg < 0) {
+            int idx = entry(key, row, col); // first: it may grow val
+            val[idx] += v;
+            return;
+        }
+        int c = cursor++;
+        if (c < segLen[seg] && seqKey[c] == key) {
+            val[seqIdx[c]] += v;
+            return;
+        }
+        int idx = entry(key, row, col);
+        if (c >= seqKey.length) {
+            seqKey = Arrays.copyOf(seqKey, seqKey.length * 2);
+            seqIdx = Arrays.copyOf(seqIdx, seqIdx.length * 2);
+        }
+        seqKey[c] = key;
+        seqIdx[c] = idx;
+        val[idx] += v;
+    }
+
+    /** The entry index of (row, col), created if new. */
+    private int entry(long key, int row, int col) {
         int idx = lookup(key);
         if (idx < 0) {
             idx = nnz++;
@@ -107,7 +168,7 @@ public final class SparseLinearSystem implements LinearSystem {
             insert(key, idx);
             patternChanged = true;
         }
-        val[idx] += v;
+        return idx;
     }
 
     @Override

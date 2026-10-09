@@ -251,4 +251,22 @@ class DemoExhibitsTest {
         assertEquals(101_325, cold[0], 500, "cold vessel unchanged");
         assertEquals(101_325 * hot[1] / AMBIENT, hot[0], 0.01 * hot[0], "p/T constant");
     }
+
+    @Test
+    void stirlingEngineRunsOnTheHeatOfTheCopperBlock() {
+        Exhibit e = Exhibits.stirlingEngine();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long shaft = b.id(e, "shaft");
+        assertNotNull(c.piston(b.id(e, "hot")), "hot cylinder linked to the crank");
+        assertNotNull(c.piston(b.id(e, "cold")), "cold cylinder linked to the crank");
+        double minW = Double.MAX_VALUE;
+        for (int i = 0; i < 400; i++) {
+            c.step(0.05);
+            if (i > 100) minW = Math.min(minW, c.probe(shaft).angularVelocity());
+        }
+        System.out.println("Stirling: w=" + c.probe(shaft).angularVelocity() + " hot gas T=" + c.fluid(b.id(e, "hot"))[1]
+                + " cold gas T=" + c.fluid(b.id(e, "cold"))[1] + " heater T=" + c.temperature(b.id(e, "heater")));
+        assertTrue(minW > 10, "keeps running for 20 s on the block's heat (min ω " + minW + ")");
+    }
 }

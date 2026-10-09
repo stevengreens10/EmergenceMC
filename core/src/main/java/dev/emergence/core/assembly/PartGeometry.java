@@ -135,6 +135,16 @@ public final class PartGeometry {
         return Math.PI / 4 * ((d + 2 * w) * (d + 2 * w) - d * d);
     }
 
+    /** Cylinder bore [m] (parameter "bore", default 40 mm, at most 85 % of the cell). */
+    public static double cylinderBore(Part p) {
+        return Math.min(p.param("bore", 0.04), 0.85 * transverseSize(p));
+    }
+
+    /** Crank throw of an eccentric [m] (parameter "throw", default 15 mm, at most 40 % of the cell). */
+    public static double eccentricThrow(Part p) {
+        return Math.min(p.param("throw", 0.015), 0.4 * transverseSize(p));
+    }
+
     public static double rotorTipRadius(Part p) {
         return 0.45 * transverseSize(p);
     }
@@ -152,6 +162,7 @@ public final class PartGeometry {
     public static double passageArea(Part p) {
         return switch (p.kind()) {
             case PIPE, VALVE -> Math.PI * pipeBore(p) * pipeBore(p) / 4;
+            case CYLINDER -> Math.PI * cylinderBore(p) * cylinderBore(p) / 4;
             case ROTOR -> {
                 double rt = rotorTipRadius(p), rh = rotorHubRadius(p);
                 yield Math.PI * (rt * rt - rh * rh);
@@ -168,6 +179,7 @@ public final class PartGeometry {
     public static double fluidVolume(Part p) {
         return switch (p.kind()) {
             case PIPE, VALVE -> passageArea(p) * axialLength(p);
+            case CYLINDER -> passageArea(p) * axialLength(p) * 0.5; // piston at mid-stroke when not linked
             case ROTOR -> passageArea(p) * axialLength(p) * 0.85;
             case TANK -> {
                 double w = wallThickness(p);
@@ -182,6 +194,8 @@ public final class PartGeometry {
         return switch (p.kind()) {
             // internal longitudinal fins ("fins" = fin area per bare-tube area) at 85 % fin efficiency
             case PIPE, VALVE -> Math.PI * pipeBore(p) * axialLength(p) * (1 + 0.85 * fins(p));
+            // bore wall at mid-stroke, head and piston crown; fins on the head side
+            case CYLINDER -> (Math.PI * cylinderBore(p) * 0.5 * axialLength(p) + 2 * passageArea(p)) * (1 + 0.85 * fins(p));
             case ROTOR -> 2 * Math.PI * (rotorTipRadius(p) + rotorHubRadius(p)) * axialLength(p);
             case TANK -> 2 * (p.boxSize(0) * p.boxSize(1) + p.boxSize(1) * p.boxSize(2) + p.boxSize(0) * p.boxSize(2));
             default -> 0;
@@ -197,6 +211,7 @@ public final class PartGeometry {
     public static double hydraulicDiameter(Part p) {
         return switch (p.kind()) {
             case PIPE, VALVE -> pipeBore(p) / (1 + fins(p)); // 4A/P with the fins' extra perimeter
+            case CYLINDER -> cylinderBore(p) / (1 + fins(p));
             case ROTOR -> 2 * (rotorTipRadius(p) - rotorHubRadius(p));
             case TANK -> transverseSize(p) - 2 * wallThickness(p);
             default -> CELL;
@@ -244,6 +259,14 @@ public final class PartGeometry {
             case TANK -> {
                 double w = wallThickness(p), sx = p.boxSize(0), sy = p.boxSize(1), sz = p.boxSize(2);
                 yield sx * sy * sz - (sx - 2 * w) * (sy - 2 * w) * (sz - 2 * w);
+            }
+            case CYLINDER -> {
+                double d = cylinderBore(p), w = Math.max(wallThickness(p), 0.003);
+                yield Math.PI / 4 * ((d + 2 * w) * (d + 2 * w) - d * d) * axialLength(p) + Math.PI / 4 * d * d * 0.012;
+            }
+            case ECCENTRIC -> {
+                double r = eccentricThrow(p), t = 0.4 * axialLength(p);
+                yield (2 * r + 0.02) * 0.03 * t + Math.PI * 0.006 * 0.006 * axialLength(p); // web and pin
             }
             case ROTOR -> {
                 double rt = rotorTipRadius(p), rh = rotorHubRadius(p), l = axialLength(p) * 0.6;
@@ -341,6 +364,7 @@ public final class PartGeometry {
             case RESISTOR, DIODE, CAPACITOR, SWITCH -> 1e-6;
             case BLOCK -> CELL * CELL * p.param("fill", 1.0);
             case PIPE, VALVE -> tubeWall(p);
+            case CYLINDER -> Math.PI * (cylinderBore(p) + wallThickness(p)) * Math.max(wallThickness(p), 0.003);
             case TANK -> 4 * CELL * wallThickness(p);
             default -> CELL * CELL * 0.5;
         };

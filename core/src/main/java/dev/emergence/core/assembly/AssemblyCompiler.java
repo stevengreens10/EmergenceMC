@@ -131,6 +131,9 @@ public final class AssemblyCompiler {
                     // a bladed rotor spins inside its housing without touching it
                     if ((p.kind() == PartKind.ROTOR && (q.kind().holdsFluid() || q.kind() == PartKind.ROTOR))
                             || (q.kind() == PartKind.ROTOR && p.kind().holdsFluid())) continue;
+                    // a crank throw is linked to cylinders only through connecting rods
+                    if ((p.kind() == PartKind.ECCENTRIC && q.kind() == PartKind.CYLINDER)
+                            || (q.kind() == PartKind.ECCENTRIC && p.kind() == PartKind.CYLINDER)) continue;
                     // A brush is spring-loaded in its holder and merely slides on what it touches: it never
                     // joins rigid bodies (brushes always belong to the stationary frame — see KNOWN_LIMITATIONS).
                     if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) continue;
@@ -355,6 +358,15 @@ public final class AssemblyCompiler {
         double[] conductionPath(Part p, Part q) {
             if (p.kind() == PartKind.TANK) {
                 return new double[]{PartGeometry.wallThickness(p), CELL * CELL};
+            }
+            if (p.kind() == PartKind.CYLINDER) {
+                Vec3 d = q.center().sub(p.center());
+                int a = p.axis().axis();
+                double along = Math.abs(a == 0 ? d.x() : a == 1 ? d.y() : d.z());
+                double w = Math.max(PartGeometry.wallThickness(p), 0.003), bore = PartGeometry.cylinderBore(p);
+                // through the head (a cylinder head is about twice the barrel wall) or through the barrel
+                if (along > 0.5 * d.length()) return new double[]{2 * w, Math.PI * bore * bore / 4};
+                return new double[]{w, (bore + 2 * w) * PartGeometry.axialLength(p)};
             }
             if (p.kind() == PartKind.PIPE || p.kind() == PartKind.VALVE) {
                 boolean axial = false;
@@ -908,6 +920,8 @@ public final class AssemblyCompiler {
             for (Part p : parts) if (p.kind().holdsFluid()) fluids.add(p);
             if (fluids.isEmpty()) return;
             double pAtm = a.ambientPressure();
+            Map<Long, Object[]> pistons = new HashMap<>();
+            for (Part p : fluids) if (p.kind() == PartKind.CYLINDER) linkPiston(p, pistons);
             for (Part p : fluids) {
                 var f = db.byCode(PartGeometry.fluidCode(p));
                 double[] st = prev.fluids().get(p.id());
@@ -915,7 +929,18 @@ public final class AssemblyCompiler {
                 double t0 = st != null ? st[1] : prev.temperatures().getOrDefault(p.id(), ambientT);
                 Node pn = c.network.node(Domain.FLUID, "p" + p.id(), p0);
                 Node tn = c.network.node(Domain.THERMAL, "Tf" + p.id(), t0);
-                FluidVolume v = c.network.add(new FluidVolume(pn, tn, f, Math.max(PartGeometry.fluidVolume(p), 1e-9)));
+                Object[] link = pistons.get(p.id());
+                FluidVolume v;
+                if (link != null) {
+                    SliderCrank k = (SliderCrank) link[0];
+                    CompiledAssembly.Body body = (CompiledAssembly.Body) link[1];
+                    v = c.network.add(new FluidVolume(pn, tn, f, k.volume(0)).withPiston(body.tracker, k));
+                    PistonCoupling pc = c.network.add(new PistonCoupling(pn, tn, body.node, body.tracker, k, pAtm,
+                            p.param("ring_friction", 2.0), c.thermalOfPart.get(p.id())));
+                    c.pistons.put(p.id(), pc);
+                } else {
+                    v = c.network.add(new FluidVolume(pn, tn, f, Math.max(PartGeometry.fluidVolume(p), 1e-9)));
+                }
                 c.fluidOfPart.put(p.id(), v);
             }
             Map<Long, List<FluidBranch>> through = new HashMap<>();
@@ -935,6 +960,7 @@ public final class AssemblyCompiler {
                                     // an open end: along the axis of a tube-like part, into a cell that is neither
                                     // occupied by a part nor solid surroundings
                                     if (!axial || p.kind() == PartKind.TANK || !a.at(nx, ny, nz).isEmpty() || a.isSolidCell(nx, ny, nz)) continue;
+                                    if (p.kind() == PartKind.CYLINDER && d == p.axis()) continue; // the rod side is open crankcase
                                     addVent(p, new int[]{x, y, z}, d, atm, pAtm, through);
                                     continue;
                                 }
@@ -1021,14 +1047,84 @@ public final class AssemblyCompiler {
             c.rotorBranches.put(r.id(), b);
         }
 
+        /**
+         * Finds the crank a cylinder drives: following the cylinder's axis out of its rod (+axis) face, the
+         * first part met must be an eccentric on a rotor whose axis is perpendicular to the cylinder and
+         * passes through the cylinder's axis line. Rod length follows from where the head is: the piston
+         * reaches the clearance gap below the head at top dead centre. The eccentric's "phase" sets where its
+         * pin points at body angle 0, so several cylinders around one crank are phased by their positions.
+         */
+        void linkPiston(Part cyl, Map<Long, Object[]> out) {
+            Dir ax = cyl.axis();
+            int a0 = ax.axis();
+            int[] lo = {cyl.minX(), cyl.minY(), cyl.minZ()}, hi = {cyl.maxX(), cyl.maxY(), cyl.maxZ()};
+            int[] cell = {(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2};
+            cell[a0] = ax.sign() > 0 ? hi[a0] : lo[a0];
+            Part ecc = null;
+            for (int k = 1; k <= 12 && ecc == null; k++) {
+                int x = cell[0] + ax.dx * k, y = cell[1] + ax.dy * k, z = cell[2] + ax.dz * k;
+                List<Part> here = a.at(x, y, z);
+                for (Part q : here) if (q.kind() == PartKind.ECCENTRIC) ecc = q;
+                if (ecc == null) {
+                    for (Part q : here) {
+                        if (q.kind() != PartKind.SHAFT) {
+                            c.warnings.add("Cylinder #" + cyl.id() + ": its connecting rod is blocked by " + q.kind());
+                            return;
+                        }
+                    }
+                }
+            }
+            if (ecc == null) return;
+            CompiledAssembly.Body body = c.bodyOfPart.get(ecc.id());
+            if (body == null || body.isStatic) {
+                c.warnings.add("Cylinder #" + cyl.id() + ": its crank cannot turn");
+                return;
+            }
+            Vec3 n = body.axis;
+            if (Math.abs(n.dot(ax.vec())) > 1e-6) {
+                c.warnings.add("Cylinder #" + cyl.id() + " is not perpendicular to its crankshaft");
+                return;
+            }
+            Vec3 head = cyl.center().sub(ax.vec().mul(cyl.boxSize(a0) / 2));
+            Vec3 rel = head.sub(body.pivot);
+            Vec3 radial = rel.sub(n.mul(rel.dot(n)));
+            double dist = radial.length();
+            Vec3 u = radial.mul(1 / dist);
+            if (Math.abs(u.dot(ax.vec()) + 1) > 1e-3) {
+                c.warnings.add("Cylinder #" + cyl.id() + " does not point at its crankshaft");
+                return;
+            }
+            double r = PartGeometry.eccentricThrow(ecc);
+            double area = PartGeometry.passageArea(cyl);
+            double stroke = 2 * r, length = cyl.boxSize(a0);
+            double clearance = Math.max(cyl.param("clearance", 0.08 * stroke), 1e-4);
+            if (stroke + clearance > length) {
+                c.warnings.add("Cylinder #" + cyl.id() + ": stroke " + stroke + " m does not fit its " + length + " m bore");
+                return;
+            }
+            double rod = dist - clearance - r;
+            if (rod <= r) {
+                c.warnings.add("Cylinder #" + cyl.id() + ": too close to its crank for the connecting rod");
+                return;
+            }
+            // reference direction perpendicular to the crank axis, then the pin's angle at body angle 0
+            int na = Math.abs(n.x()) > 0.5 ? 0 : Math.abs(n.y()) > 0.5 ? 1 : 2;
+            Vec3 ref = Vec3.axis((na + 1) % 3);
+            double phiU = Math.atan2(ref.cross(u).dot(n), ref.dot(u));
+            double tdc = phiU - Math.toRadians(ecc.param("phase", 0));
+            out.put(cyl.id(), new Object[]{new SliderCrank(area, r, rod, clearance, tdc), body});
+        }
+
         /** Whether part p has a fluid port on its face d towards fluid part q. */
         boolean ports(Part p, Dir d, Part q) {
             boolean axial = d.axis() == p.axis().axis();
             return switch (p.kind()) {
                 case TANK -> true;
                 case ROTOR -> axial;
+                // head and sides take pipes; the rod side faces the crank
+                case CYLINDER -> d != p.axis();
                 // tubes connect along their axis, and sideways into a tank or into another tube's end
-                case PIPE, VALVE -> axial || q.kind() == PartKind.TANK || d.axis() == q.axis().axis();
+                case PIPE, VALVE -> axial || q.kind() == PartKind.TANK || q.kind() == PartKind.CYLINDER || d.axis() == q.axis().axis();
                 default -> false;
             };
         }

@@ -54,11 +54,19 @@ public enum PartKind {
      * Bladed rotor (fan, propeller, impeller or turbine wheel) mounted on a shaft inside a fluid passage:
      * it exchanges work with the flow along its axis (Euler turbomachine equation).
      */
-    ROTOR(true, false);
+    ROTOR(true, false),
+    /**
+     * Piston cylinder: a bore along its axis with a piston whose connecting rod reaches out of its +axis
+     * face to a crank throw ({@link #ECCENTRIC}) on a shaft that the axis points at. The head (−axis) face
+     * and the sides take pipes. Gas in it does work on the crank as the piston moves.
+     */
+    CYLINDER(true, false),
+    /** Crank throw: a web and pin mounted on a shaft at radius "throw"; connecting rods of cylinders pointing at the shaft ride on it. */
+    ECCENTRIC(true, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {
-        return this == PIPE || this == TANK || this == VALVE || this == ROTOR;
+        return this == PIPE || this == TANK || this == VALVE || this == ROTOR || this == CYLINDER;
     }
 
     /** Structural parts carry load and rigidly join every part they touch into one body. */

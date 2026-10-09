@@ -23,7 +23,8 @@ public final class Exhibits {
 
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
-                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), miniatureGenerator());
+                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(),
+                miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -378,6 +379,51 @@ public final class Exhibits {
         e.name("coldTank", e.add(TANK, "steel_1045", 10, 0, 8, Dir.UP));
         e.add(TANK, "steel_1045", 10, 1, 8, Dir.UP);
         return e.view(7.5, 3.5, 13, 22);
+    }
+
+    /**
+     * Alpha Stirling engine: a hot and a cold piston cylinder 90° apart around one crank, joined by a thin
+     * transfer pipe and charged with air. The hot cylinder's head stands against a red-hot copper block.
+     */
+    public static Exhibit stirlingEngine() {
+        Exhibit e = new Exhibit("stirling", "Stirling engine",
+                List.of("STIRLING ENGINE", "Hot and cold", "cylinders, 90 deg", "apart. It runs!"),
+                "A heat engine from parts. The upper cylinder's head is heated by a copper block at 1100 K; the "
+                        + "side cylinder stays near room temperature. Both pistons drive one crank throw, 90° "
+                        + "apart, so the trapped air is mostly in the hot cylinder while it expands and mostly in "
+                        + "the cold one while it is compressed. Expansion at high pressure does more work than "
+                        + "compression at low pressure: the difference turns the flywheel (it was given a flick "
+                        + "to start). Heat flows in from the block and out of the cold cylinder's fins.");
+        String st = "steel_1045";
+        int y = 3;
+        int shaft = e.fill(SHAFT, st, 0, y, 8, 7, y, 8, Dir.EAST, "diameter", 0.012);
+        e.name("shaft", shaft);
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 20, 0));
+        e.add(BEARING, st, 0, y, 8, Dir.EAST);
+        e.add(BEARING, st, 7, y, 8, Dir.EAST);
+        e.fill(BLOCK, st, 0, 0, 8, 0, y - 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 7, 0, 8, 7, y - 1, 8, Dir.UP);
+        e.add(ECCENTRIC, st, 3, y, 8, Dir.EAST, "throw", 0.015);
+        e.name("flywheel", e.fill(BLOCK, st, 5, y - 1, 7, 5, y + 1, 9, Dir.EAST, "fill", 0.3));
+        // hot cylinder above the crank, cold cylinder beside it; air charged to 4 bar
+        int hot = e.add(CYLINDER, "steel_1045", 3, y + 2, 8, Dir.DOWN, "bore", 0.04, "fins", 6,
+                "ring_friction", 0.5);
+        e.name("hot", hot);
+        e.init(hot, new Exhibit.Initial(900, 0, 0)); // the gallery opens with the engine warmed up
+        e.name("cold", e.add(CYLINDER, "aluminium_6061", 3, y, 10, Dir.NORTH, "bore", 0.04, "fins", 6,
+                "ring_friction", 0.5));
+        // aluminium cooling block closing the cold cylinder's head
+        e.add(BLOCK, "aluminium_6061", 3, y, 11, Dir.SOUTH);
+        e.add(PIPE, "copper", 3, y + 2, 9, Dir.SOUTH, "bore", 0.008);
+        e.add(PIPE, "copper", 3, y + 2, 10, Dir.DOWN, "bore", 0.008);
+        e.add(PIPE, "copper", 3, y + 1, 10, Dir.DOWN, "bore", 0.008);
+        e.add(BLOCK, st, 3, y + 3, 10, Dir.UP, "fill", 0.2); // blind flange on the elbow
+        int h1 = e.add(BLOCK, "copper", 3, y + 3, 8, Dir.UP);
+        int h2 = e.add(BLOCK, "copper", 3, y + 4, 8, Dir.UP);
+        e.name("heater", h1);
+        e.init(h1, new Exhibit.Initial(1100, 0, 0));
+        e.init(h2, new Exhibit.Initial(1100, 0, 0));
+        return e.view(6.5, 6.5, 16, 20);
     }
 
     /**

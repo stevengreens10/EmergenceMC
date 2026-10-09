@@ -69,3 +69,15 @@ turbine got a light disk and a bigger receiver, and the fan two 5:1 gear stages.
 **Parts and world.** Pipes, pressure vessels (riveted, with a live Bourdon gauge), globe valves (stem rises
 when open) and bladed rotors; shafts pass through pipes in glands; open pipe ends vent (with plumes) unless
 capped by world blocks; air pressure falls with altitude.
+
+**Heat engine milestone.** A Brayton experiment (compressor and turbine rotors on one shaft, finned heater
+between) never self-sustained: a single 5.6 cm blade row reaches a pressure ratio of only ~1.01 — real
+micro gas turbines need ≥ 3 — so friction and heater losses win. That is physics, not a bug, and is kept
+as a documented result. Pistons came next: slider-crank kinematics with variable-volume control volumes
+and an exactly power-conserving gas/shaft coupling, then CYLINDER and ECCENTRIC parts whose linkage,
+rod length and timing the compiler infers from placement. An alpha Stirling engine assembled from parts
+runs on a hot copper block and drives a magnet-and-coil generator. Along the way: charging it to 4 bar
+made it rock instead of turn (the gas spring against an unpressurised crankcase outweighed the flywheel —
+real high-pressure Stirlings pressurise the crankcase), and an open cold-cylinder head vented the charge.
+In the world, two exhibits within gear reach merged into one island; plots are now 20 blocks apart and
+fluid unknowns have Newton step limits.

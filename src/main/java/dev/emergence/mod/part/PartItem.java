@@ -67,6 +67,8 @@ public final class PartItem extends Item {
             case TANK -> PartSpec.of("steel_1045", 1, 1);
             case VALVE -> PartSpec.of("brass", 1, 1, "bore", 0.025);
             case ROTOR -> PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1);
+            case CYLINDER -> PartSpec.of("steel_1045", 1, 1, "bore", 0.04, "fins", 4);
+            case ECCENTRIC -> PartSpec.of("steel_1045", 1, 1, "throw", 0.015);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -93,6 +95,8 @@ public final class PartItem extends Item {
             case PIPE, VALVE -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.025), "m") + fluidLabel(p);
             case TANK -> fluidLabel(p) + (p.containsKey("pressure") ? String.format(", %.0f bar", p.get("pressure") / 1e5) : "");
             case ROTOR -> String.format(", %.0f° blades%s", p.getOrDefault("blade_angle", 45.0), p.getOrDefault("pitch", 1.0) < 0 ? ", left-hand" : "");
+            case CYLINDER -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.04), "m") + (p.getOrDefault("fins", 0.0) > 0 ? ", finned" : "");
+            case ECCENTRIC -> ", throw " + Units.formatSI(p.getOrDefault("throw", 0.015), "m");
             default -> "";
         };
     }
@@ -139,7 +143,7 @@ public final class PartItem extends Item {
             int[] c = AssemblyBlock.cellAt(cbe, hit, face);
             PlacedPart t = cbe.partAt(c[0], c[1], c[2]);
             boolean mountable = kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK
-                    || kind == PartKind.ROTOR || (kind == PartKind.BLOCK && spec.cross() > 1);
+                    || kind == PartKind.ROTOR || kind == PartKind.ECCENTRIC || (kind == PartKind.BLOCK && spec.cross() > 1);
             // clicking the side of a shaft mounts the part coaxially on that shaft cell
             if (t != null && t.kind == PartKind.SHAFT && mountable && face.getAxis().ordinal() != t.axis.axis()) {
                 return place(ctx, level, player, stack, spec, clicked, t.axis, c[0], c[1], c[2], true);
@@ -212,7 +216,7 @@ public final class PartItem extends Item {
 
     private boolean mountable(PartSpec spec) {
         return kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK || kind == PartKind.BLOCK
-                || kind == PartKind.ROTOR;
+                || kind == PartKind.ROTOR || kind == PartKind.ECCENTRIC;
     }
 
     /** Block-scale placement: one part per block. */

@@ -31,8 +31,10 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Fluid networks: control volumes, pipes (Darcy–Weisbach), tanks, valves (choked orifices), atmosphere
    vents, wall heat transfer, ideal-gas and liquid equations of state, gravity head
 ✅ Bladed rotors by blade-element theory: fans, pumps, turbines, windmills from one part
-⬜ Phase transitions (boiling/condensation), free surfaces, pistons/cylinders (translational bodies)
-⬜ Milestone: heat engine driving a generator
+✅ Piston cylinders and crank throws (slider-crank, variable-volume thermodynamics)
+⬜ Phase transitions (boiling/condensation), free surfaces, valve gear, free translational bodies
+✅ **Milestone: heat engine driving a generator** — an alpha Stirling engine from parts (hot and cold
+   cylinders 90° apart, transfer pipe, flywheel) runs on a hot block and drives magnets past a coil
 
 ## Phase 4 — Electronics and computation
 🟡 Diode ✅; BJT/MOSFET, LEDs, photodiodes ⬜
@@ -54,5 +56,6 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Gallery generator (`./gradlew generateDemoWorld`), `/emergence demo`, automated screenshot tour.
 Exhibits (block scale): hand generator, gear train, capacitor glow, fuse, conduction race, bearing
 friction, DC motor, Daniell cell, displacement plating, galvanic corrosion; plus a true-scale miniature
-generator; compressed-air turbine, fan-and-windmill fluid coupling, heated pressure vessel.
+generator; compressed-air turbine, fan-and-windmill fluid coupling, heated pressure vessel, Stirling
+engine with generator.
 New mechanics must add an exhibit (core `Exhibits` + `DemoExhibitsTest`).

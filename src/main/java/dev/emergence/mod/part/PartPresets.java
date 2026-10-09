@@ -84,6 +84,11 @@ public final class PartPresets {
         l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1)));
         l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", -1)));
         l.add(stack(PartKind.ROTOR, PartSpec.of("steel_1045", 1, 1, "blade_angle", 65, "pitch", 1)));
+        // reciprocating machinery
+        l.add(stack(PartKind.CYLINDER, PartSpec.of("steel_1045", 1, 1, "bore", 0.04, "fins", 6)));
+        l.add(stack(PartKind.CYLINDER, PartSpec.of("aluminium_6061", 1, 1, "bore", 0.04, "fins", 6)));
+        l.add(stack(PartKind.CYLINDER, PartSpec.of("steel_1045", 1, 1, "bore", 0.025)));
+        for (double t : new double[]{0.01, 0.015, 0.02}) l.add(stack(PartKind.ECCENTRIC, PartSpec.of("steel_1045", 1, 1, "throw", t)));
         return l;
     }
 }

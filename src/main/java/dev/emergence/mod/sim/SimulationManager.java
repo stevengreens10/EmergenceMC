@@ -536,9 +536,20 @@ public final class SimulationManager {
         }
         float[] ga = new float[gauges.size()];
         for (int i = 0; i < ga.length; i++) ga[i] = gauges.get(i);
+        // piston state of cylinders (8 floats each, see CompiledAssembly.piston)
+        List<Long> pIds = new ArrayList<>();
+        List<Float> pData = new ArrayList<>();
+        for (long id : isl.partPos.keySet()) {
+            double[] ps = c.piston(id);
+            if (ps == null) continue;
+            pIds.add(id);
+            for (double v : ps) pData.add((float) v);
+        }
+        float[] pa = new float[pData.size()];
+        for (int i = 0; i < pa.length; i++) pa[i] = pData.get(i);
         IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime(), scale,
                 tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray(),
-                fIds.stream().mapToLong(Long::longValue).toArray(), ga);
+                fIds.stream().mapToLong(Long::longValue).toArray(), ga, pIds.stream().mapToLong(Long::longValue).toArray(), pa);
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
     }

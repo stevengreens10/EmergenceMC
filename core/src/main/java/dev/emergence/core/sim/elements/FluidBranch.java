@@ -99,7 +99,7 @@ public final class FluidBranch implements Element {
     double orificeFlow(double pA, double pB, double tA, double tB) {
         double dp = pA - pB;
         boolean fwd = dp >= 0;
-        double pu = fwd ? pA : pB, pd = fwd ? pB : pA, tu = fwd ? tA : tB;
+        double pu = Math.max(fwd ? pA : pB, 1.0), pd = Math.max(fwd ? pB : pA, 0.0), tu = Math.max(fwd ? tA : tB, 1.0);
         double area = dischargeCoefficient * orificeArea * opening;
         double reg = Math.tanh(Math.abs(dp) / 1.0);
         double m;
@@ -166,7 +166,7 @@ public final class FluidBranch implements Element {
     private void eval(double m, double pA, double pB, double tA, double tB, double w, double[] out) {
         tA = Math.max(tA, 1.0);
         tB = Math.max(tB, 1.0);
-        double pm = 0.5 * (pA + pB), tm = 0.5 * (tA + tB);
+        double pm = Math.max(0.5 * (pA + pB), fluid.isGas() ? 1.0 : -1e9), tm = 0.5 * (tA + tB);
         double rho = Math.max(fluid.density(pm, tm), 1e-9), mu = fluid.viscosity(tm);
         boolean orifice = orificeArea > 0;
         double v = m / (rho * area);

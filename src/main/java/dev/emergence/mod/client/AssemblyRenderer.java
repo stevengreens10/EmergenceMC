@@ -198,6 +198,11 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case VALVE -> drawModel(c, "valve", p, 1, 1, ez, false);
             case PIPE -> drawPipe(c, be, p, f);
             case ROTOR -> drawRotor(c, p, ex, ey, ez);
+            case CYLINDER -> {
+                drawModel(c, "cylinder", p, Math.min(ex, ey), Math.min(ex, ey), ez, false);
+                drawPiston(c, p, f, ez);
+            }
+            case ECCENTRIC -> drawEccentric(c, p, f);
         }
     }
 
@@ -505,6 +510,74 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         float[][] q = {a, b, d, e};
         float[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
         for (int i = 0; i < 4; i++) vertex(c, c.solid, s, rgb, q[i][0], q[i][1], q[i][2], uv[i][0], uv[i][1], nx, ny, nz);
+    }
+
+    /**
+     * Piston and connecting rod of a cylinder, placed from the synced crank state: the piston crown sits at
+     * clearance + displacement below the head and the rod runs to the crank pin at throw r, angle ψ from TDC.
+     */
+    private void drawPiston(Ctx c, PlacedPart p, Frame f, float ez) {
+        float[] st = ClientSimState.piston(p.id);
+        float bore = (float) (p.spec.params().getOrDefault("bore", 0.04) * 16);
+        float s = st == null ? 0.01f : st[0] * 16, psi = st == null ? 0 : st[1];
+        float r = st == null ? 0 : st[2] * 16, l = st == null ? 0 : st[3] * 16, cl = st == null ? 0 : st[4] * 16;
+        float head = -ez / 2;
+        float crown = head + cl + s;
+        TextureAtlasSprite metal = PartModels.sprite("metal_smooth"), cast = PartModels.sprite("metal_cast");
+        int grey = tintOf(c, 0xC8CCD0), dark = tintOf(c, 0x8A8E94);
+        // piston (in the part frame, Z from the head towards the crank)
+        cylinder(c, metal, grey, Math.min(bore / 2 * 0.98f, 0.48f), crown, crown + 0.22f, 20, true);
+        for (int k = 0; k < 2; k++) cylinder(c, cast, dark, Math.min(bore / 2, 0.49f), crown + 0.03f + 0.05f * k, crown + 0.05f + 0.05f * k, 20, false);
+        if (st == null) return;
+        // crank pin in the part frame: the shaft axis lies at head + cl + r + l along Z; the pin moves through
+        // TDC along the synced lateral direction, expressed in the part frame
+        Vector3f lat = new Vector3f(st[5], st[6], st[7]);
+        new Matrix3f(f.m3).transpose().transform(lat);
+        float zShaft = head + cl + r + l;
+        Vector3f pin = new Vector3f(lat).mul(r * (float) Math.sin(psi)).add(0, 0, zShaft - r * (float) Math.cos(psi));
+        Vector3f wrist = new Vector3f(0, 0, crown + 0.1f);
+        Vector3f d = new Vector3f(pin).sub(wrist);
+        float len = d.length();
+        c.ps.pushPose();
+        c.ps.translate(wrist.x, wrist.y, wrist.z);
+        c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), d.normalize()));
+        box(c, metal, grey, -0.05f, -0.035f, 0, 0.05f, 0.035f, len);
+        cylinder(c, cast, dark, 0.07f, len - 0.05f, len + 0.05f, 12, true);
+        c.ps.popPose();
+    }
+
+    /** A crank throw: hub, web and pin at its throw radius, set by its phase; turns with the shaft. */
+    private void drawEccentric(Ctx c, PlacedPart p, Frame f) {
+        var prm = p.spec.params();
+        float r = (float) (prm.getOrDefault("throw", 0.015) * 16);
+        double phase = Math.toRadians(prm.getOrDefault("phase", 0.0));
+        int a = p.axis.axis();
+        // the compiler's reference: crank axis n (positive), ref = next grid axis, angle towards n × ref
+        Vector3f n = new Vector3f(a == 0 ? 1 : 0, a == 1 ? 1 : 0, a == 2 ? 1 : 0);
+        int ra = (a + 1) % 3;
+        Vector3f ref = new Vector3f(ra == 0 ? 1 : 0, ra == 1 ? 1 : 0, ra == 2 ? 1 : 0);
+        Vector3f pinDir = new Vector3f(ref).mul((float) Math.cos(phase)).add(new Vector3f(n).cross(ref).mul((float) Math.sin(phase)));
+        TextureAtlasSprite s = PartModels.sprite("metal_brushed"), cast = PartModels.sprite("metal_cast");
+        int rgb = tintOf(c, c.materialRgb), dark = tintOf(c, darken(c.materialRgb, 0.8f));
+        c.ps.pushPose();
+        c.ps.last().pose().mul(new Matrix4f(f.m4).transpose());
+        c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
+        // hub along the shaft
+        c.ps.pushPose();
+        c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), n));
+        cylinder(c, cast, dark, 0.16f, -0.25f, 0.25f, 20, true);
+        c.ps.popPose();
+        // web: from the axis out past the pin, in the plane of rotation
+        c.ps.pushPose();
+        Vector3f side = new Vector3f(n).cross(pinDir);
+        Matrix3f basis = new Matrix3f(side, pinDir, n);
+        c.ps.last().pose().mul(new Matrix4f().set3x3(basis));
+        c.ps.last().normal().mul(basis);
+        box(c, s, rgb, -0.14f, -0.12f, -0.12f, 0.14f, r + 0.12f, 0.12f);
+        c.ps.translate(0, r, 0);
+        cylinder(c, PartModels.sprite("chrome"), tintOf(c, 0xE0E0E0), 0.07f, -0.35f, 0.35f, 14, true);
+        c.ps.popPose();
+        c.ps.popPose();
     }
 
     /** Parts occupying the cell just beyond face d of part p (possibly in the neighbouring block). */

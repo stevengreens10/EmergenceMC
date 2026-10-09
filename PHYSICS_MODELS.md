@@ -143,3 +143,19 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   ends vent to an atmosphere reservoir unless the neighbouring cell is solid; a shaft passes through
   fluid parts in a gland (no rigid joint); a rotor's blade row sits on its +axis branch and acts through
   its rigid body. Air pressure follows the isothermal barometric formula with height in the world.
+
+## Pistons and cranks (`SliderCrank`, `PistonCoupling`)
+* **Kinematics**: s(ψ) = r + l − (r cos ψ + √(l² − r² sin² ψ)), V = A(c + s), exact for a rigid rod; rod and
+  piston masses are neglected (small next to a flywheel), so the coupling is instantaneous.
+* **Thermodynamics**: the cylinder is a `FluidVolume` whose volume follows the crank angle; the gas loses
+  p·dV/dt as work. The shaft receives τ = (p − p_amb)·dV/dθ (open crankcase); p_amb·dV/dt is work on the
+  atmosphere, booked as external power. Exact power balance. Ring friction F_ring·|ds/dθ| (regularised at
+  ω = 0) heats the cylinder wall.
+* **Inference from parts**: a cylinder's rod leaves its +axis face; following that line, the first part must
+  be a crank throw (`ECCENTRIC`) on a rotor whose axis is perpendicular to it and crosses the line. Rod
+  length = distance from the head to the crank axis − clearance − throw; TDC phase = the cylinder's angle
+  around the crank axis minus the throw's phase. Several cylinders on one throw are phased by placement.
+* **Validated**: a fast 9:1 compression stays on the thermally perfect isentrope (Δs < 0.2 J/(kg·K)); an
+  alpha Stirling from raw elements and the exhibit built from parts both run on a temperature difference.
+* **Limitations**: no piston/rod inertia or side thrust, no blow-by leakage, no valve gear yet (so no steam
+  engine or internal-combustion cycle), gas spring forces against an unpressurised crankcase.

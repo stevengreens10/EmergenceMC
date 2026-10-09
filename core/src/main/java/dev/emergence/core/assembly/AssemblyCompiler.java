@@ -938,6 +938,7 @@ public final class AssemblyCompiler {
                     PistonCoupling pc = c.network.add(new PistonCoupling(pn, tn, body.node, body.tracker, k, pAtm,
                             p.param("ring_friction", 2.0), c.thermalOfPart.get(p.id())));
                     c.pistons.put(p.id(), pc);
+                    c.pistonLateral.put(p.id(), (Vec3) link[2]);
                 } else {
                     v = c.network.add(new FluidVolume(pn, tn, f, Math.max(PartGeometry.fluidVolume(p), 1e-9)));
                 }
@@ -1112,7 +1113,7 @@ public final class AssemblyCompiler {
             Vec3 ref = Vec3.axis((na + 1) % 3);
             double phiU = Math.atan2(ref.cross(u).dot(n), ref.dot(u));
             double tdc = phiU - Math.toRadians(ecc.param("phase", 0));
-            out.put(cyl.id(), new Object[]{new SliderCrank(area, r, rod, clearance, tdc), body});
+            out.put(cyl.id(), new Object[]{new SliderCrank(area, r, rod, clearance, tdc), body, n.cross(u)});
         }
 
         /** Whether part p has a fluid port on its face d towards fluid part q. */

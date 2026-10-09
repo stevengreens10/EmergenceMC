@@ -1,11 +1,12 @@
 # Next steps (priority order)
 
-1. **Heat-engine milestone (Phase 3)**: open Brayton cycle from parts — a compressor rotor and a turbine
-   rotor on one shaft with a heated section between (hot block / electric heater) — self-sustaining if
-   T3/T1 and blade efficiencies allow; then drive the generator. Needs: flow kinetic energy or
-   nozzle-guide vanes for realistic stage loading; multi-row rotors.
-2. Phase change (water ↔ steam with saturation pressure) → boiler, steam engine/turbine.
-3. Dynamo exhibit: a cranked commutated machine charging the DC motor's capacitor (DC generation).
+1. **Phase change** (water ↔ steam, saturation pressure, two-phase volumes) → boiler; with **valve gear**
+   (a cam/eccentric-driven slide valve part) → a steam engine from parts.
+2. Check valves (one-way) → piston air compressor and pump exhibits.
+3. Brayton cycle: an experiment showed a single 5.6 cm blade row cannot sustain a gas turbine (pressure
+   ratio ~1.01; real micro-turbines need ≥ 3) — needs flow kinetic energy (impulse stages, nozzles) and
+   multi-stage rotors before it can work.
+4. Dynamo exhibit: a cranked commutated machine charging the DC motor's capacitor (DC generation).
 2. **Ferromagnetic materials**: induced magnetisation of soft-iron parts (magnetic equivalent circuit or
    volume-integral method) → iron-cored coils, transformers, reluctance torque, magnet attraction to steel;
    exhibit "transformer".

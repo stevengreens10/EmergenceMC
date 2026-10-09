@@ -18,6 +18,7 @@ public final class ClientSimState {
     private static final Map<Long, Float> TEMP = new HashMap<>();
     private static final Map<Long, Integer> TINT = new HashMap<>();
     private static final Map<Long, Float> GAUGE = new HashMap<>();
+    private static final Map<Long, float[]> PISTON = new HashMap<>();
 
     public static synchronized void apply(IslandSyncPayload p) {
         for (long id : p.partIds()) {
@@ -25,6 +26,7 @@ public final class ClientSimState {
             TEMP.remove(id);
             TINT.remove(id);
             GAUGE.remove(id);
+            PISTON.remove(id);
         }
         double s = p.worldScale();
         for (IslandSyncPayload.BodyState b : p.bodies()) {
@@ -35,6 +37,7 @@ public final class ClientSimState {
         for (int i = 0; i < p.hotIds().length; i++) TEMP.put(p.hotIds()[i], p.hotTemps()[i]);
         for (int i = 0; i < p.tintIds().length; i++) TINT.put(p.tintIds()[i], p.tints()[i]);
         for (int i = 0; i < p.fluidIds().length; i++) GAUGE.put(p.fluidIds()[i], p.gauges()[i]);
+        for (int i = 0; i < p.pistonIds().length; i++) PISTON.put(p.pistonIds()[i], java.util.Arrays.copyOfRange(p.pistons(), 8 * i, 8 * i + 8));
     }
 
     public static synchronized Pose pose(long partId) {
@@ -44,6 +47,11 @@ public final class ClientSimState {
     public static synchronized float temperature(long partId, float fallback) {
         Float t = TEMP.get(partId);
         return t == null ? fallback : t;
+    }
+
+    /** Piston state of a cylinder (see CompiledAssembly.piston), or null. */
+    public static synchronized float[] piston(long partId) {
+        return PISTON.get(partId);
     }
 
     /** Gauge pressure of a fluid part [Pa] (0 if at ambient or unknown). */
@@ -63,5 +71,6 @@ public final class ClientSimState {
         TEMP.clear();
         TINT.clear();
         GAUGE.clear();
+        PISTON.clear();
     }
 }

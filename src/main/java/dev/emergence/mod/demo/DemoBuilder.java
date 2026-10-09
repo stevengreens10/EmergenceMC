@@ -36,8 +36,11 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class DemoBuilder {
     private DemoBuilder() {}
 
-    /** Plots are 16 blocks wide (exhibits are block-scale builds) with a 2-block aisle between them. */
-    public static final int PLOT_SPACING = 18;
+    /**
+     * Plots are 16 blocks wide (exhibits are block-scale builds) with an aisle that keeps neighbouring exhibits
+     * beyond each other's interaction reach (gears reach up to 6 blocks), so each stays its own machine.
+     */
+    public static final int PLOT_SPACING = 20;
     /** Depth of a plot (z) and the row (relative to the plot origin) where the signs and the walkway are. */
     public static final int PLOT_DEPTH = 16, SIGN_Z = 16;
 

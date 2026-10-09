@@ -52,6 +52,9 @@ behaviour; where physics is missing the effect is simply absent.
   radial (centrifugal) machines; blades have no camber.
 * Gas properties are ideal-gas (Z ≈ 1); real-gas effects at high pressure are ignored.
 * Internal natural convection in closed vessels is not modelled (laminar forced-convection Nu as floor).
+* Pistons: massless piston and rod, no blow-by, no valve gear; crankcase always at ambient pressure.
+* A single small blade row cannot make a self-sustaining gas turbine (consistent with real physics at this
+  scale); jet kinetic energy is not modelled, so impulse turbines are under-powered.
 
 ## Not yet started (see ROADMAP.md)
 Phase change, combustion/general chemistry, semiconductors beyond

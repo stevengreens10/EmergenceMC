@@ -70,6 +70,9 @@ public final class AutoShowcase {
                 STEPS.add(new Step(16, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "valve")),
                         "showcase-" + (i + 1) + "-" + id + "-on"));
             }
+            if (id.equals("stirling")) {
+                STEPS.add(new Step(100, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }

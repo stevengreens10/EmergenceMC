@@ -97,7 +97,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
      */
     public static boolean mayOverlap(PartKind a, PartKind b) {
         if (a == PartKind.SHAFT) return b == PartKind.BEARING || b == PartKind.GEAR || b == PartKind.BLOCK || b == PartKind.CRANK
-                || b.holdsFluid();
+                || b == PartKind.ECCENTRIC || (b.holdsFluid() && b != PartKind.CYLINDER);
         if (b == PartKind.SHAFT) return mayOverlap(b, a);
         return false;
     }

@@ -332,6 +332,26 @@ def build_all():
     ring = torus(0.45, 0.025, name="rotor_shroud", seg=32)
     finish(ring, "rotor", "metal_brushed__tint", smooth=True)
 
+    # CYLINDER: finned barrel along Z, head (with bolts) at -Z, open bore at +Z where the rod comes out.
+    # The piston and connecting rod are drawn in game from the crank state.
+    bar = cyl(0.25, 0.9, loc=(0, 0, -0.03), verts=32, name="cyl_barrel"); boolean(bar, cyl(0.2, 1.2, loc=(0, 0, 0.1), name="cut"))
+    finish(bar, "cylinder", "metal_cast__tint", smooth=True)
+    for k in range(6):
+        z = -0.38 + k * 0.11
+        fin = cyl(0.42, 0.03, loc=(0, 0, z), verts=32, name="cyl_fin"); boolean(fin, cyl(0.24, 0.1, loc=(0, 0, z), name="cut"))
+        finish(fin, "cylinder", "metal_cast__tint", smooth=True)
+    head = cyl(0.36, 0.1, loc=(0, 0, -0.45), verts=32, name="cyl_head"); bevel_mod(head, 0.02)
+    finish(head, "cylinder", "metal_brushed__tint", smooth=True)
+    for k in range(6):
+        a = 2 * math.pi * k / 6
+        finish(cyl(0.035, 0.05, loc=(0.29 * math.cos(a), 0.29 * math.sin(a), -0.39), verts=6, name="cyl_bolt"), "cylinder", "metal_smooth")
+    finish(cyl(0.21, 0.02, loc=(0, 0, 0.42), verts=32, name="cyl_bore"), "cylinder", "epoxy")
+
+    # ECCENTRIC (icon): crank web and pin on a hub
+    finish(cyl(0.14, 0.3, verts=20, name="ecc_hub"), "eccentric", "metal_cast__tint", smooth=True)
+    finish(box((0.24, 0.6, 0.16), loc=(0, 0.2, 0), name="ecc_web", bevel=0.04), "eccentric", "metal_brushed__tint")
+    finish(cyl(0.07, 0.36, loc=(0, 0.42, 0.06), verts=16, name="ecc_pin"), "eccentric", "chrome", smooth=True)
+
     # TOOLS
     finish(box((0.6, 0.18, 0.95), name="mm_body", bevel=0.06), "multimeter", "plastic__yellow")
     finish(box((0.44, 0.02, 0.26), loc=(0, -0.1, 0.25), name="mm_lcd", bevel=0.01), "multimeter", "silicon")
@@ -345,7 +365,7 @@ def build_all():
 
 
 # ------------------------------------------------------------------ export
-RUNTIME_MODELS = ["tank", "valve", "plate", "magnet", "bearing", "coil", "crank", "resistor", "capacitor", "diode", "switch",
+RUNTIME_MODELS = ["cylinder", "tank", "valve", "plate", "magnet", "bearing", "coil", "crank", "resistor", "capacitor", "diode", "switch",
                   "brush", "electrolyte"]
 
 
@@ -380,7 +400,8 @@ ICON_PARTS = {"plate": "block", "magnet": "magnet", "bearing": "bearing", "coil"
               "resistor": "resistor", "capacitor": "capacitor", "diode": "diode", "switch": "switch",
               "brush": "brush", "electrolyte": "electrolyte", "gear": "gear", "shaft": "shaft", "wire": "wire",
               "insulated_wire": "insulated_wire", "multimeter": "multimeter", "precision_tweezers": "precision_tweezers",
-              "tank": "tank", "valve": "valve", "pipe": "pipe", "rotor": "rotor"}
+              "tank": "tank", "valve": "valve", "pipe": "pipe", "rotor": "rotor", "cylinder": "cylinder",
+              "eccentric": "eccentric"}
 
 
 def render_icons():

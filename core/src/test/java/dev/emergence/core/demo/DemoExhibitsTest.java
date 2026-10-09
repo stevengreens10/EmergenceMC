@@ -260,11 +260,13 @@ class DemoExhibitsTest {
         long shaft = b.id(e, "shaft");
         assertNotNull(c.piston(b.id(e, "hot")), "hot cylinder linked to the crank");
         assertNotNull(c.piston(b.id(e, "cold")), "cold cylinder linked to the crank");
-        double minW = Double.MAX_VALUE;
+        double minW = Double.MAX_VALUE, peakI = 0;
         for (int i = 0; i < 400; i++) {
             c.step(0.05);
             if (i > 100) minW = Math.min(minW, c.probe(shaft).angularVelocity());
+            peakI = Math.max(peakI, Math.abs(c.probe(b.id(e, "load")).current()));
         }
+        assertTrue(peakI > 1e-3, "the engine drives the generator: peak load current " + peakI + " A");
         System.out.println("Stirling: w=" + c.probe(shaft).angularVelocity() + " hot gas T=" + c.fluid(b.id(e, "hot"))[1]
                 + " cold gas T=" + c.fluid(b.id(e, "cold"))[1] + " heater T=" + c.temperature(b.id(e, "heater")));
         assertTrue(minW > 10, "keeps running for 20 s on the block's heat (min ω " + minW + ")");

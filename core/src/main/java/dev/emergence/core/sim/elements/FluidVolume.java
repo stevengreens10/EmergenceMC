@@ -69,12 +69,15 @@ public final class FluidVolume implements Element {
     public void setup(SetupContext ctx) {
         double m = fluid.density(101_325, 293.15) * volume;
         slotM = ctx.allocState(1e-7 * m);
+        // keep Newton iterates physical: no pressure or temperature leaps through zero
+        ctx.limitNewtonStep(p.index(), fluid.isGas() ? 2e5 : 5e6);
+        ctx.limitNewtonStep(t.index(), 150);
         slotU = ctx.allocState(1e-7 * m * fluid.cv(293.15) * 293.15);
     }
 
     @Override
     public void load(LoadContext ctx) {
-        double pp = ctx.x(p.index()), tt = Math.max(ctx.x(t.index()), 1.0);
+        double pp = fluid.isGas() ? Math.max(ctx.x(p.index()), 1.0) : ctx.x(p.index()), tt = Math.max(ctx.x(t.index()), 1.0);
         double rho = fluid.density(pp, tt), drp = fluid.dDensityDp(pp, tt), drt = fluid.dDensityDt(pp, tt);
         double vol = volume, dvol = 0;
         int ia = -1;

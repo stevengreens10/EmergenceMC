@@ -74,16 +74,19 @@ public final class CompiledAssembly {
     final Map<Long, FluidBranch> rotorBranches = new HashMap<>();
     final List<Vent> vents = new ArrayList<>();
     final Map<Long, dev.emergence.core.sim.elements.PistonCoupling> pistons = new HashMap<>();
+    final Map<Long, Vec3> pistonLateral = new HashMap<>();
 
     /**
      * Piston state of a cylinder part: {displacement from TDC [m], crank angle from TDC [rad], throw [m],
-     * rod length [m], clearance [m]}, or null if the cylinder drives no crank.
+     * rod length [m], clearance [m], and the unit direction the crank pin moves through TDC (x, y, z)}, or
+     * null if the cylinder drives no crank.
      */
     public double[] piston(long partId) {
         var pc = pistons.get(partId);
         if (pc == null) return null;
         var k = pc.crank();
-        return new double[]{pc.displacement(solver), pc.crankAngle(solver), k.throw_(), k.rod(), k.clearance()};
+        Vec3 v = pistonLateral.get(partId);
+        return new double[]{pc.displacement(solver), pc.crankAngle(solver), k.throw_(), k.rod(), k.clearance(), v.x(), v.y(), v.z()};
     }
 
     /** An open end of a fluid part into the surrounding air: cell, outward face and its branch. */

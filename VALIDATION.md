@@ -73,6 +73,10 @@ a cranked fan moves air through a duct (intake = discharge). Exhibits: the air t
 its receiver empties; the geared fan turns a downstream windmill through the air; the heated vessel's
 pressure rises at constant p/T while the cold one stays at ambient.
 
+Pistons: isentropic compression (entropy drift < 0.2 J/(kg·K)) with a closed ledger; an alpha Stirling
+from raw elements accelerates its flywheel; the Stirling exhibit runs on its copper block for 20 s and
+drives > 1 mA through its generator's load.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

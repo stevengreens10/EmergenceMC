@@ -387,13 +387,14 @@ public final class Exhibits {
      */
     public static Exhibit stirlingEngine() {
         Exhibit e = new Exhibit("stirling", "Stirling engine",
-                List.of("STIRLING ENGINE", "Hot and cold", "cylinders, 90 deg", "apart. It runs!"),
+                List.of("STIRLING ENGINE", "Heat in, electricity", "out: meter the", "resistor"),
                 "A heat engine from parts. The upper cylinder's head is heated by a copper block at 1100 K; the "
                         + "side cylinder stays near room temperature. Both pistons drive one crank throw, 90° "
                         + "apart, so the trapped air is mostly in the hot cylinder while it expands and mostly in "
                         + "the cold one while it is compressed. Expansion at high pressure does more work than "
                         + "compression at low pressure: the difference turns the flywheel (it was given a flick "
-                        + "to start). Heat flows in from the block and out of the cold cylinder's fins.");
+                        + "to start). Heat flows in from the block and out of the cold cylinder's fins. Magnets on "
+                        + "the flywheel sweep past a coil: the engine drives a generator lighting up a resistor.");
         String st = "steel_1045";
         int y = 3;
         int shaft = e.fill(SHAFT, st, 0, y, 8, 7, y, 8, Dir.EAST, "diameter", 0.012);
@@ -423,6 +424,12 @@ public final class Exhibits {
         e.name("heater", h1);
         e.init(h1, new Exhibit.Initial(1100, 0, 0));
         e.init(h2, new Exhibit.Initial(1100, 0, 0));
+        // generator: two magnets on the flywheel sweep past a coil beside the bearing; a resistor is the load
+        e.add(MAGNET, "ndfeb_n42", 6, y, 7, Dir.EAST);
+        e.add(MAGNET, "ndfeb_n42", 6, y, 9, Dir.WEST);
+        e.name("coil", e.add(COIL, "copper", 7, y, 9, Dir.EAST, "turns", 400, "wire_diameter", 0.5e-3, "lead_axis", 1));
+        e.path(INSULATED_WIRE, "copper", new int[][]{{7, y + 1, 9}, {7, y + 1, 10}, {7, y - 1, 10}, {7, y - 1, 9}});
+        e.name("load", e.add(RESISTOR, "alumina", 7, y, 10, Dir.UP, "resistance", 5));
         return e.view(6.5, 6.5, 16, 20);
     }
 

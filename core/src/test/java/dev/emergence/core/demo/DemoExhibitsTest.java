@@ -538,4 +538,50 @@ class DemoExhibitsTest {
         run(c, 0.2);
         assertTrue(c.probe(led).current() < 0.2 * day, "one shaded cell starves the string: " + c.probe(led).current());
     }
+
+    /** The knob's wiper spans +9 … −1 V of the ±12 V the arm's spans: demanded arm angle = 0.785 + 0.417·knob. */
+    static double servoDemand(double knob) {
+        double k = Math.max(-0.75 * Math.PI, Math.min(0.75 * Math.PI, knob));
+        return (4.0 + 10.0 * k / (1.5 * Math.PI)) * (1.5 * Math.PI) / 24;
+    }
+
+    @Test
+    void servoArmFollowsTheKnob() {
+        Exhibit e = ControlExhibits.servo();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long arm = b.id(e, "arm"), knob = b.id(e, "knob"), crank = b.id(e, "crank"), coil = b.id(e, "coilUp");
+        // at rest: the knob asks for the hanging arm, and it hangs there drawing almost nothing
+        run(c, 1.0);
+        assertEquals(Math.PI / 2, c.probe(arm).angle(), 0.06, "rests hanging");
+        assertTrue(Math.abs(c.probe(coil).current()) < 0.3, "idle current " + c.probe(coil).current());
+        double vBank0 = c.probe(b.id(e, "batteryN")).voltage();
+        // turn the knob down to its end stop: the arm rises past horizontal and follows the whole way
+        double worst = 0;
+        for (int i = 0; i < 200; i++) {
+            c.setCrankEffort(crank, -1, false);
+            c.step(0.05);
+            if (i > 20) worst = Math.max(worst, Math.abs(c.probe(arm).angle() - servoDemand(c.probe(knob).angle())));
+        }
+        c.setCrankEffort(crank, 0, false);
+        run(c, 3.0);
+        double k = c.probe(knob).angle(), a = c.probe(arm).angle();
+        System.out.printf("servo: knob at its stop %.3f rad, arm %.3f rad (asked %.3f), %.2f A, lag ≤ %.3f rad, PNP %.1f K, coil %.1f K%n",
+                k, a, servoDemand(k), c.probe(coil).current(), worst, c.probe(b.id(e, "pnp")).temperature(), c.probe(coil).temperature());
+        assertEquals(-0.75 * Math.PI - Math.toRadians(15), k, 0.03, "the knob rests against its end stop (300° of rotation)");
+        assertTrue(a < 0.05, "the arm is raised to horizontal and beyond: " + a);
+        assertEquals(servoDemand(k), a, 0.15, "proportional droop holding the arm up");
+        assertTrue(worst < 0.25, "the arm keeps up with the knob: " + worst);
+        // and back down part way
+        for (int i = 0; i < 60; i++) {
+            c.setCrankEffort(crank, 1, false);
+            c.step(0.05);
+        }
+        c.setCrankEffort(crank, 0, false);
+        run(c, 3.0);
+        assertEquals(servoDemand(c.probe(knob).angle()), c.probe(arm).angle(), 0.1, "follows the knob back");
+        assertTrue(Math.abs(c.probe(arm).angularVelocity()) < 0.01, "settled without oscillating");
+        assertTrue(c.probe(b.id(e, "pnp")).temperature() < 360, "the power transistor stays cool enough");
+        assertTrue(Math.abs(c.probe(b.id(e, "batteryN")).voltage() - vBank0) < 0.2, "the banks barely discharge");
+    }
 }

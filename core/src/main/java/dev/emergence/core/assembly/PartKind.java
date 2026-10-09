@@ -96,7 +96,21 @@ public enum PartKind {
      * sensitive face looks along "face" (a direction index: 0 down, 1 up, 2 north, 3 south, 4 west, 5 east; default
      * up); "area" is the junction area [m²] (a BPW34 photodiode 7.5 mm², a solar cell a whole face).
      */
-    PHOTODIODE(false, true);
+    PHOTODIODE(false, true),
+    /**
+     * Rotary potentiometer (manufactured): a housing that a shaft passes through along its axis, like a bearing;
+     * the shaft turns a wiper on a resistive track ("resistance", default 10 kΩ; "travel" electrical angle, default
+     * 270°). Track end A on the −lead-axis side, end B on the +lead-axis side, the wiper on the −side of the
+     * remaining axis. The wiper is at the middle of the track when the shaft is at its placed orientation and moves
+     * towards B as the shaft turns positively about the axis.
+     */
+    POTENTIOMETER(true, true),
+    /**
+     * Operational amplifier (manufactured, single, TL071 class): non-inverting input on the −axis face, output on
+     * the +axis face, V− and V+ supplies on the −/+ lead-axis sides, inverting input on the −side of the remaining
+     * axis. "gbw" gain–bandwidth [Hz] (default 3 MHz), "slew" [V/s] (default 13 V/µs).
+     */
+    OPAMP(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

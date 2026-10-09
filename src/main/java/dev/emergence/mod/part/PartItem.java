@@ -75,6 +75,8 @@ public final class PartItem extends Item {
             case LOGIC -> PartSpec.of("silicon", 1, 1, "function", 2);
             case BRAKE -> PartSpec.of("oak", 1, 1, "force", 20);
             case CHIP -> PartSpec.of("silicon", 1, 1, "function", 0);
+            case POTENTIOMETER -> PartSpec.of("nylon_66", 1, 1, "resistance", 10_000);
+            case OPAMP -> PartSpec.of("silicon", 1, 1);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -114,6 +116,9 @@ public final class PartItem extends Item {
             case PHOTODIODE -> (p.getOrDefault("area", 7.5e-6) > 1e-3 ? ", solar cell " : ", ") + String.format("%.3g mm²", 1e6 * p.getOrDefault("area", 7.5e-6))
                     + ", facing " + dev.emergence.core.assembly.Dir.values()[(int) Math.round(p.getOrDefault("face", 1.0))].name().toLowerCase();
             case BRAKE -> String.format(", %.0f N spring", p.getOrDefault("force", 20.0));
+            case POTENTIOMETER -> ", " + Units.formatSI(p.getOrDefault("resistance", 10_000.0), "Ω")
+                    + String.format(", %.0f°", p.getOrDefault("travel", 270.0));
+            case OPAMP -> ", " + Units.formatSI(p.getOrDefault("gbw", 3e6), "Hz") + " GBW";
             case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
                     + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[
@@ -173,7 +178,7 @@ public final class PartItem extends Item {
         if (level.getBlockEntity(clicked) instanceof AssemblyBlockEntity cbe && cbe.resolution() == AssemblyBlockEntity.MINIATURE) {
             int[] c = AssemblyBlock.cellAt(cbe, hit, face);
             PlacedPart t = cbe.partAt(c[0], c[1], c[2]);
-            boolean mountable = kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK
+            boolean mountable = kind == PartKind.BEARING || kind == PartKind.POTENTIOMETER || kind == PartKind.GEAR || kind == PartKind.CRANK
                     || kind == PartKind.ROTOR || kind == PartKind.ECCENTRIC || (kind == PartKind.BLOCK && spec.cross() > 1);
             // clicking the side of a shaft mounts the part coaxially on that shaft cell
             if (t != null && t.kind == PartKind.SHAFT && mountable && face.getAxis().ordinal() != t.axis.axis()) {
@@ -198,7 +203,7 @@ public final class PartItem extends Item {
                                     Dir axis, int cx, int cy, int cz, boolean mounted) {
         int a = axis.axis();
         int len = kind == PartKind.SHAFT || kind == PartKind.COIL || kind == PartKind.BLOCK ? spec.length() : 1;
-        if (kind == PartKind.GEAR || kind == PartKind.BEARING || kind == PartKind.CRANK) len = 1;
+        if (kind == PartKind.GEAR || kind == PartKind.BEARING || kind == PartKind.POTENTIOMETER || kind == PartKind.CRANK) len = 1;
         int cross = kind == PartKind.SHAFT || kind == PartKind.WIRE || kind == PartKind.INSULATED_WIRE ? 1 : spec.cross();
         int[] lo = new int[3], hi = new int[3];
         int[] c = {cx, cy, cz};
@@ -246,8 +251,8 @@ public final class PartItem extends Item {
     }
 
     private boolean mountable(PartSpec spec) {
-        return kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK || kind == PartKind.BLOCK
-                || kind == PartKind.ROTOR || kind == PartKind.ECCENTRIC;
+        return kind == PartKind.BEARING || kind == PartKind.POTENTIOMETER || kind == PartKind.MAGNET || kind == PartKind.GEAR
+                || kind == PartKind.CRANK || kind == PartKind.BLOCK || kind == PartKind.ROTOR || kind == PartKind.ECCENTRIC;
     }
 
     /** Block-scale placement: one part per block. */
@@ -263,7 +268,7 @@ public final class PartItem extends Item {
                 && mountable(spec)) {
             PlacedPart shaft = cbe.parts().stream().filter(p -> p.kind == PartKind.SHAFT).findFirst().orElse(null);
             if (shaft != null && face.getAxis().ordinal() != shaft.axis.axis() && cbe.canPlace(kind, 0, 0, 0, 0, 0, 0)) {
-                return finishBlockScale(level, player, stack, spec, clicked, cbe, shaft.axis);
+                return finishBlockScale(level, player, stack, spec, clicked, cbe, kind == PartKind.MAGNET ? axis : shaft.axis);
             }
         }
         target = level.getBlockState(clicked).canBeReplaced() && !(level.getBlockEntity(clicked) instanceof AssemblyBlockEntity)

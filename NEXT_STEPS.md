@@ -1,5 +1,9 @@
 # Next steps (priority order)
 
+0. **Control/robotics**: integral action (PI/PID with an op-amp integrator) to remove the servo's droop; a
+   two-joint arm (needs joints on moving bodies); the EM-4 closing a loop through a light-barrier encoder;
+   data logger/oscilloscope instrument to plot the step response.
+
 0. **Light**: lenses and mirrors (ray optics), incandescent sources, phototransistors and optocouplers; use the
    light barrier as an encoder for closed-loop motor control by the EM-4.
 

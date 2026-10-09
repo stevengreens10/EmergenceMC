@@ -145,7 +145,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         Vector3f x = new Vector3f(l == 0 ? 1 : 0, l == 1 ? 1 : 0, l == 2 ? 1 : 0);
         Vector3f y = new Vector3f(z).cross(x);
         if ((p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE || p.kind == PartKind.LED || p.kind == PartKind.TRANSISTOR
-                || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP) && a != 1) {
+                || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP || p.kind == PartKind.OPAMP) && a != 1) {
             // a knife switch lying on its side: base down (model −Y), whatever the lead axis
             y.set(0, 1, 0);
             x.set(new Vector3f(y).cross(z));
@@ -211,6 +211,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case ECCENTRIC -> drawEccentric(c, p, f);
             case BRAKE -> drawBrake(c, p);
             case PHOTODIODE -> drawPhotodiode(c, p, f);
+            case POTENTIOMETER -> drawPotentiometer(c, p, f);
+            case OPAMP -> drawModel(c, "logic", p, 1, 1, 1, false);
             case CHIP -> drawChipSegment(c, p);
         }
     }
@@ -228,6 +230,43 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         }
         // a stripe of markings across the top
         box(c, PartModels.sprite("epoxy"), tintOf(c, 0x8A8A8A), -0.16f, -0.18f, -0.06f, 0.16f, -0.175f, 0.06f);
+    }
+
+    /**
+     * Potentiometer: a dark housing round the shaft with a metal bushing on each face it passes through, and three
+     * tinned tabs where its terminals are (track ends on the lead-axis sides, the wiper on the −side of the remaining
+     * axis). Drawn in grid axes.
+     */
+    private void drawPotentiometer(Ctx c, PlacedPart p, Frame f) {
+        int a = p.axis.axis();
+        int def = a == 0 ? 2 : 0;
+        int l = (int) Math.round(p.spec.params().getOrDefault("lead_axis", (double) def));
+        if (l == a || l < 0 || l > 2) l = def;
+        int rem = 3 - a - l;
+        c.ps.pushPose();
+        c.ps.last().pose().mul(new Matrix4f(f.m4).transpose());
+        c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
+        potBox(c, PartModels.sprite("epoxy"), tintOf(c, 0x1E2A44), a, l, rem, -0.3f, 0.3f, -0.36f, 0.36f, -0.36f, 0.36f);
+        potBox(c, PartModels.sprite("metal_smooth"), tintOf(c, 0xB8BCC2), a, l, rem, -0.5f, -0.3f, -0.12f, 0.12f, -0.12f, 0.12f);
+        potBox(c, PartModels.sprite("metal_smooth"), tintOf(c, 0xB8BCC2), a, l, rem, 0.3f, 0.5f, -0.12f, 0.12f, -0.12f, 0.12f);
+        TextureAtlasSprite tin = PartModels.sprite("tinned");
+        int tint = tintOf(c, 0xC8CCD0);
+        potBox(c, tin, tint, a, l, rem, -0.06f, 0.06f, -0.5f, -0.36f, -0.03f, 0.03f);
+        potBox(c, tin, tint, a, l, rem, -0.06f, 0.06f, 0.36f, 0.5f, -0.03f, 0.03f);
+        potBox(c, tin, tint, a, l, rem, -0.06f, 0.06f, -0.03f, 0.03f, -0.5f, -0.36f);
+        c.ps.popPose();
+    }
+
+    /** A box given its extent along the part axis a, the lead axis l and the remaining axis r (grid axes). */
+    private void potBox(Ctx c, TextureAtlasSprite s, int rgb, int a, int l, int rem, float a0, float a1, float l0, float l1, float r0, float r1) {
+        float[] lo = new float[3], hi = new float[3];
+        lo[a] = a0;
+        hi[a] = a1;
+        lo[l] = l0;
+        hi[l] = l1;
+        lo[rem] = r0;
+        hi[rem] = r1;
+        box(c, s, rgb, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
     }
 
     /** Photodiode: a small black body with a clear window on its sensitive face; a large-area one is a blue solar

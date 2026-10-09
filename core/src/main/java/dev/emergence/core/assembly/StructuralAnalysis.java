@@ -128,7 +128,7 @@ public final class StructuralAnalysis {
         for (CompiledAssembly.Body b : c.bodies()) {
             if (b.isStatic) continue;
             List<Part> bearings = new ArrayList<>();
-            for (Part p : nodes) if (p.kind() == PartKind.BEARING && supported.contains(p.id()) && touchesBody(a, c, p, b)) bearings.add(p);
+            for (Part p : nodes) if ((p.kind() == PartKind.BEARING || p.kind() == PartKind.POTENTIOMETER) && supported.contains(p.id()) && touchesBody(a, c, p, b)) bearings.add(p);
             if (bearings.isEmpty()) continue;
             for (Part br : bearings) f.force(idx.get(br.id()), 1, -b.mass * g / bearings.size());
         }

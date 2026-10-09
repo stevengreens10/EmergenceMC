@@ -64,7 +64,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ⬜ Substance database, general reaction networks, equilibrium, processing, manufacturing
 
 ## Phase 6 — Advanced multiphysics
-⬜ Structural analysis, advanced EM, aerodynamics, control systems, robotics
+✅ Control parts: potentiometers (angle sensors/knobs with end stops), op-amps (single pole, slew, rails),
+   gravity torque on unbalanced rotating bodies; a servo arm exhibit (PD position control, proportional droop)
+⬜ Advanced EM, aerodynamics, multi-joint robots (joints on moving bodies), state-space control
 
 ## Phase 7–8 — Broad scientific expansion, continuous expansion
 ⬜ Optics, acoustics, geology, environmental, nuclear (non-actionable), biology, instruments

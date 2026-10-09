@@ -23,7 +23,8 @@ behaviour; where physics is missing the effect is simply absent.
 
 ## Mechanical
 * Rigid bodies rotate only about fixed axes (bearing joints). No free 6-DOF bodies, no translation,
-  no linkages/cranks converting rotation to translation, no gravity torque/unbalance, no collisions.
+  no linkages/cranks converting rotation to translation, no collisions. Gravity acts on each rotating body
+  about its own axis only (no joint reactions on moving parents).
   Unsupported groups are treated as resting on the world.
 * Gears: external spur meshes between parallel shafts only; no backlash, tooth compliance, internal/ring
   gears, racks or bevel gears.
@@ -100,3 +101,9 @@ multimeter, oscilloscope/data logging.
 * Simulation stops in unloaded chunks (state is saved and resumes on load).
 * Visual minimum sizes: wires and shafts are drawn at least ~0.14–0.18 cell thick so thin filaments stay
   visible. Gear teeth are drawn with a simplified trapezoidal profile; their phase is cosmetic.
+
+## Control parts
+* A potentiometer's housing must sit on the static frame or its shaft must (one of the two sides is ground);
+  a pot riding on one moving body and turned by another is not supported. No wiper noise, wear or contact bounce.
+* Op-amp: one pole, no input offset/bias currents, no output current limit beyond the 75 Ω output resistance,
+  no common-mode limits on the inputs; a single (not dual/quad) package per part.

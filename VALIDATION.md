@@ -120,6 +120,14 @@ solar-cell V_oc vs V_T ln(I_ph/I_s + 1); beam coupling vs (m+1)/2π·A/d² (1e-6
 passed by glass. Light barrier: the vane cuts the beam, the indicator and toggle follow; solar panel lit by
 full and low sun, starved when one cell is shaded; in-world GameTest of the light barrier.
 
+## Control and robotics (`RoboticsValidationTest`, `DemoExhibitsTest`)
+Pendulum period against 2π√(d/g)(1 + θ₀²/16 + 11θ₀⁴/3072) to 0.1 % with energy conserved to 10⁻⁴; a lever held
+level by exactly m g d; potentiometer divider ratio at three angles; op-amp non-inverting gain 1 + R₂/R₁ and its
+closed-loop single-pole step (τ = gain/2π·GBW), rail clipping without wind-up, slew-rate-limited follower
+(10 V/µs), energy closure. Servo exhibit: rests hanging at zero current; the arm follows the knob (lag ≤ 0.25 rad)
+up past horizontal, settles at the expected proportional droop, the knob stops at 300°, returns without
+oscillating; in-world GameTest of the arm rising.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

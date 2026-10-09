@@ -92,11 +92,12 @@ public final class AssemblyBlockEntity extends BlockEntity {
     }
 
     /**
-     * Overlap rules: a shaft may pass through bearings, gears, disks, cranks and rotors, and through pipes,
-     * valves and tanks (in a gland seal); nothing else may share cells.
+     * Overlap rules: a shaft may pass through bearings, potentiometers, gears, disks, cranks, rotors and magnets
+     * (a rotor magnet), and through pipes, valves and tanks (in a gland seal); nothing else may share cells.
      */
     public static boolean mayOverlap(PartKind a, PartKind b) {
-        if (a == PartKind.SHAFT) return b == PartKind.BEARING || b == PartKind.GEAR || b == PartKind.BLOCK || b == PartKind.CRANK
+        if (a == PartKind.SHAFT) return b == PartKind.BEARING || b == PartKind.POTENTIOMETER || b == PartKind.MAGNET
+                || b == PartKind.GEAR || b == PartKind.BLOCK || b == PartKind.CRANK
                 || b == PartKind.ECCENTRIC || (b.holdsFluid() && b != PartKind.CYLINDER);
         if (b == PartKind.SHAFT) return mayOverlap(b, a);
         return false;

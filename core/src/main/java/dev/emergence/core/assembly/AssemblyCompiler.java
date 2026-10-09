@@ -113,7 +113,7 @@ public final class AssemblyCompiler {
             // islands integrate with L-stable BDF2, which damps them. Other islands keep the trapezoidal rule, which
             // conserves the energy of mechanical and electromagnetic oscillations.
             for (Part p : parts) {
-                if (p.kind() == PartKind.CHIP || p.kind() == PartKind.LOGIC || p.kind() == PartKind.TRANSISTOR) {
+                if (p.kind() == PartKind.CHIP || p.kind() == PartKind.LOGIC || p.kind() == PartKind.TRANSISTOR || p.kind() == PartKind.OPAMP) {
                     c.solver.method(dev.emergence.core.sim.IntegrationMethod.BDF2);
                     break;
                 }
@@ -132,7 +132,7 @@ public final class AssemblyCompiler {
                     if (q.id() < p.id() || isWire(q)) continue;
                     if (!p.kind().structural && !q.kind().structural) continue;
                     if (isBearingJoint(p, q)) {
-                        joints.add(p.kind() == PartKind.BEARING ? new long[]{p.id(), q.id()} : new long[]{q.id(), p.id()});
+                        joints.add(isJournal(p) ? new long[]{p.id(), q.id()} : new long[]{q.id(), p.id()});
                         joinedPairs.add(pairKey(p.id(), q.id()));
                         continue;
                     }
@@ -164,8 +164,13 @@ public final class AssemblyCompiler {
             return s.kind() == PartKind.SHAFT && q.kind().holdsFluid() && q.kind() != PartKind.ROTOR;
         }
 
+        /** A part a shaft turns in: a bearing, or the housing of a potentiometer. */
+        static boolean isJournal(Part p) {
+            return p.kind() == PartKind.BEARING || p.kind() == PartKind.POTENTIOMETER;
+        }
+
         boolean isBearingJoint(Part p, Part q) {
-            Part b = p.kind() == PartKind.BEARING ? p : q.kind() == PartKind.BEARING ? q : null;
+            Part b = isJournal(p) ? p : isJournal(q) ? q : null;
             Part s = b == p ? q : p;
             if (b == null || s.kind() != PartKind.SHAFT) return false;
             return b.overlaps(s) && b.axis().axis() == s.axis().axis();
@@ -192,8 +197,8 @@ public final class AssemblyCompiler {
         }
 
         boolean isBearingShaftNoJoint(Part p, Part q) {
-            return (p.kind() == PartKind.BEARING && q.kind() == PartKind.SHAFT && !p.overlaps(q))
-                    || (q.kind() == PartKind.BEARING && p.kind() == PartKind.SHAFT && !q.overlaps(p));
+            return (isJournal(p) && q.kind() == PartKind.SHAFT && !p.overlaps(q))
+                    || (isJournal(q) && p.kind() == PartKind.SHAFT && !q.overlaps(p));
         }
 
         /** True if {@code other} occupies a cell directly beyond the brush's contact (+axis) face. */
@@ -480,11 +485,13 @@ public final class AssemblyCompiler {
             for (CompiledAssembly.Body b : c.bodies) {
                 if (b.isStatic) continue;
                 double j = 0, m = 0;
+                Vec3 moment = new Vec3(0, 0, 0);
                 for (long id : b.parts) {
                     Part p = a.get(id);
                     if (isWire(p)) continue;
                     j += PartGeometry.inertiaAbout(p, b.pivot, b.axis);
                     m += PartGeometry.mass(p);
+                    moment = moment.add(p.center().sub(b.pivot).mul(PartGeometry.mass(p)));
                 }
                 b.inertia = Math.max(j, 1e-7);
                 b.mass = m;
@@ -497,6 +504,12 @@ public final class AssemblyCompiler {
                 c.network.add(new Inertia(b.node, b.inertia));
                 b.tracker = c.network.add(new AngleTracker(b.node, motion == null ? 0 : motion[1]));
                 b.drive = c.network.add(new FlowSource(refR, b.node, 0.0));
+                // gravity on an off-centre mass (a lever, a pendulum, an unbalanced wheel)
+                Vec3 offset = moment.mul(1 / Math.max(m, 1e-12));
+                Vec3 perp = offset.sub(b.axis.mul(offset.dot(b.axis)));
+                if (m > 0 && perp.length() > 1e-6 && Math.abs(b.axis.y()) < 0.999) {
+                    c.network.add(new GravityTorque(b.node, b.tracker, b.axis, offset, m, new Vec3(0, -PartGeometry.gravity(), 0)));
+                }
             }
             // bearings
             Map<CompiledAssembly.Body, Integer> bearingCount = new HashMap<>();
@@ -518,6 +531,13 @@ public final class AssemblyCompiler {
                 boolean plain = btype == 1;
                 Node th = c.thermalOfPart.get(bearing.id());
                 Node na = bb.isStatic ? refR : bb.node, nb = sb.isStatic ? refR : sb.node;
+                if (bearing.kind() == PartKind.POTENTIOMETER) {
+                    // wiper and bushing drag of a panel potentiometer, scaled with its size (≈ 2 mN·m for a 25 mm body)
+                    double size = PartGeometry.transverseSize(bearing) / 0.025;
+                    c.network.add(new CoulombFriction(nb, na, bearing.param("drag", 2e-3) * size * size * size, 1e-2, th));
+                    potShaft.put(bearing.id(), new Object[]{rot, bb.isStatic ? 1.0 : -1.0});
+                    continue;
+                }
                 double mu, cv;
                 if (btype == 2) {
                     // rotary viscous damper: a rotor turning in a silicone-filled housing, Couette shear across a
@@ -568,6 +588,9 @@ public final class AssemblyCompiler {
                 c.cranks.put(p.id(), c.network.add(new HumanCrank(b.node, refR, PartGeometry.crankRadius(p))));
             }
         }
+
+        /** Potentiometer id → {rotating body its shaft belongs to, +1 if the housing is the static side else −1}. */
+        final Map<Long, Object[]> potShaft = new HashMap<>();
 
         boolean isBearingJointPair(Part p, Part q) {
             return isBearingJoint(p, q);
@@ -641,6 +664,22 @@ public final class AssemblyCompiler {
             switch (p.kind()) {
                 case WIRE, INSULATED_WIRE -> {
                     return "p" + p.id();
+                }
+                case OPAMP -> {
+                    // like a single-gate logic package: in+ (a) and out (o) on the axial faces, V−/V+ on the lead-axis
+                    // sides, in− (b) on the −side of the remaining axis
+                    Dir ax = p.axis();
+                    int la = PartGeometry.leadAxis(p);
+                    if (d.axis() == ax.axis()) return "p" + p.id() + (d.sign() == ax.sign() ? "o" : "a");
+                    if (d.axis() == la) return "p" + p.id() + (d.sign() > 0 ? "v" : "n");
+                    return d.sign() < 0 ? "p" + p.id() + "b" : null;
+                }
+                case POTENTIOMETER -> {
+                    // the shaft passes through the axial faces; track ends on the lead-axis sides, wiper on the −side
+                    // of the remaining axis
+                    if (d.axis() == p.axis().axis()) return null;
+                    if (d.axis() == PartGeometry.leadAxis(p)) return "p" + p.id() + (d.sign() > 0 ? "+" : "-");
+                    return d.sign() < 0 ? "p" + p.id() + "w" : null;
                 }
                 case LOGIC -> {
                     Dir ax = p.axis();
@@ -868,6 +907,37 @@ public final class AssemblyCompiler {
                         c.network.add(new Capacitor(l[0], l[1], 20e-12));
                     }
                     case CHIP -> buildChip(p, th);
+                    case POTENTIOMETER -> {
+                        Node[] l = leads(p);
+                        Node w = enode("p" + p.id() + "w");
+                        Object[] ps = potShaft.get(p.id());
+                        AngleTracker tr = null;
+                        double sense = 1;
+                        if (ps != null) {
+                            CompiledAssembly.Body rot = (CompiledAssembly.Body) ps[0];
+                            tr = rot.tracker;
+                            // wiper angle = shaft angle relative to the housing, about the pot's own +axis
+                            sense = (double) ps[1] * Math.signum(rot.axis.dot(p.axis().vec()));
+                        }
+                        // end-stop stiffness scales with the size of the part (≈ 20 N·m/rad for a 25 mm body)
+                        double size = PartGeometry.transverseSize(p) / 0.025;
+                        c.deviceOfPart.put(p.id(), c.network.add(new Potentiometer(l[0], l[1], w, tr, sense,
+                                p.param("resistance", 10_000), Math.toRadians(p.param("travel", 270)),
+                                p.param("stop_stiffness", 20) * size * size * size, th)));
+                        c.network.add(new Capacitor(w, l[0], 5e-12));
+                    }
+                    case OPAMP -> {
+                        Node inP = enode("p" + p.id() + "a"), inN = enode("p" + p.id() + "b"), o = enode("p" + p.id() + "o"),
+                                v = enode("p" + p.id() + "v"), n = enode("p" + p.id() + "n");
+                        c.deviceOfPart.put(p.id(), c.network.add(new OpAmp(inP, inN, o, v, n, p.param("gbw", 3e6),
+                                p.param("slew", 13e6), th)));
+                        c.leadsOfPart.put(p.id(), new Node[]{n, o});
+                        // input capacitances and the supply bypass capacitor
+                        c.network.add(new Capacitor(inP, n, 3e-12));
+                        c.network.add(new Capacitor(inN, n, 3e-12));
+                        c.network.add(new Capacitor(o, n, 10e-12));
+                        c.network.add(new Capacitor(v, n, 100e-9));
+                    }
                     case PHOTODIODE -> {
                         Node[] l = leads(p);
                         var pd = c.network.add(new Photodiode(l[0], l[1], p.param("area", 7.5e-6), th));
@@ -1103,7 +1173,7 @@ public final class AssemblyCompiler {
         Material conductorMaterial(Part p) {
             return switch (p.kind()) {
                 // manufactured components carry (tinned) copper leads, whatever their body is made of
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE -> MaterialDatabase.standard().get("copper");
+                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, POTENTIOMETER, OPAMP -> MaterialDatabase.standard().get("copper");
                 default -> p.material();
             };
         }

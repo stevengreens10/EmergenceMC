@@ -117,6 +117,14 @@ public final class PartPresets {
         l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", 850, "efficiency", 0.3, "beam", 20, "face", 5)));
         for (int face = 0; face < 6; face++) l.add(stack(PartKind.PHOTODIODE, PartSpec.of("silicon", 1, 1, "area", 7.5e-6, "face", face)));
         l.add(stack(PartKind.PHOTODIODE, PartSpec.of("silicon", 1, 1, "area", 0.0035, "face", 1)));
+        // control: potentiometers (shaft through the housing), a damped knob bearing, op-amps, power transistors
+        l.add(stack(PartKind.POTENTIOMETER, PartSpec.of("nylon_66", 1, 1, "resistance", 10_000)));
+        l.add(stack(PartKind.POTENTIOMETER, PartSpec.of("nylon_66", 1, 1, "resistance", 10_000, "lead_axis", 1)));
+        l.add(stack(PartKind.POTENTIOMETER, PartSpec.of("nylon_66", 1, 1, "resistance", 1_000)));
+        l.add(stack(PartKind.BEARING, PartSpec.of("bronze", 1, 1, "type", 2, "viscosity", 2000)));
+        l.add(stack(PartKind.OPAMP, PartSpec.of("silicon", 1, 1)));
+        l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 0, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
+        l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 1, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
         // MSI chips (counter, register, adder, blank ROM) and a ROM holding the EM-4 stepper program
         for (int fn = 0; fn <= 3; fn++) l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, "function", fn)));
         Object[] prog = new Object[2 + 32];

@@ -49,6 +49,14 @@ public final class Router {
         return new int[]{(int) (k >> 22) - 1024, (int) ((k >> 11) & 0x7FF) - 1024, (int) (k & 0x7FF) - 1024};
     }
 
+    /** Keeps a box of cells free of wire (the space a moving part sweeps through). */
+    public Router keepClear(int ax, int ay, int az, int bx, int by, int bz) {
+        for (int x = ax; x <= bx; x++)
+            for (int y = ay; y <= by; y++)
+                for (int z = az; z <= bz; z++) blocked.add(key(x, y, z));
+        return this;
+    }
+
     /** Declares that net {@code net} must reach the free cell (x, y, z) — normally the cell against a pin face. */
     public Router pin(String net, int x, int y, int z) {
         return pin(net, x, y, z, false);

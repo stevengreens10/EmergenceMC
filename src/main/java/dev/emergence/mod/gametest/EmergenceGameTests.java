@@ -266,6 +266,27 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** Feedback control in the world: turning the servo's knob raises its arm against gravity. */
+    @GameTest(template = "arena", timeoutTicks = 300, batch = "servo")
+    public static void servoArmFollowsKnobInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ControlExhibits.servo();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos armAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "arm");
+        BlockPos crankAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "crank");
+        PlacedPart arm = only(h, armAt, PartKind.SHAFT), crank = only(h, crankAt, PartKind.CRANK);
+        h.onEachTick(() -> {
+            var c = sim.compiledAt(crankAt);
+            if (c != null) c.setCrankEffort(crank.id, -1, false);
+        });
+        h.runAtTickTime(260, () -> {
+            var p = sim.probe(armAt, arm.id);
+            h.assertTrue(p != null && p.angle() < 1.0, "the arm rose from hanging (1.57 rad): " + (p == null ? "?" : p.angle()));
+            h.succeed();
+        });
+    }
+
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
         AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
         return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();

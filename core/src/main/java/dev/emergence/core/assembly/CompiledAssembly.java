@@ -442,6 +442,12 @@ public final class CompiledAssembly {
         } else if (d instanceof dev.emergence.core.sim.elements.Photodiode ph) {
             i = ph.current(solver);
             pw = Math.abs(i * v);
+        } else if (d instanceof dev.emergence.core.sim.elements.Potentiometer pot) {
+            i = pot.wiper(solver); // the wiper's place on the track (0 at A, 1 at B)
+            pw = 0;
+        } else if (d instanceof dev.emergence.core.sim.elements.OpAmp) {
+            i = 0;
+            pw = 0;
         } else if (d instanceof dev.emergence.core.sim.elements.MsiChip) {
             i = 0;
             pw = 0;
@@ -453,6 +459,11 @@ public final class CompiledAssembly {
             pw = coil.resistance(temp) * i * i;
         }
         return new Probe(partId, p.kind(), temp, i, v, pw, w, th, b == null ? 0 : b.index);
+    }
+
+    /** A potentiometer's wiper position as a fraction of its track (0 at end A, 1 at end B), or NaN. */
+    public double wiper(long partId) {
+        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Potentiometer pot ? pot.wiper(solver) : Double.NaN;
     }
 
     /** Captures the dynamic state keyed by part id. */

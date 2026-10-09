@@ -294,3 +294,20 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   junction unknown and to the rotor angle.
 * **Daylight**: 1000 W/m² × cos(zenith) × (1 − 0.75·rain − 0.15·thunder) along the sun's direction from the time
   of day, on photodiodes whose face turns to the sun and whose block sees the sky; ~0.5 A/W for sunlight on silicon.
+
+## Control and robotics parts (`GravityTorque`, `Potentiometer`, `OpAmp`)
+* **Gravity on rotating bodies**: a body turning about a non-vertical axis whose centre of mass is off the axis
+  feels τ = n·(r(θ) × m g), r(θ) the centre-of-mass offset rotated by θ (Rodrigues). It derives from U = −m g·r(θ),
+  reported as stored energy, so pendulums conserve energy and levers, unbalanced wheels and robot arms carry
+  their weight. Vertical axes feel none (gravity is parallel to them).
+* **Potentiometer**: a resistive track R between ends A and B with a wiper at fraction f = ½ + φ/travel of it
+  (R_AW = R·f + 1 Ω, R_WB = R·(1 − f) + 1 Ω), φ the angle of the shaft through it relative to its housing;
+  f is smoothly clamped at the track ends. End stops 15° past them (300° of rotation) push back with a C¹ spring
+  (quadratic over the first degree, then linear; ≈ 20 N·m/rad × (size/25 mm)³) and contact damping. The housing
+  is a journal for the shaft, with wiper/bushing drag 2 mN·m × (size/25 mm)³. Joule and stop heat go to the part.
+* **Op-amp**: single-pole, slew-limited, rail-clamped. Internal voltage s (about mid-supply):
+  τ·ds/dt = τ·SR·tanh(A₀v_d/(τ·SR)) − s − τ·K·c(s), A₀ = 10⁵, τ = A₀/(2π·GBW), SR the slew rate; c(s) is a
+  soft clamp (10 mV knee, K = 10⁹ s⁻¹) holding s within the supply span less 0.1 V. Small signals see the
+  ideal single pole (closed-loop bandwidth GBW/gain), large steps slew at SR, saturation recovers without wind-up.
+  The output is s behind 75 Ω; sourced current is drawn from V₊, sunk current returned to V₋, plus 0.5 mA
+  quiescent; all dissipation heats the part. Inputs draw no current (3 pF each).

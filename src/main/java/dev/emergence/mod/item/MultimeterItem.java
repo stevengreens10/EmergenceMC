@@ -66,6 +66,8 @@ public final class MultimeterItem extends Item {
                 }
                 double[] br = compiled.brake(part.id);
                 if (br != null) line(ctx.getPlayer(), "Brake", String.format("%.3f N·m, absorbing %s", Math.abs(br[0]), Units.formatSI(round(br[1]), "W")));
+                double wiper = compiled.wiper(part.id);
+                if (!Double.isNaN(wiper)) line(ctx.getPlayer(), "Wiper", String.format("%.1f %% of the track from end A", 100 * wiper));
                 double[] chip = compiled.chipState(part.id);
                 if (chip != null) {
                     int v = 0;

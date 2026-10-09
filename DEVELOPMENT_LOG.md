@@ -140,3 +140,13 @@ beam) and to daylight from the sun's position and the weather. A light-barrier e
 a Schmitt trigger and a toggle; a solar panel of eight cells in series lights an LED by day. The first ray
 sampling (every 0.2 cell) stepped over a thin steel plate; and the panel was first wired backwards — a lit cell
 drives current out of its anode, so the string's positive end is the first cell's anode.
+
+**A servo from parts.** Gravity now acts on unbalanced rotating bodies (a potential-derived torque, energy
+conserving); potentiometers (a journal for the shaft plus a wiper on a track, with end stops) and op-amps (single
+pole, slew limit, rail clamp) are new parts. The servo exhibit closes a position loop: knob pot → op-amp difference
+amplifier (×10, with a capacitor for derivative action) → complementary transistor pair → a moving-magnet torque
+motor (a magnet on the shaft inside four coils) → the arm, whose pot feeds back. Lessons: saturating the op-amp's
+target before its integrator capped its slew at lim/τ ≈ 370 V/s — slew must limit the input stage, the clamp act on
+the state; a single coil pair gives no torque where the magnet aligns with it (the hanging rest position), so two
+pairs at right angles make τ ∝ cos(θ − 45°); and the knob's wiper is scaled by divider resistors to ask only for
+angles the motor can reach.

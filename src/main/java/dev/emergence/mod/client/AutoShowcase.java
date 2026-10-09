@@ -108,6 +108,11 @@ public final class AutoShowcase {
                 STEPS.add(new Step(80, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "regulator")),
                         "showcase-" + (i + 1) + "-" + id + "-shut"));
             }
+            if (id.equals("servo")) {
+                // turn the knob down to its stop: the arm rises against gravity to just above horizontal
+                STEPS.add(new Step(220, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank"), -1),
+                        "showcase-" + (i + 1) + "-" + id + "-raised"));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }
@@ -139,10 +144,15 @@ public final class AutoShowcase {
     }
 
     private static void crank(ServerLevel level, BlockPos at) {
+        crank(level, at, 1);
+    }
+
+    /** Leaves a hand on the crank, turning it in direction {@code dir} (it keeps pushing until the island rebuilds). */
+    private static void crank(ServerLevel level, BlockPos at, int dir) {
         if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
             PlacedPart c = find(be, PartKind.CRANK);
             var compiled = SimulationManager.get(level).compiledAt(at);
-            if (c != null && compiled != null) compiled.setCrankEffort(c.id, 1, true);
+            if (c != null && compiled != null) compiled.setCrankEffort(c.id, dir, dir > 0);
         }
     }
 

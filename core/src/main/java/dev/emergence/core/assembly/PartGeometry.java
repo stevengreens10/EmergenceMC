@@ -268,7 +268,8 @@ public final class PartGeometry {
                 yield coil(p).wireLength() * Math.PI * d * d / 4;
             }
             case WIRE, INSULATED_WIRE -> wireArea(p) * CELL * Math.max(p.extent(0), Math.max(p.extent(1), p.extent(2)));
-            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE -> p.param("mass", 0.002) / p.material().density();
+            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP -> p.param("mass", 0.002) / p.material().density();
+            case POTENTIOMETER -> p.param("mass", 0.03) / p.material().density();
             case BRUSH -> 0.6 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
             case BRAKE -> 0.5 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // shoe and its lining
             // liquid volume: the vessel wall and headspace take the rest of the cells
@@ -357,7 +358,7 @@ public final class PartGeometry {
                 double[] s = magnetSize(p);
                 yield 2 * (s[0] * s[1] + s[1] * s[2] + s[0] * s[2]);
             }
-            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE -> p.param("surface_area", 3e-4);
+            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP -> p.param("surface_area", 3e-4);
             case PIPE -> Math.PI * (pipeBore(p) + 2 * wallThickness(p)) * axialLength(p);
             case VALVE -> 2 * Math.PI * (pipeBore(p) + 2 * wallThickness(p)) * axialLength(p);
             case ROTOR -> 1e-6; // inside its housing
@@ -380,7 +381,7 @@ public final class PartGeometry {
             case SHAFT -> Math.PI * Math.pow(shaftDiameter(p) / 2, 2);
             case WIRE, INSULATED_WIRE -> wireArea(p);
             case COIL -> 1e-5;
-            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE -> 1e-6;
+            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP -> 1e-6;
             case BLOCK -> CELL * CELL * p.param("fill", 1.0);
             case PIPE, VALVE -> tubeWall(p);
             case CYLINDER -> Math.PI * (cylinderBore(p) + wallThickness(p)) * Math.max(wallThickness(p), 0.003);

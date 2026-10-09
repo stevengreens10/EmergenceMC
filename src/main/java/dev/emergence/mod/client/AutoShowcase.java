@@ -180,8 +180,9 @@ public final class AutoShowcase {
                         "showcase-" + (i + 1) + "-" + id + "-pumped"));
             }
             if (id.equals("burst")) {
-                // switch the heaters on: the copper box bursts within a minute
-                STEPS.add(new Step(1800, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                // switch the heaters on: the copper box bursts within a minute of simulated time (longer in the tour,
+                // where the whole gallery in view shares the time budget)
+                STEPS.add(new Step(6000, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
                         "showcase-" + (i + 1) + "-" + id + "-burst", () -> gone(DemoBuilder.partBlock(plot, e, "thin"), PartKind.TANK)));
             }
             if (id.equals("rack")) {

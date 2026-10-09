@@ -384,6 +384,33 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** Pressure vessels in the world: with the heaters on, the thin copper box bursts and the steel one holds. */
+    @GameTest(template = "arena", timeoutTicks = 1600, batch = "burst")
+    public static void thinVesselBurstsInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ThermoExhibits.burstTest();
+        placeExhibit(h, plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos thinAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "thin");
+        BlockPos thickAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "thick");
+        BlockPos switchAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "switch");
+        h.runAtTickTime(5, () -> {
+            PlacedPart sw = only(h, switchAt, PartKind.SWITCH);
+            sim.toggleSwitch(switchAt, sw.id);
+        });
+        h.onEachTick(() -> {
+            if (h.getTick() % 100 == 0 && h.getLevel().getBlockEntity(thinAt) instanceof AssemblyBlockEntity be && !be.parts().isEmpty()) {
+                var c = sim.compiledAt(thinAt);
+                if (c != null) EmergenceMod.LOG.info("Burst test at tick {}: thin box {} Pa, utilisation {}", h.getTick(),
+                        c.pressure(be.parts().get(0).id), c.burstUtilisation(be.parts().get(0).id));
+            }
+        });
+        h.succeedWhen(() -> {
+            h.assertTrue(!(h.getLevel().getBlockEntity(thinAt) instanceof AssemblyBlockEntity be && !be.parts().isEmpty()), "the thin copper box burst");
+            h.assertTrue(h.getLevel().getBlockEntity(thickAt) instanceof AssemblyBlockEntity, "the steel box holds");
+        });
+    }
+
     /**
      * Places an exhibit for a test, first removing assembly blocks left within interaction reach of its footprint.
      * Exhibits are larger than the 12-block arena, so the framework does not clear them between batches: an earlier

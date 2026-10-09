@@ -656,45 +656,6 @@ class DemoExhibitsTest {
         run(fresh, 0.5);
     }
 
-    /**
-     * Restarting from a running state (the arm held up: 2.4 A in the coils, a hot power transistor) must work, for
-     * the whole build and for fragments of it (as when only some of its chunks are loaded). A Newton iterate once
-     * drove the transistor's heat node to infinity here, and its saturation current to NaN.
-     */
-    @Test
-    void servoFragmentsSimulate() {
-        Exhibit e = ControlExhibits.servo();
-        // a running state: the arm held up, current in the coils
-        Exhibits.Built full = Exhibits.build(e, AMBIENT);
-        CompiledAssembly running = compile(e, full);
-        for (int i = 0; i < 160; i++) {
-            running.setCrankEffort(full.id(e, "crank"), -1, false);
-            running.step(0.05);
-        }
-        var hot = running.exportState();
-        java.util.List<String> bad = new java.util.ArrayList<>();
-        for (int axis = 0; axis < 2; axis++)
-            for (int cut = 2; cut < (axis == 0 ? 31 : 15); cut += 3) {
-                for (int side = 0; side < 2; side++) {
-                    Exhibits.Built b = Exhibits.build(e, AMBIENT);
-                    var a = new dev.emergence.core.assembly.Assembly().ambientTemperature(AMBIENT);
-                    for (var part : b.assembly().parts()) {
-                        int c = axis == 0 ? part.minX() : part.minZ();
-                        if ((side == 0) == (c <= cut)) a.add(part);
-                    }
-                    a.anchoredWhen(q -> q.minY() == 0 && q.kind().structural && q.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
-                    try {
-                        CompiledAssembly c = AssemblyCompiler.compile(a, hot);
-                        for (int k = 0; k < 10; k++) c.step(0.05);
-                    } catch (RuntimeException ex) {
-                        bad.add((axis == 0 ? "x" : "z") + (side == 0 ? "<=" : ">") + cut + ": " + ex.getMessage());
-                    }
-                }
-            }
-        bad.forEach(System.out::println);
-        assertTrue(bad.isEmpty(), bad.size() + " fragments fail: " + (bad.isEmpty() ? "" : bad.get(0)));
-    }
-
     /** Each flask's composition is the equilibrium at its own temperature; the warm one holds more NO2 and is darker. */
     @Test
     void brownGasEquilibriumFollowsTemperature() {
@@ -763,8 +724,14 @@ class DemoExhibitsTest {
         assertTrue(g.moles(c.solverView(), ch.species("CH4")) < 1e-6, "all the methane burns");
     }
 
+    /**
+     * Restarting from rest and from a running state (the arm held up: 2.4 A in the coils, a hot power transistor)
+     * must work for fragments of the servo, as when only some of its chunks are loaded: every cut along x and z into
+     * quadrants. A Newton iterate once drove the transistor's heat node to infinity here, and its saturation current
+     * to NaN. Cuts giving the same set of parts are simulated once; the distinct fragments run in parallel.
+     */
     @Test
-    void servoFragmentsExhaustive() {
+    void servoFragmentsSimulate() {
         Exhibit e = ControlExhibits.servo();
         Exhibits.Built full = Exhibits.build(e, AMBIENT);
         CompiledAssembly running = compile(e, full);
@@ -775,29 +742,47 @@ class DemoExhibitsTest {
             running.step(0.05);
         }
         var hot = running.exportState();
-        java.util.List<String> bad = new java.util.ArrayList<>();
-        for (var state : java.util.List.of(rest, hot))
+        java.util.Map<java.util.Set<Long>, String> fragments = new java.util.LinkedHashMap<>();
         for (int cx = 0; cx <= 32; cx++)
-            for (int cz = 0; cz <= 16; cz += (cx == 0 || cx == 32 ? 1 : 16)) {
+            for (int cz = 0; cz <= 16; cz += (cx == 0 || cx == 32 ? 1 : 16))
                 for (int quad = 0; quad < 4; quad++) {
-                    Exhibits.Built b = Exhibits.build(e, AMBIENT);
-                    var a = new dev.emergence.core.assembly.Assembly().ambientTemperature(AMBIENT);
-                    for (var part : b.assembly().parts()) {
+                    java.util.Set<Long> ids = new java.util.TreeSet<>();
+                    for (var part : full.assembly().parts()) {
                         boolean left = part.minX() < cx, near = part.minZ() < cz;
-                        if (left == (quad % 2 == 0) && near == (quad / 2 == 0)) a.add(part);
+                        if (left == (quad % 2 == 0) && near == (quad / 2 == 0)) ids.add(part.id());
                     }
-                    if (a.parts().isEmpty()) continue;
-                    a.anchoredWhen(q -> q.minY() == 0 && q.kind().structural && q.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
-                    try {
-                        CompiledAssembly c = AssemblyCompiler.compile(a, state);
-                        for (int k = 0; k < 4; k++) c.step(0.05);
-                    } catch (RuntimeException ex) {
-                        bad.add((state == hot ? "hot " : "rest ") + "x" + cx + " z" + cz + " q" + quad + " (" + a.parts().size() + " parts): " + ex.getMessage());
-                    }
+                    if (!ids.isEmpty()) fragments.putIfAbsent(ids, "x" + cx + " z" + cz + " q" + quad);
+                }
+        java.util.List<String> bad = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+        // a pool of its own: a parallel stream started from JUnit's fork-join workers gets no extra threads
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        java.util.List<java.util.concurrent.Future<?>> jobs = new java.util.ArrayList<>();
+        for (var f : fragments.entrySet()) jobs.add(pool.submit(() -> {
+            for (var state : java.util.List.of(rest, hot)) {
+                Exhibits.Built b = Exhibits.build(e, AMBIENT);
+                var a = new dev.emergence.core.assembly.Assembly().ambientTemperature(AMBIENT);
+                for (var part : b.assembly().parts()) if (f.getKey().contains(part.id())) a.add(part);
+                a.anchoredWhen(q -> q.minY() == 0 && q.kind().structural && q.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
+                try {
+                    // a restart goes wrong (NaN, singular, underflow) within its first steps; three are enough, and
+                    // keep the few fragments that cut an amplifier's feedback (which then oscillates fast) cheap
+                    CompiledAssembly c = AssemblyCompiler.compile(a, state);
+                    for (int k = 0; k < 3; k++) c.step(0.05);
+                } catch (RuntimeException ex) {
+                    bad.add((state == hot ? "hot " : "rest ") + f.getValue() + " (" + a.parts().size() + " parts): " + ex.getMessage());
                 }
             }
+        }));
+        try {
+            for (var j : jobs) j.get();
+        } catch (InterruptedException | java.util.concurrent.ExecutionException ex) {
+            throw new AssertionError(ex);
+        } finally {
+            pool.shutdown();
+        }
+        System.out.println("servo: " + fragments.size() + " distinct fragments");
         bad.forEach(m -> System.out.println("FRAG " + m));
-        assertTrue(bad.isEmpty(), bad.size() + " fragments fail");
+        assertTrue(bad.isEmpty(), bad.size() + " fragments fail: " + (bad.isEmpty() ? "" : bad.get(0)));
     }
 
     /** The burner lights from the heater, keeps burning when it is switched off, and draws its air by natural draft. */

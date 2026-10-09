@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Performance benchmarks against the budget in PERFORMANCE.md: one 50 ms game tick of an island
  * should cost well under 5 ms of server time. Results are printed for the performance log.
  */
+@org.junit.jupiter.api.parallel.Isolated("wall-clock timings: run alone")
 class SolverBenchmarkTest {
 
     static double msPerTick(CompiledAssembly c, int ticks) {

@@ -46,7 +46,8 @@ tasks.register('coreTest', Test) {
     testClassesDirs = sourceSets.coreTest.output.classesDirs
     classpath = sourceSets.coreTest.runtimeClasspath
     useJUnitPlatform()
-    maxHeapSize = '2G'
+    // methods run in parallel (see core/src/test/resources/junit-platform.properties)
+    maxHeapSize = '6G'
     systemProperty 'emergence.debugSolver', System.getProperty('emergence.debugSolver', 'false')
     if (System.getProperty('emergence.method')) systemProperty 'emergence.method', System.getProperty('emergence.method')
     testLogging {
@@ -78,6 +79,9 @@ neoForge {
             client()
             programArguments.addAll('--quickPlaySingleplayer', 'Emergence Showcase', '--width', '1280', '--height', '720')
             systemProperty 'emergence.autoShowcase', 'true'
+            // motion diagnostics: -Demergence.poseLog=true -Demergence.showcaseOnly=servo,jack (see PoseLog)
+            systemProperty 'emergence.poseLog', System.getProperty('emergence.poseLog', 'false')
+            systemProperty 'emergence.showcaseOnly', System.getProperty('emergence.showcaseOnly', '')
         }
         server {
             server()

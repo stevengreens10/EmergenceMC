@@ -252,3 +252,9 @@ fixed-edge plate for box tanks) and fails at its material's tensile strength. Bu
 full of water on switched heaters; the water boils up its saturation curve until the 1 mm copper box tears at 1.94 bar,
 as the plate formula predicts, while the 3 mm steel box holds. The heaters are switched so the demo-world generation does
 not burst it before anyone looks. No existing exhibit bursts (the 200 bar fuel cylinder's 6 mm wall holds).
+
+**Flaky in-world tests, two real causes.** Exhibits are bigger than the 12-block GameTest arena, so earlier tests'
+machines stayed beside later ones and joined their islands (the shelf test once ran inside an 895-part island); each
+exhibit test now has a batch of its own and clears assembly blocks around its footprint first. And an island stepped
+only if an arbitrary one of its blocks was in a ticking chunk: a machine straddling the edge of simulation distance
+(the two-plot computer beyond the test's forced chunks) ran or froze by chance. It now runs if any of its blocks ticks.

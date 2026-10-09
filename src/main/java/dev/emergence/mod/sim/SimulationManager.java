@@ -149,8 +149,9 @@ public final class SimulationManager {
         for (Island isl : islands) {
             if (isl.compiled == null) continue;
             // like block entities, machines advance only within the simulation distance of a player; further
-            // away their state waits, intact
-            if (!level.shouldTickBlocksAt(isl.blocks.iterator().next())) continue;
+            // away their state waits, intact. A machine reaching into simulation distance runs as a whole (judging
+            // it by an arbitrary one of its blocks made one straddling a chunk border run or freeze by chance)
+            if (!anyTicking(isl)) continue;
             updateCranks(isl);
             List<Long> failed;
             long t0 = System.nanoTime();
@@ -372,6 +373,18 @@ public final class SimulationManager {
             AssemblyState st = mergeWithSaved(isl, merged);
             isl.compiled = compile(isl, st);
         }
+    }
+
+    /** True if any block of the island is in a chunk that ticks block entities. */
+    private boolean anyTicking(Island isl) {
+        long lastChunk = Long.MIN_VALUE;
+        for (BlockPos b : isl.blocks) {
+            long chunk = ChunkPos.asLong(b.getX() >> 4, b.getZ() >> 4);
+            if (chunk == lastChunk) continue;
+            lastChunk = chunk;
+            if (level.shouldTickBlocksAt(b)) return true;
+        }
+        return false;
     }
 
     /** Face neighbours for reach 1, otherwise every block within the cube of that half-width. */

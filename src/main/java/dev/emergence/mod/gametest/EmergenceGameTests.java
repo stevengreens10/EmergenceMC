@@ -87,12 +87,12 @@ public final class EmergenceGameTests {
     }
 
     /** The demo glow exhibit, placed through the real builder path, flash-heats its wire when switched. */
-    @GameTest(template = "arena", timeoutTicks = 100)
+    @GameTest(template = "arena", timeoutTicks = 100, batch = "glow")
     public static void demoCapacitorExhibitGlowsInWorld(GameTestHelper h) {
         // the block-scale exhibit spans cells x 3..8, z 8..10: it fits the 12³ arena from its corner
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.capacitorGlow();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos abs = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "switch");
         PlacedPart sw = only(h, abs, PartKind.SWITCH);
@@ -119,11 +119,11 @@ public final class EmergenceGameTests {
      * Block-scale gear train: gears in blocks two and four blocks apart mesh through their pitch circles,
      * so the island must take in blocks across the air gaps between them.
      */
-    @GameTest(template = "arena", timeoutTicks = 200)
+    @GameTest(template = "arena", timeoutTicks = 200, batch = "gears")
     public static void blockScaleGearTrainMeshesAcrossGaps(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.gearTrain();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos crankAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "crank");
         BlockPos outAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "output");
@@ -146,11 +146,11 @@ public final class EmergenceGameTests {
     }
 
     /** Fluids in the world: a vessel against a hot block gains pressure at constant p/T; its twin stays put. */
-    @GameTest(template = "arena", timeoutTicks = 400)
+    @GameTest(template = "arena", timeoutTicks = 400, batch = "pressure")
     public static void heatedVesselPressureRisesInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.heatedVessel();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos hotAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "hotTank");
         BlockPos coldAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "coldTank");
@@ -178,7 +178,7 @@ public final class EmergenceGameTests {
     public static void steamEngineRunsInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.steamEngine();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos shaftAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "shaft");
         BlockPos boilerAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "boiler");
@@ -201,7 +201,7 @@ public final class EmergenceGameTests {
     public static void computerRunsItsProgramInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ComputerExhibit.build();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos pcAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "pc");
         BlockPos accAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "acc");
@@ -227,7 +227,7 @@ public final class EmergenceGameTests {
     public static void overloadedShelfBreaksInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.shelves();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         BlockPos steelTip = plot.offset(5, 3, 5), alTip = plot.offset(2, 3, 2);
         h.runAtTickTime(40, () -> {
             h.assertTrue(h.getLevel().getBlockEntity(steelTip) instanceof AssemblyBlockEntity, "steel shelf holds one lead block");
@@ -245,7 +245,7 @@ public final class EmergenceGameTests {
     public static void lightBarrierWorksInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.OpticsExhibits.lightBarrier();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos pdAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "pd");
         BlockPos crankAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "crank");
@@ -271,7 +271,7 @@ public final class EmergenceGameTests {
     public static void servoArmFollowsKnobInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ControlExhibits.servo();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos armAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "arm");
         BlockPos crankAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "crank");
@@ -299,7 +299,7 @@ public final class EmergenceGameTests {
     public static void brownGasDarkensWhenWarm(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ChemistryExhibits.brownGas();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos hotAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "hot");
         BlockPos coldAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "cold");
@@ -319,7 +319,7 @@ public final class EmergenceGameTests {
     public static void canIgnitesInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ChemistryExhibits.thermalExplosion();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos canAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "can");
         BlockPos swAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "switch");
@@ -344,7 +344,7 @@ public final class EmergenceGameTests {
     public static void geigerCounterCountsInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.RadiationExhibits.geigerCounter();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos tubeAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "tube");
         PlacedPart tube = only(h, tubeAt, PartKind.GM_TUBE);
@@ -364,7 +364,7 @@ public final class EmergenceGameTests {
     public static void springMassBouncesInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.MechanicsExhibits.springMass();
-        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        placeExhibit(h, plot, ex);
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos rodAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "rod");
         PlacedPart rod = only(h, rodAt, PartKind.SHAFT);
@@ -382,6 +382,29 @@ public final class EmergenceGameTests {
             h.assertTrue(range[0] < -0.01, "down below the unloaded position, where the spring takes its weight: " + range[0]);
             h.succeed();
         });
+    }
+
+    /**
+     * Places an exhibit for a test, first removing assembly blocks left within interaction reach of its footprint.
+     * Exhibits are larger than the 12-block arena, so the framework does not clear them between batches: an earlier
+     * test's machine left beside this one would join its island (each exhibit test has a batch of its own, so the
+     * cleared ground belongs to no running test).
+     */
+    private static void placeExhibit(GameTestHelper h, BlockPos plot, dev.emergence.core.demo.Exhibit ex) {
+        int mx = 0, my = 0, mz = 0;
+        for (var d : ex.parts) {
+            mx = Math.max(mx, d.x1());
+            my = Math.max(my, d.y1());
+            mz = Math.max(mz, d.z1());
+        }
+        var level = h.getLevel();
+        for (int x = -3; x <= mx + 3; x++)
+            for (int y = -1; y <= my + 3; y++)
+                for (int z = -3; z <= mz + 3; z++) {
+                    BlockPos p = plot.offset(x, y, z);
+                    if (level.getBlockState(p).is(dev.emergence.mod.registry.ModRegistries.ASSEMBLY.get())) level.removeBlock(p, false);
+                }
+        dev.emergence.mod.demo.DemoBuilder.place(level, plot, ex);
     }
 
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {

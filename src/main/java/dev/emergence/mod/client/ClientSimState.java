@@ -17,12 +17,14 @@ public final class ClientSimState {
     private static final Map<Long, Pose> POSE = new HashMap<>();
     private static final Map<Long, Float> TEMP = new HashMap<>();
     private static final Map<Long, Integer> TINT = new HashMap<>();
+    private static final Map<Long, Float> GAUGE = new HashMap<>();
 
     public static synchronized void apply(IslandSyncPayload p) {
         for (long id : p.partIds()) {
             POSE.remove(id);
             TEMP.remove(id);
             TINT.remove(id);
+            GAUGE.remove(id);
         }
         double s = p.worldScale();
         for (IslandSyncPayload.BodyState b : p.bodies()) {
@@ -32,6 +34,7 @@ public final class ClientSimState {
         }
         for (int i = 0; i < p.hotIds().length; i++) TEMP.put(p.hotIds()[i], p.hotTemps()[i]);
         for (int i = 0; i < p.tintIds().length; i++) TINT.put(p.tintIds()[i], p.tints()[i]);
+        for (int i = 0; i < p.fluidIds().length; i++) GAUGE.put(p.fluidIds()[i], p.gauges()[i]);
     }
 
     public static synchronized Pose pose(long partId) {
@@ -41,6 +44,12 @@ public final class ClientSimState {
     public static synchronized float temperature(long partId, float fallback) {
         Float t = TEMP.get(partId);
         return t == null ? fallback : t;
+    }
+
+    /** Gauge pressure of a fluid part [Pa] (0 if at ambient or unknown). */
+    public static synchronized float gauge(long partId) {
+        Float g = GAUGE.get(partId);
+        return g == null ? 0 : g;
     }
 
     /** Colour as changed by chemistry (0xRRGGBB), or {@code fallback}. */
@@ -53,5 +62,6 @@ public final class ClientSimState {
         POSE.clear();
         TEMP.clear();
         TINT.clear();
+        GAUGE.clear();
     }
 }

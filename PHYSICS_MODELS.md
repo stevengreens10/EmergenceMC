@@ -111,3 +111,35 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   deposit colour as the film reaches ~1e-4 mol/m². Gas evolution shows as bubbles at the electrode.
 * **Validity**: dilute-solution activities (a = c), 25 °C reference data with Nernst T dependence, exchange
   currents order-of-magnitude, no passivation, no pH-dependent speciation, uniform current over a face.
+
+## Fluids (`fluids`, `sim.elements.Fluid*`)
+* **Domain**: FLUID nodes carry absolute pressure; the through quantity is mass flow (conserved). Each
+  control volume pairs a pressure node with a thermal node for its fluid temperature; energy travels with
+  the flow as enthalpy on the thermal nodes (the fluid domain is deliberately not power-conjugate). No GMIN
+  on fluid nodes (it would leak mass).
+* **Working fluids** (`fluids.json`): thermally perfect ideal gases p = ρRT, c_p(T) polynomial fitted to
+  Incropera Table A.4 (air ±0.1 %, N₂ ±0.2 %, CO₂ ±0.6 %), u = ∫c_v dT; Sutherland viscosity and
+  conductivity. Liquids (water, ISO VG 46 oil): ρ = ρ0[1 + (p − p0)/K − β(T − T0)], Vogel/Andrade viscosity.
+* **`FluidVolume`**: d(ρV)/dt = Σṁ_in; d(m·u)/dt = Σṁ_in·h_in + Q̇ (first law for an open system, well mixed).
+* **`FluidBranch`** (quasi-steady, ṁ unknown): p_a − p_b = Δp_friction + Δp_minor + ρgΔz − Δp_rotor.
+  Darcy–Weisbach with f = 64/Re (Hagen–Poiseuille exactly) and Haaland's fit to Colebrook (±2 %), blended
+  over 2000 < Re < 4000; minor losses Kρv|v|/2 (Borda–Carnot at section changes, 0.9 per tee/elbow,
+  1.0 at a free outlet); enthalpy upwinded smoothly through ṁ = 0. Kinetic energy and fluid inertia are
+  neglected (no acoustics or water hammer; Mach < ~0.3 in pipes).
+* **Valves** are orifices of their seat area C_d·A·φ (C_d = 0.6): isentropic nozzle flow for gases,
+  choking at the critical pressure ratio (flow independent of downstream pressure below it);
+  ṁ = C_d A √(2ρΔp) for liquids. Regularised for |Δp| ≲ 1 Pa.
+* **Bladed rotors** (blade-element theory at the mean radius): relative velocity w = (c_x, −U), angle of
+  attack α to the chord (stagger β from the axis, handedness from the pitch);
+  C_L = sin 2α·(1 + (π − 1)e^{−(sin α/0.25)²}) (2π slope before ~14° stall, flat plate after),
+  C_D = C_D0 + 1.8 sin²α over blade area σA (σ = 0.8). Axial force → pressure rise, tangential force →
+  shaft torque, shaft power → fluid energy. Lift does no work in the blade frame, so
+  shaft power − QΔp = drag·|w| ≥ 0: energy conserved, second law satisfied, all four quadrants (fan,
+  turbine, windmill, reverse flow, stall). Swirl leaving one rotor is not carried to the next.
+* **Wall heat transfer** (`FluidWallConvection`): h = Nu·k/D_h with Nu = 3.66 (laminar) or Gnielinski
+  (Re > 3000), Re from the flow through the volume. No separate natural convection inside vessels.
+* **Assembly rules**: each pipe/tank/valve/rotor part is a control volume; volumes sharing a face connect
+  (pipes along their axis or sideways as tees, tanks on all faces, rotors along their axis); open axial
+  ends vent to an atmosphere reservoir unless the neighbouring cell is solid; a shaft passes through
+  fluid parts in a gland (no rigid joint); a rotor's blade row sits on its +axis branch and acts through
+  its rigid body. Air pressure follows the isothermal barometric formula with height in the world.

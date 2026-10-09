@@ -204,4 +204,51 @@ class DemoExhibitsTest {
         }
         assertTrue(peak > 1e-5, "a small but real current: " + peak);
     }
+
+    @Test
+    void compressedAirSpinsTheTurbineFlywheel() {
+        Exhibit e = Exhibits.airTurbine();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long shaft = b.id(e, "shaft"), receiver = b.id(e, "receiver");
+        run(c, 1);
+        assertEquals(0, c.probe(shaft).angularVelocity(), 1e-6, "valve shut: still");
+        assertEquals(1e6, c.fluid(receiver)[0], 2e3, "receiver holds 10 bar");
+        c.toggleSwitch(b.id(e, "valve"));
+        double peak = 0;
+        for (int i = 0; i < 100; i++) {
+            c.step(0.05);
+            peak = Math.max(peak, Math.abs(c.probe(shaft).angularVelocity()));
+        }
+        assertTrue(peak > 50, "turbine spins the rotor and disk: peak " + peak + " rad/s");
+        assertTrue(c.fluid(receiver)[0] < 9.5e5, "receiver pressure falls: " + c.fluid(receiver)[0]);
+    }
+
+    @Test
+    void fanDrivesTheWindmillThroughTheAir() {
+        Exhibit e = Exhibits.fanCoupling();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long fan = b.id(e, "fanShaft"), mill = b.id(e, "millShaft");
+        for (int i = 0; i < 160; i++) {
+            c.setCrankEffort(b.id(e, "crank"), 1, true);
+            c.step(0.05);
+        }
+        double wf = c.probe(fan).angularVelocity(), wm = c.probe(mill).angularVelocity();
+        assertTrue(Math.abs(wf) > 200, "geared fan spins fast: " + wf);
+        assertTrue(Math.abs(wm) > 20, "windmill turned by the air alone: " + wm);
+        assertTrue(Math.signum(wf) == Math.signum(wm), "same blade pitch: same direction");
+    }
+
+    @Test
+    void heatedVesselPressureRisesAndColdOneStays() {
+        Exhibit e = Exhibits.heatedVessel();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        run(c, 120);
+        double[] hot = c.fluid(b.id(e, "hotTank")), cold = c.fluid(b.id(e, "coldTank"));
+        assertTrue(hot[0] > 1.1e5, "heated vessel pressure rose: " + hot[0]);
+        assertEquals(101_325, cold[0], 500, "cold vessel unchanged");
+        assertEquals(101_325 * hot[1] / AMBIENT, hot[0], 0.01 * hot[0], "p/T constant");
+    }
 }

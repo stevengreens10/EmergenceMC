@@ -28,7 +28,10 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 
 ## Phase 3 — Thermal and fluid physics
 🟡 Heat transfer: conduction, natural convection, radiation, thermal masses ✅; forced convection ⬜
-⬜ Fluid networks, pressure, pipes, valves, pumps; gas equations of state; phase transitions; pistons
+✅ Fluid networks: control volumes, pipes (Darcy–Weisbach), tanks, valves (choked orifices), atmosphere
+   vents, wall heat transfer, ideal-gas and liquid equations of state, gravity head
+✅ Bladed rotors by blade-element theory: fans, pumps, turbines, windmills from one part
+⬜ Phase transitions (boiling/condensation), free surfaces, pistons/cylinders (translational bodies)
 ⬜ Milestone: heat engine driving a generator
 
 ## Phase 4 — Electronics and computation
@@ -51,5 +54,5 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Gallery generator (`./gradlew generateDemoWorld`), `/emergence demo`, automated screenshot tour.
 Exhibits (block scale): hand generator, gear train, capacitor glow, fuse, conduction race, bearing
 friction, DC motor, Daniell cell, displacement plating, galvanic corrosion; plus a true-scale miniature
-generator.
+generator; compressed-air turbine, fan-and-windmill fluid coupling, heated pressure vessel.
 New mechanics must add an exhibit (core `Exhibits` + `DemoExhibitsTest`).

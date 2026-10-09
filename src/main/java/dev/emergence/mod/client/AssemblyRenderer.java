@@ -24,6 +24,7 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -141,7 +142,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         Vector3f z = new Vector3f(p.axis.dx, p.axis.dy, p.axis.dz);
         Vector3f x = new Vector3f(l == 0 ? 1 : 0, l == 1 ? 1 : 0, l == 2 ? 1 : 0);
         Vector3f y = new Vector3f(z).cross(x);
-        if (p.kind == PartKind.SWITCH && a != 1) {
+        if ((p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE) && a != 1) {
             // a knife switch lying on its side: base down (model −Y), whatever the lead axis
             y.set(0, 1, 0);
             x.set(new Vector3f(y).cross(z));
@@ -193,6 +194,10 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case ELECTROLYTE -> {
                 // the jar's glass and liquid go in the translucent pass
             }
+            case TANK -> drawModel(c, "tank", p, ex, ey, ez, false);
+            case VALVE -> drawModel(c, "valve", p, 1, 1, ez, false);
+            case PIPE -> drawPipe(c, be, p, f);
+            case ROTOR -> drawRotor(c, p, ex, ey, ez);
         }
     }
 
@@ -239,6 +244,17 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             switch (piece.name()) {
                 case "crank_arm" -> c.ps.scale((float) crankR, 1, 1);
                 case "crank_grip", "crank_knob", "crank_pin" -> c.ps.translate((float) crankR - 1, 0, 0);
+                case "valve_stem", "valve_wheel", "valve_wheel_spoke", "valve_wheel_hub" -> {
+                    if (p.closed) c.ps.translate(0, 0.09f, 0); // open: the stem has risen
+                }
+                case "tank_needle" -> {
+                    // Bourdon gauge over 270°, pivoting at the dial centre; full scale "gauge_range" bar (default 2.5)
+                    double range = p.spec.params().getOrDefault("gauge_range", 2.5) * 1e5;
+                    float frac = (float) Math.max(0, Math.min(1, ClientSimState.gauge(p.id) / range));
+                    c.ps.translate(0.2f, 0, 0.2f);
+                    c.ps.mulPose(new Quaternionf().rotateY((float) Math.toRadians((frac - 0.5) * 270)));
+                    c.ps.translate(-0.2f, 0, -0.2f);
+                }
                 case "switch_blade", "switch_handle" -> {
                     if (!p.closed) {
                         c.ps.translate(0, -0.24f, -0.3f);
@@ -389,6 +405,134 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         cylinder(c, s, rgb, r, 0, len, 8, false);
         c.ps.popPose();
     }
+
+    // ------------------------------------------------------------------ fluid parts
+
+    private static final int[] FLUID_BANDS = {-1, 0x2E6FD0, 0xE070B0, 0x7FA0C0, 0xC08A20, 0xA0A0FF, 0x606060};
+
+    /**
+     * A pipe: a tube along its axis at its real bore and wall, flanges where it joins another fluid part,
+     * side arms where it tees into a neighbour, a dark mouth at an open end, and a colour band for
+     * anything but air.
+     */
+    private void drawPipe(Ctx c, AssemblyBlockEntity be, PlacedPart p, Frame f) {
+        var prm = p.spec.params();
+        double wall = prm.getOrDefault("wall", 0.002), bore = prm.getOrDefault("bore", 0.025);
+        float ro = (float) Math.max((bore / 2 + wall) * 16, 0.06), ri = (float) (bore / 2 * 16);
+        TextureAtlasSprite s = PartModels.sprite(c.materialTexture);
+        int rgb = tintOf(c, tintable(c.materialTexture) ? c.materialRgb : 0xFFFFFF);
+        int dark = tintOf(c, darken(c.materialRgb, 0.75f));
+        float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
+        c.ps.pushPose();
+        c.ps.last().pose().mul(new Matrix4f(f.m4).transpose());
+        c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
+        int axis = p.axis.axis();
+        for (Dir d : Dir.values()) {
+            List<PlacedPart> nb = across(be, p, d);
+            boolean fluidNb = nb.stream().anyMatch(q -> q.kind.holdsFluid());
+            float len = ext[d.axis()] / 2;
+            if (d.axis() == axis) {
+                arm(c, s, rgb, d, ro, len);
+                if (fluidNb) flange(c, s, dark, d, ro, len);
+                else if (nb.isEmpty()) {
+                    // open end: show the bore
+                    c.ps.pushPose();
+                    c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f(d.dx, d.dy, d.dz)));
+                    cylinder(c, PartModels.sprite("epoxy"), 0x202020, ri, len - 0.002f, len + 0.001f, 16, true);
+                    c.ps.popPose();
+                    flange(c, s, dark, d, ro, len);
+                }
+            } else if (nb.stream().anyMatch(q -> q.kind == PartKind.TANK || (q.kind.holdsFluid() && q.axis.axis() == d.axis()))) {
+                arm(c, s, rgb, d, ro, len);
+                flange(c, s, dark, d, ro, len);
+            }
+        }
+        int code = (int) Math.round(prm.getOrDefault("fluid", 0.0));
+        if (code > 0 && code < FLUID_BANDS.length) {
+            c.ps.pushPose();
+            c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f(p.axis.dx, p.axis.dy, p.axis.dz)));
+            cylinder(c, PartModels.sprite("dark_paint"), tintOf(c, FLUID_BANDS[code]), ro * 1.04f, -0.08f, 0.08f, 20, false);
+            c.ps.popPose();
+        }
+        c.ps.popPose();
+    }
+
+    private void flange(Ctx c, TextureAtlasSprite s, int rgb, Dir d, float ro, float at) {
+        c.ps.pushPose();
+        c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f(d.dx, d.dy, d.dz)));
+        cylinder(c, s, rgb, ro * 1.35f, at - 0.07f, at - 0.005f, 20, true);
+        c.ps.popPose();
+    }
+
+    /**
+     * A bladed rotor: hub, a row of blades set at the blade angle (handedness from the pitch) and a
+     * light shroud ring. Rotates with its shaft.
+     */
+    private void drawRotor(Ctx c, PlacedPart p, float ex, float ey, float ez) {
+        var prm = p.spec.params();
+        float rt = 0.45f * Math.min(ex, ey), rh = 0.35f * rt;
+        float beta = (float) Math.toRadians(prm.getOrDefault("blade_angle", 45.0)) * (prm.getOrDefault("pitch", 1.0) < 0 ? -1 : 1);
+        TextureAtlasSprite s = PartModels.sprite("metal_brushed"), cast = PartModels.sprite("metal_cast");
+        int rgb = tintOf(c, c.materialRgb), dark = tintOf(c, darken(c.materialRgb, 0.8f));
+        float hubLen = 0.55f * ez;
+        cylinder(c, cast, dark, rh, -hubLen / 2, hubLen / 2, 20, true);
+        int n = 7;
+        float chord = Math.min(0.5f * ez, 1.6f * rt * (float) Math.PI / n);
+        for (int k = 0; k < n; k++) {
+            double phi = 2 * Math.PI * k / n;
+            float cr = (float) Math.cos(phi), sr = (float) Math.sin(phi);
+            // chord direction: along the axis tilted by β towards the tangential direction
+            float tx = -sr, ty = cr;
+            float ax = (float) Math.sin(beta) * tx, ay = (float) Math.sin(beta) * ty, az = (float) Math.cos(beta);
+            float h = chord / 2;
+            float[][] v = {
+                    {rh * cr - h * ax, rh * sr - h * ay, -h * az}, {rt * cr - h * ax, rt * sr - h * ay, -h * az},
+                    {rt * cr + h * ax, rt * sr + h * ay, h * az}, {rh * cr + h * ax, rh * sr + h * ay, h * az}};
+            // normal of the blade surface: radial × chord
+            float nx = sr * az - 0, ny = -cr * az, nz = cr * ay - sr * ax;
+            twoSided(c, s, rgb, v, nx, ny, nz);
+        }
+        // shroud ring (two thin bands)
+        cylinder(c, s, dark, rt + 0.02f, -0.12f * ez, 0.12f * ez, 32, false);
+    }
+
+    private void twoSided(Ctx c, TextureAtlasSprite s, int rgb, float[][] v, float nx, float ny, float nz) {
+        quadRaw(c, s, rgb, v[0], v[1], v[2], v[3], nx, ny, nz);
+        quadRaw(c, s, rgb, v[3], v[2], v[1], v[0], -nx, -ny, -nz);
+    }
+
+    private void quadRaw(Ctx c, TextureAtlasSprite s, int rgb, float[] a, float[] b, float[] d, float[] e, float nx, float ny, float nz) {
+        float[][] q = {a, b, d, e};
+        float[][] uv = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+        for (int i = 0; i < 4; i++) vertex(c, c.solid, s, rgb, q[i][0], q[i][1], q[i][2], uv[i][0], uv[i][1], nx, ny, nz);
+    }
+
+    /** Parts occupying the cell just beyond face d of part p (possibly in the neighbouring block). */
+    private static List<PlacedPart> across(AssemblyBlockEntity be, PlacedPart p, Dir d) {
+        int res = be.resolution();
+        int a = d.axis();
+        int[] lo = {p.x0, p.y0, p.z0}, hi = {p.x1, p.y1, p.z1};
+        int[] cell = {(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2};
+        cell[a] = d.sign() > 0 ? hi[a] + 1 : lo[a] - 1;
+        AssemblyBlockEntity target = be;
+        if (cell[a] < 0 || cell[a] >= res) {
+            BlockPos np = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
+            if (!(be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity o) || o.resolution() != res) {
+                // a world block (or another assembly) beyond: report a non-fluid occupant if solid
+                BlockPos wp = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
+                return be.getLevel().getBlockState(wp).isAir() ? List.of() : List.of(SOLID);
+            }
+            target = o;
+            cell[a] = Math.floorMod(cell[a], res);
+        }
+        List<PlacedPart> out = new java.util.ArrayList<>(2);
+        for (PlacedPart q : target.parts()) if (q.contains(cell[0], cell[1], cell[2])) out.add(q);
+        return out;
+    }
+
+    /** Placeholder occupant for a world block beyond a face. */
+    private static final PlacedPart SOLID = new PlacedPart(0, PartKind.BLOCK, dev.emergence.mod.part.PartSpec.of("granite", 1, 1),
+            0, 0, 0, 0, 0, 0, Dir.UP, false);
 
     private static boolean connects(AssemblyBlockEntity be, PlacedPart p, Dir d) {
         int res = be.resolution();

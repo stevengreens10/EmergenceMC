@@ -42,8 +42,19 @@ behaviour; where physics is missing the effect is simply absent.
 * Solution colour uses three-band absorbance estimates (display only); deposits are not drawn as
   crystals, and dissolving electrodes do not visibly shrink.
 
+## Fluids
+* Quasi-steady branches: no fluid inertia (no water hammer, acoustics, Helmholtz resonance) and no flow
+  kinetic energy — a jet's velocity is not carried into the next volume, so impulse turbines fed by a
+  nozzle are under-powered (the throttling loss stays in the gas as heat).
+* Single phase only: no boiling, condensation or free surfaces (tanks are always full; an open water pipe
+  end behaves like a connection to a pool at atmospheric pressure). One fluid per connected network.
+* Rotors: one blade row at the mean radius; swirl is not passed to a downstream rotor; no tip leakage or
+  radial (centrifugal) machines; blades have no camber.
+* Gas properties are ideal-gas (Z ≈ 1); real-gas effects at high pressure are ignored.
+* Internal natural convection in closed vessels is not modelled (laminar forced-convection Nu as floor).
+
 ## Not yet started (see ROADMAP.md)
-Fluids/hydraulics, phase change, combustion/general chemistry, semiconductors beyond
+Phase change, combustion/general chemistry, semiconductors beyond
 the diode, digital logic, optics, acoustics, structural analysis, manufacturing, sensors beyond the
 multimeter, oscilloscope/data logging.
 

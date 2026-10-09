@@ -91,9 +91,13 @@ public final class AssemblyBlockEntity extends BlockEntity {
         return null;
     }
 
-    /** Overlap rules: a shaft may pass through bearings, gears, disks and cranks; nothing else may share cells. */
+    /**
+     * Overlap rules: a shaft may pass through bearings, gears, disks, cranks and rotors, and through pipes,
+     * valves and tanks (in a gland seal); nothing else may share cells.
+     */
     public static boolean mayOverlap(PartKind a, PartKind b) {
-        if (a == PartKind.SHAFT) return b == PartKind.BEARING || b == PartKind.GEAR || b == PartKind.BLOCK || b == PartKind.CRANK;
+        if (a == PartKind.SHAFT) return b == PartKind.BEARING || b == PartKind.GEAR || b == PartKind.BLOCK || b == PartKind.CRANK
+                || b.holdsFluid();
         if (b == PartKind.SHAFT) return mayOverlap(b, a);
         return false;
     }
@@ -191,6 +195,10 @@ public final class AssemblyBlockEntity extends BlockEntity {
             t.putDouble("a", v[2]);
             t.putDouble("i", v[3]);
             t.putDouble("v", v[4]);
+            if (v.length > 6 && v[5] > 0) {
+                t.putDouble("p", v[5]);
+                t.putDouble("Tf", v[6]);
+            }
             st.add(t);
         }
         tag.put("state", st);
@@ -206,7 +214,8 @@ public final class AssemblyBlockEntity extends BlockEntity {
         savedState.clear();
         for (Tag x : tag.getList("state", Tag.TAG_COMPOUND)) {
             CompoundTag t = (CompoundTag) x;
-            savedState.put(t.getLong("id"), new double[]{t.getDouble("T"), t.getDouble("w"), t.getDouble("a"), t.getDouble("i"), t.getDouble("v")});
+            savedState.put(t.getLong("id"), new double[]{t.getDouble("T"), t.getDouble("w"), t.getDouble("a"), t.getDouble("i"),
+                    t.getDouble("v"), t.getDouble("p"), t.getDouble("Tf")});
         }
         savedChemistry.clear();
         CompoundTag chem = tag.getCompound("chem");

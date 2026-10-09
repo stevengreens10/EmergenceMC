@@ -272,6 +272,66 @@ def build_all():
     for x in (-0.47, 0.47):
         finish(cyl(0.045, 0.14, loc=(x, 0, 0), verts=10, rot=(0, math.pi / 2, 0), name="iw_end"), "insulated_wire", "wire_copper", smooth=True)
 
+    # TANK: riveted pressure vessel with a manway and a Bourdon pressure gauge on its front (-Y) face; the
+    # needle pivots about the gauge axis at runtime (0 bar gauge at -135 deg, 10 bar at +135 deg)
+    body = box((0.92, 0.92, 0.92), name="tank_body", bevel=0.09)
+    finish(body, "tank", "metal_cast__tint", smooth=False)
+    for z in (-0.25, 0.25):
+        finish(box((0.935, 0.935, 0.035), loc=(0, 0, z), name="tank_seam", bevel=0.012), "tank", "metal_brushed__tint")
+    for k in range(8):
+        a = 2 * math.pi * k / 8
+        finish(sphere(0.022, loc=(0.36 * math.cos(a) * 1.0, 0.36 * math.sin(a), 0.465), name="tank_rivet"), "tank", "metal_smooth", smooth=True)
+    man = cyl(0.17, 0.06, loc=(0, 0, 0.475), verts=24, name="tank_manway"); bevel_mod(man, 0.01)
+    finish(man, "tank", "metal_brushed__tint", smooth=True)
+    finish(cyl(0.11, 0.05, loc=(0, 0, 0.51), verts=6, name="tank_manway_nut"), "tank", "brass")
+    g = cyl(0.15, 0.05, loc=(0.2, -0.47, 0.2), rot=(math.pi / 2, 0, 0), verts=28, name="tank_gauge_rim"); bevel_mod(g, 0.01)
+    finish(g, "tank", "brass", smooth=True)
+    finish(cyl(0.13, 0.012, loc=(0.2, -0.497, 0.2), rot=(math.pi / 2, 0, 0), verts=28, name="tank_gauge_face"), "tank", "ceramic")
+    finish(cyl(0.02, 0.012, loc=(0.2, -0.505, 0.2), rot=(math.pi / 2, 0, 0), verts=10, name="tank_gauge_hub"), "tank", "epoxy")
+    finish(box((0.012, 0.006, 0.11), loc=(0.2, -0.507, 0.25), name="tank_needle"), "tank", "magnet_north")
+    for x in (-0.3, 0.3):
+        finish(box((0.12, 0.12, 0.06), loc=(x, 0.3, -0.48), name="tank_foot", bevel=0.01), "tank", "dark_paint")
+
+    # VALVE: globe valve along Z, bonnet and handwheel up (+Y); stem and wheel rise when open (runtime)
+    glob_ = sphere(0.22, loc=(0, 0, 0), name="valve_globe"); glob_.scale = (1.0, 0.9, 1.15)
+    finish(glob_, "valve", "brass", smooth=True)
+    for z in (-0.44, 0.44):
+        fl = cyl(0.19, 0.07, loc=(0, 0, z), verts=24, name="valve_flange"); bevel_mod(fl, 0.01)
+        finish(fl, "valve", "brass", smooth=True)
+        for k in range(4):
+            a = 2 * math.pi * (k + 0.5) / 4
+            finish(cyl(0.025, 0.09, loc=(0.14 * math.cos(a), 0.14 * math.sin(a), z), verts=6, name="valve_bolt"), "valve", "metal_smooth")
+    for z in (-0.29, 0.29):
+        finish(cyl(0.12, 0.2, loc=(0, 0, z), verts=20, name="valve_neck"), "valve", "brass", smooth=True)
+    bon = cyl(0.1, 0.16, loc=(0, 0.26, 0), rot=(math.pi / 2, 0, 0), verts=16, name="valve_bonnet"); bevel_mod(bon, 0.015)
+    finish(bon, "valve", "brass", smooth=True)
+    finish(cyl(0.13, 0.04, loc=(0, 0.34, 0), rot=(math.pi / 2, 0, 0), verts=6, name="valve_packing_nut"), "valve", "metal_brushed")
+    finish(cyl(0.025, 0.2, loc=(0, 0.42, 0), rot=(math.pi / 2, 0, 0), verts=10, name="valve_stem"), "valve", "chrome", smooth=True)
+    finish(torus(0.17, 0.025, loc=(0, 0.5, 0), rot=(math.pi / 2, 0, 0), name="valve_wheel", seg=24), "valve", "magnet_north", smooth=True)
+    for k in range(3):
+        a = 2 * math.pi * k / 3
+        finish(box((0.34, 0.025, 0.025), loc=(0, 0.5, 0), rot=(0, a, 0), name="valve_wheel_spoke"), "valve", "magnet_north")
+    finish(cyl(0.04, 0.05, loc=(0, 0.5, 0), rot=(math.pi / 2, 0, 0), verts=10, name="valve_wheel_hub"), "valve", "magnet_north")
+
+    # PIPE and ROTOR (icons only; generated in game from bore and blade parameters)
+    tube = cyl(0.2, 1.0, verts=28, rot=(0, math.pi / 2, 0), name="pipe_tube"); boolean(tube, cyl(0.16, 1.2, rot=(0, math.pi / 2, 0), name="cut"))
+    finish(tube, "pipe", "metal_smooth__tint", smooth=True)
+    for x in (-0.45, 0.45):
+        fl = cyl(0.27, 0.08, loc=(x, 0, 0), rot=(0, math.pi / 2, 0), verts=28, name="pipe_flange"); boolean(fl, cyl(0.16, 0.2, loc=(x, 0, 0), rot=(0, math.pi / 2, 0), name="cut"))
+        finish(fl, "pipe", "metal_smooth__tint", smooth=True)
+    hub = cyl(0.12, 0.3, verts=20, name="rotor_hub"); bevel_mod(hub, 0.03)
+    finish(hub, "rotor", "metal_brushed__tint", smooth=True)
+    for k in range(7):
+        a = 2 * math.pi * k / 7
+        bl = box((0.34, 0.1, 0.015), loc=(0.27 * math.cos(a), 0.27 * math.sin(a), 0), name="rotor_blade")
+        bl.rotation_euler = (0, 0, a)
+        bl.rotation_mode = 'XYZ'
+        bpy.context.view_layer.update()
+        bl.rotation_euler.rotate_axis('X', math.radians(45))
+        finish(bl, "rotor", "metal_brushed__tint")
+    ring = torus(0.45, 0.025, name="rotor_shroud", seg=32)
+    finish(ring, "rotor", "metal_brushed__tint", smooth=True)
+
     # TOOLS
     finish(box((0.6, 0.18, 0.95), name="mm_body", bevel=0.06), "multimeter", "plastic__yellow")
     finish(box((0.44, 0.02, 0.26), loc=(0, -0.1, 0.25), name="mm_lcd", bevel=0.01), "multimeter", "silicon")
@@ -285,7 +345,7 @@ def build_all():
 
 
 # ------------------------------------------------------------------ export
-RUNTIME_MODELS = ["plate", "magnet", "bearing", "coil", "crank", "resistor", "capacitor", "diode", "switch",
+RUNTIME_MODELS = ["tank", "valve", "plate", "magnet", "bearing", "coil", "crank", "resistor", "capacitor", "diode", "switch",
                   "brush", "electrolyte"]
 
 
@@ -319,7 +379,8 @@ def fix_usemtl(path, coll):
 ICON_PARTS = {"plate": "block", "magnet": "magnet", "bearing": "bearing", "coil": "coil", "crank": "crank",
               "resistor": "resistor", "capacitor": "capacitor", "diode": "diode", "switch": "switch",
               "brush": "brush", "electrolyte": "electrolyte", "gear": "gear", "shaft": "shaft", "wire": "wire",
-              "insulated_wire": "insulated_wire", "multimeter": "multimeter", "precision_tweezers": "precision_tweezers"}
+              "insulated_wire": "insulated_wire", "multimeter": "multimeter", "precision_tweezers": "precision_tweezers",
+              "tank": "tank", "valve": "valve", "pipe": "pipe", "rotor": "rotor"}
 
 
 def render_icons():

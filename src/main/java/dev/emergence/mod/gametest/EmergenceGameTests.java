@@ -145,6 +145,34 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** Fluids in the world: a vessel against a hot block gains pressure at constant p/T; its twin stays put. */
+    @GameTest(template = "arena", timeoutTicks = 400)
+    public static void heatedVesselPressureRisesInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.heatedVessel();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos hotAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "hotTank");
+        BlockPos coldAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "coldTank");
+        PlacedPart hot = only(h, hotAt, PartKind.TANK), cold = only(h, coldAt, PartKind.TANK);
+        double[] start = new double[2];
+        h.runAtTickTime(5, () -> {
+            double[] f = sim.compiledAt(hotAt).fluid(hot.id);
+            start[0] = f[0];
+            start[1] = f[1];
+            double amb = sim.compiledAt(hotAt).assembly().ambientPressure();
+            h.assertTrue(Math.abs(f[0] - amb) < 50, "vessel starts at the local air pressure " + amb + ", got " + f[0]);
+        });
+        h.runAtTickTime(300, () -> {
+            double[] f = sim.compiledAt(hotAt).fluid(hot.id);
+            double[] c = sim.compiledAt(coldAt).fluid(cold.id);
+            h.assertTrue(f[0] > start[0] * 1.05, "heated vessel pressure rose: " + start[0] + " -> " + f[0]);
+            h.assertTrue(Math.abs(f[0] / f[1] - start[0] / start[1]) < 0.01 * start[0] / start[1], "p/T constant");
+            h.assertTrue(Math.abs(c[0] - start[0]) < 300, "cold vessel unchanged: " + c[0]);
+            h.succeed();
+        });
+    }
+
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
         AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
         return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();

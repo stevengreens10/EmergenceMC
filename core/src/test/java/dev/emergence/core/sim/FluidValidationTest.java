@@ -168,7 +168,7 @@ class FluidValidationTest {
     }
 
     @Test
-    void drivenRotorPumpsAndFreeRotorWindmillsAtZeroSwirl() {
+    void drivenRotorPumpsAndFreeRotorWindmillsAtZeroIncidence() {
         double t = 293.15, r = 0.02, beta = Math.toRadians(45), d = 0.05;
         // pump: torque drives the rotor; flow a → b against equal pressures, shaft power = ṁ·Δh0 + nothing lost
         {
@@ -182,7 +182,7 @@ class FluidValidationTest {
             reservoir(n, a, P0, t);
             reservoir(n, b, P0, t);
             FluidBranch fan = n.add(new FluidBranch(a.p, a.t, b.p, b.t, air, 0.1, d, 0, 0.5, 0)
-                    .withRotor(w, r, Math.PI * d * d / 4, beta, 1, 0.1));
+                    .withRotor(w, r, Math.PI * d * d / 4, beta, 1, 1, 1, 0.02, 0.8));
             TransientSolver s = new TransientSolver(n);
             s.advance(5);
             assertTrue(s.x(w) > 1, "spun up: " + s.x(w));
@@ -199,13 +199,49 @@ class FluidValidationTest {
             reservoir(n, a, P0 + 200, t);
             reservoir(n, b, P0, t);
             FluidBranch tur = n.add(new FluidBranch(a.p, a.t, b.p, b.t, air, 0.1, d, 0, 0.5, 0)
-                    .withRotor(w, r, Math.PI * d * d / 4, beta, 1, 0.1));
+                    .withRotor(w, r, Math.PI * d * d / 4, beta, 1, 1, 1, 0.02, 0.8));
             TransientSolver s = new TransientSolver(n);
             s.advance(10);
             double rho = air.density(P0 + 100, t);
             double cx = tur.massFlow(s) / (rho * Math.PI * d * d / 4);
             assertTrue(cx > 0.5, "flow through the turbine: " + cx);
-            assertEquals(cx * Math.tan(beta), s.x(w) * r, 0.01 * cx, "free-running blade speed");
+            // zero torque where the relative flow meets the blades almost along their chord (profile drag
+            // shifts it by α ≈ C_D0·tan β / 2π)
+            assertEquals(cx * Math.tan(beta), s.x(w) * r, 0.02 * cx, "free-running blade speed");
         }
+    }
+
+    @Test
+    void orificeChokesAtTheCriticalPressureRatio() {
+        double t = 293.15, p1 = 1e6, d = 2e-3, cd = 0.62;
+        IdealGas g = (IdealGas) air;
+        double gam = g.gamma(t), r = g.gasConstant(), area = Math.PI * d * d / 4;
+        double choked = cd * area * p1 * Math.sqrt(gam / (r * t)) * Math.pow(2 / (gam + 1), (gam + 1) / (2 * (gam - 1)));
+        double[] flows = new double[2];
+        double[] downstream = {P0, 2 * P0};
+        for (int k = 0; k < 2; k++) {
+            Network n = new Network();
+            Port a = port(n, "a", p1, t), b = port(n, "b", downstream[k], t);
+            reservoir(n, a, p1, t);
+            reservoir(n, b, downstream[k], t);
+            FluidBranch br = n.add(new FluidBranch(a.p, a.t, b.p, b.t, air, 0.02, d, 0, 0, 0).withOrifice(area, cd));
+            TransientSolver s = new TransientSolver(n);
+            s.advance(0.01);
+            flows[k] = br.massFlow(s);
+        }
+        assertEquals(choked, flows[0], 1e-3 * choked, "choked mass flow (sonic throat)");
+        assertEquals(flows[0], flows[1], 1e-6 * choked, "below the critical ratio the downstream pressure does not matter");
+        // subcritical: the full isentropic-nozzle relation
+        Network n = new Network();
+        double p2 = 0.8 * p1;
+        Port a = port(n, "a", p1, t), b = port(n, "b", p2, t);
+        reservoir(n, a, p1, t);
+        reservoir(n, b, p2, t);
+        FluidBranch br = n.add(new FluidBranch(a.p, a.t, b.p, b.t, air, 0.02, d, 0, 0, 0).withOrifice(area, cd));
+        TransientSolver s = new TransientSolver(n);
+        s.advance(0.01);
+        double ratio = p2 / p1;
+        double expected = cd * area * p1 * Math.sqrt(2 * gam / ((gam - 1) * r * t) * (Math.pow(ratio, 2 / gam) - Math.pow(ratio, (gam + 1) / gam)));
+        assertEquals(expected, br.massFlow(s), 1e-3 * expected);
     }
 }

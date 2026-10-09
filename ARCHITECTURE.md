@@ -32,7 +32,7 @@ mod jar.
 | `math` | Dense/sparse LU solvers, `Vec3`, elliptic integrals, periodic spline/Fourier interpolants. |
 | `sim` | The unified multi-domain network (`Network`, `Node`, `Element`), `LoadContext`, `TransientSolver`. |
 | `sim.elements` | Physical elements (electrical, mechanical, thermal) — see PHYSICS_MODELS.md. |
-| `fluids` | Fluid property models (air so far). |
+| `fluids` | Working-fluid database (`fluids.json`): thermally perfect ideal gases and compressible liquids. |
 | `em` | Magnetostatics (cuboid magnets, current loops), coil geometry, `MagneticSystem` coupling. |
 | `assembly` | Grid parts → physics: `Part`, `Assembly`, `AssemblyCompiler`, `CompiledAssembly`, probes, state. |
 | `demo` | Platform-independent exhibit definitions shared by tests and the demo-world builder. |
@@ -41,7 +41,8 @@ mod jar.
 
 All domains share one formulation (CLAUDE.md §22): nodes carry an *across* variable (V, ω, v, T, p) and
 elements exchange *through* variables (I, τ, F, Q̇, Q). Electrical, rotational, translational and hydraulic
-pairs are power-conjugate (checked by `Domain.isPowerConjugate`). Cross-domain elements couple through these
+pairs are power-conjugate (checked by `Domain.isPowerConjugate`). The FLUID domain (pressure, mass flow)
+conserves mass; its energy is carried as enthalpy on paired thermal nodes. Cross-domain elements couple through these
 ports with energy-consistent expressions — e.g. `MagneticSystem` derives EMF and torque from one co-energy
 function; resistive elements deposit exactly their dissipated power into a thermal node. The thermal domain
 uses (T, Q̇), and coupling into it is always by explicit energy flow, never by T·Q̇.

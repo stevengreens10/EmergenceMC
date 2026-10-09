@@ -60,6 +60,19 @@ copper with no circuit; connecting copper to zinc in acid speeds zinc corrosion 
 evolution onto the copper. Every block-scale exhibit is made of single-cell parts; the miniature generator
 (true scale, one block) still produces current.
 
+## Fluids (`FluidValidationTest`, `FluidAssemblyTest`)
+Property tables (air ρ, c_p, μ, k, γ; helium γ = 5/3; water ρ, μ); Hagen–Poiseuille flow (1e-4);
+turbulent flow vs the implicit Colebrook equation (2 %); zero flow in a hydrostatic column; isochoric
+heating (first law to 1e-4, p ∝ T); two tanks equalising with mass and internal energy conserved (1e-6);
+an adiabatic tank discharging along the isentrope T ∝ p^{(γ−1)/γ}; a driven rotor pumps with exact power
+balance; a free rotor in a flow settles at zero incidence (2 %); an orifice chokes at the isentropic
+critical flow (1e-3), independent of downstream pressure, and matches subcritical nozzle flow.
+From parts: a valve holds and releases a compressed tank (vented mass = tank loss, 3 %); a hot block
+heats a sealed tank at constant p/T; compressed air drives a turbine whose sense follows blade pitch;
+a cranked fan moves air through a duct (intake = discharge). Exhibits: the air turbine spins up as
+its receiver empties; the geared fan turns a downstream windmill through the air; the heated vessel's
+pressure rises at constant p/T while the cold one stays at ambient.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

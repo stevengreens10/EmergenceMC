@@ -4,7 +4,9 @@ import dev.emergence.core.assembly.Assembly;
 import dev.emergence.core.assembly.AssemblyCompiler;
 import dev.emergence.core.assembly.AssemblyState;
 import dev.emergence.core.assembly.CompiledAssembly;
+import dev.emergence.core.assembly.Dir;
 import dev.emergence.core.assembly.Part;
+import dev.emergence.core.assembly.PartGeometry;
 import dev.emergence.core.assembly.PartKind;
 import dev.emergence.core.assembly.Probe;
 import dev.emergence.core.math.Vec3;
@@ -112,6 +114,7 @@ public final class SimulationManager {
             if (!failed.isEmpty()) destroyParts(isl, failed);
             updateLight(isl);
             bubbles(isl);
+            ventPlumes(isl);
             sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
         }
@@ -145,6 +148,7 @@ public final class SimulationManager {
                 merged.coilCurrents().putAll(s.coilCurrents());
                 merged.capacitorVoltages().putAll(s.capacitorVoltages());
                 merged.chemistry().putAll(s.chemistry());
+                merged.fluids().putAll(s.fluids());
             }
             for (BlockPos b : i.blocks) {
                 islandOf.remove(b);
@@ -210,6 +214,7 @@ public final class SimulationManager {
                 st.bodyMotion().put(e.getKey(), new double[]{v[1], v[2]});
                 st.coilCurrents().put(e.getKey(), v[3]);
                 st.capacitorVoltages().put(e.getKey(), v[4]);
+                if (v.length > 6 && v[5] > 0) st.fluids().put(e.getKey(), new double[]{v[5], v[6]});
             }
             st.chemistry().putAll(be.savedChemistry());
         }
@@ -218,6 +223,7 @@ public final class SimulationManager {
         st.coilCurrents().putAll(fromOld.coilCurrents());
         st.capacitorVoltages().putAll(fromOld.capacitorVoltages());
         st.chemistry().putAll(fromOld.chemistry());
+        st.fluids().putAll(fromOld.fluids());
         return st;
     }
 
@@ -234,8 +240,17 @@ public final class SimulationManager {
                 if (touchesWorld(b, pp, be.resolution())) anchored.put(pp.id, null);
             }
         }
-        isl.ambient = ambientTemperature(isl.blocks.iterator().next());
+        BlockPos first = isl.blocks.iterator().next();
+        isl.ambient = ambientTemperature(first);
         asm.ambientTemperature(isl.ambient);
+        asm.ambientPressure(airPressure(first));
+        // open pipe ends inside world blocks are capped; ends in air (or water...) stay open
+        int res = isl.resolution;
+        asm.solidWhen((x, y, z) -> {
+            BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
+            if (isl.blocks.contains(bp)) return false;
+            return !level.isLoaded(bp) || level.getBlockState(bp).isSolid();
+        });
         asm.anchoredWhen(p -> anchored.containsKey(p.id()));
         if (asm.parts().isEmpty()) return null;
         if (Boolean.getBoolean("emergence.debugIslands")) {
@@ -314,6 +329,14 @@ public final class SimulationManager {
                 e.setValue(left);
             }
         }
+    }
+
+    /**
+     * Air pressure at a world height (isothermal barometric formula, scale height 8.43 km, sea level at
+     * y = 63 with one block = 1 m).
+     */
+    static double airPressure(BlockPos pos) {
+        return PhysicalConstants.STANDARD_ATMOSPHERE * Math.exp(-(pos.getY() - 63) / 8434.0);
     }
 
     public boolean toggleSwitch(BlockPos pos, long partId) {
@@ -411,6 +434,34 @@ public final class SimulationManager {
         }
     }
 
+    /** Air leaving an open pipe end shows as a plume whose speed follows the exit velocity. */
+    private void ventPlumes(Island isl) {
+        if (tickCount % 2 != 0) return;
+        CompiledAssembly c = isl.compiled;
+        double toWorld = 1.0 / (Part.CELL * isl.resolution);
+        for (CompiledAssembly.Vent v : c.vents()) {
+            double q = c.ventOutflow(v);
+            double[] f = c.fluid(v.partId());
+            if (f == null || Math.abs(q) < 1e-4) continue;
+            Part p = c.assembly().get(v.partId());
+            double area = PartGeometry.passageArea(p);
+            double rho = Math.max(f[2] / Math.max(PartGeometry.fluidVolume(p), 1e-12), 1e-3);
+            double speed = q / (rho * area); // m/s, + outwards
+            int[] cell = v.cell();
+            Dir d = v.face();
+            double cx = (cell[0] + 0.5 + 0.5 * d.dx) * Part.CELL * toWorld, cy = (cell[1] + 0.5 + 0.5 * d.dy) * Part.CELL * toWorld,
+                    cz = (cell[2] + 0.5 + 0.5 * d.dz) * Part.CELL * toWorld;
+            if (speed < 0) continue; // intake: nothing visible
+            // particle speed in blocks/tick, compressed logarithmically so jets stay on screen
+            double vis = Math.min(0.6, 0.05 * Math.log1p(speed)) * 16.0 / isl.resolution;
+            int n = (int) Math.min(4, 1 + Math.log10(1 + q * 1000));
+            var type = f[1] > 373 ? ParticleTypes.CLOUD : ParticleTypes.POOF;
+            for (int i = 0; i < n; i++) {
+                level.sendParticles(type, cx, cy, cz, 0, d.dx * vis, d.dy * vis, d.dz * vis, 1.0);
+            }
+        }
+    }
+
     private void saveIsland(Island isl) {
         if (isl.compiled == null) return;
         AssemblyState s = isl.compiled.exportState();
@@ -426,8 +477,9 @@ public final class SimulationManager {
             }
             for (PlacedPart p : be.parts()) {
                 double[] m = s.bodyMotion().getOrDefault(p.id, new double[]{0, 0});
+                double[] fl = s.fluids().getOrDefault(p.id, new double[]{0, 0});
                 be.savedState().put(p.id, new double[]{s.temperatures().getOrDefault(p.id, isl.ambient), m[0], m[1],
-                        s.coilCurrents().getOrDefault(p.id, 0.0), s.capacitorVoltages().getOrDefault(p.id, 0.0)});
+                        s.coilCurrents().getOrDefault(p.id, 0.0), s.capacitorVoltages().getOrDefault(p.id, 0.0), fl[0], fl[1]});
             }
             be.setChanged();
         }
@@ -471,8 +523,22 @@ public final class SimulationManager {
         long[] all = isl.partPos.keySet().stream().mapToLong(Long::longValue).toArray();
         // world blocks per physical metre: 1 for miniature (true scale), 16 for block-scale models
         float scale = 16f / isl.resolution;
+        // gauge pressures of fluid parts (for pressure gauges on vessels)
+        List<Long> fIds = new ArrayList<>();
+        List<Float> gauges = new ArrayList<>();
+        double pAmb = c.assembly().ambientPressure();
+        for (long id : isl.partPos.keySet()) {
+            double[] f = c.fluid(id);
+            if (f != null && Math.abs(f[0] - pAmb) > 50) {
+                fIds.add(id);
+                gauges.add((float) (f[0] - pAmb));
+            }
+        }
+        float[] ga = new float[gauges.size()];
+        for (int i = 0; i < ga.length; i++) ga[i] = gauges.get(i);
         IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime(), scale,
-                tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray());
+                tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray(),
+                fIds.stream().mapToLong(Long::longValue).toArray(), ga);
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
     }

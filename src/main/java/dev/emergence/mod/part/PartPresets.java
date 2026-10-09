@@ -69,6 +69,21 @@ public final class PartPresets {
         for (String m : new String[]{"zinc", "lead", "nickel", "silver", "iron", "graphite"}) {
             l.add(stack(PartKind.BLOCK, PartSpec.of(m, 1, 1)));
         }
+        // fluids: pipes, vessels, valves and bladed rotors (fluid codes: 0 air, 1 water, 2 helium, 4 oil)
+        l.add(stack(PartKind.PIPE, PartSpec.of("copper", 1, 1, "bore", 0.025)));
+        l.add(stack(PartKind.PIPE, PartSpec.of("steel_1045", 1, 1, "bore", 0.04)));
+        l.add(stack(PartKind.PIPE, PartSpec.of("pvc", 1, 1, "bore", 0.05, "wall", 0.003)));
+        l.add(stack(PartKind.PIPE, PartSpec.of("copper", 1, 1, "bore", 0.025, "fluid", 1)));
+        l.add(stack(PartKind.PIPE, PartSpec.of("steel_1045", 1, 1, "bore", 0.012, "wall", 0.003, "fluid", 4)));
+        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1)));
+        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "pressure", 1e6, "wall", 0.004, "gauge_range", 16)));
+        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "fluid", 1)));
+        l.add(stack(PartKind.TANK, PartSpec.of("aluminium_6061", 1, 1, "fluid", 2, "pressure", 5e5, "gauge_range", 10)));
+        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.025)));
+        l.add(stack(PartKind.VALVE, PartSpec.of("steel_1045", 1, 1, "bore", 0.04)));
+        l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1)));
+        l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", -1)));
+        l.add(stack(PartKind.ROTOR, PartSpec.of("steel_1045", 1, 1, "blade_angle", 65, "pitch", 1)));
         return l;
     }
 }

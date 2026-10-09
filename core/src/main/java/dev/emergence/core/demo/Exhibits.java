@@ -23,7 +23,7 @@ public final class Exhibits {
 
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
-                daniellCell(), plating(), galvanicCorrosion(), miniatureGenerator());
+                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -275,6 +275,109 @@ public final class Exhibits {
         e.path(INSULATED_WIRE, "copper", new int[][]{{6, 2, 8}, {8, 2, 8}});
         e.name("switch", e.add(SWITCH, "brass", 7, 2, 8, Dir.EAST));
         return e.view(7.5, 3.5, 12, 28);
+    }
+
+    /**
+     * Compressed-air turbine: a bank of tanks at 10 bar discharges through a valve into a duct with a bladed
+     * rotor; the rotor spins a light disk on its shaft. The shaft leaves the duct through a gland.
+     */
+    public static Exhibit airTurbine() {
+        Exhibit e = new Exhibit("turbine", "Compressed-air turbine",
+                List.of("AIR TURBINE", "10 bar receiver.", "Open the valve:", "the rotor spins up"),
+                "Thirty-six pressure vessels hold air at 10 bar. Opening the valve lets it out through a 10 mm "
+                        + "seat, where the flow chokes at the speed of sound, into a duct with a bladed rotor. "
+                        + "The air meets the staggered blades at an angle; their lift has a component around the "
+                        + "shaft — torque — and the rotor and the disk on its shaft spin up until the blades slice "
+                        + "the flow edge-on. Watch the gauges fall as the receiver empties.");
+        String st = "steel_1045";
+        // receiver on a steel stand
+        e.fill(BLOCK, st, 0, 0, 7, 3, 0, 9, Dir.UP);
+        e.name("receiver", e.fill(TANK, st, 0, 1, 7, 3, 3, 9, Dir.UP, "pressure", 1e6, "wall", 0.004, "gauge_range", 16));
+        e.name("valve", e.add(VALVE, "brass", 4, 2, 8, Dir.EAST, "bore", 0.010));
+        e.add(PIPE, st, 5, 2, 8, Dir.EAST, "bore", 0.04);
+        e.name("rotor", e.add(ROTOR, "aluminium_6061", 6, 2, 8, Dir.EAST, "blade_angle", 60, "pitch", 1));
+        e.add(PIPE, st, 7, 2, 8, Dir.EAST, "bore", 0.04);
+        e.add(PIPE, st, 7, 3, 8, Dir.UP, "bore", 0.04);
+        e.name("shaft", e.fill(SHAFT, st, 6, 2, 8, 13, 2, 8, Dir.EAST, "diameter", 0.012));
+        e.add(BEARING, st, 9, 2, 8, Dir.EAST);
+        e.add(BEARING, st, 13, 2, 8, Dir.EAST);
+        e.fill(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 13, 0, 8, 13, 1, 8, Dir.UP);
+        // a light aluminium disk on the shaft shows the rotation
+        e.name("disk", e.add(BLOCK, "aluminium_6061", 11, 2, 8, Dir.EAST, "fill", 0.15));
+        return e.view(6.5, 6, 16, 22);
+    }
+
+    /**
+     * A fan coupled to a windmill by nothing but air: a geared hand crank drives a fan in a duct; the air it
+     * moves turns a second, free rotor on its own shaft further down the duct.
+     */
+    public static Exhibit fanCoupling() {
+        Exhibit e = new Exhibit("fan", "Fan and windmill",
+                List.of("FLUID COUPLING", "Crank the fan.", "Air turns the", "far rotor"),
+                "Turning the crank drives two 5:1 gear stages, so the fan turns 25 times faster than your "
+                        + "hand. The fan's blades push air along the duct (it enters through the chimney on the "
+                        + "left and leaves through the one on the right). Downstream the moving air meets a second "
+                        + "rotor on a separate shaft and turns it: power transmitted through the air, as in a "
+                        + "torque converter or a wind turbine.");
+        String st = "steel_1045";
+        int y = 3;
+        // fan shaft along x at z = 8: pinion, a bearing, gland through the inlet pipe, fan
+        int fanShaft = e.fill(SHAFT, st, 2, y, 8, 6, y, 8, Dir.EAST, "diameter", 0.012);
+        e.name("fanShaft", fanShaft);
+        e.add(GEAR, st, 2, y, 8, Dir.EAST, "teeth", 8, "pitch_radius", 0.5 / 16);
+        e.add(BEARING, st, 4, y, 8, Dir.EAST);
+        e.fill(BLOCK, st, 4, 0, 8, 4, y - 1, 8, Dir.UP);
+        e.add(PIPE, "pvc", 5, y, 8, Dir.EAST, "bore", 0.05, "wall", 0.003);
+        e.add(PIPE, "pvc", 5, y + 1, 8, Dir.UP, "bore", 0.05, "wall", 0.003);
+        e.name("fan", e.add(ROTOR, "aluminium_6061", 6, y, 8, Dir.EAST, "blade_angle", 60, "pitch", 1));
+        for (int x = 7; x <= 9; x++) e.add(PIPE, "pvc", x, y, 8, Dir.EAST, "bore", 0.05, "wall", 0.003);
+        // windmill rotor on its own shaft, gland through the outlet pipe, two bearings
+        e.name("windmill", e.add(ROTOR, "aluminium_6061", 10, y, 8, Dir.EAST, "blade_angle", 40, "pitch", 1));
+        e.add(PIPE, "pvc", 11, y, 8, Dir.EAST, "bore", 0.05, "wall", 0.003);
+        e.add(PIPE, "pvc", 11, y + 1, 8, Dir.UP, "bore", 0.05, "wall", 0.003);
+        e.name("millShaft", e.fill(SHAFT, st, 10, y, 8, 13, y, 8, Dir.EAST, "diameter", 0.012));
+        e.add(BEARING, st, 12, y, 8, Dir.EAST);
+        e.add(BEARING, st, 13, y, 8, Dir.EAST);
+        e.fill(BLOCK, st, 12, 0, 8, 12, y - 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 13, 0, 8, 13, y - 1, 8, Dir.UP);
+        // intermediate shaft at z = 11: pinion driven by the crank gear, 40-tooth gear driving the fan pinion
+        int midShaft = e.fill(SHAFT, st, 1, y, 11, 4, y, 11, Dir.EAST, "diameter", 0.015);
+        e.add(GEAR, st, 1, y, 11, Dir.EAST, "teeth", 8, "pitch_radius", 0.5 / 16);
+        e.add(GEAR, st, 2, y, 11, Dir.EAST, "teeth", 40, "pitch_radius", 2.5 / 16);
+        e.add(BEARING, st, 4, y, 11, Dir.EAST);
+        e.fill(BLOCK, st, 4, 0, 11, 4, y - 1, 11, Dir.UP);
+        // crank shaft at z = 14 with a 40-tooth gear (centre distances 3 cells = 0.5 + 2.5)
+        int crankShaft = e.fill(SHAFT, st, 0, y, 14, 3, y, 14, Dir.EAST, "diameter", 0.015);
+        e.add(GEAR, st, 1, y, 14, Dir.EAST, "teeth", 40, "pitch_radius", 2.5 / 16);
+        e.add(BEARING, st, 3, y, 14, Dir.EAST);
+        e.fill(BLOCK, st, 3, 0, 14, 3, y - 1, 14, Dir.UP);
+        e.name("crank", e.add(CRANK, st, 0, y, 14, Dir.WEST, "radius", 0.15));
+        // the gallery opens with the train already turning (speeds in the gear ratios, each mesh reversing)
+        e.init(crankShaft, new Exhibit.Initial(Double.NaN, 16, 0));
+        e.init(midShaft, new Exhibit.Initial(Double.NaN, -80, 0));
+        e.init(fanShaft, new Exhibit.Initial(Double.NaN, 400, 0));
+        return e.view(6.5, 8, 21, 25);
+    }
+
+    /** Two identical sealed vessels; one sits against a red-hot copper block. Gay-Lussac's law on a gauge. */
+    public static Exhibit heatedVessel() {
+        Exhibit e = new Exhibit("pressure", "Heated pressure vessel",
+                List.of("GAY-LUSSAC", "Heated vessel vs", "cold vessel.", "Watch the gauges"),
+                "Two sealed steel vessels hold air at atmospheric pressure. The left one stands against a copper "
+                        + "block at 1100 K: heat conducts through its wall and convects into the gas, whose "
+                        + "pressure rises in proportion to its absolute temperature (p/T constant at fixed volume "
+                        + "and mass). The gauges read pressure above ambient.");
+        int hot = e.add(BLOCK, "copper", 4, 0, 8, Dir.UP);
+        e.name("heater", hot);
+        e.init(hot, new Exhibit.Initial(1100, 0, 0));
+        e.add(BLOCK, "copper", 4, 1, 8, Dir.UP);
+        e.init(e.parts.size() - 1, new Exhibit.Initial(1100, 0, 0));
+        e.name("hotTank", e.add(TANK, "steel_1045", 5, 0, 8, Dir.UP));
+        e.add(TANK, "steel_1045", 5, 1, 8, Dir.UP);
+        e.name("coldTank", e.add(TANK, "steel_1045", 10, 0, 8, Dir.UP));
+        e.add(TANK, "steel_1045", 10, 1, 8, Dir.UP);
+        return e.view(7.5, 3.5, 13, 22);
     }
 
     /**

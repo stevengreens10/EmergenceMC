@@ -938,6 +938,8 @@ public final class AssemblyCompiler {
                                 if (rotor != null) attachRotor(b, rotor, rotor == p ? d : d.opposite(), rotor == p);
                                 for (Part valve : new Part[]{p, q}) {
                                     if (valve.kind() != PartKind.VALVE) continue;
+                                    // the valve seat is an orifice of the valve's bore (globe valve C_d ≈ 0.6)
+                                    b.withOrifice(PartGeometry.passageArea(valve), 0.6);
                                     b.setOpening(valve.switchClosed() ? 1 : 0);
                                     c.valveBranches.computeIfAbsent(valve.id(), kk -> new ArrayList<>()).add(b);
                                 }
@@ -967,6 +969,7 @@ public final class AssemblyCompiler {
             FluidBranch b = new FluidBranch(v.pressureNode(), v.temperatureNode(), atm[0], atm[1], v.fluid(), half,
                     equivalentDiameter(PartGeometry.passageArea(p)), roughness(p), 1.0, d.dy * half);
             if (p.kind() == PartKind.VALVE) {
+                b.withOrifice(PartGeometry.passageArea(p), 0.6);
                 b.setOpening(p.switchClosed() ? 1 : 0);
                 c.valveBranches.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(b);
             }
@@ -986,10 +989,10 @@ public final class AssemblyCompiler {
             // rotor through its -axis face
             double flowAlongAxis = (rotorIsA ? 1 : -1) * face.sign() * r.axis().sign();
             double bodySense = body.isStatic ? 1 : Math.signum(body.axis.dot(r.axis().vec()));
-            double hand = Math.signum(r.param("pitch", 1)) * bodySense * flowAlongAxis;
             double rt = PartGeometry.rotorTipRadius(r), rh = PartGeometry.rotorHubRadius(r);
             b.withRotor(body.isStatic ? refR : body.node, Math.sqrt((rt * rt + rh * rh) / 2), PartGeometry.passageArea(r),
-                    PartGeometry.rotorBladeAngle(r), hand, r.param("blade_loss", 0.1));
+                    PartGeometry.rotorBladeAngle(r), r.param("pitch", 1), bodySense, flowAlongAxis,
+                    r.param("blade_drag", 0.02), r.param("solidity", 0.8));
             c.rotorBranches.put(r.id(), b);
         }
 

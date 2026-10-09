@@ -46,6 +46,16 @@ public final class MultimeterItem extends Item {
             Probe pr = sm.probe(ctx.getClickedPos(), part.id);
             report(ctx.getPlayer(), part, pr);
             var compiled = sm.compiledAt(ctx.getClickedPos());
+            double[] fl = compiled == null ? null : compiled.fluid(part.id);
+            if (pr != null && fl != null) {
+                // pressure gauge and thermometer in the fluid, plus the flow through the part
+                double pAmb = compiled.assembly().ambientPressure();
+                line(ctx.getPlayer(), "Fluid", compiled.fluidName(part.id));
+                line(ctx.getPlayer(), "Pressure", Units.formatSI(round(fl[0]), "Pa") + " abs, "
+                        + String.format("%+.3f bar gauge", (fl[0] - pAmb) / 1e5));
+                line(ctx.getPlayer(), "Fluid temp.", String.format("%.1f °C", fl[1] - PhysicalConstants.T_ZERO_CELSIUS));
+                line(ctx.getPlayer(), "Mass flow", Units.formatSI(round(fl[3]), "kg/s") + String.format(" (%.3g g held)", fl[2] * 1000));
+            }
             if (pr != null && compiled != null) {
                 // electrochemistry: concentrations in a jar; dissolution, deposits and gas at an electrode
                 for (var e : compiled.chemistry(part.id).entrySet()) {

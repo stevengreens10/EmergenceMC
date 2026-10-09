@@ -41,5 +41,15 @@
   "item.emergence.precision_tweezers": "Precision Tweezers",
   "tooltip.emergence.electrolyte": "A glass jar of solution. Conductors dipped into it become electrodes: cells, corrosion, plating and electrolysis follow from electrochemistry.",
   "tooltip.emergence.precision_tweezers": "Hold in the off-hand to place parts as true-scale miniatures (16 cells per block) instead of one part per block.",
-  "message.emergence.scale_mismatch": "Block-scale and miniature parts cannot share a block."
+  "message.emergence.scale_mismatch": "Block-scale and miniature parts cannot share a block.",
+  "item.emergence.pipe": "Pipe",
+  "item.emergence.tank": "Pressure Vessel",
+  "item.emergence.valve": "Valve",
+  "item.emergence.rotor": "Bladed Rotor",
+  "tooltip.emergence.pipe": "Tube along its axis. Joins fluid parts at its ends (and sideways as a tee); an open end vents to the air. A shaft may run through it.",
+  "tooltip.emergence.tank": "Hollow vessel of fluid; connects to fluid parts on every face. Heat its wall and the pressure rises.",
+  "tooltip.emergence.valve": "Right-click to open or shut. Placed shut.",
+  "tooltip.emergence.rotor": "Blade row mounted on a shaft in a pipe: driven, it pumps (fan, propeller, pump); in a flow, it is driven (turbine, windmill). Pitch sets which way.",
+  "message.emergence.valve_open": "Valve open",
+  "message.emergence.valve_shut": "Valve shut"
 }

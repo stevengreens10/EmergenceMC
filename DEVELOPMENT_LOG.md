@@ -51,3 +51,21 @@ colour by concentration, plated electrodes change colour, gas bubbles rise.
 
 **Demo world** rebuilt at block scale (11 exhibits, three new electrochemistry plots, a miniature
 generator), verified by the screenshot tour.
+
+## 2026-10-08 — Session 2 (continued): fluids
+**Fluid networks.** New FLUID domain (pressure, mass flow) with control volumes that pair a pressure node
+and a temperature node, quasi-steady branches (Darcy–Weisbach/Haaland, minor losses, gravity), choked
+orifices for valves, atmosphere vents and wall convection; a fluids database (ideal gases with fitted
+c_p(T), compressible liquids). Validated against Hagen–Poiseuille, Colebrook, isentropic blowdown,
+choked-orifice flow and conservation of mass and energy. Found and fixed on the way: FlowSource counted
+heat × temperature as power in the thermal domain.
+
+**Rotors.** A first Euler-equation rotor model failed in the demo: in reversed flow a windmill would not
+reverse, and the zero-flow pumping direction was undefined. Replaced with a blade-element model (lift and
+drag on a staggered blade row) that conserves energy exactly and covers all four quadrants. Exhibit
+design was then dominated by honest scale effects: a 5.6 cm rotor in 8 m/s of air makes ~1 mN·m, so the
+turbine got a light disk and a bigger receiver, and the fan two 5:1 gear stages.
+
+**Parts and world.** Pipes, pressure vessels (riveted, with a live Bourdon gauge), globe valves (stem rises
+when open) and bladed rotors; shafts pass through pipes in glands; open pipe ends vent (with plumes) unless
+capped by world blocks; air pressure falls with altitude.

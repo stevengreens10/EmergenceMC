@@ -63,6 +63,10 @@ public final class PartItem extends Item {
             case SWITCH -> PartSpec.of("brass", 1, 1);
             case SHAFT -> PartSpec.of("steel_1045", 4, 1);
             case ELECTROLYTE -> PartSpec.of("copper_sulfate_1m", 1, 1);
+            case PIPE -> PartSpec.of("copper", 1, 1, "bore", 0.025);
+            case TANK -> PartSpec.of("steel_1045", 1, 1);
+            case VALVE -> PartSpec.of("brass", 1, 1, "bore", 0.025);
+            case ROTOR -> PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -86,8 +90,16 @@ public final class PartItem extends Item {
             case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m");
             case BEARING -> p.getOrDefault("type", 0.0) >= 1 ? ", plain bushing" : ", ball";
             case SHAFT -> ", " + s.length() + " long";
+            case PIPE, VALVE -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.025), "m") + fluidLabel(p);
+            case TANK -> fluidLabel(p) + (p.containsKey("pressure") ? String.format(", %.0f bar", p.get("pressure") / 1e5) : "");
+            case ROTOR -> String.format(", %.0f° blades%s", p.getOrDefault("blade_angle", 45.0), p.getOrDefault("pitch", 1.0) < 0 ? ", left-hand" : "");
             default -> "";
         };
+    }
+
+    private static String fluidLabel(java.util.Map<String, Double> p) {
+        int code = (int) Math.round(p.getOrDefault("fluid", 0.0));
+        return code == 0 ? "" : ", " + dev.emergence.core.fluids.FluidDatabase.standard().byCode(code).name().toLowerCase();
     }
 
     @Override
@@ -127,7 +139,7 @@ public final class PartItem extends Item {
             int[] c = AssemblyBlock.cellAt(cbe, hit, face);
             PlacedPart t = cbe.partAt(c[0], c[1], c[2]);
             boolean mountable = kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK
-                    || (kind == PartKind.BLOCK && spec.cross() > 1);
+                    || kind == PartKind.ROTOR || (kind == PartKind.BLOCK && spec.cross() > 1);
             // clicking the side of a shaft mounts the part coaxially on that shaft cell
             if (t != null && t.kind == PartKind.SHAFT && mountable && face.getAxis().ordinal() != t.axis.axis()) {
                 return place(ctx, level, player, stack, spec, clicked, t.axis, c[0], c[1], c[2], true);
@@ -199,7 +211,8 @@ public final class PartItem extends Item {
     }
 
     private boolean mountable(PartSpec spec) {
-        return kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK || kind == PartKind.BLOCK;
+        return kind == PartKind.BEARING || kind == PartKind.GEAR || kind == PartKind.CRANK || kind == PartKind.BLOCK
+                || kind == PartKind.ROTOR;
     }
 
     /** Block-scale placement: one part per block. */

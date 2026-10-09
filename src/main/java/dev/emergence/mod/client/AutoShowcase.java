@@ -66,7 +66,14 @@ public final class AutoShowcase {
                 STEPS.add(new Step(id.equals("corrosion") ? 60 : 30, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
                         "showcase-" + (i + 1) + "-" + id + "-on"));
             }
-            if (id.equals("generator") || id.equals("gears") || id.equals("miniature")) {
+            if (id.equals("turbine")) {
+                STEPS.add(new Step(16, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "valve")),
+                        "showcase-" + (i + 1) + "-" + id + "-on"));
+            }
+            if (id.equals("pressure")) {
+                STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
+            }
+            if (id.equals("generator") || id.equals("gears") || id.equals("miniature") || id.equals("fan")) {
                 STEPS.add(new Step(40, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank")),
                         "showcase-" + (i + 1) + "-" + id + "-cranked"));
             }
@@ -88,6 +95,7 @@ public final class AutoShowcase {
     private static void toggle(ServerLevel level, BlockPos at) {
         if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
             PlacedPart s = find(be, PartKind.SWITCH);
+            if (s == null) s = find(be, PartKind.VALVE);
             if (s != null) EmergenceMod.LOG.info("Showcase: switch at {} now closed={}", at, SimulationManager.get(level).toggleSwitch(at, s.id));
         }
     }

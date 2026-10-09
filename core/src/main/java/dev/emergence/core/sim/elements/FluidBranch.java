@@ -19,12 +19,24 @@ import dev.emergence.core.units.PhysicalConstants;
  *       2000 &lt; Re &lt; 4000.</li>
  *   <li>Minor losses: K·ρv|v|/2 (bends, entries, fittings); a partly open valve is a sharp-edged orifice of
  *       area C_d·φ·A (C_d = 0.62); a closed valve (φ = 0) blocks the flow.</li>
- *   <li>Rotor (optional): a bladed rotor on a rotating body acting on the flow, from Euler's turbomachine
- *       equation with no inlet swirl. Blade speed U = ω·r, axial velocity c_x = ṁ/(ρA), exit relative
- *       flow angle β: Δh₀ = U² − U·c_x·tan β, ideal pressure rise ρΔh₀, profile loss ζ·ρw²/2 with w the
- *       relative velocity. Shaft torque τ = ṁ·r·(U − c_x tan β), so τ·ω = ṁ·Δh₀ exactly: the same rotor
- *       is a fan or pump when driven and a turbine when the flow drives it.</li>
+ *   <li>Rotor (optional): a row of staggered blades on a rotating body, by blade-element theory at the
+ *       mean radius. In the rotor frame the blades meet the relative velocity w = (c_x, −U) (axial flow
+ *       speed c_x = ṁ/(ρA), blade speed U = ω·r, no inlet swirl) at an angle of attack α to their chord,
+ *       which is set at the stagger angle β from the axis. Lift ⟂ w and drag ∥ w per unit of blade area
+ *       σA: C_L = sin 2α·(1 + (π − 1)·e^{−(sin α/0.25)²}) (thin-aerofoil slope 2π below ~14°, flat-plate
+ *       sin 2α after stall), C_D = C_D0 + 1.8 sin²α. The axial force on the fluid is a pressure rise
+ *       Δp = F_x/A, the tangential force a torque on the shaft, and the shaft power F_θ·U all enters the
+ *       fluid. Because lift does no work in the blade frame, power − Q·Δp = drag·|w| ≥ 0: energy is
+ *       conserved and the second law holds. One model covers all four quadrants — fan or pump when
+ *       driven, turbine or windmill when the flow drives it, reversing with the flow, stalling at
+ *       extreme incidence.</li>
  * </ul>
+ * <b>Orifice branches</b> (valves): when an orifice is set the restriction dominates and the flow is that of
+ * an isentropic nozzle of area C_d·A·φ — for a gas ṁ = C_d A p_u √(2γ/((γ−1)RT_u)·(r^{2/γ} − r^{(γ+1)/γ}))
+ * with r = p_d/p_u, choking at the critical ratio r* = (2/(γ+1))^{γ/(γ−1)} (flow then independent of the
+ * downstream pressure); for a liquid ṁ = C_d A √(2ρΔp). The flow is regularised for |Δp| ≲ 1 Pa so it
+ * stays differentiable through zero. Pipe friction in such a short branch is neglected.
+ * <p>
  * Energy: the flow carries the upstream specific enthalpy h = u + p/ρ (upwinded, smoothly through
  * ṁ = 0) and the rotor's shaft work is added to the downstream volume, so friction heat stays in the
  * fluid and the first law holds exactly. Kinetic energy of the flow and fluid inertia are neglected
@@ -35,8 +47,9 @@ public final class FluidBranch implements Element {
     private final Fluid fluid;
     private final double length, diameter, area, roughness, minorK, dz;
     private double opening = 1.0;
+    private double orificeArea = 0, dischargeCoefficient = 0.62;
     private Node rotor;
-    private double rotorRadius, rotorArea, tanBeta, hand = 1, lossCoefficient = 0.1;
+    private double rotorRadius, rotorArea, stagger, pitch = 1, bodySense = 1, flowAlongAxis = 1, cd0 = 0.02, solidity = 0.8;
     private int mIdx;
     private double mScale;
 
@@ -67,23 +80,63 @@ public final class FluidBranch implements Element {
         return opening;
     }
 
+    /** Makes this branch an orifice (valve seat) of the given area and discharge coefficient. */
+    public FluidBranch withOrifice(double area, double cd) {
+        this.orificeArea = area;
+        this.dischargeCoefficient = cd;
+        return this;
+    }
+
+    /** Mass flow a → b through the orifice for the given end states [kg/s]. */
+    double orificeFlow(double pA, double pB, double tA, double tB) {
+        double dp = pA - pB;
+        boolean fwd = dp >= 0;
+        double pu = fwd ? pA : pB, pd = fwd ? pB : pA, tu = fwd ? tA : tB;
+        double area = dischargeCoefficient * orificeArea * opening;
+        double reg = Math.tanh(Math.abs(dp) / 1.0);
+        double m;
+        if (fluid instanceof dev.emergence.core.fluids.IdealGas g) {
+            double gam = g.gamma(tu), r = g.gasConstant();
+            double rCrit = Math.pow(2 / (gam + 1), gam / (gam - 1));
+            double ratio = Math.max(pd / pu, rCrit);
+            double psi = Math.pow(ratio, 2 / gam) - Math.pow(ratio, (gam + 1) / gam);
+            m = area * pu * Math.sqrt(Math.max(2 * gam / ((gam - 1) * r * tu) * psi, 0));
+        } else {
+            m = area * Math.sqrt(2 * fluid.density(pu, tu) * Math.abs(dp));
+        }
+        return (fwd ? 1 : -1) * m * reg;
+    }
+
     /**
      * Adds a bladed rotor on the rotating body whose angular-velocity node is {@code omega}.
      *
-     * @param meanRadius  mean blade radius [m]
-     * @param annulusArea flow area through the blade row [m²] (sets the axial velocity there)
-     * @param exitAngle   blade exit angle β from the axial direction [rad]
-     * @param handedness  +1 if positive ω pumps a → b, −1 otherwise
+     * @param meanRadius    mean blade radius [m]
+     * @param annulusArea   flow area through the blade row [m²]
+     * @param staggerAngle  blade chord angle from the rotor axis [rad]
+     * @param pitch         +1: positive rotation about the rotor's axis pushes fluid along it; −1 the other hand
+     * @param bodySense     +1 if the body's positive rotation is positive about the rotor axis, −1 otherwise
+     * @param flowAlongAxis +1 if this branch's a → b direction is along the rotor's axis, −1 otherwise
+     * @param cd0           blade profile drag coefficient at zero incidence
+     * @param solidity      blade area per annulus area (chord·count / circumference)
      */
-    public FluidBranch withRotor(Node omega, double meanRadius, double annulusArea, double exitAngle, double handedness,
-                                 double lossCoefficient) {
+    public FluidBranch withRotor(Node omega, double meanRadius, double annulusArea, double staggerAngle, double pitch,
+                                 double bodySense, double flowAlongAxis, double cd0, double solidity) {
         this.rotor = omega;
         this.rotorRadius = meanRadius;
         this.rotorArea = annulusArea;
-        this.tanBeta = Math.tan(exitAngle);
-        this.hand = Math.signum(handedness);
-        this.lossCoefficient = lossCoefficient;
+        this.stagger = staggerAngle;
+        this.pitch = Math.signum(pitch);
+        this.bodySense = Math.signum(bodySense);
+        this.flowAlongAxis = Math.signum(flowAlongAxis);
+        this.cd0 = cd0;
+        this.solidity = solidity;
         return this;
+    }
+
+    /** Blade lift coefficient: thin-aerofoil slope before stall, flat plate after. */
+    static double liftCoefficient(double alpha) {
+        double s = Math.sin(alpha);
+        return Math.sin(2 * alpha) * (1 + (Math.PI - 1) * Math.exp(-(s / 0.25) * (s / 0.25)));
     }
 
     public int flowIndex() {
@@ -107,11 +160,12 @@ public final class FluidBranch implements Element {
         tB = Math.max(tB, 1.0);
         double pm = 0.5 * (pA + pB), tm = 0.5 * (tA + tB);
         double rho = Math.max(fluid.density(pm, tm), 1e-9), mu = fluid.viscosity(tm);
+        boolean orifice = orificeArea > 0;
         double v = m / (rho * area);
         double dp = frictionLoss(v, rho, mu);
         double vs = 10 * mu / (rho * diameter);
         dp += minorK * rho * v * Math.sqrt(v * v + vs * vs) / 2;
-        if (opening < 1) {
+        if (!orifice && opening < 1) {
             double av = 0.62 * opening * area;
             double vo = m / (rho * av), vso = 10 * mu / (rho * diameter);
             dp += rho * vo * Math.sqrt(vo * vo + vso * vso) / 2;
@@ -119,20 +173,32 @@ public final class FluidBranch implements Element {
         dp += rho * PhysicalConstants.STANDARD_GRAVITY * dz;
         double power = 0, torque = 0;
         if (rotor != null) {
-            double u = hand * w * rotorRadius;
-            double cx = m / (rho * rotorArea);
-            double ct = u - cx * tanBeta; // swirl given to the flow
-            double dh0 = u * ct;
-            double w2 = cx * cx + (u - ct) * (u - ct);
-            dp -= rho * dh0;
-            dp += lossCoefficient * rho * w2 / 2 * Math.tanh(m / mScale);
-            power = m * dh0;
-            torque = m * hand * rotorRadius * ct;
+            // rotor frame: x along the rotor axis, θ along its positive rotation
+            double u = bodySense * w * rotorRadius;
+            double cx = flowAlongAxis * m / (rho * rotorArea);
+            double wx = cx, wt = -u, wn = Math.hypot(wx, wt);
+            double fx = 0, ft = 0;
+            if (wn > 1e-9) {
+                double ex = wx / wn, et = wt / wn;
+                double cxh = Math.cos(stagger), cth = -pitch * Math.sin(stagger); // chord direction
+                double alpha = Math.atan2(cxh * et - cth * ex, cxh * ex + cth * et);
+                double q = 0.5 * rho * wn * wn * solidity * rotorArea;
+                double sa = Math.sin(alpha);
+                double lift = q * liftCoefficient(alpha), drag = q * (cd0 + 1.8 * sa * sa);
+                // force on the blades: lift along w rotated +90°, drag along w; the fluid feels the opposite
+                double bx = lift * (-et) + drag * ex, bt = lift * ex + drag * et;
+                fx = -bx;
+                ft = -bt;
+            }
+            dp -= flowAlongAxis * fx / rotorArea;   // pressure rise along a → b
+            power = ft * u;                          // work done on the fluid by the moving blades
+            torque = -bodySense * (-ft) * rotorRadius; // torque taken from the body node (= −torque on the rotor)
         }
         double up = 0.5 * (1 + Math.tanh(m / (1e-3 * mScale)));
         double h = up * fluid.enthalpy(pA, tA) + (1 - up) * fluid.enthalpy(pB, tB);
         double flowH = m * h;
-        out[0] = pA - pB - dp;
+        // orifice branch: flow set by the nozzle relation (residual in kg/s)
+        out[0] = orifice ? (m - orificeFlow(pA, pB, tA, tB)) * 1e5 / Math.max(mScale * 1e3, 1e-12) : pA - pB - dp;
         out[1] = flowH - (1 - up) * power;
         out[2] = -flowH - up * power;
         out[3] = torque;

@@ -50,6 +50,10 @@ import dev.emergence.core.units.PhysicalConstants;
  * <p>
  * <b>Check and relief valves</b> ({@link #withCheck}): a spring-loaded disc that opens only for forward flow,
  * lifting in proportion to the pressure difference above its cracking pressure (quasi-static spring).
+ * <p>
+ * <b>Cam-operated valves</b> ({@link #withCam}): the orifice opening follows a cam (an eccentric) on a turning
+ * body, opening fraction smoothstep((cos(θ − θ_c) − c)/(1 − c)): open while the cam's throw is within
+ * arccos(c) of pointing at the valve. Valve gear inertia, spring and friction forces on the cam are neglected.
  */
 public final class FluidBranch implements Element {
     private final Node pa, ta, pb, tb;
@@ -63,7 +67,9 @@ public final class FluidBranch implements Element {
     private int mIdx;
     private String tag = "";
     private FluidVolume.Port portA, portB;
-    private double crack = Double.NaN, fullOpen;
+    private double crack = Double.NaN, fullOpen, checkSense = 1;
+    private AngleTracker cam;
+    private double camPhase, camLap;
     private double mScale;
 
     /**
@@ -117,8 +123,8 @@ public final class FluidBranch implements Element {
         double dp = pA - pB;
         boolean fwd = dp >= 0;
         double pu = Math.max(fwd ? pA : pB, 1.0), pd = Math.max(fwd ? pB : pA, 0.0), tu = Math.max(fwd ? tA : tB, 1.0);
-        double area = dischargeCoefficient * orificeArea * opening;
-        if (!Double.isNaN(crack)) area *= checkLift(dp);
+        double area = dischargeCoefficient * orificeArea * opening * camOpening;
+        if (!Double.isNaN(crack)) area *= checkLift(checkSense * dp);
         double reg = Math.tanh(Math.abs(dp) / 1.0);
         double m;
         double[] up = fwd ? endA : endB;
@@ -187,9 +193,43 @@ public final class FluidBranch implements Element {
      * cracking pressure difference, fully open {@code fullOpenRise} above it.
      */
     public FluidBranch withCheck(double crackingPressure, double fullOpenRise) {
+        return withCheck(crackingPressure, fullOpenRise, 1);
+    }
+
+    /** As {@link #withCheck(double, double)}; sense −1 makes the valve pass only b → a. */
+    public FluidBranch withCheck(double crackingPressure, double fullOpenRise, double sense) {
         this.crack = crackingPressure;
         this.fullOpen = Math.max(fullOpenRise, 1);
+        this.checkSense = Math.signum(sense);
         return this;
+    }
+
+    /**
+     * Makes this branch's orifice open and close with a cam on a turning body: fully open when the body's angle
+     * is {@code phase}, and open while cos(θ − phase) exceeds {@code lap} (lap ∈ [0, 1)).
+     */
+    public FluidBranch withCam(AngleTracker tracker, double phase, double lap) {
+        this.cam = tracker;
+        this.camPhase = phase;
+        this.camLap = Math.max(0, Math.min(lap, 0.95));
+        return this;
+    }
+
+    /** Cam opening fraction at body angle θ. */
+    public double camLift(double theta) {
+        double u = (Math.cos(theta - camPhase) - camLap) / (1 - camLap);
+        u = Math.max(0, Math.min(1, u));
+        return u * u * (3 - 2 * u);
+    }
+
+    /** True if this branch's valve is worked by a cam. */
+    public boolean hasCam() {
+        return cam != null;
+    }
+
+    /** Effective opening now, including any cam. */
+    public double opening(StateView s) {
+        return cam == null ? opening : opening * camLift(s.x(cam.angleIndex()));
     }
 
     /** Lift fraction of a check valve for the pressure difference p_a − p_b. */
@@ -221,9 +261,11 @@ public final class FluidBranch implements Element {
     }
 
     private final double[] endA = new double[5], endB = new double[5];
+    private double camOpening = 1;
 
     /** Evaluates [R (Pa), energy leaving a (W), energy leaving b (W), torque taken from the rotor (N·m)]. */
-    private void eval(double m, double pA, double pB, double tA, double tB, double w, double sA, double sB, double[] out) {
+    private void eval(double m, double pA, double pB, double tA, double tB, double w, double sA, double sB, double th, double[] out) {
+        camOpening = cam == null ? 1 : camLift(th) + 1e-6;
         tA = Math.max(tA, 1.0);
         tB = Math.max(tB, 1.0);
         double up = 0.5 * (1 + Math.tanh(m / (1e-3 * mScale)));
@@ -321,12 +363,13 @@ public final class FluidBranch implements Element {
     @Override
     public void load(LoadContext ctx) {
         int[] idx = {mIdx, pa.index(), pb.index(), ta.index(), tb.index(), rotor == null ? -1 : rotor.index(),
-                portA == null ? -1 : portA.phaseIndex(), portB == null ? -1 : portB.phaseIndex()};
-        double[] val = new double[8];
-        for (int k = 0; k < 8; k++) val[k] = idx[k] < 0 ? 0 : ctx.x(idx[k]);
+                portA == null ? -1 : portA.phaseIndex(), portB == null ? -1 : portB.phaseIndex(),
+                cam == null ? -1 : cam.angleIndex()};
+        double[] val = new double[9];
+        for (int k = 0; k < 9; k++) val[k] = idx[k] < 0 ? 0 : ctx.x(idx[k]);
         double[] f0 = new double[4];
         boolean closed = opening <= 0;
-        eval(val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], f0);
+        eval(val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], f0);
         int[] rows = {mIdx, ta.index(), tb.index(), rotor == null ? -1 : rotor.index()};
         if (closed) {
             ctx.addF(mIdx, val[0] * 1e3);
@@ -341,7 +384,7 @@ public final class FluidBranch implements Element {
         ctx.addJ(pb.index(), mIdx, -1);
         // finite-difference Jacobian of the residual, energy and torque rows
         double[] f1 = new double[4];
-        for (int k = 0; k < 8; k++) {
+        for (int k = 0; k < 9; k++) {
             if (idx[k] < 0) continue;
             double step = switch (k) {
                 case 0 -> 1e-6 * Math.max(Math.abs(val[0]), mScale);
@@ -352,7 +395,7 @@ public final class FluidBranch implements Element {
             };
             double[] v = val.clone();
             v[k] += step;
-            eval(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], f1);
+            eval(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], f1);
             for (int r = 0; r < 4; r++) {
                 if (r == 0 && closed) continue;
                 ctx.addJ(rows[r], idx[k], (f1[r] - f0[r]) / step);

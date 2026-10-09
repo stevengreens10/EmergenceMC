@@ -31,7 +31,7 @@ public final class FixedTemperature implements Element {
 
     @Override
     public void setup(SetupContext ctx) {
-        qIdx = ctx.allocUnknown("Q(reservoir)", 1e-9);
+        qIdx = ctx.allocUnknown("Q(reservoir)", 1e-6); // resolvable: strong couplings (film conductances ~10 kW/K) amplify ~1e-11 K of round-off
         ctx.setInitial(node.index(), temperature);
     }
 

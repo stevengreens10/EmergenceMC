@@ -132,8 +132,8 @@ public final class AssemblyCompiler {
                     if ((p.kind() == PartKind.ROTOR && (q.kind().holdsFluid() || q.kind() == PartKind.ROTOR))
                             || (q.kind() == PartKind.ROTOR && p.kind().holdsFluid())) continue;
                     // a crank throw is linked to cylinders only through connecting rods
-                    if ((p.kind() == PartKind.ECCENTRIC && q.kind() == PartKind.CYLINDER)
-                            || (q.kind() == PartKind.ECCENTRIC && p.kind() == PartKind.CYLINDER)) continue;
+                    if ((p.kind() == PartKind.ECCENTRIC && (q.kind() == PartKind.CYLINDER || q.kind() == PartKind.VALVE))
+                            || (q.kind() == PartKind.ECCENTRIC && (p.kind() == PartKind.CYLINDER || p.kind() == PartKind.VALVE))) continue;
                     // A brush is spring-loaded in its holder and merely slides on what it touches: it never
                     // joins rigid bodies (brushes always belong to the stationary frame — see KNOWN_LIMITATIONS).
                     if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) continue;
@@ -996,6 +996,15 @@ public final class AssemblyCompiler {
                 double[] st = prev.fluids().get(p.id());
                 double p0 = st != null ? st[0] : p.param("pressure", pAtm);
                 double t0 = st != null ? st[1] : prev.temperatures().getOrDefault(p.id(), ambientT);
+                boolean wet = f instanceof dev.emergence.core.fluids.WaterSteam;
+                double s0 = 1;
+                if (wet) {
+                    // water/steam: the state is (T, phase); a fresh part is saturated with its "fill" of liquid
+                    s0 = st != null && st.length > 2 ? st[2] : 1 - Math.max(0, Math.min(1, p.param("fill", 0)));
+                    double[] sv = new double[9];
+                    dev.emergence.core.fluids.WaterSteam.state(t0, s0, sv);
+                    p0 = sv[dev.emergence.core.fluids.WaterSteam.P];
+                }
                 Node pn = c.network.node(Domain.FLUID, "p" + p.id(), p0);
                 Node tn = c.network.node(Domain.THERMAL, "Tf" + p.id(), t0);
                 Object[] link = pistons.get(p.id());
@@ -1011,6 +1020,7 @@ public final class AssemblyCompiler {
                 } else {
                     v = c.network.add(new FluidVolume(pn, tn, f, Math.max(PartGeometry.fluidVolume(p), 1e-9)));
                 }
+                if (wet) v.withPhase(s0);
                 c.fluidOfPart.put(p.id(), v);
             }
             Map<Long, List<FluidBranch>> through = new HashMap<>();
@@ -1054,6 +1064,7 @@ public final class AssemblyCompiler {
                                         vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin),
                                         Math.max(roughness(p), roughness(q)), k, dz)
                                         .withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id());
+                                if (va.twoPhase()) b.withPorts(va.port(portHeight(p, y, d)), vb.port(portHeight(q, ny, d.opposite())));
                                 double dhMin = Math.min(PartGeometry.hydraulicDiameter(p), PartGeometry.hydraulicDiameter(q));
                                 if (p.kind() != PartKind.TANK && q.kind() != PartKind.TANK) b.withHydraulicDiameter(dhMin);
                                 Part rotor = rotorFor(p, d, q);
@@ -1063,21 +1074,90 @@ public final class AssemblyCompiler {
                                     // the valve seat is an orifice of the valve's bore (globe valve C_d ≈ 0.6)
                                     b.withOrifice(PartGeometry.passageArea(valve), 0.6);
                                     b.setOpening(valve.switchClosed() ? 1 : 0);
-                                    c.valveBranches.computeIfAbsent(valve.id(), kk -> new ArrayList<>()).add(b);
+                                    if (valveAction(valve, b, valve == p ? d : d.opposite(), valve == p))
+                                        c.valveBranches.computeIfAbsent(valve.id(), kk -> new ArrayList<>()).add(b);
                                 }
                                 c.network.add(b);
                                 through.computeIfAbsent(p.id(), kk -> new ArrayList<>()).add(b);
                                 through.computeIfAbsent(q.id(), kk -> new ArrayList<>()).add(b);
                             }
             }
-            // heat exchange between each fluid volume and its own wall
+            // heat exchange between each fluid volume and its own wall (boiling and condensation for water)
             for (Part p : fluids) {
                 FluidVolume v = c.fluidOfPart.get(p.id());
                 c.network.add(new FluidWallConvection(v.temperatureNode(), c.thermalOfPart.get(p.id()), v.fluid(),
                         PartGeometry.wettedArea(p), PartGeometry.hydraulicDiameter(p), PartGeometry.passageArea(p),
-                        through.getOrDefault(p.id(), List.of())));
+                        through.getOrDefault(p.id(), List.of())).withTwoPhase(v, p.boxSize(1)));
             }
         }
+
+        /** Relative height (0 bottom ... 1 top) of the port through face d of cell row y of a fluid part. */
+        double portHeight(Part p, int y, Dir d) {
+            if (d == Dir.UP) return 1;
+            if (d == Dir.DOWN) return 0;
+            return (y - p.minY() + 0.5) / (p.maxY() - p.minY() + 1);
+        }
+
+        /**
+         * Valve behaviour beyond a plain seat: a spring-loaded check/relief valve (parameter {@code relief}, the
+         * cracking pressure in Pa) passes flow only along the valve's +axis, each of its two seats taking half the
+         * cracking pressure; a valve whose stem lines up with an eccentric (cam) on a turning shaft opens and
+         * closes with it (and has no hand wheel). {@code face} is the valve face the branch crosses; {@code valveIsA}
+         * whether the valve is the branch's a end. Returns true if the valve is worked by hand.
+         */
+        boolean valveAction(Part valve, FluidBranch b, Dir face, boolean valveIsA) {
+            if (valve.params().containsKey("relief")) {
+                double crack = valve.param("relief", 0);
+                // forward = along +axis: out through the outlet face, or in through the inlet face
+                boolean outletFace = face == valve.axis();
+                double sense = (outletFace == valveIsA) ? 1 : -1;
+                b.withCheck(crack / 2, Math.max(crack / 4, 2e3), sense);
+            }
+            Object[] cam = cams.computeIfAbsent(valve.id(), k -> findCam(valve));
+            if (cam.length > 0) {
+                CompiledAssembly.Body body = (CompiledAssembly.Body) cam[0];
+                b.withCam(body.tracker, (Double) cam[1], valve.param("lap", 0.0));
+                b.setOpening(1);
+                return false;
+            }
+            return true;
+        }
+
+        final Map<Long, Object[]> cams = new HashMap<>();
+
+        /**
+         * The eccentric that works a valve's stem: the first eccentric found looking out from the valve across
+         * its axis (through empty cells, up to 12 cells: a push rod), on a turning body. Returns {body, angle at
+         * which the throw points at the valve} or an empty array.
+         */
+        Object[] findCam(Part valve) {
+            int a0 = valve.axis().axis();
+            for (Dir d : Dir.values()) {
+                if (d.axis() == a0) continue;
+                for (int k = 1; k <= 12; k++) {
+                    int x = valve.minX() + d.dx * k, y = valve.minY() + d.dy * k, z = valve.minZ() + d.dz * k;
+                    List<Part> here = a.at(x, y, z);
+                    if (here.isEmpty()) continue;
+                    Part ecc = null;
+                    for (Part q : here) if (q.kind() == PartKind.ECCENTRIC) ecc = q;
+                    if (ecc == null) break;
+                    CompiledAssembly.Body body = c.bodyOfPart.get(ecc.id());
+                    if (body == null || body.isStatic) break;
+                    Vec3 n = body.axis;
+                    if (Math.abs(n.dot(d.vec())) > 1e-6) break;
+                    Vec3 rel = valve.center().sub(body.pivot);
+                    Vec3 radial = rel.sub(n.mul(rel.dot(n)));
+                    Vec3 u = radial.mul(1 / radial.length());
+                    int na = Math.abs(n.x()) > 0.5 ? 0 : Math.abs(n.y()) > 0.5 ? 1 : 2;
+                    Vec3 ref = Vec3.axis((na + 1) % 3);
+                    double phiU = Math.atan2(ref.cross(u).dot(n), ref.dot(u));
+                    return new Object[]{body, phiU - Math.toRadians(ecc.param("phase", 0))};
+                }
+            }
+            return new Object[0];
+        }
+
+        final Node[] atmSteam = new Node[2];
 
         void addVent(Part p, int[] cell, Dir d, Node[] atm, double pAtm, Map<Long, List<FluidBranch>> through) {
             if (atm[0] == null) {
@@ -1086,15 +1166,28 @@ public final class AssemblyCompiler {
                 c.network.add(new FluidReservoir(atm[0], atm[1], pAtm, ambientT));
             }
             FluidVolume v = c.fluidOfPart.get(p.id());
+            Node[] sink = atm;
+            if (v.twoPhase()) {
+                // steam vents into the open air: modelled as a reservoir of steam at ambient pressure, just
+                // superheated (any back-flow is steam, not air: no non-condensable gases are modelled)
+                if (atmSteam[0] == null) {
+                    double ts = dev.emergence.core.fluids.WaterSteam.tSat(pAtm) + 1;
+                    atmSteam[0] = c.network.node(Domain.FLUID, "atm.steam.p", pAtm);
+                    atmSteam[1] = c.network.node(Domain.THERMAL, "atm.steam.T", ts);
+                    c.network.add(new FluidReservoir(atmSteam[0], atmSteam[1], pAtm, ts));
+                }
+                sink = atmSteam;
+            }
             double half = halfExtent(p, d);
             // exit (or entry) loss K = 1 of a free jet
-            FluidBranch b = new FluidBranch(v.pressureNode(), v.temperatureNode(), atm[0], atm[1], v.fluid(), half,
+            FluidBranch b = new FluidBranch(v.pressureNode(), v.temperatureNode(), sink[0], sink[1], v.fluid(), half,
                     equivalentDiameter(PartGeometry.passageArea(p)), roughness(p), 1.0, d.dy * half)
                     .withTag(p.kind() + "#" + p.id() + "->air");
+            if (v.twoPhase()) b.withPorts(v.port(portHeight(p, cell[1], d)), null);
             if (p.kind() == PartKind.VALVE) {
                 b.withOrifice(PartGeometry.passageArea(p), 0.6);
                 b.setOpening(p.switchClosed() ? 1 : 0);
-                c.valveBranches.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(b);
+                if (valveAction(p, b, d, true)) c.valveBranches.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(b);
             }
             if (p.kind() == PartKind.ROTOR && d == Dir.fromAxis(p.axis().axis(), true)) attachRotor(b, p, d, true);
             c.network.add(b);

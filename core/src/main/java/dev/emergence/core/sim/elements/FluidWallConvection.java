@@ -24,7 +24,9 @@ import dev.emergence.core.sim.StateView;
  * q''_max = 0.149 h_fg ρ_v (σg(ρ_l − ρ_v)/ρ_v²)^¼ (film boiling beyond burnout is not modelled). Where the
  * vapour wall is colder than saturation, vapour condenses on it as a laminar film (Nusselt):
  * h = 0.943 (ρ_l(ρ_l − ρ_v) g h'_fg k_l³/(μ_l L ΔT))^¼, h'_fg = h_fg + 0.68 c_p,l ΔT, L the wall height
- * (±20 %). Single-phase convection to each phase is added as above.
+ * (±20 %). A wetted wall warmer than saturation evaporates its film through the same film conductance (while
+ * liquid remains to wet it), so the wall–vapour exchange is continuous through equilibrium. Single-phase
+ * convection to each phase is added as above.
  */
 public final class FluidWallConvection implements Element {
     private final Node fluidT, wallT;
@@ -70,7 +72,8 @@ public final class FluidWallConvection implements Element {
     double twoPhaseHeat(double tw, double tf, double s, double mdotDh) {
         WaterSteam w = (WaterSteam) fluid;
         WaterSteam.state(tf, s, st);
-        double ts = WaterSteam.tSat(st[WaterSteam.P]);
+        // saturated: the fluid is at the saturation temperature (exactly, so the film law is smooth through ΔT = 0)
+        double ts = s >= 0 && s <= 1 ? tf : WaterSteam.tSat(st[WaterSteam.P]);
         double av = st[WaterSteam.ALPHA_V], fl = 1 - av;
         double rl = WaterSteam.rhoLiquidSat(ts), rv = WaterSteam.rhoVapourSat(ts), hfg = WaterSteam.latentHeat(ts);
         double mul = w.liquidViscosity(tf), kl = w.liquidConductivity(tf), cpl = w.cp(tf), prl = mul * cpl / kl;
@@ -89,12 +92,14 @@ public final class FluidWallConvection implements Element {
             double flux = nb / Math.pow(1 + Math.pow(nb / chf, 4), 0.25);
             q += flux * area * fl;
         }
-        // film condensation on the vapour-covered wall
+        // liquid film on the vapour-covered wall: condensation where the wall is colder than saturation; where it
+        // is warmer, the film (present while there is liquid to wet the wall) evaporates through the same film
         double dtc = ts - tw;
-        if (dtc > 0 && av > 0) {
-            double hfgP = hfg + 0.68 * cpl * dtc;
+        if (av > 0) {
+            double dry = fl / (fl + 0.002), wet = dry + (1 - dry) * 0.5 * (1 + Math.tanh(dtc / 0.02)); // smooth through ΔT = 0
+            double hfgP = hfg + 0.68 * cpl * Math.abs(dtc);
             double c = 0.943 * Math.pow(rl * (rl - rv) * g * hfgP * kl * kl * kl / (mul * wallHeight), 0.25);
-            q -= c * dtc * Math.pow(dtc * dtc + 1e-4, -0.125) * area * av;
+            q -= c * wet * dtc * Math.pow(dtc * dtc + 1e-4, -0.125) * area * av;
         }
         return q;
     }

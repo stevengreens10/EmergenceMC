@@ -1,3 +1,11 @@
+## In progress (uncommitted at end of session)
+* Water/steam in the assembly compiler: phase-aware ports, steam vents, check/relief valves (`relief`), and
+  cam-worked valves (a VALVE whose stem lines up with an ECCENTRIC). The changes are in AssemblyCompiler,
+  CompiledAssembly and FluidBranch. They compile, but the full core suite has not been run on them yet.
+* A draft steam-engine exhibit and its test are in tools/draft_steam_engine_exhibit.py (not applied). Next: run
+  the core tests, apply the draft, tune the cam phases and the firebox until the engine runs, then add a GameTest,
+  a showcase step, the renderer liquid level and the docs, and commit.
+
 # Next steps (priority order)
 
 1. **Computer milestone (Phase 4)**: a small programmable sequencer/CPU from logic chips (register,

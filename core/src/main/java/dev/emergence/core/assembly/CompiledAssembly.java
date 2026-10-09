@@ -213,7 +213,10 @@ public final class CompiledAssembly {
         return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Led led ? led.opticalPower(solver) : 0;
     }
 
-    /** Fluid state held by a part: {pressure [Pa], fluid temperature [K], mass [kg], mean |mass flow| [kg/s]}, or null. */
+    /**
+     * Fluid state held by a part: {pressure [Pa], fluid temperature [K], mass [kg], mean |mass flow| [kg/s],
+     * vapour volume fraction}, or null.
+     */
     public double[] fluid(long partId) {
         FluidVolume v = fluidOfPart.get(partId);
         if (v == null) return null;
@@ -223,7 +226,8 @@ public final class CompiledAssembly {
             flow += Math.abs(b.massFlow(solver));
             n++;
         }
-        return new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode()), v.mass(solver), n == 0 ? 0 : flow / n};
+        return new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode()), v.mass(solver), n == 0 ? 0 : flow / n,
+                v.vapourFraction(solver)};
     }
 
     /** Name of the fluid in a part, or null. */
@@ -388,7 +392,9 @@ public final class CompiledAssembly {
         }
         for (var e : fluidOfPart.entrySet()) {
             FluidVolume v = e.getValue();
-            s.fluids().put(e.getKey(), new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode())});
+            s.fluids().put(e.getKey(), v.twoPhase()
+                    ? new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode()), v.phase(solver)}
+                    : new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode())});
         }
         for (var e : cells.entrySet()) {
             for (var sp : e.getValue().allMoles(solver).entrySet()) {

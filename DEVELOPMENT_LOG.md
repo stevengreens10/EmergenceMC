@@ -125,3 +125,11 @@ hardest part: a radial air-core stepper had too little torque at a quarter-turn 
 stalled it in the weak zone; an axial-flux layout (magnet sweeping directly under the coils, inner leads at a
 star point) with a silicone rotary damper (new bearing type) steps cleanly. The thermostat test also exposed
 real behaviour: as its supercapacitor ran down, the heater could no longer reach the upper threshold.
+
+**Structures that can fail.** A 3D frame solver (direct stiffness, Euler–Bernoulli members, validated against
+beam theory) analyses every anchored structure once per simulated second: members from contact faces (so a
+thin plate is a thin beam), gravity, held fluid and rotor weights through their bearings; von Mises against
+yield or Rankine against fracture. Overloaded parts break and drop, and anything left without a load path
+falls with them. The shelves exhibit puts the same lead block on four shelves of aluminium, steel, oak and
+glass plate; the showcase stacks a second block and the steel and glass shelves break. GameTests now run large
+exhibits in their own batches (a 40-block exhibit had merged with its neighbour's arena).

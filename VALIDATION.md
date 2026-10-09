@@ -107,6 +107,13 @@ only when enabled; outputs drive 10 kΩ through the 50 Ω stage from the supply.
 steps the rotor more than a full turn forward in 40 s and more than a full turn backward with SENSE on;
 the in-world GameTest checks the PC advances and the accumulator follows the program.
 
+## Structures (`FrameSolverTest`, `DemoExhibitsTest`)
+Frame solver vs beam theory: cantilever tip deflection/rotation/root moment and shear (1e-5), simply
+supported mid-span deflection, axial shortening, bending about either axis, portal-frame sway (1 %).
+Every gallery exhibit holds its own weight (utilisation < 0.95). Shelves: aluminium root stress vs
+6M/(bt²) (±5 %), steel shelf near but under yield; a second lead block breaks the steel and glass
+shelves (and drops their loads) while the aluminium holds; the same in the world (GameTest).
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

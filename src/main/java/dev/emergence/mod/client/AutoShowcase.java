@@ -89,6 +89,15 @@ public final class AutoShowcase {
             if (id.equals("stirling")) {
                 STEPS.add(new Step(100, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
             }
+            if (id.equals("shelves")) {
+                // a second lead block on the steel and the glass shelf: past yield / fracture they break
+                STEPS.add(new Step(60, () -> {
+                    DemoBuilder.addPart(server.overworld(), plot, 5, 5, 5, dev.emergence.core.assembly.PartKind.BLOCK, "lead",
+                            dev.emergence.core.assembly.Dir.UP);
+                    DemoBuilder.addPart(server.overworld(), plot, 5, 5, 11, dev.emergence.core.assembly.PartKind.BLOCK, "lead",
+                            dev.emergence.core.assembly.Dir.UP);
+                }, "showcase-" + (i + 1) + "-" + id + "-overloaded"));
+            }
             if (id.equals("computer")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
                 STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "sense")),

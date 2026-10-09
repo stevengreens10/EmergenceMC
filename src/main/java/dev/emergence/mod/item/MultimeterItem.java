@@ -57,6 +57,25 @@ public final class MultimeterItem extends Item {
                 line(ctx.getPlayer(), "Mass flow", Units.formatSI(round(fl[3]), "kg/s") + String.format(" (%.3g g held)", fl[2] * 1000));
             }
             if (pr != null && compiled != null) {
+                // structural stress against the material's strength, and how far the part has sagged
+                Double util = compiled.structure().utilisation().get(part.id);
+                if (util != null) {
+                    var d = compiled.structure().displacement().get(part.id);
+                    line(ctx.getPlayer(), "Stress", String.format("%.0f %% of its strength", 100 * util)
+                            + (d != null ? String.format(", sag %.2f mm", -1000 * d.y()) : ""));
+                }
+                double[] br = compiled.brake(part.id);
+                if (br != null) line(ctx.getPlayer(), "Brake", String.format("%.3f N·m, absorbing %s", Math.abs(br[0]), Units.formatSI(round(br[1]), "W")));
+                double[] chip = compiled.chipState(part.id);
+                if (chip != null) {
+                    int v = 0;
+                    StringBuilder bits = new StringBuilder();
+                    for (int k = chip.length - 1; k >= 0; k--) {
+                        bits.append(chip[k] > 0.5 ? '1' : '0');
+                        if (chip[k] > 0.5) v |= 1 << k;
+                    }
+                    line(ctx.getPlayer(), "Chip state", "0b" + bits + " (" + v + ")");
+                }
                 // electrochemistry: concentrations in a jar; dissolution, deposits and gas at an electrode
                 for (var e : compiled.chemistry(part.id).entrySet()) {
                     String[] kv = e.getKey().split(" (?=[^ ]+$)");

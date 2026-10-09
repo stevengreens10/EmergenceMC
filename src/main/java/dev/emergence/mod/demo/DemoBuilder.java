@@ -100,6 +100,17 @@ public final class DemoBuilder {
         }
     }
 
+    /** Adds one block-scale part to the world at plot-relative cell (x, y, z) — a load placed on an exhibit. */
+    public static void addPart(ServerLevel level, BlockPos plot, int x, int y, int z, dev.emergence.core.assembly.PartKind kind,
+                               String material, dev.emergence.core.assembly.Dir axis, Object... params) {
+        BlockPos bp = plot.offset(x, y, z);
+        if (!(level.getBlockEntity(bp) instanceof AssemblyBlockEntity)) level.setBlock(bp, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+        AssemblyBlockEntity be = (AssemblyBlockEntity) level.getBlockEntity(bp);
+        be.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
+        be.addPart(new PlacedPart(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE), kind, PartSpec.of(material, 1, 1, params),
+                0, 0, 0, 0, 0, 0, axis, false));
+    }
+
     /** x offset of exhibit i's plot from the gallery origin (wide exhibits take several plots). */
     public static int plotOffset(List<Exhibit> exhibits, int i) {
         int x = 0;

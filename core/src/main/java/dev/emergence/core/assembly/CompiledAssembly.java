@@ -144,10 +144,28 @@ public final class CompiledAssembly {
      * @return ids of parts destroyed during the interval (over-temperature); the caller should remove
      * them and recompile.
      */
+    private StructuralAnalysis.Result structure;
+    private double sinceStructure = Double.MAX_VALUE;
+
+    /**
+     * Static strength analysis of the stationary structure (recomputed at most once per simulated second, since
+     * its loads — weights, held fluid — change slowly).
+     */
+    public StructuralAnalysis.Result structure() {
+        if (structure == null) structure = StructuralAnalysis.run(this);
+        return structure;
+    }
+
     public List<Long> step(double dt) {
         double done = solver.advance(dt, maxStepsPerAdvance);
         lag += dt - done;
         List<Long> failed = new ArrayList<>();
+        sinceStructure += done;
+        if (sinceStructure >= 1.0) {
+            structure = StructuralAnalysis.run(this);
+            sinceStructure = 0;
+            failed.addAll(structure.failed());
+        }
         for (var e : failureTemp.entrySet()) {
             if (temperature(e.getKey()) > e.getValue()) failed.add(e.getKey());
         }

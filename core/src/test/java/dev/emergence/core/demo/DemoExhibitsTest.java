@@ -3,6 +3,7 @@ package dev.emergence.core.demo;
 import dev.emergence.core.assembly.AssemblyCompiler;
 import dev.emergence.core.assembly.CompiledAssembly;
 import dev.emergence.core.assembly.Probe;
+import dev.emergence.core.assembly.Dir;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -451,5 +452,39 @@ class DemoExhibitsTest {
         double rev = c.angle(rotor) - mid;
         System.out.println("computer: reverse moved " + rev + " rad");
         assertTrue(rev * fwd < 0 && Math.abs(rev) > 2 * Math.PI, "with SENSE on it steps the other way: " + rev);
+    }
+
+    @Test
+    void everyExhibitStructureHoldsItsOwnWeight() {
+        for (Exhibit e : Exhibits.all()) {
+            if (e.miniature) continue;
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            var r = compile(e, b).structure();
+            assertTrue(r.failed().isEmpty() && r.maxUtilisation() < 0.95, e.id + ": structure holds (utilisation " + r.maxUtilisation() + ")");
+        }
+    }
+
+    @Test
+    void shelvesHoldOneLeadBlockAndBreakUnderTwo() {
+        Exhibit e = Exhibits.shelves();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        var r = compile(e, b).structure();
+        double steel = r.utilisation().get(b.id(e, "shelf1")), al = r.utilisation().get(b.id(e, "shelf0"));
+        // hand calculation for the aluminium root: σ = 6M/(b t²), M from the lead block and the plates' own weight
+        double t = 0.04 * 0.0625, bw = 0.0625, lead = 11340 * Math.pow(0.0625, 3) * 9.80665;
+        double plate = 2700 * 0.0625 * 0.0625 * t * 9.80665;
+        double m = lead * 4 * 0.0625 + plate * 0.0625 * (1 + 2 + 3 + 4);
+        assertEquals(6 * m / (bw * t * t) / 276e6, al, 0.05, "aluminium root stress vs beam theory");
+        assertTrue(steel > 0.6 && steel < 1, "steel shelf near yield but holding: " + steel);
+        assertTrue(r.failed().isEmpty());
+        // a second lead block on the steel and glass shelves
+        e.add(dev.emergence.core.assembly.PartKind.BLOCK, "lead", 5, 5, 5, Dir.UP);
+        e.add(dev.emergence.core.assembly.PartKind.BLOCK, "lead", 5, 5, 11, Dir.UP);
+        Exhibits.Built b2 = Exhibits.build(e, AMBIENT);
+        var r2 = compile(e, b2).structure();
+        assertTrue(r2.failed().contains(b2.id(e, "shelf1")), "the steel shelf yields at the wall");
+        assertTrue(r2.failed().contains(b2.id(e, "load1")), "and its load falls");
+        assertTrue(r2.failed().contains(b2.id(e, "load3")), "the glass shelf fractures too");
+        assertFalse(r2.failed().contains(b2.id(e, "shelf0")) || r2.failed().contains(b2.id(e, "load0")), "the aluminium shelf holds");
     }
 }

@@ -263,3 +263,20 @@ trapezoidal rule rings on them (amplification → −1), forcing tiny steps. Oth
 rule, which conserves the energy of mechanical and electromagnetic oscillations. A time step that collapses
 below 10⁻¹⁰ s (a Newton stall at round-off level) gets one rescue: a 1 µs backward-Euler step with Newton
 tolerances relaxed 100×, accepted only if it converges, and counted (`TransientSolver.rescuedSteps`).
+
+## Structural strength (`structure.FrameSolver`, `assembly.StructuralAnalysis`)
+* **Model**: the stationary structure is a 3D frame solved by the direct stiffness method. Every structural
+  part of an anchored frame is a node with six degrees of freedom; every face contact between two of them is an
+  Euler–Bernoulli beam member (axial EA/L, two bending planes 12EI/L³…, St Venant torsion GJ/L) whose
+  cross-section is the contact face — a plate's thickness (`fill`) sets its section, so thin plates are weak.
+  The two halves of a member are in series (harmonic-mean E). Parts resting on the ground are clamped.
+* **Loads**: gravity on every part, small parts carried by the frame, the weight of turning bodies shared
+  between the bearings that hold them, and fluid held in vessels. Recomputed once per simulated second.
+* **Strength**: extreme-fibre stresses σ = N/A ± M₁c₂/I₁ ± M₂c₁/I₂ plus shear from V and T at each contact
+  face. Ductile materials (yield strength known): von Mises against yield. Brittle ones (UTS only — glass,
+  ceramics, stone): largest tension against UTS (Rankine), compression allowed 8× more. Utilisation > 1 is
+  failure: the part breaks and drops, and whatever is left with no load path to the ground falls with it
+  (progressive collapse).
+* **Validated** against the cantilever (δ = PL³/3EI, θ = PL²/2EI, M = PL), the simply supported beam
+  (PL³/48EI), axial shortening (PL/EA), bending about both principal axes, and portal-frame sway (24EI/h³);
+  the shelves exhibit's root stress against σ = 6M/(bt²).

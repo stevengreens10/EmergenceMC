@@ -174,7 +174,7 @@ public final class EmergenceGameTests {
     }
 
     /** Phase change in the world: the steam exhibit's boiler sits on the saturation curve and its engine keeps turning. */
-    @GameTest(template = "arena", timeoutTicks = 300)
+    @GameTest(template = "arena", timeoutTicks = 300, batch = "steam")
     public static void steamEngineRunsInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.steamEngine();
@@ -197,7 +197,7 @@ public final class EmergenceGameTests {
     }
 
     /** Phase 4 in the world: the EM-4 computer's chips run the ROM program (PC advances, ACC follows it). */
-    @GameTest(template = "arena", timeoutTicks = 400)
+    @GameTest(template = "arena", timeoutTicks = 400, batch = "computer")
     public static void computerRunsItsProgramInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ComputerExhibit.build();
@@ -218,6 +218,24 @@ public final class EmergenceGameTests {
             h.assertTrue(pcv >= 1, "the program counter advanced: " + pcv);
             h.assertTrue(accv == java.util.List.of(0, 1, 2, 4, 8, 8, 1).get(Math.min(pcv, 6)) || pcv > 6,
                     "ACC follows the program: PC " + pcv + ", ACC " + accv);
+            h.succeed();
+        });
+    }
+
+    /** Structures in the world: the shelves hold their lead blocks; a second block breaks the steel shelf. */
+    @GameTest(template = "arena", timeoutTicks = 200, batch = "shelves")
+    public static void overloadedShelfBreaksInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.shelves();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        BlockPos steelTip = plot.offset(5, 3, 5), alTip = plot.offset(2, 3, 2);
+        h.runAtTickTime(40, () -> {
+            h.assertTrue(h.getLevel().getBlockEntity(steelTip) instanceof AssemblyBlockEntity, "steel shelf holds one lead block");
+            dev.emergence.mod.demo.DemoBuilder.addPart(h.getLevel(), plot, 5, 5, 5, PartKind.BLOCK, "lead", dev.emergence.core.assembly.Dir.UP);
+        });
+        h.runAtTickTime(120, () -> {
+            h.assertTrue(!(h.getLevel().getBlockEntity(steelTip) instanceof AssemblyBlockEntity), "the overloaded steel shelf broke");
+            h.assertTrue(h.getLevel().getBlockEntity(alTip) instanceof AssemblyBlockEntity, "the aluminium shelf still stands");
             h.succeed();
         });
     }

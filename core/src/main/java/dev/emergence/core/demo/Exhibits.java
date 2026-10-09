@@ -24,7 +24,7 @@ public final class Exhibits {
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
-                transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), miniatureGenerator());
+                transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -512,6 +512,35 @@ public final class Exhibits {
         }
         e.fill(BLOCK, st, 5, 0, 13, 5, y - 3, 13, Dir.UP);
         return e.view(4.5, 11, 18, 42);
+    }
+
+    /** Plate thickness (as a fraction of the cell) and material of each shelf, north to south. */
+    public static final Object[][] SHELVES = {{"aluminium_6061", 0.04}, {"steel_1045", 0.02}, {"oak", 0.2}, {"glass", 0.075}};
+
+    /**
+     * Strength of materials: four cantilever shelves of thin plate — aluminium, steel, oak, glass — stand out from a
+     * steel wall, each carrying the same lead block at its tip. The frame analysis finds the bending stress at each
+     * shelf root; each holds with a different margin. Add a second lead block and the thinnest yields.
+     */
+    public static Exhibit shelves() {
+        Exhibit e = new Exhibit("shelves", "Cantilever shelves",
+                List.of("STRENGTH OF", "MATERIALS: shelves", "under the same", "load. Add weight!"),
+                "Each shelf is a cantilever four plates long, carrying a 2.8 kg lead block at its tip. The bending moment "
+                        + "at the wall is the load times its reach (about 7 N·m), and the plate resists it with stress "
+                        + "σ = 6M/(b t²): it rises with the square of thinness. 2.5 mm of aluminium, 1.25 mm of steel, "
+                        + "12.5 mm of oak and 4.7 mm of glass all hold, the steel close to its yield strength and the "
+                        + "glass well into its brittle fracture strength. Stack a second lead block on the steel or the "
+                        + "glass shelf: past yield (or fracture) the plate breaks and everything beyond it falls.");
+        String st = "steel_1045";
+        e.fill(BLOCK, st, 1, 0, 1, 1, 4, 12, Dir.UP);
+        for (int k = 0; k < SHELVES.length; k++) {
+            int z = 2 + 3 * k;
+            String m = (String) SHELVES[k][0];
+            int first = e.fill(BLOCK, m, 2, 3, z, 5, 3, z, Dir.UP, "fill", (Double) SHELVES[k][1]);
+            e.name("shelf" + k, first);
+            e.name("load" + k, e.add(BLOCK, "lead", 5, 4, z, Dir.UP));
+        }
+        return e.view(8, 7, 17, 25);
     }
 
     /** Parameter list {@code base} followed by {@code more}. */

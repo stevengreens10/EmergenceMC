@@ -41,6 +41,11 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ **Milestone: heat engine driving a generator** — an alpha Stirling engine from parts (hot and cold
    cylinders 90° apart, transfer pipe, flywheel) runs on a hot block and drives magnets past a coil
 
+## Structural mechanics (Phase 6, started early)
+✅ Static frame analysis of every anchored structure: beam members from contact faces, gravity, held
+   fluid and rotor weights; yield (ductile) and fracture (brittle) failure with progressive collapse
+⬜ Buckling, dynamic loads (impacts, vibration, resonance), fatigue, creep, plasticity, soil
+
 ## Phase 4 — Electronics and computation
 ✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED; ⬜ photodiodes, phototransistors
 ✅ Logic from transistors (CMOS NAND exhibit) and a validated chip-level model (gates, D flip-flop,

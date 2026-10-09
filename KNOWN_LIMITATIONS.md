@@ -63,6 +63,14 @@ behaviour; where physics is missing the effect is simply absent.
 * A single small blade row cannot make a self-sustaining gas turbine (consistent with real physics at this
   scale); jet kinetic energy is not modelled, so impulse turbines are under-powered.
 
+## Structures
+* Linear statics: no buckling, dynamic or impact loads, vibration, fatigue or creep; first yield is failure
+  (no plastic redistribution). Large deflections (a 1.25 mm steel shelf sags 70 mm) are computed linearly.
+* Slender-beam members even for cube-shaped cells (no shear deformation); contact faces fully bonded (no
+  separation, sliding or fasteners); only blocks and vessels are checked for failure, other structural
+  parts act as stiff connectors; pressure-vessel wall stress (bursting) is not yet checked.
+* Broken parts drop as items; unsupported remnants are removed rather than falling as bodies.
+
 ## Electronics
 * Transistors: no breakdown, high-injection or short-channel effects; MOSFET body tied to source.
 * Logic chips are a reduced-order model (thresholds of ratioed 74HC parts, fixed 10 ns delay, no input

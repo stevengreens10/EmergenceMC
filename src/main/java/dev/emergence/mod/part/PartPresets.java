@@ -28,6 +28,11 @@ public final class PartPresets {
         }
         l.add(stack(PartKind.BLOCK, PartSpec.of("aluminium_6061", 1, 1, "fill", 0.25)));
         l.add(stack(PartKind.BLOCK, PartSpec.of("copper", 1, 1, "fill", 0.5)));
+        // thin plates for shelves, beams and bridges (fill = thickness as a fraction of the block)
+        l.add(stack(PartKind.BLOCK, PartSpec.of("steel_1045", 1, 1, "fill", 0.02)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("aluminium_6061", 1, 1, "fill", 0.04)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("oak", 1, 1, "fill", 0.2)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("glass", 1, 1, "fill", 0.075)));
         // rotating machinery elements
         l.add(stack(PartKind.SHAFT, PartSpec.of("steel_1045", 1, 1, "diameter", 0.02)));
         l.add(stack(PartKind.SHAFT, PartSpec.of("steel_1045", 4, 1, "diameter", 0.02)));

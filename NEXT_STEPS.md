@@ -1,5 +1,9 @@
 # Next steps (priority order)
 
+0. **Structures**: Euler buckling of slender columns (linear buckling eigenproblem with geometric
+   stiffness), pressure-vessel bursting (hoop stress p·r/t vs strength — a boiler that over-pressures
+   ruptures), dynamic loads/resonance; a crane or bridge exhibit.
+
 1. ~~Computer milestone (Phase 4)~~ done (EM-4 + stepper). Next in computing: an in-game ROM programmer,
    RAM chip, instruction-set growth (load/store, conditional on carry), event-driven simulation for large
    gate counts, photodiodes so light can be sensed. Previously: a small programmable sequencer/CPU from logic chips (register,

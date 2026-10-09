@@ -392,16 +392,28 @@ public final class SimulationManager {
     // ------------------------------------------------------------------ consequences
 
     private void destroyParts(Island isl, List<Long> ids) {
+        java.util.Set<Long> broken = isl.compiled == null ? java.util.Set.of() : new java.util.HashSet<>(isl.compiled.structure().failed());
         for (long id : ids) {
             BlockPos pos = isl.partPos.get(id);
             AssemblyBlockEntity be = pos == null ? null : be(pos);
             if (be == null) continue;
             PlacedPart p = be.removePart(id);
             if (p == null) continue;
-            level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.7f, 1.2f);
             double r = be.resolution();
-            level.sendParticles(ParticleTypes.LARGE_SMOKE, pos.getX() + (p.x0 + 0.5) / r, pos.getY() + (p.y0 + 0.5) / r,
-                    pos.getZ() + (p.z0 + 0.5) / r, 8, 0.05 * 16 / r, 0.05 * 16 / r, 0.05 * 16 / r, 0.01);
+            double px = pos.getX() + (p.x0 + 0.5) / r, py = pos.getY() + (p.y0 + 0.5) / r, pz = pos.getZ() + (p.z0 + 0.5) / r;
+            if (broken.contains(id)) {
+                // overloaded: the part breaks (or loses its support) and its pieces drop
+                level.playSound(null, pos, p.spec.material().contains("glass") ? SoundEvents.GLASS_BREAK : SoundEvents.ANVIL_LAND,
+                        SoundSource.BLOCKS, 0.6f, 1.3f);
+                level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(ParticleTypes.BLOCK,
+                        net.minecraft.world.level.block.Blocks.IRON_BLOCK.defaultBlockState()), px, py, pz, 12, 0.1, 0.1, 0.1, 0.05);
+                net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(level, px, py, pz,
+                        dev.emergence.mod.part.PartPresets.stack(p.kind, p.spec));
+                level.addFreshEntity(drop);
+            } else {
+                level.playSound(null, pos, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.7f, 1.2f);
+                level.sendParticles(ParticleTypes.LARGE_SMOKE, px, py, pz, 8, 0.05 * 16 / r, 0.05 * 16 / r, 0.05 * 16 / r, 0.01);
+            }
             if (be.parts().isEmpty()) level.removeBlock(pos, false);
         }
     }

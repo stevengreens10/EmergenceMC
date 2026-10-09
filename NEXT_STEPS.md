@@ -1,5 +1,12 @@
 # Next steps (priority order)
 
+0. **Servo island fails intermittently on world load** (~1 in 3 full tours): from a benign restored state
+   (T ≤ 293 K, coil currents ≤ 0.64 A, 12 V capacitors, all finite) the first step at t = 0 ends in a time-step
+   underflow with non-finite Joule/thermal terms (wires, the power BJT, a coil). The restart without coil
+   currents always works. It depends on chunk-load order (fragment islands merging), not reproduced in core.
+   Run tours with `-Demergence.dumpFailures=true`: the island's parts and start state are written to
+   `run/island-failure-*.txt` for replay in a core test.
+
 0. **Control/robotics**: integral action (PI/PID with an op-amp integrator) to remove the servo's droop; a
    two-joint arm (needs joints on moving bodies); the EM-4 closing a loop through a light-barrier encoder;
    data logger/oscilloscope instrument to plot the step response.

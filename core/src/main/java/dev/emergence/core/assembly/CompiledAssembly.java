@@ -69,6 +69,18 @@ public final class CompiledAssembly {
     final Map<Long, dev.emergence.core.sim.elements.HumanCrank> cranks = new HashMap<>();
     MagneticSystem magnetics;
     final Map<Long, ElectrochemicalCell> cells = new HashMap<>();
+    /** Radioactive sources and Geiger–Müller tubes, by part id. */
+    final Map<Long, dev.emergence.core.sim.elements.RadioactiveSource> sourceOfPart = new HashMap<>();
+    final Map<Long, dev.emergence.core.sim.elements.GeigerTube> tubeOfPart = new HashMap<>();
+
+    public dev.emergence.core.sim.elements.RadioactiveSource source(long partId) {
+        return sourceOfPart.get(partId);
+    }
+
+    public dev.emergence.core.sim.elements.GeigerTube tube(long partId) {
+        return tubeOfPart.get(partId);
+    }
+
     /** Sealed vessels of reacting gas, by part id. */
     final Map<Long, dev.emergence.core.sim.elements.GasReactor> gasOfPart = new HashMap<>();
     final Map<Long, FluidVolume> fluidOfPart = new HashMap<>();
@@ -341,6 +353,17 @@ public final class CompiledAssembly {
     /** Chemical readouts: concentrations in an electrolyte; dissolved metal, deposits, current and gas at an electrode. */
     public Map<String, Double> chemistry(long partId) {
         Map<String, Double> out = new java.util.LinkedHashMap<>();
+        var src = sourceOfPart.get(partId);
+        if (src != null) {
+            out.put("Activity kBq", src.activity(solver) / 1e3);
+            for (int i = 0; i < src.chain().size(); i++) out.put(src.chain().get(i).name() + " kBq", src.activity(solver, i) / 1e3);
+        }
+        var tube = tubeOfPart.get(partId);
+        if (tube != null) {
+            out.put("Counts", (double) tube.discharges());
+            out.put("Expected rate counts/s", tube.hitRate(solver));
+            out.put("Lost to dead time", (double) tube.lost());
+        }
         var gas = gasOfPart.get(partId);
         if (gas != null) {
             out.put("Gas pressure bar", gas.pressure(solver) / 1e5);
@@ -588,6 +611,10 @@ public final class CompiledAssembly {
             s.fluids().put(e.getKey(), v.twoPhase()
                     ? new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode()), v.phase(solver)}
                     : new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode())});
+        }
+        for (var e : sourceOfPart.entrySet()) {
+            var src = e.getValue();
+            for (int i = 0; i < src.chain().size(); i++) s.chemistry().put("N" + e.getKey() + ":" + src.chain().get(i).id(), src.atoms(solver, i));
         }
         for (var e : gasOfPart.entrySet()) {
             var g = e.getValue();

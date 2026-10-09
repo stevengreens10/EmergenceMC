@@ -202,3 +202,10 @@ heat (energy-exact): a thermocouple exhibit amplifies a copper–constantan junc
 a mix of absolute and platinum-relative values; now all absolute and checked against the type T/J tables. The
 tour showed the whole gallery overloading the server (every island ticking everywhere): islands now tick only
 within the players' simulation distance, under a shared time budget.
+
+**A Geiger counter from parts.** Decay chains, gamma attenuation along rays, and a Geiger–Müller tube whose random
+hits trigger discharges only above its starting voltage. The solver gained discrete events (landing steps on random
+hit times). The first tube never pulsed into the counter: its capacitance was placed anode-to-cathode, where the
+charge circulates inside the tube; the pulse comes from the anode node's capacitance to ground. Then it never
+stopped: a discharge modelled as decaying towards its extinction voltage never quite reaches it — real tubes stop
+when the current falls below the holding current, which is why they need a large quench resistor.

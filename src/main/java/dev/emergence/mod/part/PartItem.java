@@ -77,6 +77,8 @@ public final class PartItem extends Item {
             case CHIP -> PartSpec.of("silicon", 1, 1, "function", 0);
             case POTENTIOMETER -> PartSpec.of("nylon_66", 1, 1, "resistance", 10_000);
             case OPAMP -> PartSpec.of("silicon", 1, 1);
+            case SOURCE -> PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5);
+            case GM_TUBE -> PartSpec.of("stainless_304", 1, 1);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -120,6 +122,9 @@ public final class PartItem extends Item {
             case POTENTIOMETER -> ", " + Units.formatSI(p.getOrDefault("resistance", 10_000.0), "Ω")
                     + String.format(", %.0f°", p.getOrDefault("travel", 270.0));
             case OPAMP -> ", " + Units.formatSI(p.getOrDefault("gbw", 3e6), "Hz") + " GBW";
+            case SOURCE -> ", " + dev.emergence.core.nuclear.NuclearData.standard().byCode((int) Math.round(p.getOrDefault("nuclide", 0.0))).name()
+                    + ", " + Units.formatSI(p.getOrDefault("activity", 3.7e5), "Bq");
+            case GM_TUBE -> String.format(", %.0f V start", p.getOrDefault("start", 350.0));
             case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
                     + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[

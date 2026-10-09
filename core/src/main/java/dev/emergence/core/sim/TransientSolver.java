@@ -25,6 +25,7 @@ public final class TransientSolver implements StateView {
     private static final boolean DEBUG = Boolean.getBoolean("emergence.debugSolver");
     private final Network net;
     private final List<Element> elements;
+    private final List<EventSource> eventSources = new java.util.ArrayList<>();
     private final List<java.util.function.Consumer<TransientSolver>> stepListeners = new java.util.ArrayList<>();
     private final int n, ns;
     private final LinearSystem jac;
@@ -71,6 +72,7 @@ public final class TransientSolver implements StateView {
         this.net = network;
         net.compile();
         this.elements = net.elements();
+        for (Element e : elements) if (e instanceof EventSource es) eventSources.add(es);
         this.n = net.size();
         this.ns = net.slotCount();
         this.jac = LinearSystem.create(Math.max(n, 1));
@@ -211,12 +213,17 @@ public final class TransientSolver implements StateView {
         int steps = 0;
         while (t < tEnd - 1e-12 * Math.max(1.0, Math.abs(tEnd))) {
             if (steps++ >= maxSteps) break;
+            fireEvents();
             double h = Math.min(hNext, hMax);
             double remaining = tEnd - t;
             if (h >= remaining * 0.99) h = remaining;
             else if (remaining - h < 0.25 * h) h = 0.5 * remaining;
+            // land exactly on the next event
+            double te = nextEventTime();
+            if (te > t && te - t < h) h = Math.max(te - t, hMin * 2);
             stepAdaptive(h);
         }
+        fireEvents();
         return t - tStart;
     }
 
@@ -227,6 +234,23 @@ public final class TransientSolver implements StateView {
 
     public void removeStepListener(java.util.function.Consumer<TransientSolver> l) {
         stepListeners.remove(l);
+    }
+
+    private double nextEventTime() {
+        double te = Double.POSITIVE_INFINITY;
+        for (EventSource e : eventSources) te = Math.min(te, e.nextEvent(t));
+        return te;
+    }
+
+    /** Fires every event due by now; a change restarts the integration (the history is not smooth across it). */
+    private void fireEvents() {
+        if (eventSources.isEmpty()) return;
+        boolean changed = false;
+        double eps = 1e-12 * Math.max(1, Math.abs(t)) + hMin;
+        for (EventSource e : eventSources) {
+            if (e.nextEvent(t - eps) <= t + eps) changed |= e.fireEvent(this, t);
+        }
+        if (changed) markDiscontinuity();
     }
 
     public double advance(double duration) {

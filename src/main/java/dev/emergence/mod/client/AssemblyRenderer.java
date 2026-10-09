@@ -218,6 +218,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case BRAKE -> drawBrake(c, p);
             case PHOTODIODE -> drawPhotodiode(c, p, f);
             case POTENTIOMETER -> drawPotentiometer(c, p, f);
+            case SOURCE -> drawSource(c);
+            case GM_TUBE -> drawGmTube(c);
             case OPAMP -> drawModel(c, "logic", p, 1, 1, 1, false);
             case CHIP -> drawChipSegment(c, p);
         }
@@ -273,6 +275,24 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         lo[rem] = r0;
         hi[rem] = r1;
         box(c, s, rgb, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
+    }
+
+    /** A sealed check source: a small steel capsule in a yellow holder disc with a dark trefoil mark. */
+    private void drawSource(Ctx c) {
+        box(c, PartModels.sprite("plastic"), tintOf(c, 0xE8C21E), -0.3f, -0.5f, -0.3f, 0.3f, -0.42f, 0.3f);
+        box(c, PartModels.sprite("metal_smooth"), tintOf(c, 0xB0B4B8), -0.08f, -0.42f, -0.08f, 0.08f, -0.3f, 0.08f);
+        for (int k = 0; k < 3; k++) {
+            float a = (float) (k * 2 * Math.PI / 3), ca = (float) Math.cos(a) * 0.17f, sa = (float) Math.sin(a) * 0.17f;
+            box(c, PartModels.sprite("plastic"), tintOf(c, 0x1A1A1A), ca - 0.06f, -0.42f, sa - 0.06f, ca + 0.06f, -0.415f, sa + 0.06f);
+        }
+    }
+
+    /** Geiger–Müller tube: a steel cylinder along its axis with a mica end window and two terminals. */
+    private void drawGmTube(Ctx c) {
+        cylinder(c, PartModels.sprite("metal_smooth"), tintOf(c, 0xA8ACB0), 0.16f, -0.42f, 0.42f, 12, true);
+        box(c, PartModels.sprite("plastic"), tintOf(c, 0x5A4A30), -0.12f, -0.12f, 0.42f, 0.12f, 0.12f, 0.45f);
+        box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), -0.02f, -0.02f, 0.45f, 0.02f, 0.02f, 0.5f);
+        box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), -0.02f, -0.02f, -0.5f, 0.02f, 0.02f, -0.42f);
     }
 
     /** A glass tank: drawn see-through in the translucent pass, with its gas in the colour chemistry gives it. */

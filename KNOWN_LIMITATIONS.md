@@ -129,3 +129,9 @@ multimeter, oscilloscope/data logging.
 ## Simulation pace
 * Machines advance only within the simulation distance of a player (like Minecraft's block ticking); all islands
   together are held to ~35 ms per tick by slowing every island in proportion when the world holds too many.
+
+## Radiation
+* Gamma rays only (betas and alphas deposit locally in the source); straight-line attenuation without scattered
+  build-up; static geometry (coupling computed when the island compiles — a moving source or shield needs a
+  rebuild, which happens whenever parts are placed or removed). Energy deposited by gammas in absorbers is not
+  added as heat (microwatts for these sources). The counter chip may miss the very first pulse while it powers up.

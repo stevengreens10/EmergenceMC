@@ -110,7 +110,19 @@ public enum PartKind {
      * the +axis face, V− and V+ supplies on the −/+ lead-axis sides, inverting input on the −side of the remaining
      * axis. "gbw" gain–bandwidth [Hz] (default 3 MHz), "slew" [V/s] (default 13 V/µs).
      */
-    OPAMP(false, true);
+    OPAMP(false, true),
+    /**
+     * Sealed radioactive check source (manufactured): "nuclide" code (0 Cs-137, 1 Ba-137m, 2 Co-60, 3 Am-241,
+     * 4 K-40), "activity" [Bq]; short-lived daughters start in equilibrium unless "fresh" is 1. Emits gamma rays
+     * in all directions.
+     */
+    SOURCE(false, false),
+    /**
+     * Geiger–Müller tube (manufactured): anode on the +axis lead, cathode on the −axis lead; "area" sensitive
+     * area facing the source [m²] (default 3 cm²), starting and extinction voltages "start" (350 V) and "stop"
+     * (300 V). Needs a few hundred volts through a megohm anode resistor.
+     */
+    GM_TUBE(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

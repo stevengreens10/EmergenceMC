@@ -130,6 +130,13 @@ public final class PartPresets {
         l.add(stack(PartKind.OPAMP, PartSpec.of("silicon", 1, 1)));
         l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 0, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
         l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 1, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
+        // radioactivity: school check sources (sealed), a Ba-137m sample, a Geiger–Müller tube, lead shielding
+        l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5)));
+        l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 2, "activity", 3.7e4)));
+        l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 3, "activity", 3.7e4)));
+        l.add(stack(PartKind.SOURCE, PartSpec.of("glass", 1, 1, "nuclide", 1, "activity", 2e5)));
+        l.add(stack(PartKind.GM_TUBE, PartSpec.of("stainless_304", 1, 1)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("lead", 1, 1, "fill", 0.16)));
         // MSI chips (counter, register, adder, blank ROM) and a ROM holding the EM-4 stepper program
         for (int fn = 0; fn <= 3; fn++) l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, "function", fn)));
         Object[] prog = new Object[2 + 32];

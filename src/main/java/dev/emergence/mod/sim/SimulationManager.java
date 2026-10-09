@@ -154,7 +154,8 @@ public final class SimulationManager {
             } catch (RuntimeException e) {
                 // restart from the last good state at rest (charges, heat, positions kept); if even that will not
                 // run, from nothing
-                EmergenceMod.LOG.error("Simulation of island at {} failed; restarting it at rest", isl.blocks.iterator().next(), e);
+                EmergenceMod.LOG.error("Simulation of island at {} ({} parts) failed; restarting it at rest{}", isl.blocks.iterator().next(),
+                        isl.compiled.assembly().parts().size(), partHint(isl, e.getMessage()), e);
                 AssemblyState keep = isl.compiled.exportState().recovery();
                 isl.compiled = compile(isl, keep);
                 try {
@@ -267,6 +268,22 @@ public final class SimulationManager {
             PacketDistributor.sendToPlayer(player, new dev.emergence.mod.net.LoggerSyncPayload(title, ch.name(), ch.unit(),
                     (float) LOGGER_SPANS[s.span], (float) (1 / s.log.interval()), latest, env[0], env[1]));
         }
+    }
+
+    /** For a solver message naming a part's node ("…T123…", "…p123…"), the part's kind and block, for diagnosis. */
+    private static String partHint(Island isl, String msg) {
+        if (msg == null) return "";
+        var m = java.util.regex.Pattern.compile("[A-Za-z]+(-?[0-9]{3,})").matcher(msg);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            try {
+                long id = Long.parseLong(m.group(1));
+                var part = isl.compiled.assembly().get(id);
+                if (part != null) sb.append("; ").append(m.group()).append(" is ").append(part.kind()).append(" at ").append(isl.partPos.get(id));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return sb.toString();
     }
 
     /**

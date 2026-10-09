@@ -267,7 +267,7 @@ public final class EmergenceGameTests {
     }
 
     /** Feedback control in the world: turning the servo's knob raises its arm against gravity. */
-    @GameTest(template = "arena", timeoutTicks = 300, batch = "servo")
+    @GameTest(template = "arena", timeoutTicks = 640, batch = "servo")
     public static void servoArmFollowsKnobInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ControlExhibits.servo();
@@ -280,9 +280,16 @@ public final class EmergenceGameTests {
             var c = sim.compiledAt(crankAt);
             if (c != null) c.setCrankEffort(crank.id, -1, false);
         });
-        h.runAtTickTime(260, () -> {
+        BlockPos knobAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "knob");
+        PlacedPart knob = only(h, knobAt, PartKind.SHAFT);
+        // however fast the world lets it run, the knob turns and the arm follows it: check the relation, not the pace
+        h.runAtTickTime(600, () -> {
             var p = sim.probe(armAt, arm.id);
-            h.assertTrue(p != null && p.angle() < 1.3, "the arm rose from hanging (1.57 rad): " + (p == null ? "?" : p.angle()));
+            var k = sim.probe(knobAt, knob.id);
+            h.assertTrue(p != null && k != null && k.angle() < 1.885 - 0.3, "the knob was turned: " + (k == null ? "?" : k.angle()));
+            double demand = 0.785 + 0.417 * k.angle();
+            h.assertTrue(p.angle() < 1.5 && Math.abs(p.angle() - demand) < 0.3,
+                    String.format("the arm rose with it: arm %.3f rad, asked %.3f rad", p.angle(), demand));
             h.succeed();
         });
     }
@@ -330,6 +337,26 @@ public final class EmergenceGameTests {
             if (peak[0] > 1500) h.succeed();
         });
         h.runAtTickTime(2900, () -> h.fail("the can did not ignite: peak " + peak[0] + " K"));
+    }
+
+    /** Radiation in the world: the Geiger–Müller tube counts the check source's gammas, at random but at the expected rate. */
+    @GameTest(template = "arena", timeoutTicks = 700, batch = "geiger")
+    public static void geigerCounterCountsInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.RadiationExhibits.geigerCounter();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos tubeAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "tube");
+        PlacedPart tube = only(h, tubeAt, PartKind.GM_TUBE);
+        h.runAtTickTime(640, () -> {
+            var c = sim.compiledAt(tubeAt);
+            var t = c == null ? null : c.tube(tube.id);
+            h.assertTrue(t != null, "the tube is simulated");
+            double simTime = c.solverView().time(), expected = t.hitRate(c.solverView()) * simTime;
+            h.assertTrue(simTime > 5 && Math.abs(t.discharges() - expected) < 4 * Math.sqrt(expected) + 2,
+                    String.format("%d counts in %.1f s (expected %.1f)", t.discharges(), simTime, expected));
+            h.succeed();
+        });
     }
 
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {

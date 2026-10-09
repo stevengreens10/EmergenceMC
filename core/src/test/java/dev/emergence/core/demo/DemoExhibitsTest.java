@@ -770,7 +770,13 @@ class DemoExhibitsTest {
         CompiledAssembly running = compile(e, full);
         run(running, 1.0);
         var rest = running.exportState();
+        for (int i = 0; i < 160; i++) {
+            running.setCrankEffort(full.id(e, "crank"), -1, false);
+            running.step(0.05);
+        }
+        var hot = running.exportState();
         java.util.List<String> bad = new java.util.ArrayList<>();
+        for (var state : java.util.List.of(rest, hot))
         for (int cx = 0; cx <= 32; cx++)
             for (int cz = 0; cz <= 16; cz += (cx == 0 || cx == 32 ? 1 : 16)) {
                 for (int quad = 0; quad < 4; quad++) {
@@ -783,10 +789,10 @@ class DemoExhibitsTest {
                     if (a.parts().isEmpty()) continue;
                     a.anchoredWhen(q -> q.minY() == 0 && q.kind().structural && q.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
                     try {
-                        CompiledAssembly c = AssemblyCompiler.compile(a, rest);
+                        CompiledAssembly c = AssemblyCompiler.compile(a, state);
                         for (int k = 0; k < 4; k++) c.step(0.05);
                     } catch (RuntimeException ex) {
-                        bad.add("x" + cx + " z" + cz + " q" + quad + " (" + a.parts().size() + " parts): " + ex.getMessage());
+                        bad.add((state == hot ? "hot " : "rest ") + "x" + cx + " z" + cz + " q" + quad + " (" + a.parts().size() + " parts): " + ex.getMessage());
                     }
                 }
             }
@@ -846,5 +852,44 @@ class DemoExhibitsTest {
             System.out.printf("thermocouple: hot %.1f K, cold %.2f K → amplifier %.4f V (expected %.4f V)%n", hot, cold, out, expected);
             assertEquals(expected, out, 0.03 * expected + 1e-3, "type-T EMF ×201, positive when the junction is hot");
         }
+    }
+
+    /** The Geiger counter counts at the expected rate, the chip's count matches the tube's, and lead shields it. */
+    @Test
+    void geigerCounterCountsAndLeadShields() {
+        Exhibit e = RadiationExhibits.geigerCounter();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var tube = c.tube(b.id(e, "tube"));
+        double rate = tube.hitRate(c.solverView());
+        // the counter chip settles at power-up; from then on it must count every pulse the tube makes
+        java.util.Set<Long> offsets = new java.util.HashSet<>();
+        for (int i = 0; i < 600; i++) {
+            c.step(0.1);
+            if (i < 20 || tube.conducting()) continue;
+            double[] ch = c.chipState(b.id(e, "counter"));
+            int v = 0;
+            for (int k = 0; k < 4; k++) if (ch[k] > 0.5) v |= 1 << k;
+            offsets.add(Math.floorMod(tube.discharges() - v, 16L));
+        }
+        assertEquals(1, offsets.size(), "the chip and the tube stay in step: offsets " + offsets);
+        long n = tube.discharges();
+        double[] chip = c.chipState(b.id(e, "counter"));
+        int count = 0;
+        for (int k = 0; k < 4; k++) if (chip[k] > 0.5) count |= 1 << k;
+        System.out.printf("Geiger: %d counts in 60 s (expected %.1f ± %.1f), chip shows %d, %d lost%n",
+                n, rate * 60, Math.sqrt(rate * 60), count, tube.lost());
+        assertEquals(rate * 60, n, 4 * Math.sqrt(rate * 60), "Poisson counting at the expected rate");
+
+        // a 1 cm lead plate between source and tube transmits e^(−μx) of the 662 keV gammas
+        Exhibit shielded = RadiationExhibits.geigerCounter();
+        shielded.add(dev.emergence.core.assembly.PartKind.BLOCK, "lead", 5, 1, 7, dev.emergence.core.assembly.Dir.EAST, "fill", 0.16);
+        Exhibits.Built bs = Exhibits.build(shielded, AMBIENT);
+        CompiledAssembly cs = AssemblyCompiler.compile(bs.assembly(), bs.state());
+        double bg = dev.emergence.core.nuclear.NuclearData.standard().gmBackground();
+        double t = (cs.tube(bs.id(shielded, "tube")).hitRate(cs.solverView()) - bg) / (rate - bg);
+        double expected = Math.exp(-0.1101 * 11.34 * 0.0625 * 0.16 * 100);
+        System.out.printf("Geiger: lead plate %.1f mm transmits %.3f (e^-μx = %.3f)%n", 0.0625 * 0.16 * 1000, t, expected);
+        assertEquals(expected, t, 0.03, "Beer–Lambert attenuation in lead");
     }
 }

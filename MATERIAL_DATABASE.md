@@ -48,3 +48,9 @@ Reactions (`chemistry/reactions.json`): N₂O₄ ⇌ 2NO₂ (Borrell et al. 1988
 Absolute values near 300 K for the metals (Cusack & Kendall 1958; Roberts 1977 for lead; CRC), with the thermocouple
 alloys set so pairs match the NIST ITS-90 sensitivities (type T Cu−constantan 40.7, type J Fe−constantan 51.7 µV/K).
 New: p-type Bi₀.₅Sb₁.₅Te₃ (+210 µV/K) and n-type Bi₂Te₂.₇Se₀.₃ (−200 µV/K), ρ = 10 µΩ·m, k ≈ 1.4 W/m·K (Rowe 1995).
+
+## Nuclear data (`nuclear/nuclear.json`)
+Cs-137 (→ Ba-137m 94.4 %), Ba-137m (153.1 s, 661.7 keV 89.99 %), Co-60, Am-241, K-40: half-lives, branchings, gamma
+lines and locally deposited energy from NNDC/ENSDF. Gamma mass attenuation coefficients at 60/662/1250 keV for air,
+water, silica, aluminium, iron, copper, tungsten, lead (NIST XCOM); every material maps to one of these classes.
+GM tube gamma efficiency 0.5/1.0/1.2 % at those energies; background 0.3 counts/s.

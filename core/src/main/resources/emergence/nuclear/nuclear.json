@@ -1,0 +1,49 @@
+{
+  // Radioactive nuclides of laboratory check sources and natural potassium (educational, sealed-source quantities).
+  //  half_life [s]; decays: daughter, branching fraction, and the energy deposited locally per decay [keV]
+  //  (alpha and mean beta energy, absorbed in the source itself); gammas: energy [keV] and yield per decay.
+  // Sources:
+  //  [NNDC] National Nuclear Data Center, NuDat 3 / ENSDF evaluated decay data (half-lives, branchings, gamma yields)
+  //  [XCOM] NIST XCOM photon cross sections: total mass attenuation coefficients μ/ρ with coherent scattering [cm²/g]
+  "nuclides": [
+    {"id": "Cs137", "code": 0, "name": "Caesium-137", "half_life": 9.49e8,
+     "decays": [{"to": "Ba137m", "branch": 0.944, "local_keV": 174}, {"to": null, "branch": 0.056, "local_keV": 416}],
+     "gammas": [], "source": "NNDC"},
+    {"id": "Ba137m", "code": 1, "name": "Barium-137m", "half_life": 153.12,
+     "decays": [{"to": null, "branch": 1.0, "local_keV": 65}],
+     "gammas": [{"keV": 661.66, "yield": 0.8999}], "source": "NNDC"},
+    {"id": "Co60", "code": 2, "name": "Cobalt-60", "half_life": 1.6635e8,
+     "decays": [{"to": null, "branch": 1.0, "local_keV": 96}],
+     "gammas": [{"keV": 1173.23, "yield": 0.9985}, {"keV": 1332.49, "yield": 0.9998}], "source": "NNDC"},
+    {"id": "Am241", "code": 3, "name": "Americium-241", "half_life": 1.3652e10,
+     "decays": [{"to": null, "branch": 1.0, "local_keV": 5486}],
+     "gammas": [{"keV": 59.54, "yield": 0.359}], "source": "NNDC"},
+    {"id": "K40", "code": 4, "name": "Potassium-40 (in natural potassium)", "half_life": 3.938e16,
+     "decays": [{"to": null, "branch": 0.8928, "local_keV": 560}, {"to": null, "branch": 0.1072, "local_keV": 5}],
+     "gammas": [{"keV": 1460.82, "yield": 0.1066}], "source": "NNDC"}
+  ],
+  // Gamma attenuation μ/ρ [cm²/g] at 60, 662 and 1250 keV (XCOM), interpolated log–log in energy.
+  "attenuation_keV": [60, 662, 1250],
+  "attenuation": {
+    "air":       [0.1875, 0.0775, 0.0567],
+    "water":     [0.2059, 0.0857, 0.0632],
+    "silica":    [0.3150, 0.0776, 0.0566],
+    "aluminium": [0.2778, 0.0747, 0.0550],
+    "iron":      [1.2050, 0.0738, 0.0533],
+    "copper":    [1.5930, 0.0731, 0.0526],
+    "tungsten":  [3.7140, 0.1040, 0.0560],
+    "lead":      [5.0210, 0.1101, 0.0588]
+  },
+  // Which attenuation class each material belongs to (anything else: by category — polymers and wood as water,
+  // ceramics and glasses as silica, other metals as iron).
+  "material_class": {
+    "lead": "lead", "tungsten": "tungsten", "copper": "copper", "brass": "copper", "bronze": "copper",
+    "constantan": "copper", "nickel": "copper", "aluminium": "aluminium", "aluminium_6061": "aluminium",
+    "steel_1045": "iron", "iron": "iron", "stainless_304": "iron", "nichrome": "iron",
+    "glass": "silica", "granite": "silica", "alumina": "silica", "silicon": "silica", "mica": "silica"
+  },
+  // Geiger–Müller tube intrinsic efficiency for gamma rays (wall interactions; steel-walled tube) at the same
+  // energies, and the background count rate from cosmic rays and terrestrial radioactivity [counts/s].
+  "gm_efficiency": [0.005, 0.010, 0.012],
+  "gm_background": 0.3
+}

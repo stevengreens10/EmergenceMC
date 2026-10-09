@@ -371,3 +371,19 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   conductors at different temperatures form a thermocouple, and a current pumps heat across a junction; the EMF's
   work equals the heat moved, so energy is conserved. S is the absolute Seebeck coefficient, constant (no Thomson
   heat). Applied wherever two bulk or wire conductors touch (component leads, all copper, are not split).
+
+## Radioactivity and detection (`RadioactiveSource`, `GeigerTube`, `NuclearData`, `EventSource`)
+* **Decay**: atoms of a nuclide and its descendants obey the Bateman equations (ENSDF half-lives and branchings);
+  short-lived daughters start in secular equilibrium. Alpha and mean beta energy stays in the source as heat
+  (nuclear energy entering the system, counted as external power); gamma rays leave.
+* **Gamma transport**: straight rays from the source's centre to each detector; per photon, the probability of
+  reaching and interacting is A·ε(E)·e^{−Σμℓ}/(4πd²) with NIST XCOM mass attenuation coefficients (log–log in energy)
+  for the parts the ray crosses (sampled every 0.01 cell: plates only within their thickness, other parts with their
+  mass spread over their cells) and the tube's intrinsic efficiency ε(E). Only gammas (no betas, no scatter build-up).
+* **Geiger–Müller tube**: interactions are a Poisson process (seeded random stream) of rate background (0.3 /s) +
+  Σ activity × coupling. A hit starts a discharge only if the anode is above the starting voltage (350 V); the
+  discharge holds the tube near its sustaining voltage (300 V) passing I = (V − V_ext)/100 kΩ and dies when its
+  current falls below the holding current (100 µA) — so the anode resistor quenches it, and too small a resistor
+  lets it run on. Hits during recovery are lost: dead time follows from the circuit.
+* **Events in the solver**: elements implementing `EventSource` declare their next discontinuity; the solver lands a
+  step exactly on it, lets the element switch, and restarts the integration there.

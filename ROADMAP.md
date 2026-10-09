@@ -77,7 +77,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 
 ## Phase 7–8 — Broad scientific expansion, continuous expansion
 ✅ Data logger / oscilloscope: 1 kHz sampling of any part, on-screen trace, CSV export
-⬜ Optics (ray), acoustics, geology, environmental, nuclear (non-actionable), biology; spectrum analyser,
+✅ Radioactivity (non-actionable, sealed check sources): decay chains, gamma attenuation, Geiger–Müller counter
+⬜ Optics (ray), acoustics, geology, environmental, biology; spectrum analyser,
    logic analyser, multi-channel loggers
 
 ## Demo world

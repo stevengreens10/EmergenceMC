@@ -165,6 +165,12 @@ Copper–constantan junction 100 K above the open ends: 4.073 mV = 40.73 µV/K �
 isothermal junction warms it at exactly (S_Cu − S_con)·T·I and the reversed current cools it equally, with the
 energy ledger closed; the thermocouple exhibit's amplified output equals 201·(S_Cu − S_con)·(T_hot − T_cold) to 0.3 %.
 
+## Radiation (`RadiationTest`, `DemoExhibitsTest`, GameTest)
+Counts in 60 s within 4σ of the expected Poisson rate; logic-level pulses on the cathode resistor; dead-time
+losses at 20 000 interactions/s; Ba-137m half-life measured from counts per minute (158 s vs 153 s); Cs-137/Ba-137m
+secular equilibrium; 1 cm of lead transmits e^{−μx} = 0.287 (exact); the counter chip stays in step with the
+tube; in-world counting at the expected rate.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

@@ -702,7 +702,10 @@ public final class AssemblyCompiler {
                     if (d.axis() == PartGeometry.leadAxis(p)) return "p" + p.id() + "g";
                     return null;
                 }
-                case RESISTOR, CAPACITOR, DIODE, LED, PHOTODIODE, SWITCH, COIL, BRUSH -> {
+                case SOURCE -> {
+                    return null; // a sealed capsule: no electrical contact
+                }
+                case RESISTOR, CAPACITOR, DIODE, LED, PHOTODIODE, GM_TUBE, SWITCH, COIL, BRUSH -> {
                     Dir ax = p.axis();
                     int a0 = ax.axis();
                     int[] cell = {x, y, z};
@@ -1008,6 +1011,7 @@ public final class AssemblyCompiler {
             }
             buildBrushContacts();
             buildOptics();
+            buildRadiation();
             buildElectrochemistry();
             buildMagnetics();
         }
@@ -1187,7 +1191,7 @@ public final class AssemblyCompiler {
         Material conductorMaterial(Part p) {
             return switch (p.kind()) {
                 // manufactured components carry (tinned) copper leads, whatever their body is made of
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, POTENTIOMETER, OPAMP -> MaterialDatabase.standard().get("copper");
+                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, POTENTIOMETER, OPAMP, GM_TUBE -> MaterialDatabase.standard().get("copper");
                 default -> p.material();
             };
         }
@@ -1282,6 +1286,88 @@ public final class AssemblyCompiler {
                 }
             }
             return !o.material().id().contains("glass");
+        }
+
+        /**
+         * Radioactive sources and Geiger–Müller tubes. Each source's gamma lines reach each tube with the probability
+         * A·ε(E)·e^{−Σμℓ}/(4πd²) per photon: the tube's sensitive area over the sphere at its distance, its intrinsic
+         * efficiency, and the attenuation along the straight ray through every part in between (sampled every 0.01
+         * cell; a plate absorbs only within its thickness, other parts with their mass spread over their cells).
+         */
+        void buildRadiation() {
+            var nd = dev.emergence.core.nuclear.NuclearData.standard();
+            List<Part> tubes = new ArrayList<>();
+            for (Part p : parts) {
+                if (p.kind() == PartKind.SOURCE) {
+                    var parent = nd.byCode((int) Math.round(p.param("nuclide", 0)));
+                    var chain = nd.chain(parent.id());
+                    double[] atoms = new double[chain.size()];
+                    double a0 = p.param("activity", 3.7e5);
+                    boolean fresh = p.param("fresh", 0) > 0.5;
+                    for (int i = 0; i < chain.size(); i++) {
+                        Double saved = prev.chemistry().get("N" + p.id() + ":" + chain.get(i).id());
+                        if (saved != null) atoms[i] = saved;
+                        else if (i == 0) atoms[i] = a0 / chain.get(0).lambda();
+                        else if (!fresh) {
+                            // secular equilibrium with the parent: the daughter's activity is the parent's × branching
+                            double b = 0;
+                            for (var br : chain.get(0).decays()) if (chain.get(i).id().equals(br.daughter())) b += br.fraction();
+                            atoms[i] = b * a0 / chain.get(i).lambda();
+                        }
+                    }
+                    c.sourceOfPart.put(p.id(), c.network.add(new RadioactiveSource(chain, atoms, c.thermalOfPart.get(p.id()))));
+                }
+                if (p.kind() == PartKind.GM_TUBE) tubes.add(p);
+            }
+            for (Part t : tubes) {
+                Node[] l = leads(t);
+                var tube = new GeigerTube(l[1], l[0], t.param("start", 350), t.param("stop", 300), 1e5, nd.gmBackground(),
+                        t.id() * 0x9E3779B97F4A7C15L, c.thermalOfPart.get(t.id()));
+                c.network.add(new Capacitor(l[1], l[0], 2e-12)); // the tube's own anode–cathode capacitance
+                double area = t.param("area", 3e-4);
+                for (Part sp : parts) {
+                    if (sp.kind() != PartKind.SOURCE) continue;
+                    var src = c.sourceOfPart.get(sp.id());
+                    Vec3 from = sp.center(), to = t.center();
+                    double d = to.sub(from).length();
+                    if (d < 1e-6) continue;
+                    for (int i = 0; i < src.chain().size(); i++) {
+                        double w = 0;
+                        for (var g : src.chain().get(i).gammas()) {
+                            double path = attenuation(from, to, g.keV(), sp, t);
+                            w += g.yield() * area * nd.gmEfficiency(g.keV()) * Math.exp(-path) / (4 * Math.PI * d * d);
+                        }
+                        tube.couple(src, i, w);
+                    }
+                }
+                c.tubeOfPart.put(t.id(), c.network.add(tube));
+                c.deviceOfPart.put(t.id(), tube);
+            }
+        }
+
+        /** Σμℓ (optical depth) for photons of energy keV along the segment, skipping the two end parts. */
+        double attenuation(Vec3 from, Vec3 to, double keV, Part skipA, Part skipB) {
+            var nd = dev.emergence.core.nuclear.NuclearData.standard();
+            Vec3 d = to.sub(from);
+            double len = d.length(), step = 0.01 * CELL, tau = 0;
+            int n = (int) Math.ceil(len / step);
+            for (int k = 0; k < n; k++) {
+                Vec3 q = from.add(d.mul((k + 0.5) / n));
+                for (Part o : a.at(cellOf(q.x()), cellOf(q.y()), cellOf(q.z()))) {
+                    if (o == skipA || o == skipB) continue;
+                    double rho;
+                    if (o.kind() == PartKind.BLOCK) {
+                        int ax = o.axis().axis();
+                        double half = 0.5 * o.boxSize(ax) * Math.max(0.01, Math.min(1, o.param("fill", 1.0)));
+                        if (Math.abs(StructuralAnalysis.component(q.sub(o.center()), ax)) > half) continue;
+                        rho = o.material().density();
+                    } else {
+                        rho = PartGeometry.mass(o) / (o.boxSize(0) * o.boxSize(1) * o.boxSize(2));
+                    }
+                    tau += nd.massAttenuation(o.material(), keV) * rho * (len / n);
+                }
+            }
+            return tau;
         }
 
         int cellOf(double v) {

@@ -50,10 +50,14 @@ public final class AutoShowcase {
         int n = ex.size();
         BlockPos origin = spawn.offset(-8, 0, -(DemoBuilder.SIGN_Z + 3));
         STEPS.add(new Step(80, () -> look(server, origin.getX() + 26, origin.getY() + 16, origin.getZ() + 38, 160, 28), "showcase-0-overview"));
+        // emergence.showcaseOnly=a,b,...: visit only those exhibits, and dwell on each (motion diagnostics)
+        java.util.Set<String> only = new java.util.HashSet<>(java.util.Arrays.asList(System.getProperty("emergence.showcaseOnly", "").split(",")));
+        only.remove("");
         for (int i = 0; i < n; i++) {
             BlockPos plot = origin.offset(DemoBuilder.plotOffset(ex, i), 0, 0);
             var e = ex.get(i);
             String id = e.id;
+            if (!only.isEmpty() && !only.contains(id)) continue;
             Runnable view = () -> look(server, plot.getX() + e.viewX, plot.getY() + e.viewHeight, plot.getZ() + e.viewZ,
                     (float) e.viewYaw, (float) e.viewPitch);
             STEPS.add(new Step(50, () -> {
@@ -197,6 +201,7 @@ public final class AutoShowcase {
                 STEPS.add(new Step(40, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank")),
                         "showcase-" + (i + 1) + "-" + id + "-cranked"));
             }
+            if (!only.isEmpty()) STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-dwell"));
         }
     }
 

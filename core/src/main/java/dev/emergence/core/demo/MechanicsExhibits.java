@@ -80,7 +80,7 @@ public final class MechanicsExhibits {
         r.pin("c", 13, 1, 12).pin("c", 9, 4, 7);
         r.pin("d", 9, 4, 9).pin("d", 7, 4, 7);  // the coils in series, aiding
         r.route();
-        return e.view(8.5, 4.5, 15, 10);
+        return e.view(14.5, 6, 14.5, 18, 135); // from the south-east: past the coil holders
     }
 
     /**

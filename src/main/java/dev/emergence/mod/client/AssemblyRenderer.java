@@ -1,5 +1,7 @@
 package dev.emergence.mod.client;
 
+import static dev.emergence.mod.part.PartLinks.*;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.emergence.core.assembly.Dir;
@@ -85,6 +87,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         c.solid = buffers.getBuffer(Sheets.solidBlockSheet());
         BlockPos pos = be.getBlockPos();
         double now = level.getGameTime() + partialTick;
+        ClientSimState.frameTime();
         int res = be.resolution();
         float C = 1f / res; // one grid cell in blocks
         boolean glassPending = false;
@@ -102,7 +105,11 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 ClientSimState.Pose pose = ClientSimState.pose(p.id);
                 double bodyAngle = 0;
                 if (pose != null) {
-                    bodyAngle = pose.angle() + pose.omega() * (now - pose.time()) / 20.0;
+                    bodyAngle = ClientSimState.bodyAngle(pose);
+                    if (dev.emergence.mod.debug.PoseLog.ENABLED && p.id == pose.key() && pass == 0) {
+                        dev.emergence.mod.debug.PoseLog.client(System.nanoTime() + "," + now + "," + pose.key() + "," + pose.time() + ","
+                                + pose.angle() + "," + pose.omega() + "," + bodyAngle);
+                    }
                     if (pose.slider()) {
                         ps.translate((float) (bodyAngle * pose.ax()), (float) (bodyAngle * pose.ay()), (float) (bodyAngle * pose.az()));
                         bodyAngle = 0;
@@ -134,7 +141,10 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
                 float ex = ext[f.xAxis], ey = ext[f.yAxis], ez = ext[f.zAxis]; // extents in model axes [cells]
                 if (p.kind == PartKind.LED) ledState(c, p);
-                if (pass == 0) drawPart(c, be, p, f, ex, ey, ez, bodyAngle, pose);
+                if (pass == 0) {
+                    drawPart(c, be, p, f, ex, ey, ez, bodyAngle, pose);
+                    if (p.kind.leaded && !isWire(p)) drawLeads(c, be, p, f);
+                }
                 else if (isFlask(p)) drawFlask(c, p);
                 else drawModel(c, p.kind == PartKind.LED ? "led" : "electrolyte", p, ex, ey, ez, true);
                 ps.popPose();
@@ -172,7 +182,17 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         switch (p.kind) {
             case BLOCK -> {
                 float fill = (float) (double) prm.getOrDefault("fill", 1.0);
+                // a plate thinner than its cells lies against the side it is fixed to (the side more of its face
+                // touches: a handle on its rod, a disc on its magnets), not floating in the middle
+                float shift = 0;
+                if (fill < 0.999f) {
+                    int below = faceCover(be, p, p.axis.opposite()), above = faceCover(be, p, p.axis);
+                    if (below != above) shift = (below > above ? -1 : 1) * ez * (1 - fill) / 2;
+                }
+                c.ps.pushPose();
+                c.ps.translate(0, 0, shift);
                 drawModel(c, "plate", p, ex, ey, ez * fill, false);
+                c.ps.popPose();
             }
             case MAGNET -> {
                 // magnet body at its physical size (default 80 % of its cells); the model is 0.8 cells
@@ -188,7 +208,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case BEARING, BRUSH, RESISTOR, CAPACITOR, DIODE -> drawModel(c, p.kind.name().toLowerCase(), p,
                     Math.min(ex, ey), Math.min(ex, ey), ez, false);
             case LINEAR_BEARING -> drawModel(c, "bearing", p, Math.min(ex, ey), Math.min(ex, ey), ez * 1.2f, false);
-            case SPRING -> drawSpring(c, p, ez);
+            case SPRING -> drawSpring(c, be, p, ez);
             case COIL -> drawModel(c, "coil", p, ex, ey, ez, false);
             case SWITCH -> drawModel(c, "switch", p, 1, 1, ez, false);
             case CRANK -> drawModel(c, "crank", p, 1, 1, 1, false);
@@ -284,23 +304,51 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         box(c, s, rgb, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
     }
 
-    /** Helical spring along its axis: stacked rings of wire (drawn at its placed length). */
-    private void drawSpring(Ctx c, PlacedPart p, float len) {
+    /**
+     * Helical spring along its axis: stacked rings of wire between its two end faces, which follow what they are
+     * fixed to (a slide moving along the spring stretches or squeezes it).
+     */
+    private void drawSpring(Ctx c, AssemblyBlockEntity be, PlacedPart p, float len) {
         double coil = p.spec.params().getOrDefault("coil", 0.6 / 16) * 16, wire = p.spec.params().getOrDefault("wire", 0.002) * 16;
         int turns = (int) Math.round(p.spec.params().getOrDefault("turns", 10.0));
-        float r = (float) Math.min(0.48, coil / 2), w = (float) Math.max(0.02, wire / 2);
-        TextureAtlasSprite s = PartModels.sprite("metal_smooth");
-        for (int k = 0; k < turns; k++) {
-            float z = -len / 2 + len * (k + 0.5f) / turns;
-            c.ps.pushPose();
-            c.ps.translate(0, 0, z);
-            for (int q = 0; q < 8; q++) {
-                double a = q * Math.PI / 4;
-                float x = (float) (r * Math.cos(a)), y = (float) (r * Math.sin(a));
-                box(c, s, tintOf(c, c.materialRgb), x - w, y - w, -w, x + w, y + w, w);
-            }
-            c.ps.popPose();
+        float r = (float) Math.min(0.48, coil / 2), w = (float) Math.max(0.035, wire / 2);
+        float[] ends = ClientSimState.spring(p.id);
+        float z0 = -len / 2, z1 = len / 2;
+        if (ends != null) {
+            // world blocks → cells
+            z0 += ends[0] * be.resolution();
+            z1 += ends[1] * be.resolution();
         }
+        float span = Math.max(z1 - z0, 2 * w * (turns + 1)); // solid length: the coils touching
+        TextureAtlasSprite s = PartModels.sprite("metal_smooth");
+        int rgb = tintOf(c, c.materialRgb);
+        // a helix of wire: half a closed (flat) turn at each end, sitting on what the spring joins, the active turns
+        // rising evenly between
+        int perTurn = 12, n = (turns + 1) * perTurn;
+        float zLo = z0 + w, zHi = z0 + span - w;
+        float px = r, py = 0, pz = zLo;
+        for (int i = 1; i <= n; i++) {
+            double ang = 2 * Math.PI * i / perTurn;
+            float u = (float) i / n, end = 0.5f / (turns + 1);
+            float frac = u < end ? 0 : u > 1 - end ? 1 : (u - end) / (1 - 2 * end);
+            float x = (float) (r * Math.cos(ang)), y = (float) (r * Math.sin(ang)), z = zLo + frac * (zHi - zLo);
+            segment(c, s, rgb, px, py, pz, x, y, z, w);
+            px = x;
+            py = y;
+            pz = z;
+        }
+    }
+
+    /** A round rod of radius w from point a to point b (model units), slightly overrunning to close the joints. */
+    private void segment(Ctx c, TextureAtlasSprite s, int rgb, float ax, float ay, float az, float bx, float by, float bz, float w) {
+        Vector3f d = new Vector3f(bx - ax, by - ay, bz - az);
+        float len = d.length();
+        if (len < 1e-5f) return;
+        c.ps.pushPose();
+        c.ps.translate(ax, ay, az);
+        c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), d.normalize()));
+        cylinder(c, s, rgb, w, -w * 0.5f, len + w * 0.5f, 6, false);
+        c.ps.popPose();
     }
 
     /** A sealed check source: a small steel capsule in a yellow holder disc with a dark trefoil mark. */
@@ -567,13 +615,16 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
         boolean any = false;
         for (Dir dir : Dir.values()) {
-            if (!connects(be, p, dir)) continue;
+            PlacedPart q = neighbour(be, p, dir);
+            if (q == null) continue;
             any = true;
-            arm(c, s, rgb, dir, r, ext[dir.axis()] / 2);
+            // wire into wire runs on through the face; a wire ending on a part stops at the face in a closed end,
+            // where the part's lead takes over (drawLeads)
+            arm(c, s, rgb, dir, r, ext[dir.axis()] / 2, !isWire(q));
         }
         if (!any) {
-            arm(c, s, rgb, p.axis, r, ext[p.axis.axis()] / 2);
-            arm(c, s, rgb, p.axis.opposite(), r, ext[p.axis.axis()] / 2);
+            arm(c, s, rgb, p.axis, r, ext[p.axis.axis()] / 2, true);
+            arm(c, s, rgb, p.axis.opposite(), r, ext[p.axis.axis()] / 2, true);
         }
         // joint
         box(c, s, rgb, -r * 1.05f, -r * 1.05f, -r * 1.05f, r * 1.05f, r * 1.05f, r * 1.05f);
@@ -590,11 +641,33 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     }
 
     private void arm(Ctx c, TextureAtlasSprite s, int rgb, Dir d, float r, float len) {
+        arm(c, s, rgb, d, r, len, false);
+    }
+
+    private void arm(Ctx c, TextureAtlasSprite s, int rgb, Dir d, float r, float len, boolean capped) {
         c.ps.pushPose();
         // rotate the +Z cylinder onto direction d
         Vector3f to = new Vector3f(d.dx, d.dy, d.dz);
         c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), to));
-        cylinder(c, s, rgb, r, 0, len, 8, false);
+        cylinder(c, s, rgb, r, 0, len, 8, capped);
+        c.ps.popPose();
+    }
+
+    /**
+     * A leaded part's leads to the wires that meet it: a tinned lead from the part out to each face where a wire
+     * ends on it, so every wire visibly reaches what it connects to (the models carry only their own two leads).
+     */
+    private void drawLeads(Ctx c, AssemblyBlockEntity be, PlacedPart p, Frame f) {
+        float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
+        TextureAtlasSprite s = PartModels.sprite("tinned");
+        int rgb = tintOf(c, 0xC8CCD0);
+        c.ps.pushPose();
+        c.ps.last().pose().mul(new Matrix4f(f.m4).transpose());
+        c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
+        for (Dir dir : Dir.values()) {
+            PlacedPart q = neighbour(be, p, dir);
+            if (q != null && isWire(q)) arm(c, s, rgb, dir, 0.035f, ext[dir.axis()] / 2, true);
+        }
         c.ps.popPose();
     }
 
@@ -796,56 +869,6 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         cylinder(c, PartModels.sprite("chrome"), tintOf(c, 0xE0E0E0), 0.07f, -0.35f, 0.35f, 14, true);
         c.ps.popPose();
         c.ps.popPose();
-    }
-
-    /** Parts occupying the cell just beyond face d of part p (possibly in the neighbouring block). */
-    private static List<PlacedPart> across(AssemblyBlockEntity be, PlacedPart p, Dir d) {
-        int res = be.resolution();
-        int a = d.axis();
-        int[] lo = {p.x0, p.y0, p.z0}, hi = {p.x1, p.y1, p.z1};
-        int[] cell = {(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2};
-        cell[a] = d.sign() > 0 ? hi[a] + 1 : lo[a] - 1;
-        AssemblyBlockEntity target = be;
-        if (cell[a] < 0 || cell[a] >= res) {
-            BlockPos np = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
-            if (!(be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity o) || o.resolution() != res) {
-                // a world block (or another assembly) beyond: report a non-fluid occupant if solid
-                BlockPos wp = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
-                return be.getLevel().getBlockState(wp).isAir() ? List.of() : List.of(SOLID);
-            }
-            target = o;
-            cell[a] = Math.floorMod(cell[a], res);
-        }
-        List<PlacedPart> out = new java.util.ArrayList<>(2);
-        for (PlacedPart q : target.parts()) if (q.contains(cell[0], cell[1], cell[2])) out.add(q);
-        return out;
-    }
-
-    /** Placeholder occupant for a world block beyond a face. */
-    private static final PlacedPart SOLID = new PlacedPart(0, PartKind.BLOCK, dev.emergence.mod.part.PartSpec.of("granite", 1, 1),
-            0, 0, 0, 0, 0, 0, Dir.UP, false);
-
-    private static boolean connects(AssemblyBlockEntity be, PlacedPart p, Dir d) {
-        int res = be.resolution();
-        int a = d.axis();
-        int[] lo = {p.x0, p.y0, p.z0}, hi = {p.x1, p.y1, p.z1};
-        int[] cell = {(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2};
-        cell[a] = d.sign() > 0 ? hi[a] + 1 : lo[a] - 1;
-        AssemblyBlockEntity target = be;
-        if (cell[a] < 0 || cell[a] >= res) {
-            BlockPos np = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
-            if (!(be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity o) || o.resolution() != res) return false;
-            target = o;
-            cell[a] = Math.floorMod(cell[a], res);
-        }
-        for (PlacedPart q : target.parts()) {
-            if (!q.contains(cell[0], cell[1], cell[2])) continue;
-            if (p.kind == PartKind.INSULATED_WIRE && q.kind == PartKind.INSULATED_WIRE
-                    && Math.round(p.spec.params().getOrDefault("color", 0.0)) != Math.round(q.spec.params().getOrDefault("color", 0.0))) continue;
-            if (q.kind == PartKind.WIRE || q.kind == PartKind.INSULATED_WIRE || q.kind.leaded || q.kind == PartKind.ELECTROLYTE) return true;
-            if (p.kind == PartKind.WIRE && q.spec.resolveMaterial().isConductor()) return true;
-        }
-        return false;
     }
 
     // ------------------------------------------------------------------ primitives (model units = cells)

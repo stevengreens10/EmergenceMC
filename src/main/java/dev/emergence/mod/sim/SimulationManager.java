@@ -86,6 +86,8 @@ public final class SimulationManager {
         double timeScale = 1;
         /** Smoothed wall-clock cost of this island's tick [ms]. */
         double costMs;
+        /** The state the island was last compiled from (for diagnosing a failure right after a restart). */
+        AssemblyState startState;
 
         public double timeScale() {
             return timeScale;
@@ -95,8 +97,10 @@ public final class SimulationManager {
     /**
      * Wall-clock budget per island per server tick [ms]. An island that needs more runs in slow motion (time
      * dilation) instead of stalling the server: physics stays exact, only its pace relative to the world slows.
+     * System property {@code emergence.islandBudgetMs} overrides it (the in-world tests lift it: they check what
+     * happens within a number of ticks, which slow motion would stretch).
      */
-    public static final double ISLAND_BUDGET_MS = 12;
+    public static final double ISLAND_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.islandBudgetMs", "12"));
 
     private SimulationManager(ServerLevel level) {
         this.level = level;
@@ -155,8 +159,9 @@ public final class SimulationManager {
             } catch (RuntimeException e) {
                 // restart from the last good state at rest (charges, heat, positions kept); if even that will not
                 // run, from nothing
-                EmergenceMod.LOG.error("Simulation of island at {} ({} parts) failed; restarting it at rest{}", isl.blocks.iterator().next(),
-                        isl.compiled.assembly().parts().size(), partHint(isl, e.getMessage()), e);
+                EmergenceMod.LOG.error("Simulation of island at {} ({} parts) failed; restarting it at rest{}; {}", isl.blocks.iterator().next(),
+                        isl.compiled.assembly().parts().size(), partHint(isl, e.getMessage()), stateSummary(isl), e);
+                if (Boolean.getBoolean("emergence.dumpFailures")) dumpFailure(isl);
                 AssemblyState keep = isl.compiled.exportState().recovery();
                 isl.compiled = compile(isl, keep);
                 try {
@@ -420,7 +425,65 @@ public final class SimulationManager {
         return st;
     }
 
+    /**
+     * Writes a failed island's parts, anchoring, ambient and start state to {@code island-failure-*.txt} in the game
+     * directory (system property {@code emergence.dumpFailures}), for replaying it in the core tests.
+     */
+    private void dumpFailure(Island isl) {
+        var asm = isl.compiled.assembly();
+        StringBuilder b = new StringBuilder();
+        b.append("ambient ").append(asm.ambientTemperature()).append(' ').append(asm.ambientPressure()).append('\n');
+        for (var p : asm.parts()) {
+            b.append("P ").append(p.id()).append(' ').append(p.kind()).append(' ').append(p.material().id()).append(' ')
+                    .append(p.minX()).append(' ').append(p.minY()).append(' ').append(p.minZ()).append(' ')
+                    .append(p.maxX()).append(' ').append(p.maxY()).append(' ').append(p.maxZ()).append(' ').append(p.axis())
+                    .append(' ').append(asm.isAnchored(p) ? 1 : 0);
+            p.params().forEach((k, v) -> b.append(' ').append(k).append('=').append(v));
+            b.append('\n');
+        }
+        AssemblyState st = isl.startState;
+        if (st != null) {
+            st.temperatures().forEach((k, v) -> b.append("T ").append(k).append(' ').append(v).append('\n'));
+            st.coilCurrents().forEach((k, v) -> b.append("I ").append(k).append(' ').append(v).append('\n'));
+            st.capacitorVoltages().forEach((k, v) -> b.append("V ").append(k).append(' ').append(v).append('\n'));
+            st.bodyMotion().forEach((k, v) -> b.append("M ").append(k).append(' ').append(v[0]).append(' ').append(v[1]).append('\n'));
+            st.fluids().forEach((k, v) -> b.append("F ").append(k).append(' ').append(v[0]).append(' ').append(v[1]).append('\n'));
+            st.chemistry().forEach((k, v) -> b.append("C ").append(k).append(' ').append(v).append('\n'));
+        }
+        try {
+            java.nio.file.Files.writeString(java.nio.file.Path.of("island-failure-" + System.currentTimeMillis() + ".txt"), b);
+        } catch (java.io.IOException e) {
+            EmergenceMod.LOG.warn("Could not write island dump", e);
+        }
+    }
+
+    /** What the island started from: the largest restored temperature, coil current and capacitor voltage. */
+    private static String stateSummary(Island isl) {
+        AssemblyState st = isl.startState;
+        if (st == null) return "no start state";
+        StringBuilder b = new StringBuilder("started from ");
+        summarise(b, "T", st.temperatures());
+        summarise(b, "coil I", st.coilCurrents());
+        summarise(b, "capacitor V", st.capacitorVoltages());
+        return b.append("solver time ").append(isl.compiled.solver().time()).append(" s").toString();
+    }
+
+    private static void summarise(StringBuilder b, String what, Map<Long, Double> m) {
+        long worst = -1, bad = 0;
+        double max = 0;
+        for (var e : m.entrySet()) {
+            double v = e.getValue();
+            if (!Double.isFinite(v)) bad++;
+            else if (Math.abs(v) > max) {
+                max = Math.abs(v);
+                worst = e.getKey();
+            }
+        }
+        b.append(String.format("%s: %d values, max |%.4g| (part %d), %d non-finite; ", what, m.size(), max, worst, bad));
+    }
+
     private CompiledAssembly compile(Island isl, AssemblyState state) {
+        isl.startState = state;
         Assembly asm = new Assembly();
         isl.partPos.clear();
         Map<Long, int[]> anchored = new HashMap<>();
@@ -729,6 +792,10 @@ public final class SimulationManager {
             long[] ids = b.parts().stream().mapToLong(Long::longValue).toArray();
             bodies.add(new IslandSyncPayload.BodyState(pv.x(), pv.y(), pv.z(), ax.x(), ax.y(), ax.z(),
                     c.angle(b), c.angularVelocity(b), ids, b.slider()));
+            if (dev.emergence.mod.debug.PoseLog.ENABLED && ids.length > 0) {
+                dev.emergence.mod.debug.PoseLog.server(level.getGameTime() + "," + ids[0] + "," + b.slider() + "," + c.angle(b) + ","
+                        + c.angularVelocity(b) + "," + isl.timeScale + "," + globalScale + "," + isl.costMs);
+            }
         }
         List<Long> hotIds = new ArrayList<>();
         List<Float> hotT = new ArrayList<>();
@@ -784,9 +851,22 @@ public final class SimulationManager {
         }
         float[] pa = new float[pData.size()];
         for (int i = 0; i < pa.length; i++) pa[i] = pData.get(i);
+        // springs: how far each end face has moved along the spring, in world blocks
+        List<Long> sIds = new ArrayList<>();
+        List<Float> sEnds = new ArrayList<>();
+        for (long id : isl.partPos.keySet()) {
+            double[] se = c.springEnds(id);
+            if (se == null) continue;
+            sIds.add(id);
+            sEnds.add((float) (se[0] * scale));
+            sEnds.add((float) (se[1] * scale));
+        }
+        float[] sa = new float[sEnds.size()];
+        for (int i = 0; i < sa.length; i++) sa[i] = sEnds.get(i);
         IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime(), scale,
                 tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray(),
-                fIds.stream().mapToLong(Long::longValue).toArray(), ga, pIds.stream().mapToLong(Long::longValue).toArray(), pa);
+                fIds.stream().mapToLong(Long::longValue).toArray(), ga, pIds.stream().mapToLong(Long::longValue).toArray(), pa,
+                sIds.stream().mapToLong(Long::longValue).toArray(), sa, (float) (isl.timeScale * globalScale));
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
     }

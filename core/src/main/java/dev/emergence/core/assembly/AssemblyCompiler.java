@@ -51,6 +51,14 @@ public final class AssemblyCompiler {
         return c;
     }
 
+    /**
+     * True if part p makes electrical contact through face d of its cell (x, y, z): a wire, a component's lead or
+     * terminal there, or a conductor (renderers use this to draw leads only where they connect).
+     */
+    public static boolean hasElectricalPort(Part p, int x, int y, int z, Dir d) {
+        return Builder.port(p, x, y, z, d) != null;
+    }
+
     private static final class Builder {
         final Assembly a;
         final CompiledAssembly c;
@@ -706,6 +714,7 @@ public final class AssemblyCompiler {
                 if (na == null && nb == null) continue; // both ends fixed: it just sits there
                 c.network.add(new PositionSpring(na, ta, sa_, nb, tb, sb_, k));
                 c.springs.put(sp.id(), new double[]{k});
+                c.springEnds.put(sp.id(), new Object[]{ta, -sa_, tb, sb_});
             }
         }
 
@@ -768,7 +777,7 @@ public final class AssemblyCompiler {
             return enodes.computeIfAbsent(eroot(key), k -> c.network.node(Domain.ELECTRICAL, k));
         }
 
-        boolean conductive(Part p) {
+        static boolean conductive(Part p) {
             return conductorMaterial(p).isConductor();
         }
 
@@ -777,7 +786,7 @@ public final class AssemblyCompiler {
         }
 
         /** Port key of part p on face d of cell (x,y,z), or null if p has no electrical port there. */
-        String port(Part p, int x, int y, int z, Dir d) {
+        static String port(Part p, int x, int y, int z, Dir d) {
             switch (p.kind()) {
                 case WIRE, INSULATED_WIRE -> {
                     return "p" + p.id();
@@ -906,7 +915,7 @@ public final class AssemblyCompiler {
         }
 
         /** Leads are at the transverse centre cell of each end face. */
-        boolean isLeadCell(Part p, int[] cell) {
+        static boolean isLeadCell(Part p, int[] cell) {
             int a0 = p.axis().axis();
             for (int k = 0; k < 3; k++) {
                 if (k == a0) continue;
@@ -1305,7 +1314,7 @@ public final class AssemblyCompiler {
          * (resistor, capacitor, diode, switch) have tinned-copper leads whatever their body is made of;
          * a brush conducts through its graphite.
          */
-        Material conductorMaterial(Part p) {
+        static Material conductorMaterial(Part p) {
             return switch (p.kind()) {
                 // manufactured components carry (tinned) copper leads, whatever their body is made of
                 case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, POTENTIOMETER, OPAMP, GM_TUBE -> MaterialDatabase.standard().get("copper");

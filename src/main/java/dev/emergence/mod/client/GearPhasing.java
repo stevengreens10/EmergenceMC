@@ -39,7 +39,7 @@ final class GearPhasing {
         if (q == null) return 0;
         double pitchU = 2 * Math.PI / z, pitchP = 2 * Math.PI / q.z;
         ClientSimState.Pose qp = ClientSimState.pose(q.part.id);
-        double qBody = qp == null ? 0 : qp.angle() + qp.omega() * (level.getGameTime() - qp.time()) / 20.0;
+        double qBody = qp == null ? 0 : ClientSimState.bodyAngle(qp);
         double qRot = rotation(q.part, qBody, qp);
         double qPhase = phase(level, q.pos, q.res, q.part, q.rp, q.z, qRot, depth + 1);
         double tP = q.part.axis.sign() * qPhase + qRot;

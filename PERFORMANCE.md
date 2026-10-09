@@ -38,6 +38,12 @@ server keeps its tick rate, but that machine runs in slow motion. The steam engi
   network from 2639 to 722 unknowns; BDF2 for electronics islands removed trapezoidal ringing on 5 pF input
   nodes (3254 → 143 steps in the first 0.4 s); a steep Schmitt input gave the clock fast edges.
 
+* Core test suite ~11 min → ~2.5 min: JUnit runs methods in parallel (benchmarks `@Isolated`); the servo
+  fragment sweeps merged and deduplicated (85 distinct fragments), 3 steps each on a pool of its own. The
+  slowest fragments cut the servo amplifier's feedback: open-loop, the comparator and MOSFET oscillate with
+  µs steps (4000-step cap per tick) — physically plausible, and costly in game if a chunk boundary splits
+  the servo.
+
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC
    states) and each step refactorises. Plan: (a) per-island accuracy level / relaxed tolerances for

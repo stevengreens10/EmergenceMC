@@ -128,7 +128,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
     }
 
     private void changed() {
-        shape = null;
+        reshape();
         setChanged();
         if (level != null) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
@@ -136,16 +136,32 @@ public final class AssemblyBlockEntity extends BlockEntity {
         }
     }
 
+    /**
+     * Outline and collision shape: the parts' drawn geometry (see {@link dev.emergence.mod.part.PartShapes}), so a thin
+     * shaft or wire is thin to the crosshair and to walk past. Never empty while there are parts (something to hit).
+     */
     public VoxelShape shape() {
         if (shape == null) {
-            VoxelShape s = Shapes.empty();
+            List<VoxelShape> boxes = new ArrayList<>();
             for (PlacedPart p : parts) {
-                AABB b = p.localBox(resolution);
-                s = Shapes.or(s, Shapes.box(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ));
+                for (AABB b : dev.emergence.mod.part.PartShapes.boxes(this, p)) {
+                    boxes.add(Shapes.box(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ));
+                }
             }
-            shape = s;
+            VoxelShape s = boxes.isEmpty() ? (parts.isEmpty() ? Shapes.empty() : Shapes.box(0.4, 0.4, 0.4, 0.6, 0.6, 0.6))
+                    : Shapes.or(boxes.get(0), boxes.subList(1, boxes.size()).toArray(new VoxelShape[0]));
+            shape = s.optimize();
         }
         return shape;
+    }
+
+    /** Forget this block's shape and its neighbours' (wires, pipes and plates are shaped by what they meet). */
+    private void reshape() {
+        shape = null;
+        if (level == null) return;
+        for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
+            if (level.getBlockEntity(worldPosition.relative(d)) instanceof AssemblyBlockEntity o) o.shape = null;
+        }
     }
 
     public List<Part> coreParts() {
@@ -247,7 +263,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
     @Override
     public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
         readParts(tag);
-        shape = null;
+        reshape();
     }
 
     @Override
@@ -260,7 +276,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
         CompoundTag t = pkt.getTag();
         if (t != null) {
             readParts(t);
-            shape = null;
+            reshape();
         }
     }
 }

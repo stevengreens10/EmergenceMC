@@ -102,6 +102,10 @@ multimeter, oscilloscope/data logging.
 * Block-scale islands include every block within interaction reach (2 blocks, up to ~6 around large
   gears): separate machines built closer than that are simulated as one island (correct, but costlier).
 * Simulation stops in unloaded chunks (state is saved and resumes on load).
+* Moving parts are drawn ~75 ms behind the simulation (snapshot interpolation between packets); a server
+  hitch (an island compiling) holds them until packets resume.
+* Hitboxes follow the drawn geometry where the part was placed: a slide or rotor that has moved keeps its
+  hitbox at the placed position.
 * Visual minimum sizes: wires and shafts are drawn at least ~0.14–0.18 cell thick so thin filaments stay
   visible. Gear teeth are drawn with a simplified trapezoidal profile; their phase is cosmetic.
 

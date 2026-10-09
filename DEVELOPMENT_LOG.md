@@ -226,3 +226,16 @@ valve lets it down. Its test found the liquid model taking tension: a quick push
 water and the pressure under it went to −61 kPa absolute. Liquids now cavitate below their vapour pressure (a void
 fraction opens, the pressure stays near p_v); the ram's overshoot then draws ~4 % extra water in through both valves
 from the reservoir — a real effect of a fast stroke.
+
+**Smooth motion, joined-up visuals, real hitboxes, faster tests.** Moving parts jittered badly. Logging every
+synced pose on the server and every drawn pose on the client (`-Demergence.poseLog=true`, a tour limited to some
+exhibits with `-Demergence.showcaseOnly=…`) showed why: the client extrapolated with ω from the packet's game
+time, but the client's game clock ran 9 ticks behind to 38 ticks ahead of the server's, and islands run at
+0.3–100 % speed — the jack's slide, moving 1 block, was drawn swinging over 25 blocks, snapping up to 12 per
+frame. Now each moving thing is interpolated between its last packets by their arrival times (residual jitter
+0.42 → 0.008 block on the jack, 0.027 → 0.002 rad on the servo). Wires ended open next to components (and grew
+stubs towards faces without a terminal): wire arms ending on a part are capped and the part draws a lead to each
+wire that meets one of its terminals, using the compiler's own terminal rule. Springs are a helix stretched
+between what their ends are fixed to (end positions synced); thin plates (the jack's handle) sit on what they are
+fixed to instead of floating mid-cell; hitboxes follow the drawn geometry. The core suite runs in parallel and the
+servo fragment sweep is deduplicated: ~11 min → ~2.5 min.

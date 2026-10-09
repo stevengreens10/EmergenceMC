@@ -17,7 +17,7 @@ import java.util.List;
  */
 public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] hotIds, float[] hotTemps, long gameTime,
                                 float worldScale, long[] tintIds, int[] tints, long[] fluidIds, float[] gauges,
-                                long[] pistonIds, float[] pistons)
+                                long[] pistonIds, float[] pistons, long[] springIds, float[] springEnds, float simRate)
         implements CustomPacketPayload {
 
     /** A moving body: pivot and axis; angle and ω — or, for a slide, displacement [m] and velocity along the axis. */
@@ -58,6 +58,10 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         buf.writeLongArray(p.pistonIds);
         buf.writeVarInt(p.pistons.length);
         for (float g : p.pistons) buf.writeFloat(g);
+        buf.writeLongArray(p.springIds);
+        buf.writeVarInt(p.springEnds.length);
+        for (float g : p.springEnds) buf.writeFloat(g);
+        buf.writeFloat(p.simRate);
     }
 
     private static IslandSyncPayload read(FriendlyByteBuf buf) {
@@ -82,7 +86,12 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         long[] pistonIds = buf.readLongArray();
         float[] pistons = new float[buf.readVarInt()];
         for (int i = 0; i < pistons.length; i++) pistons[i] = buf.readFloat();
-        return new IslandSyncPayload(all, bodies, hot, temps, time, scale, tintIds, tints, fluidIds, gauges, pistonIds, pistons);
+        long[] springIds = buf.readLongArray();
+        float[] springEnds = new float[buf.readVarInt()];
+        for (int i = 0; i < springEnds.length; i++) springEnds[i] = buf.readFloat();
+        float simRate = buf.readFloat();
+        return new IslandSyncPayload(all, bodies, hot, temps, time, scale, tintIds, tints, fluidIds, gauges, pistonIds, pistons,
+                springIds, springEnds, simRate);
     }
 
     @Override

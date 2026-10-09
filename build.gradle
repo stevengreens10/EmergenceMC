@@ -82,6 +82,7 @@ neoForge {
             // motion diagnostics: -Demergence.poseLog=true -Demergence.showcaseOnly=servo,jack (see PoseLog)
             systemProperty 'emergence.poseLog', System.getProperty('emergence.poseLog', 'false')
             systemProperty 'emergence.showcaseOnly', System.getProperty('emergence.showcaseOnly', '')
+            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
         }
         server {
             server()
@@ -92,6 +93,9 @@ neoForge {
             gameDirectory = project.file('run-gametest')
             systemProperty 'emergence.debugIslands', 'true'
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            // the tests check behaviour within tick counts, not throughput: no slow motion when they all run at once
+            systemProperty 'emergence.globalBudgetMs', '1e9'
+            systemProperty 'emergence.islandBudgetMs', '1e9'
         }
         // Generates the showcase world: a game-test server (no EULA prompt, creative flat world) that
         // builds the exhibit gallery at spawn on start-up, runs the in-world tests and saves.
@@ -101,6 +105,7 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
             // the tests share the server with the whole gallery: no slow motion, whatever the tick costs
             systemProperty 'emergence.globalBudgetMs', '1e9'
+            systemProperty 'emergence.islandBudgetMs', '1e9'
             systemProperty 'emergence.buildDemo', 'true'
         }
     }

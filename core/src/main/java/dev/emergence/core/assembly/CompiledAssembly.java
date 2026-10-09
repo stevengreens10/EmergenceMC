@@ -100,6 +100,20 @@ public final class CompiledAssembly {
 
     /** Springs by part id: {stiffness [N/m]}. */
     final Map<Long, double[]> springs = new HashMap<>();
+    /** Springs by part id: {tracker of end a (or null), its displacement sense along the spring axis, same for b}. */
+    final Map<Long, Object[]> springEnds = new HashMap<>();
+
+    /**
+     * How far a spring's two end faces have moved along its axis from where it was placed [m]: {end a (−axis face),
+     * end b (+axis face)} — for drawing it stretched or compressed between what it joins. Null if not a spring.
+     */
+    public double[] springEnds(long partId) {
+        Object[] e = springEnds.get(partId);
+        if (e == null) return null;
+        double da = e[0] == null ? 0 : ((AngleTracker) e[0]).angle(solver) * (Double) e[1];
+        double db = e[2] == null ? 0 : ((AngleTracker) e[2]).angle(solver) * (Double) e[3];
+        return new double[]{da, db};
+    }
 
     /** Sealed vessels of reacting gas, by part id. */
     final Map<Long, dev.emergence.core.sim.elements.GasReactor> gasOfPart = new HashMap<>();

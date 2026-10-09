@@ -62,7 +62,15 @@ public enum PartKind {
      */
     CYLINDER(true, false),
     /** Crank throw: a web and pin mounted on a shaft at radius "throw"; connecting rods of cylinders pointing at the shaft ride on it. */
-    ECCENTRIC(true, false);
+    ECCENTRIC(true, false),
+    /**
+     * Discrete transistor (manufactured): "type" 0 NPN, 1 PNP, 2 n-channel MOSFET, 3 p-channel MOSFET.
+     * Emitter/source on the −axis face, collector/drain on the +axis face, base/gate on the side faces of
+     * its lead axis.
+     */
+    TRANSISTOR(false, true),
+    /** Light-emitting diode (manufactured): anode on the −axis lead, cathode on the +axis lead; colour by wavelength. */
+    LED(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

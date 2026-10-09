@@ -540,7 +540,14 @@ public final class AssemblyCompiler {
                 case WIRE, INSULATED_WIRE -> {
                     return "p" + p.id();
                 }
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, COIL, BRUSH -> {
+                case TRANSISTOR -> {
+                    // emitter/source (−) and collector/drain (+) on the axial faces, base/gate on the lead-axis sides
+                    Dir ax = p.axis();
+                    if (d.axis() == ax.axis()) return "p" + p.id() + (d.sign() == ax.sign() ? "+" : "-");
+                    if (d.axis() == PartGeometry.leadAxis(p)) return "p" + p.id() + "g";
+                    return null;
+                }
+                case RESISTOR, CAPACITOR, DIODE, LED, SWITCH, COIL, BRUSH -> {
                     Dir ax = p.axis();
                     int a0 = ax.axis();
                     int[] cell = {x, y, z};
@@ -679,6 +686,33 @@ public final class AssemblyCompiler {
                         Node[] l = leads(p);
                         c.deviceOfPart.put(p.id(), c.network.add(new Diode(l[0], l[1], p.param("saturation_current", 1e-14),
                                 p.param("ideality", 1.0), p.material().get(MaterialProperty.BAND_GAP, 1.12 * 1.602e-19) / 1.602176634e-19, th)));
+                    }
+                    case LED -> {
+                        Node[] l = leads(p);
+                        c.deviceOfPart.put(p.id(), c.network.add(new Led(l[0], l[1], p.param("wavelength", 630),
+                                p.param("efficiency", 0.2), th)));
+                        c.network.add(new Capacitor(l[0], l[1], 20e-12));
+                    }
+                    case TRANSISTOR -> {
+                        Node[] l = leads(p);
+                        Node gate = enode("p" + p.id() + "g");
+                        int type = (int) Math.round(p.param("type", 0));
+                        Object dev;
+                        if (type <= 1) {
+                            // small-signal BJT (2N3904/2N3906 class); depletion capacitances C_je, C_jc
+                            dev = c.network.add(new Bjt(l[1], gate, l[0], type == 1, p.param("saturation_current", 1e-14),
+                                    p.param("beta", 150), p.param("beta_r", 2), p.param("early_voltage", 75), th));
+                            c.network.add(new Capacitor(gate, l[0], p.param("c_be", 18e-12)));
+                            c.network.add(new Capacitor(gate, l[1], p.param("c_bc", 4e-12)));
+                        } else {
+                            // small-signal MOSFET (2N7000/BS250 class); gate capacitances C_gs, C_gd
+                            boolean pch = type == 3;
+                            dev = c.network.add(new Mosfet(l[1], gate, l[0], pch, p.param("threshold", 1.6),
+                                    p.param("transconductance", pch ? 0.05 : 0.1), p.param("slope", 1.5), p.param("lambda", 0.01), th));
+                            c.network.add(new Capacitor(gate, l[0], p.param("c_gs", 40e-12)));
+                            c.network.add(new Capacitor(gate, l[1], p.param("c_gd", 8e-12)));
+                        }
+                        c.deviceOfPart.put(p.id(), dev);
                     }
                     case CAPACITOR -> {
                         Node[] l = leads(p);
@@ -832,7 +866,7 @@ public final class AssemblyCompiler {
         }
 
         boolean isLeadKey(String k) {
-            return k.endsWith("+") || k.endsWith("-");
+            return k.endsWith("+") || k.endsWith("-") || k.endsWith("g");
         }
 
         Node[] leads(Part p) {
@@ -868,7 +902,8 @@ public final class AssemblyCompiler {
          */
         Material conductorMaterial(Part p) {
             return switch (p.kind()) {
-                case RESISTOR, CAPACITOR, DIODE, SWITCH -> MaterialDatabase.standard().get("copper");
+                // manufactured components carry (tinned) copper leads, whatever their body is made of
+                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED -> MaterialDatabase.standard().get("copper");
                 default -> p.material();
             };
         }

@@ -208,6 +208,11 @@ public final class CompiledAssembly {
         return c;
     }
 
+    /** Light emitted by a part (an LED) [W], 0 otherwise. */
+    public double lightOutput(long partId) {
+        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Led led ? led.opticalPower(solver) : 0;
+    }
+
     /** Fluid state held by a part: {pressure [Pa], fluid temperature [K], mass [kg], mean |mass flow| [kg/s]}, or null. */
     public double[] fluid(long partId) {
         FluidVolume v = fluidOfPart.get(partId);
@@ -346,6 +351,15 @@ public final class CompiledAssembly {
         } else if (d instanceof Capacitor c) {
             i = c.current(solver);
             pw = 0;
+        } else if (d instanceof dev.emergence.core.sim.elements.Led led) {
+            i = led.current(solver);
+            pw = Math.abs(i * v);
+        } else if (d instanceof dev.emergence.core.sim.elements.Bjt q) {
+            i = q.collectorCurrent(solver);
+            pw = Math.abs(i * v);
+        } else if (d instanceof dev.emergence.core.sim.elements.Mosfet m) {
+            i = m.drainCurrent(solver);
+            pw = Math.abs(i * v);
         } else if (d instanceof MagneticSystem.Coil coil) {
             i = magnetics.current(coil, solver);
             pw = coil.resistance(temp) * i * i;

@@ -24,7 +24,7 @@ public final class Exhibits {
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(),
-                miniatureGenerator());
+                transistorSwitch(), nandGate(), miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -431,6 +431,87 @@ public final class Exhibits {
         e.path(INSULATED_WIRE, "copper", new int[][]{{7, y + 1, 9}, {7, y + 1, 10}, {7, y - 1, 10}, {7, y - 1, 9}});
         e.name("load", e.add(RESISTOR, "alumina", 7, y, 10, Dir.UP, "resistance", 5));
         return e.view(6.5, 6.5, 16, 20);
+    }
+
+    /**
+     * An NPN transistor switching an LED: a small base current through a switch and 10 kΩ controls a
+     * 20 mA collector current. Powered by a 10 F supercapacitor charged to 5 V.
+     */
+    public static Exhibit transistorSwitch() {
+        Exhibit e = new Exhibit("transistor", "Transistor switch",
+                List.of("TRANSISTOR", "0.4 mA into the", "base switches", "20 mA LED current"),
+                "An NPN bipolar transistor: closing the switch drives about 0.4 mA through 10 kΩ into the base. "
+                        + "Electrons injected from the emitter mostly diffuse across the thin base into the "
+                        + "collector (current gain β ≈ 150), so the transistor saturates and the LED, in series "
+                        + "with 150 Ω, lights with about 20 mA. Meter the base and collector currents. The 10 F "
+                        + "supercapacitor at 5 V is the battery.");
+        String cu = "copper";
+        int bat = e.add(CAPACITOR, "alumina", 2, 0, 8, Dir.EAST, "capacitance", 10);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        e.path(INSULATED_WIRE, cu, new int[][]{{3, 0, 8}, {4, 0, 8}, {4, 0, 7}, {4, 0, 6}, {7, 0, 6}, {8, 0, 6}, {8, 0, 7},
+                {7, 0, 8}, {9, 0, 8}, {9, 0, 9}, {9, 0, 10}, {8, 0, 10}, {7, 0, 10}, {6, 0, 10}, {5, 0, 10}, {4, 0, 10},
+                {3, 0, 10}, {2, 0, 10}, {1, 0, 10}, {1, 0, 9}, {1, 0, 8}});
+        e.name("led", e.add(LED, "silicon", 5, 0, 8, Dir.EAST, "wavelength", 630));
+        e.name("ledResistor", e.add(RESISTOR, "alumina", 6, 0, 8, Dir.EAST, "resistance", 150));
+        e.name("switch", e.add(SWITCH, "brass", 5, 0, 6, Dir.EAST));
+        e.name("baseResistor", e.add(RESISTOR, "alumina", 6, 0, 6, Dir.EAST, "resistance", 10_000));
+        e.name("transistor", e.add(TRANSISTOR, "silicon", 8, 0, 8, Dir.WEST, "type", 0));
+        // 100 kΩ from base to emitter: holds the transistor firmly off while the switch is open
+        e.add(RESISTOR, "alumina", 8, 0, 9, Dir.EAST, "resistance", 100_000);
+        return e.view(5.5, 4, 14, 35);
+    }
+
+    /**
+     * A CMOS NAND gate from four MOSFETs: two p-channel in parallel from the supply to the output, two
+     * n-channel in series from the output to ground. Two switches are the inputs; the output lights an LED.
+     */
+    public static Exhibit nandGate() {
+        Exhibit e = new Exhibit("nand", "CMOS NAND gate",
+                List.of("NAND GATE", "4 MOSFETs. LED is", "off only when", "A and B are on"),
+                "Logic from transistor physics. A p-channel MOSFET conducts when its gate is low, an n-channel one "
+                        + "when its gate is high. Two p-channels in parallel pull the output up unless both inputs "
+                        + "are high; two n-channels in series pull it down only when both are. The output LED is "
+                        + "therefore off only for A = B = 1: NAND, from which any digital circuit can be built. "
+                        + "Input B crosses the LED's return wire on a raised bridge.");
+        String cu = "copper";
+        int bat = e.add(CAPACITOR, "alumina", 1, 0, 8, Dir.NORTH, "capacitance", 10);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        // supply rails
+        for (int z = 3; z <= 7; z++) e.add(INSULATED_WIRE, cu, 1, 0, z, Dir.UP);
+        for (int z = 9; z <= 13; z++) e.add(INSULATED_WIRE, cu, 1, 0, z, Dir.UP);
+        for (int x = 1; x <= 13; x++) {
+            e.add(INSULATED_WIRE, cu, x, 0, 2, Dir.UP);
+            e.add(INSULATED_WIRE, cu, x, 0, 14, Dir.UP);
+        }
+        // pull-up network: p-channel MOSFETs in parallel
+        e.add(TRANSISTOR, "silicon", 5, 0, 4, Dir.SOUTH, "type", 3);
+        e.add(TRANSISTOR, "silicon", 9, 0, 4, Dir.SOUTH, "type", 3);
+        e.path(INSULATED_WIRE, cu, new int[][]{{5, 0, 3}, {9, 0, 3}});
+        // output node
+        e.path(INSULATED_WIRE, cu, new int[][]{{5, 0, 5}, {5, 0, 6}, {6, 0, 6}, {7, 0, 6}, {8, 0, 6}, {9, 0, 6}, {9, 0, 5}, {10, 0, 6}, {7, 0, 7}});
+        // pull-down network: n-channel MOSFETs in series
+        e.add(TRANSISTOR, "silicon", 7, 0, 8, Dir.NORTH, "type", 2);
+        e.add(INSULATED_WIRE, cu, 7, 0, 9, Dir.UP);
+        e.add(TRANSISTOR, "silicon", 7, 0, 10, Dir.NORTH, "type", 2);
+        e.path(INSULATED_WIRE, cu, new int[][]{{7, 0, 11}, {7, 0, 12}, {7, 0, 13}});
+        // input A: switch from the supply, 100 kΩ pull-down, to both gates
+        e.name("a", e.add(SWITCH, "brass", 3, 0, 3, Dir.SOUTH));
+        e.path(INSULATED_WIRE, cu, new int[][]{{3, 0, 4}, {4, 0, 4}, {3, 0, 5}, {3, 0, 6}, {3, 0, 7}, {3, 0, 8}, {4, 0, 8}, {5, 0, 8}, {6, 0, 8},
+                {3, 0, 10}, {3, 0, 11}, {3, 0, 12}, {3, 0, 13}});
+        e.add(RESISTOR, "alumina", 3, 0, 9, Dir.SOUTH, "resistance", 100_000);
+        // input B: switch, pull-down, and a bridge over the LED return to the lower n-channel gate
+        e.name("b", e.add(SWITCH, "brass", 13, 0, 3, Dir.SOUTH));
+        e.path(INSULATED_WIRE, cu, new int[][]{{13, 0, 4}, {12, 0, 4}, {11, 0, 4}, {10, 0, 4}, {13, 0, 5}, {13, 0, 6}, {13, 0, 7}, {13, 0, 8},
+                {13, 0, 9}, {13, 0, 10}, {13, 1, 10}, {13, 2, 10}, {12, 2, 10}, {11, 2, 10}, {10, 2, 10}, {9, 2, 10}, {8, 2, 10},
+                {8, 1, 10}, {8, 0, 10}, {13, 0, 12}, {13, 0, 13}});
+        e.add(RESISTOR, "alumina", 13, 0, 11, Dir.SOUTH, "resistance", 100_000);
+        // output indicator: LED and 470 Ω to ground
+        e.name("led", e.add(LED, "silicon", 10, 0, 7, Dir.SOUTH, "wavelength", 525));
+        e.add(RESISTOR, "alumina", 10, 0, 8, Dir.SOUTH, "resistance", 470);
+        e.path(INSULATED_WIRE, cu, new int[][]{{10, 0, 9}, {10, 0, 10}, {10, 0, 11}, {10, 0, 12}, {10, 0, 13}});
+        return e.view(7, 9, 19, 50);
     }
 
     /**

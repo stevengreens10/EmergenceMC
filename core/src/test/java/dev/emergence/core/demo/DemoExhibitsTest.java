@@ -271,4 +271,42 @@ class DemoExhibitsTest {
                 + " cold gas T=" + c.fluid(b.id(e, "cold"))[1] + " heater T=" + c.temperature(b.id(e, "heater")));
         assertTrue(minW > 10, "keeps running for 20 s on the block's heat (min ω " + minW + ")");
     }
+
+    @Test
+    void transistorSwitchesTheLed() {
+        Exhibit e = Exhibits.transistorSwitch();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        run(c, 0.2);
+        assertTrue(Math.abs(c.probe(b.id(e, "led")).current()) < 1e-5, "switch open: LED dark, " + c.probe(b.id(e, "led")).current());
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 0.2);
+        double il = c.probe(b.id(e, "led")).current(), ib = Math.abs(c.probe(b.id(e, "baseResistor")).current());
+        assertTrue(il > 0.012 && il < 0.025, "LED current ~ (5 − 2 − V_CE,sat)/150 Ω: " + il);
+        assertTrue(ib > 3e-4 && ib < 5e-4, "base current ~ (5 − 0.7)/10 kΩ: " + ib);
+        assertTrue(c.lightOutput(b.id(e, "led")) > 1e-3, "the LED emits light");
+    }
+
+    @Test
+    void nandGateTruthTable() {
+        Exhibit e = Exhibits.nandGate();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long led = b.id(e, "led"), a = b.id(e, "a"), bb = b.id(e, "b");
+        boolean[][] cases = {{false, false}, {true, false}, {true, true}, {false, true}};
+        boolean sa = false, sb = false;
+        for (boolean[] cs : cases) {
+            if (cs[0] != sa) {
+                c.toggleSwitch(a);
+                sa = cs[0];
+            }
+            if (cs[1] != sb) {
+                c.toggleSwitch(bb);
+                sb = cs[1];
+            }
+            run(c, 0.2);
+            boolean lit = c.probe(led).current() > 1e-3;
+            assertEquals(!(sa && sb), lit, "A=" + sa + " B=" + sb + " LED current " + c.probe(led).current());
+        }
+    }
 }

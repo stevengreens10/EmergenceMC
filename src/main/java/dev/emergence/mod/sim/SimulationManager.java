@@ -88,6 +88,9 @@ public final class SimulationManager {
         double costMs;
         /** The state the island was last compiled from (for diagnosing a failure right after a restart). */
         AssemblyState startState;
+        /** Whether a player was near it this tick, and its bounding box grown by the near distance (lazily). */
+        boolean near;
+        net.minecraft.world.phys.AABB box;
 
         public double timeScale() {
             return timeScale;
@@ -145,7 +148,7 @@ public final class SimulationManager {
         tickCount++;
         if (!dirty.isEmpty()) rebuild();
         Set<Island> islands = new HashSet<>(islandOf.values());
-        double total = 0;
+        double nearTotal = 0, farTotal = 0;
         for (Island isl : islands) {
             if (isl.compiled == null) continue;
             // like block entities, machines advance only within the simulation distance of a player; further
@@ -153,10 +156,11 @@ public final class SimulationManager {
             // it by an arbitrary one of its blocks made one straddling a chunk border run or freeze by chance)
             if (!anyTicking(isl)) continue;
             updateCranks(isl);
+            isl.near = nearPlayer(isl);
             List<Long> failed;
             long t0 = System.nanoTime();
             try {
-                failed = isl.compiled.step(TICK_SECONDS * isl.timeScale * globalScale);
+                failed = isl.compiled.step(TICK_SECONDS * isl.timeScale * scaleOf(isl));
             } catch (RuntimeException e) {
                 // restart from the last good state at rest (charges, heat, positions kept); if even that will not
                 // run, from nothing
@@ -174,7 +178,8 @@ public final class SimulationManager {
                 continue;
             }
             long cost = System.nanoTime() - t0;
-            total += cost / 1e6;
+            if (isl.near) nearTotal += cost / 1e6;
+            else farTotal += cost / 1e6;
             Profiler.record(cost, isl.compiled.network().size());
             pace(isl, cost / 1e6);
             if (!failed.isEmpty()) destroyParts(isl, failed);
@@ -186,9 +191,42 @@ public final class SimulationManager {
             if (tickCount % 100 == 0) saveIsland(isl);
         }
         tickLoggers();
-        // all islands together within the server's budget: if they cost more, every one slows in proportion
-        double want = total > GLOBAL_BUDGET_MS ? GLOBAL_BUDGET_MS / total : 1.25;
-        globalScale = Math.max(0.05, Math.min(1, globalScale * Math.min(want, 1.25)));
+        // all islands together within the server's budget, the ones near a player first: if they cost more, those
+        // far from every player slow (down to nearly paused) before the ones being watched do
+        nearScale = adjust(nearScale, nearTotal, GLOBAL_BUDGET_MS, 0.05);
+        farScale = adjust(farScale, farTotal, Math.max(GLOBAL_BUDGET_MS - nearTotal, 0.1 * GLOBAL_BUDGET_MS), 0.01);
+    }
+
+    /** Multiplicative controller: slow in proportion when over budget, recover by 25 % a tick when under it. */
+    private static double adjust(double scale, double costMs, double budgetMs, double min) {
+        double want = costMs > budgetMs ? budgetMs / costMs : 1.25;
+        return Math.max(min, Math.min(1, scale * Math.min(want, 1.25)));
+    }
+
+    /** Islands within this many blocks of a player get the time budget before those further away. */
+    public static final double NEAR_BLOCKS = 48;
+
+    /** The common slow-motion factor for an island (on top of its own), by whether a player is near it. */
+    private double scaleOf(Island isl) {
+        return isl.near ? nearScale : farScale;
+    }
+
+    /** True if some player is within {@link #NEAR_BLOCKS} of the island's bounding box. */
+    private boolean nearPlayer(Island isl) {
+        if (isl.box == null) {
+            int x0 = Integer.MAX_VALUE, y0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, y1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+            for (BlockPos b : isl.blocks) {
+                x0 = Math.min(x0, b.getX());
+                y0 = Math.min(y0, b.getY());
+                z0 = Math.min(z0, b.getZ());
+                x1 = Math.max(x1, b.getX());
+                y1 = Math.max(y1, b.getY());
+                z1 = Math.max(z1, b.getZ());
+            }
+            isl.box = new net.minecraft.world.phys.AABB(x0, y0, z0, x1 + 1, y1 + 1, z1 + 1).inflate(NEAR_BLOCKS);
+        }
+        for (var p : level.players()) if (isl.box.contains(p.position())) return true;
+        return false;
     }
 
     /**
@@ -198,7 +236,7 @@ public final class SimulationManager {
      */
     public static final double GLOBAL_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.globalBudgetMs", "35"));
     /** Common slow-motion factor applied on top of each island's own when all of them together are too costly. */
-    private double globalScale = 1;
+    private double nearScale = 1, farScale = 1;
 
     // ------------------------------------------------------------------ data loggers
 
@@ -813,7 +851,7 @@ public final class SimulationManager {
                     c.angle(b), c.angularVelocity(b), ids, b.slider()));
             if (dev.emergence.mod.debug.PoseLog.ENABLED && ids.length > 0) {
                 dev.emergence.mod.debug.PoseLog.server(level.getGameTime() + "," + ids[0] + "," + b.slider() + "," + c.angle(b) + ","
-                        + c.angularVelocity(b) + "," + isl.timeScale + "," + globalScale + "," + isl.costMs);
+                        + c.angularVelocity(b) + "," + isl.timeScale + "," + scaleOf(isl) + "," + isl.costMs + "," + isl.near);
             }
         }
         List<Long> hotIds = new ArrayList<>();
@@ -885,7 +923,7 @@ public final class SimulationManager {
         IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime(), scale,
                 tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray(),
                 fIds.stream().mapToLong(Long::longValue).toArray(), ga, pIds.stream().mapToLong(Long::longValue).toArray(), pa,
-                sIds.stream().mapToLong(Long::longValue).toArray(), sa, (float) (isl.timeScale * globalScale));
+                sIds.stream().mapToLong(Long::longValue).toArray(), sa, (float) (isl.timeScale * scaleOf(isl)));
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
     }

@@ -23,6 +23,12 @@ simulates less time per tick (down to 5 %) and recovers when cheap: the physics 
 server keeps its tick rate, but that machine runs in slow motion. The steam engine (≈ 230 unknowns,
 ≈ 750 steps per simulated second at 650 rpm) costs ≈ 1.5× real time on the dev machine.
 
+All islands together get 35 ms per tick (`emergence.globalBudgetMs`), shared nearest-first: islands within 48 blocks
+of a player are slowed in common only if they alone exceed it; islands further from every player get what is left
+(at least 10 %) and slow first, down to 1 % (nearly paused). In the dense demo gallery, where everything within the
+simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its pace instead of sharing it with dozens
+out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
+
 ## History
 * Generator 52 → 28 ms: coil flux LTE absolute tolerance was 1e-12 Wb (signal ~0.02 Wb); now scaled to the
   signal.

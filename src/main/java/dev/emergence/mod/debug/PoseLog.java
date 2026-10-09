@@ -16,7 +16,7 @@ public final class PoseLog {
     private static PrintWriter server, client;
 
     public static synchronized void server(String line) {
-        if (server == null) server = open("pose-server.csv", "gameTime,key,slider,angle,omega,timeScale,globalScale,costMs");
+        if (server == null) server = open("pose-server.csv", "gameTime,key,slider,angle,omega,timeScale,commonScale,costMs,near");
         server.println(line);
     }
 

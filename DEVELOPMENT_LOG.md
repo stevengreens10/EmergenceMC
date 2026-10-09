@@ -258,3 +258,9 @@ machines stayed beside later ones and joined their islands (the shelf test once 
 exhibit test now has a batch of its own and clears assembly blocks around its footprint first. And an island stepped
 only if an arbitrary one of its blocks was in a ticking chunk: a machine straddling the edge of simulation distance
 (the two-plot computer beyond the test's forced chunks) ran or froze by chance. It now runs if any of its blocks ticks.
+
+**Nearest machines first.** In the demo gallery every machine within simulation distance runs, and they shared one time
+budget equally: the exhibit being watched ran in slow motion for machines out of sight. The budget now goes first to
+islands within 48 blocks of a player; the rest share what is left and slow first (down to 1 %). Measured on a tour: the
+gear train in view at 100 % (it was at ~4–30 % with the whole gallery running). The steam engine remains costly (77 ms
+per tick at 13 % speed while the machine was also running a game) — next to profile.

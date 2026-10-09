@@ -653,7 +653,13 @@ public final class SimulationManager {
             if (p == null) continue;
             double r = be.resolution();
             double px = pos.getX() + (p.x0 + 0.5) / r, py = pos.getY() + (p.y0 + 0.5) / r, pz = pos.getZ() + (p.z0 + 0.5) / r;
-            if (broken.contains(id)) {
+            double burst = isl.compiled == null ? Double.NaN : isl.compiled.burstUtilisation(id);
+            if (burst >= 1) {
+                // a pressure vessel tears open: a crack, and what it held escapes as a cloud
+                level.playSound(null, pos, SoundEvents.ANVIL_LAND, SoundSource.BLOCKS, 0.8f, 0.7f);
+                level.playSound(null, pos, SoundEvents.LAVA_EXTINGUISH, SoundSource.BLOCKS, 1.0f, 0.8f);
+                level.sendParticles(ParticleTypes.CLOUD, px, py, pz, 40, 0.1 * 16 / r, 0.1 * 16 / r, 0.1 * 16 / r, 0.25);
+            } else if (broken.contains(id)) {
                 // overloaded: the part breaks (or loses its support) and its pieces drop
                 level.playSound(null, pos, p.spec.material().contains("glass") ? SoundEvents.GLASS_BREAK : SoundEvents.ANVIL_LAND,
                         SoundSource.BLOCKS, 0.6f, 1.3f);

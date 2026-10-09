@@ -1061,4 +1061,38 @@ class DemoExhibitsTest {
             else assertTrue(fell > 0.005, "the steep thread runs back");
         }
     }
+
+    /**
+     * Burst test: the thin copper box bursts when its wall stress — flat walls bending under the steam pressure,
+     * Roark's fixed-edge plate — reaches copper's strength, at the saturation pressure of its water; the steel box holds.
+     */
+    @Test
+    void thinCopperVesselBurstsThickSteelHolds() {
+        Exhibit e = ThermoExhibits.burstTest();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long thin = b.id(e, "thin"), thick = b.id(e, "thick");
+        run(c, 20);
+        assertTrue(c.pressure(thin) - c.assembly().ambientPressure() < 1e3, "nothing happens until the switch is closed");
+        c.toggleSwitch(b.id(e, "switch"));
+        double pAmb = c.assembly().ambientPressure(), pBefore = 0, tBefore = 0, tBurst = -1;
+        for (int i = 0; i < 12000 && tBurst < 0; i++) {
+            pBefore = c.pressure(thin);
+            tBefore = c.fluid(thin)[1];
+            var failed = c.step(0.05);
+            if (failed.contains(thin)) tBurst = 0.05 * (i + 1);
+            assertFalse(failed.contains(thick), "the steel box holds");
+        }
+        var copper = dev.emergence.core.materials.MaterialDatabase.standard().get("copper");
+        double k = CompiledAssembly.wallStressPerPascal(b.assembly().get(thin));
+        double expected = copper.get(dev.emergence.core.materials.MaterialProperty.ULTIMATE_TENSILE_STRENGTH, 0) / k;
+        double tSat = dev.emergence.core.fluids.WaterSteam.tSat(pBefore);
+        System.out.printf("burst test: copper box burst after %.0f s at %.3f bar gauge (Roark: %.3f bar), water %.1f K "
+                + "(saturation at that pressure %.1f K); steel box at %.3f bar, utilisation %.3f%n", tBurst, (pBefore - pAmb) / 1e5,
+                expected / 1e5, tBefore, tSat, (c.pressure(thick) - pAmb) / 1e5, c.burstUtilisation(thick));
+        assertTrue(tBurst > 0, "the thin copper box bursts");
+        assertEquals(expected, pBefore - pAmb, 0.03 * expected, "at the pressure where its wall stress reaches copper's strength");
+        assertEquals(tSat, tBefore, 3, "the water is boiling: on the saturation curve");
+        assertTrue(c.burstUtilisation(thick) < 0.2, "the steel box is far from bursting");
+    }
 }

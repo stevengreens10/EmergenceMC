@@ -416,3 +416,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   η = sin λ cos λ/(sin λ cos λ + μ'), within 1 % of the exact tan λ(1 − μ' tan λ)/(tan λ + μ') for μ' ≲ 0.2. Back-driven,
   the Coulomb friction (tanh-regularised) holds the load when μ' > tan λ: self-locking emerges for fine leads. μ: 0.13
   oiled steel on bronze (Shigley Table 8-5), dry the nut material's coefficient.
+* **Pressure vessels burst** (`CompiledAssembly.burstUtilisation`): every fluid- or gas-holding part's peak wall
+  stress per pascal of over-pressure — tubes (pipes, valves, cylinders) by Lamé's thick-wall hoop stress
+  Δp·(r_o² + r_i²)/(r_o² − r_i²) (→ Barlow's Δp·r/t when thin); box tanks by their flat walls bending as plates with
+  fixed edges under uniform pressure, σ = β(a/b)·Δp·(b/t)² at the middle of the long edge (Roark Table 11.4 case 8,
+  β = 0.3078 square … 0.5 long). A part whose stress reaches its material's ultimate tensile strength bursts (it is
+  removed; its contents escape through the opening).

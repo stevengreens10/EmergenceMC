@@ -208,10 +208,86 @@ public final class CompiledAssembly {
         return structure;
     }
 
+    /**
+     * Pressure vessels: part id → {wall stress per pascal of internal over-pressure [Pa/Pa], strength [Pa]}. Tubes
+     * (pipes, valves, cylinders) by Lamé's thick-wall hoop stress σ = Δp·(r_o² + r_i²)/(r_o² − r_i²) (Barlow's Δp·r/t
+     * when thin); box tanks by the bending of their flat walls, each face a plate with fixed edges under uniform
+     * pressure, σ = β(a/b)·Δp·(b/t)² at the middle of its long edge (Roark, Table 11.4 case 8). Strength: the
+     * material's ultimate tensile strength (its yield strength if none is given). A vessel whose wall stress reaches it
+     * bursts: the part fails and what it held escapes.
+     */
+    private Map<Long, double[]> vessels;
+
+    private Map<Long, double[]> vessels() {
+        if (vessels != null) return vessels;
+        vessels = new HashMap<>();
+        for (Part p : assembly.parts()) {
+            if (!fluidOfPart.containsKey(p.id()) && !gasOfPart.containsKey(p.id())) continue;
+            double k = wallStressPerPascal(p);
+            var m = p.material();
+            double s = m.get(dev.emergence.core.materials.MaterialProperty.ULTIMATE_TENSILE_STRENGTH,
+                    m.get(dev.emergence.core.materials.MaterialProperty.YIELD_STRENGTH, Double.NaN));
+            if (k > 0 && Double.isFinite(s)) vessels.put(p.id(), new double[]{k, s});
+        }
+        return vessels;
+    }
+
+    /** Peak wall stress per pascal of over-pressure of a fluid-holding part (0 if not a vessel wall). */
+    public static double wallStressPerPascal(Part p) {
+        switch (p.kind()) {
+            case PIPE, VALVE, CYLINDER -> {
+                double ri = 0.5 * (p.kind() == PartKind.CYLINDER ? PartGeometry.cylinderBore(p) : PartGeometry.pipeBore(p));
+                double t = PartGeometry.wallThickness(p) * (p.kind() == PartKind.VALVE ? 2.5 : 1);
+                if (p.kind() == PartKind.CYLINDER) t = Math.max(t, 0.003);
+                double ro = ri + t;
+                return ri > 0 ? (ro * ro + ri * ri) / (ro * ro - ri * ri) : 0;
+            }
+            case TANK -> {
+                double t = PartGeometry.wallThickness(p), worst = 0;
+                double[] in = {p.boxSize(0) - 2 * t, p.boxSize(1) - 2 * t, p.boxSize(2) - 2 * t};
+                for (int n = 0; n < 3; n++) {
+                    double a = Math.max(in[(n + 1) % 3], in[(n + 2) % 3]), b = Math.min(in[(n + 1) % 3], in[(n + 2) % 3]);
+                    if (b <= 0) continue;
+                    worst = Math.max(worst, plateBeta(a / b) * (b / t) * (b / t));
+                }
+                return worst;
+            }
+            default -> {
+                return 0;
+            }
+        }
+    }
+
+    /** Roark Table 11.4 case 8 (rectangular plate, all edges fixed, uniform pressure): β at the long edge's middle. */
+    static double plateBeta(double aOverB) {
+        double[] r = {1.0, 1.2, 1.4, 1.6, 1.8, 2.0}, beta = {0.3078, 0.3834, 0.4356, 0.4680, 0.4872, 0.4974};
+        if (aOverB >= 2) return 0.4974 + (0.5 - 0.4974) * (1 - 2 / aOverB);
+        int i = 0;
+        while (i < r.length - 2 && aOverB > r[i + 1]) i++;
+        double u = Math.max(0, (aOverB - r[i]) / (r[i + 1] - r[i]));
+        return beta[i] + u * (beta[i + 1] - beta[i]);
+    }
+
+    /** Internal pressure of a fluid- or gas-holding part [Pa], or NaN. */
+    public double pressure(long partId) {
+        FluidVolume v = fluidOfPart.get(partId);
+        if (v != null) return solver.x(v.pressureNode());
+        var g = gasOfPart.get(partId);
+        return g == null ? Double.NaN : g.pressure(solver);
+    }
+
+    /** A vessel's wall stress over its strength (≥ 1: it bursts), or NaN if the part is not a pressure vessel. */
+    public double burstUtilisation(long partId) {
+        double[] v = vessels().get(partId);
+        if (v == null) return Double.NaN;
+        return Math.max(0, pressure(partId) - assembly.ambientPressure()) * v[0] / v[1];
+    }
+
     public List<Long> step(double dt) {
         double done = solver.advance(dt, maxStepsPerAdvance);
         lag += dt - done;
         List<Long> failed = new ArrayList<>();
+        for (long id : vessels().keySet()) if (burstUtilisation(id) >= 1) failed.add(id);
         sinceStructure += done;
         if (sinceStructure >= 1.0) {
             structure = StructuralAnalysis.run(this);

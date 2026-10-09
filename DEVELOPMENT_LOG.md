@@ -246,3 +246,9 @@ between a rotor and a slide. The screw's thread friction follows the inclined-pl
 the exhibit's 4 mm-lead screw holds its weight when let go, the four-start 40 mm one runs back and spins its crank. Shafts
 are rows of one-cell segments: the segments either side of a nut first welded it to the screw (locking the machine), and
 the rack's travel was first limited to the one segment under the pinion.
+
+**Pressure vessels burst.** Every fluid-holding part now knows its wall stress per pascal (Lamé for tubes, Roark's
+fixed-edge plate for box tanks) and fails at its material's tensile strength. Burst test exhibit: two sealed boxes half
+full of water on switched heaters; the water boils up its saturation curve until the 1 mm copper box tears at 1.94 bar,
+as the plate formula predicts, while the 3 mm steel box holds. The heaters are switched so the demo-world generation does
+not burst it before anyone looks. No existing exhibit bursts (the 200 bar fuel cylinder's 6 mm wall holds).

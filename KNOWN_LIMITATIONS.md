@@ -33,6 +33,9 @@ behaviour; where physics is missing the effect is simply absent.
   a screw turning in a fixed nut) is a helical joint, not modelled. Thread efficiency is first order in μ'.
   A self-locked screw creeps at ~0.4 µm/s (regularised Coulomb friction).
 * A rack does not disengage: its slide is stopped where the pinion would leave its teeth.
+* Vessel bursting: room-temperature strength (no creep or hot weakening), each part's own cells as its walls
+  (a tank of several parts is judged part by part), no fatigue, no plastic bulging before the tear, no collapse
+  under external pressure; the wall stress is checked every step.
 
 ## Thermal
 * Lumped bodies (one node per part); large parts have no internal gradients.

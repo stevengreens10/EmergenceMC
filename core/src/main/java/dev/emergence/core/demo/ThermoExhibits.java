@@ -76,4 +76,41 @@ public final class ThermoExhibits {
         r.route();
         return e.view(12, 7, 20, 25);
     }
+
+    /**
+     * Burst test: two sealed vessels half full of water, each on a 2.3 kW heating element switched from one capacitor
+     * bank. The water boils and its pressure climbs the saturation curve; the thin copper box's walls bend until they
+     * tear, while the thick steel box holds — why boilers carry safety valves.
+     */
+    public static Exhibit burstTest() {
+        Exhibit e = new Exhibit("burst", "Burst test",
+                List.of("BURST TEST", "Close the switch:", "thin copper bursts,", "thick steel holds"),
+                "Two sealed boxes, each half full of water, sit on heating elements. Close the switch: the water warms "
+                        + "and boils, and with nowhere for the steam to go the pressure follows the boiling curve up: "
+                        + "about 2 bar above atmospheric at 134 °C. The pressure pushes on every wall; a flat wall bends, "
+                        + "and the stress at its edges grows with the square of its width over its thickness. The left box "
+                        + "is copper 1 mm thick: at about 2 bar its walls reach copper's tensile strength and it bursts, "
+                        + "venting its steam. The right one is steel 3 mm thick and would need nearly 60 bar. Meter the "
+                        + "boxes to watch the pressure and the water temperature climb together.");
+        for (int k = 0; k < 2; k++) {
+            int x = k == 0 ? 4 : 11;
+            // a 2.3 kW silicon-carbide element (4 ohm on 96 V) under each box, on mica legs
+            e.add(RESISTOR, "alumina", x, 0, 7, Dir.EAST, "resistance", 4.0, "contact_area", 0.002, "surface_area", 0.002,
+                    "mass", 0.1, "max_temperature", 1800);
+            e.name(k == 0 ? "thin" : "thick", e.add(TANK, k == 0 ? "copper" : "steel_1045", x, 1, 7, Dir.UP,
+                    "fluid", 7, "fill", 0.5, "wall", k == 0 ? 0.001 : 0.003));
+            e.add(BLOCK, "mica", x, 0, 6, Dir.UP);
+            e.add(BLOCK, "mica", x, 0, 8, Dir.UP);
+        }
+        int bank = e.add(CAPACITOR, "alumina", 8, 0, 12, Dir.EAST, "capacitance", 150);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 96));
+        e.name("switch", e.add(SWITCH, "brass", 8, 0, 10, Dir.EAST));
+        Router r = new Router(e, 0, 0, 0, 15, 3, 15);
+        r.pin("live", 9, 0, 12).pin("live", 5, 0, 7).pin("live", 12, 0, 7);
+        r.pin("ret", 7, 0, 12).pin("ret", 7, 0, 10);
+        r.pin("sw", 9, 0, 10).pin("sw", 3, 0, 7).pin("sw", 10, 0, 7);
+        r.insulation("live", 800).insulation("sw", 800); // glass-fibre: the elements' leads run hot
+        r.route();
+        return e.view(7.5, 4, 17, 25);
+    }
 }

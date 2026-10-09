@@ -27,6 +27,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Slides on linear bearings, helical springs, end stops, gravity along the guide, magnetics on slides
 ✅ Rams: cylinders driving slides (hydraulic press)
 ✅ Check-valve pumps (hydraulic jack); cavitation in liquids
+✅ Pressure vessels burst at their wall strength (burst test exhibit)
 ✅ Rotor–slide couplings: rack and pinion, lead screws (thread friction, self-locking)
 ⬜ Linkages, free rigid bodies, helical joints (a nut turning on a fixed screw)
 

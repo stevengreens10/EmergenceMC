@@ -179,6 +179,11 @@ public final class AutoShowcase {
                 STEPS.add(new Step(10, () -> pushPart(server.overworld(), rodAt, PartKind.SHAFT, 0),
                         "showcase-" + (i + 1) + "-" + id + "-pumped"));
             }
+            if (id.equals("burst")) {
+                // switch the heaters on: the copper box bursts within a minute
+                STEPS.add(new Step(1800, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-burst", () -> gone(DemoBuilder.partBlock(plot, e, "thin"), PartKind.TANK)));
+            }
             if (id.equals("rack")) {
                 // crank the rack up, then let go: the weight runs it back down
                 BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank");
@@ -295,8 +300,13 @@ public final class AutoShowcase {
 
     /** True once the fuse wire has been destroyed. */
     private static boolean gone(BlockPos at) {
+        return gone(at, PartKind.WIRE);
+    }
+
+    /** True once the block at {@code at} holds no part of that kind (it burned out, broke or burst). */
+    private static boolean gone(BlockPos at, PartKind kind) {
         return !(Minecraft.getInstance().level.getBlockEntity(at) instanceof AssemblyBlockEntity be)
-                || be.parts().stream().noneMatch(p -> p.kind == PartKind.WIRE);
+                || be.parts().stream().noneMatch(p -> p.kind == kind);
     }
 
     private static void tick() {

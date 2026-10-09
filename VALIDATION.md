@@ -193,6 +193,10 @@ lifting 1 kN: η = 0.3434 = model, exact thread formula 0.3412. Self-locking: a 
 rises r_p·Δθ exactly (145.00 mm) and runs back when let go; the screws lift one lead per turn (15.78 mm for 3.94
 turns of 4 mm; 154.47 mm for 3.86 turns of 40 mm), the fine one holds (0.4 µm in 1 s), the steep one runs back.
 
+Burst test: the 1 mm copper box (Roark plate, β = 0.3078, b/t = 60.5) bursts 47 s after the heaters switch on at
+1.944 bar gauge (predicted 1.953 bar, the step between), its water at 406.2 K = T_sat(p); the 3 mm steel box reaches
+1.4 % of its strength. The 200 bar methane cylinder (6 mm wall) holds at 70 % of steel's.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

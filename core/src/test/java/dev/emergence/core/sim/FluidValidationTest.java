@@ -3,6 +3,7 @@ package dev.emergence.core.sim;
 import dev.emergence.core.fluids.Fluid;
 import dev.emergence.core.fluids.FluidDatabase;
 import dev.emergence.core.fluids.IdealGas;
+import dev.emergence.core.fluids.Liquid;
 import dev.emergence.core.sim.elements.*;
 import dev.emergence.core.units.PhysicalConstants;
 import org.junit.jupiter.api.Test;
@@ -103,6 +104,44 @@ class FluidValidationTest {
         TransientSolver s = new TransientSolver(n);
         s.advance(0.1);
         assertEquals(0, br.massFlow(s), 1e-9);
+    }
+
+    /**
+     * Cavitation: water drawn out of a closed vessel towards a near-vacuum cannot be stretched below its vapour
+     * pressure — a cavity opens and the pressure stays near p_v (3.17 kPa at 25 °C, CRC) while the water leaves,
+     * mass conserved.
+     */
+    @Test
+    void liquidCavitatesInsteadOfSustainingTension() {
+        Liquid w = (Liquid) water;
+        double t = 298.15, pv = w.vapourPressure(t);
+        assertEquals(3169, pv, 30, "Antoine vapour pressure vs CRC");
+        assertEquals(1, w.liquidFraction(P0, t), 1e-12, "no cavity at atmospheric pressure");
+        assertEquals(Math.exp(-2), w.liquidFraction(pv - 0.4 * pv, t), 0.01, "an e-fold per B_c below p_v");
+        for (double p : new double[]{P0, pv + 500, pv, pv - 300, 500}) {
+            double h = 1, dp = (w.density(p + h, t) - w.density(p - h, t)) / (2 * h);
+            assertEquals(dp, w.dDensityDp(p, t), 1e-3 * Math.abs(dp), "∂ρ/∂p at " + p);
+            double ht = 1e-4, dt = (w.density(p, t + ht) - w.density(p, t - ht)) / (2 * ht);
+            assertEquals(dt, w.dDensityDt(p, t), 1e-4 * Math.abs(dt), "∂ρ/∂T at " + p);
+        }
+        Network n = new Network();
+        Port v = port(n, "v", P0, t), sink = port(n, "sink", 200, t);
+        FluidVolume vol = volume(n, v, water, 1e-4);
+        reservoir(n, sink, 200, t);
+        FluidBranch br = pipe(n, v, sink, water, 0.5, 2e-3, 0);
+        TransientSolver s = new TransientSolver(n);
+        double m0 = vol.mass(s), out = 0, pMin = Double.MAX_VALUE;
+        for (int i = 0; i < 400; i++) {
+            double t0 = s.time();
+            s.advance(0.05);
+            out += br.massFlow(s) * (s.time() - t0);
+            pMin = Math.min(pMin, s.x(v.p));
+        }
+        double left = vol.mass(s) / m0;
+        System.out.printf("cavitation: p %.0f Pa (p_v %.0f Pa), liquid left %.3f%n", s.x(v.p), pv, left);
+        assertTrue(left < 0.95, "water has been drawn out: " + left);
+        assertTrue(pMin > 0.3 * pv && s.x(v.p) < 1.1 * pv, "the pressure is held near p_v, not pulled to the sink: " + pMin);
+        assertEquals(1 - left, out / m0, 0.05 * (1 - left), "mass out ≈ mass lost (flow integrated per step)");
     }
 
     @Test

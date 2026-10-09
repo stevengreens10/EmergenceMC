@@ -118,4 +118,54 @@ public final class MechanicsExhibits {
         e.name("weight", e.add(BLOCK, "lead", 10, 7, 8, Dir.UP));
         return e.view(7, 5, 15, 12);
     }
+
+    /**
+     * A hydraulic jack: a hand pump (2 cm bore) between two check valves — one letting water in from an open
+     * reservoir, one letting it out to the ram (5 cm bore) carrying a lead weight. Each push drives water into the
+     * ram; each pull refills the pump from the reservoir while the outlet valve holds the ram up. A hand release
+     * valve lets the water back to the reservoir and the ram down.
+     */
+    public static Exhibit hydraulicJack() {
+        Exhibit e = new Exhibit("jack", "Hydraulic jack",
+                List.of("HYDRAULIC JACK", "Pump the handle:", "check valves ratchet", "the ram up"),
+                "The pump draws water from the open reservoir on the left through one check valve as you pull its "
+                        + "handle up, and pushes it through a second check valve into the ram as you push it down. The "
+                        + "valves only let water one way, so every stroke adds a little water under the ram and it climbs "
+                        + "— 6 times your force, 1/6 of your stroke, stroke after stroke, the way a car jack lifts a car. "
+                        + "Open the release valve (in front) to let the water back to the reservoir and the ram down.");
+        String st = "steel_1045";
+        e.fill(BLOCK, st, 1, 0, 8, 11, 0, 8, Dir.UP);
+        e.fill(BLOCK, st, 1, 0, 10, 11, 0, 10, Dir.UP);
+        // reservoir open to the air through a short standpipe
+        e.add(TANK, st, 2, 1, 8, Dir.UP, "fluid", 1);
+        e.add(PIPE, st, 2, 2, 8, Dir.UP, "bore", 0.02, "fluid", 1);
+        // inlet check valve, the pump's foot, outlet check valve, the line to the ram
+        e.name("inlet", e.add(VALVE, "brass", 3, 1, 8, Dir.EAST, "bore", 0.008, "relief", 3000, "fluid", 1));
+        e.add(PIPE, st, 4, 1, 8, Dir.EAST, "bore", 0.01, "fluid", 1);
+        e.name("outlet", e.add(VALVE, "brass", 5, 1, 8, Dir.EAST, "bore", 0.008, "relief", 3000, "fluid", 1));
+        e.fill(PIPE, st, 6, 1, 8, 10, 1, 8, Dir.EAST, "bore", 0.01, "fluid", 1);
+        e.add(BLOCK, st, 11, 1, 8, Dir.UP);
+        // the pump: 2 cm bore, its rod in a bearing on a column, a handle on top
+        e.name("pump", e.add(CYLINDER, st, 4, 2, 8, Dir.UP, "bore", 0.02, "fluid", 1));
+        e.name("pumpRod", e.fill(SHAFT, st, 4, 3, 8, 4, 6, 8, Dir.UP, "diameter", 0.01));
+        e.add(LINEAR_BEARING, st, 4, 5, 8, Dir.UP);
+        e.fill(BLOCK, st, 4, 1, 7, 4, 5, 7, Dir.UP);
+        e.name("handle", e.add(BLOCK, "oak", 4, 7, 8, Dir.UP, "fill", 0.3));
+        // the ram: 5 cm bore, lead weight
+        e.name("ram", e.add(CYLINDER, st, 10, 2, 8, Dir.UP, "bore", 0.05, "fluid", 1));
+        e.name("ramRod", e.fill(SHAFT, st, 10, 3, 8, 10, 6, 8, Dir.UP, "diameter", 0.02));
+        e.add(LINEAR_BEARING, st, 10, 5, 8, Dir.UP);
+        e.fill(BLOCK, st, 10, 1, 7, 10, 5, 7, Dir.UP);
+        e.name("weight", e.add(BLOCK, "lead", 10, 7, 8, Dir.UP));
+        // release line: from the ram's foot round the front to the reservoir, with a hand valve
+        e.add(PIPE, st, 10, 1, 9, Dir.SOUTH, "bore", 0.01, "fluid", 1);
+        e.fill(PIPE, st, 3, 1, 10, 5, 1, 10, Dir.EAST, "bore", 0.01, "fluid", 1);
+        e.fill(PIPE, st, 7, 1, 10, 10, 1, 10, Dir.EAST, "bore", 0.01, "fluid", 1);
+        e.add(BLOCK, st, 1, 1, 10, Dir.UP);
+        e.add(BLOCK, st, 11, 1, 10, Dir.UP);
+        e.name("release", e.add(VALVE, "brass", 6, 1, 10, Dir.EAST, "bore", 0.008, "fluid", 1));
+        e.add(PIPE, st, 2, 1, 10, Dir.EAST, "bore", 0.01, "fluid", 1);
+        e.add(PIPE, st, 2, 1, 9, Dir.SOUTH, "bore", 0.01, "fluid", 1);
+        return e.view(6, 5, 16, 15);
+    }
 }

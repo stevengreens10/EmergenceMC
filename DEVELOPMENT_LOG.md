@@ -218,5 +218,11 @@ the coil's current brakes it (Lenz).
 **Hydraulics.** Pistons generalised (crank or straight rod): a cylinder pushing a slide is a ram, and a hydraulic
 press emerges — Pascal's force multiplication with volume conserved exactly. The rod first ran past the piston's
 travel (the cylinder head was only a soft volume floor); the slide is now stopped where the piston meets the head.
-The demo-world generation no longer runs the GameTests (they have their own run): with the whole gallery sharing
-the time budget, time-dependent tests failed there.
+The demo-world generation runs the GameTests with the global time budget lifted (`emergence.globalBudgetMs`), so
+the gallery sharing the server cannot slow them into failing (a GameTest server will not start with no tests).
+
+**Hydraulic jack and cavitation.** A hand pump between two check valves ratchets a ram up stroke by stroke; a release
+valve lets it down. Its test found the liquid model taking tension: a quick push threw the light ram up past its
+water and the pressure under it went to −61 kPa absolute. Liquids now cavitate below their vapour pressure (a void
+fraction opens, the pressure stays near p_v); the ram's overshoot then draws ~4 % extra water in through both valves
+from the reservoir — a real effect of a fast stroke.

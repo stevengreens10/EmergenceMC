@@ -165,6 +165,16 @@ public final class AutoShowcase {
                     toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch"));
                 }, "showcase-" + (i + 1) + "-" + id + "-bouncing"));
             }
+            if (id.equals("jack")) {
+                // four strokes of the pump handle (no shots in between), then the raised ram
+                BlockPos rodAt = DemoBuilder.partBlock(plot, e, "pumpRod");
+                for (int k = 0; k < 4; k++) {
+                    STEPS.add(new Step(15, () -> pushPart(server.overworld(), rodAt, PartKind.SHAFT, -1), null));
+                    STEPS.add(new Step(15, () -> pushPart(server.overworld(), rodAt, PartKind.SHAFT, 1), null));
+                }
+                STEPS.add(new Step(10, () -> pushPart(server.overworld(), rodAt, PartKind.SHAFT, 0),
+                        "showcase-" + (i + 1) + "-" + id + "-pumped"));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }
@@ -214,6 +224,15 @@ public final class AutoShowcase {
     private static void push(ServerLevel level, BlockPos at, int dir) {
         if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
             PlacedPart m = find(be, PartKind.MAGNET);
+            var c = SimulationManager.get(level).compiledAt(at);
+            if (m != null && c != null) c.setPushEffort(m.id, dir);
+        }
+    }
+
+    /** A hand on the slide carrying the first part of the given kind in that block: pushing (±1) or let go (0). */
+    private static void pushPart(ServerLevel level, BlockPos at, PartKind kind, int dir) {
+        if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+            PlacedPart m = find(be, kind);
             var c = SimulationManager.get(level).compiledAt(at);
             if (m != null && c != null) c.setPushEffort(m.id, dir);
         }
@@ -279,8 +298,10 @@ public final class AutoShowcase {
             wait = 2; // condition met: grab after a couple of frames have rendered the new state
         } else if (wait-- == 0) {
             if (mc.screen != null) mc.setScreen(null); // never photograph a menu
-            Screenshot.grab(mc.gameDirectory, s.shot + ".png", mc.getMainRenderTarget(),
-                    msg -> EmergenceMod.LOG.info("Showcase screenshot: {}", msg.getString()));
+            if (s.shot != null) {
+                Screenshot.grab(mc.gameDirectory, s.shot + ".png", mc.getMainRenderTarget(),
+                        msg -> EmergenceMod.LOG.info("Showcase screenshot: {}", msg.getString()));
+            }
             index++;
             wait = -1;
         }

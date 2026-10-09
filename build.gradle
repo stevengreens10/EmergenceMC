@@ -94,8 +94,9 @@ neoForge {
         demoWorld {
             type = 'gameTestServer'
             gameDirectory = project.file('run-demo')
-            // build and save the gallery only: the in-world tests have their own run (runGameTestServer)
-            systemProperty 'neoforge.enabledGameTestNamespaces', 'none'
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            // the tests share the server with the whole gallery: no slow motion, whatever the tick costs
+            systemProperty 'emergence.globalBudgetMs', '1e9'
             systemProperty 'emergence.buildDemo', 'true'
         }
     }

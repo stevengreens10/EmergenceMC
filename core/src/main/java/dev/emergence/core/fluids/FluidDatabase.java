@@ -81,6 +81,9 @@ public final class FluidDatabase {
                         q(m.get("t0"), Dimension.TEMPERATURE), q(m.get("bulk_modulus"), Dimension.PRESSURE),
                         q(m.get("expansion"), Dimension.INVERSE_TEMPERATURE), q(m.get("cp"), Dimension.SPECIFIC_HEAT),
                         q(m.get("k"), Dimension.THERMAL_CONDUCTIVITY), law, c);
+                if (m.get("antoine") instanceof List<?> ant) {
+                    ((Liquid) f).withVapourPressure((Double) ant.get(0), (Double) ant.get(1), (Double) ant.get(2));
+                }
             }
             if (byCode.put(code, f) != null) throw new IllegalStateException("Duplicate fluid code " + code);
             byId.put(id, f);

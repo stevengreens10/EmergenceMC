@@ -984,4 +984,41 @@ class DemoExhibitsTest {
         assertTrue(dp < -0.005, "the pump piston went down");
         assertEquals(-dp * a1 / a2, dr, 0.15 * Math.abs(dp * a1 / a2), "the ram rose by the displaced water over its area");
     }
+
+    /** The jack: strokes of the pump ratchet the ram up through the check valves; it holds; the release lets it down. */
+    @Test
+    void hydraulicJackRatchetsUp() {
+        Exhibit e = MechanicsExhibits.hydraulicJack();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pump = b.id(e, "pumpRod"), ram = b.id(e, "ramRod");
+        run(c, 1.0);
+        double r0 = c.probe(ram).angle(), down = 0, pRamMin = Double.MAX_VALUE;
+        for (int stroke = 0; stroke < 3; stroke++) {
+            double top = c.probe(pump).angle();
+            c.setPushEffort(pump, -1);
+            for (int i = 0; i < 60; i++) {
+                c.step(0.01);
+                pRamMin = Math.min(pRamMin, c.fluid(b.id(e, "ram"))[0]);
+            }
+            down += top - c.probe(pump).angle();
+            c.setPushEffort(pump, 1);
+            for (int i = 0; i < 60; i++) c.step(0.01);
+            c.setPushEffort(pump, 0);
+            System.out.printf("jack stroke %d: pump %.1f mm, ram %.2f mm%n", stroke, 1000 * c.probe(pump).angle(), 1000 * (c.probe(ram).angle() - r0));
+        }
+        double rise = c.probe(ram).angle() - r0, a1 = Math.PI * 0.02 * 0.02 / 4, a2 = Math.PI * 0.05 * 0.05 / 4;
+        System.out.printf("hydraulic jack: pumped %.1f mm in all, ram rose %.2f mm (A1/A2 · = %.2f mm)%n", 1000 * down, 1000 * rise, 1000 * down * a1 / a2);
+        // a quick push throws the light ram up past the water under it: a cavity opens below it (the pressure falls
+        // to the vapour pressure) and the reservoir's pressure pushes a little extra water in through both valves
+        System.out.printf("  lowest ram pressure %.1f kPa%n", pRamMin / 1e3);
+        assertTrue(rise > 0.9 * down * a1 / a2 && rise < 1.1 * down * a1 / a2, "the ram climbs by the water pumped over its area");
+        assertTrue(pRamMin > 1000, "never below the vapour pressure (bar the cavity's small regularisation)");
+        double held = c.probe(ram).angle();
+        run(c, 2);
+        assertEquals(held, c.probe(ram).angle(), 1e-3, "the outlet valve holds the ram up");
+        c.toggleSwitch(b.id(e, "release"));
+        run(c, 3);
+        assertTrue(c.probe(ram).angle() < held - 0.5 * rise, "opening the release valve lets it down");
+    }
 }

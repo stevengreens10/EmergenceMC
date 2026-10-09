@@ -185,8 +185,12 @@ public final class SimulationManager {
         globalScale = Math.max(0.05, Math.min(1, globalScale * Math.min(want, 1.25)));
     }
 
-    /** Wall-clock budget for all islands together per server tick [ms] (a tick is 50 ms). */
-    public static final double GLOBAL_BUDGET_MS = 35;
+    /**
+     * Wall-clock budget for all islands together per server tick [ms] (a tick is 50 ms). System property
+     * {@code emergence.globalBudgetMs} overrides it (the demo-world generation lifts it so its in-world tests run at
+     * full rate however long the gallery takes).
+     */
+    public static final double GLOBAL_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.globalBudgetMs", "35"));
     /** Common slow-motion factor applied on top of each island's own when all of them together are too costly. */
     private double globalScale = 1;
 

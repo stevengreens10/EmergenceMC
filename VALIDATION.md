@@ -178,6 +178,15 @@ with the coils loaded the magnet loses more mechanical energy than open-circuit,
 Hydraulic press: pushing the 1.2 cm piston 28.43 mm raises the 5 cm ram 1.638 mm = A₁/A₂ × 28.43 mm (water volume
 conserved to 0.1 %); the ram pressure carries the weight.
 
+Hydraulic jack: three strokes of the 2 cm pump (150.7 mm in all) ratchet the 5 cm ram up 25.22 mm against
+A₁/A₂ × 150.7 mm = 24.11 mm; the 4.6 % surplus is water drawn in through both check valves while the quickly pushed
+ram coasts up over a vapour cavity (lowest ram pressure 3.1 kPa ≈ p_v); the outlet valve holds it and the release
+valve lets it down.
+
+Cavitation (`FluidValidationTest`): water drained from a closed 0.1 L vessel towards a 200 Pa sink holds at 3.32 kPa
+(p_v = 3.16 kPa by Antoine at 25 °C, CRC 3.17 kPa) while 7 % of it leaves, mass conserved; ∂ρ/∂p and ∂ρ/∂T match
+finite differences across the onset.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

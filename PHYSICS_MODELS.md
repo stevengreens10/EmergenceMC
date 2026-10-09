@@ -120,6 +120,10 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
 * **Working fluids** (`fluids.json`): thermally perfect ideal gases p = ρRT, c_p(T) polynomial fitted to
   Incropera Table A.4 (air ±0.1 %, N₂ ±0.2 %, CO₂ ±0.6 %), u = ∫c_v dT; Sutherland viscosity and
   conductivity. Liquids (water, ISO VG 46 oil): ρ = ρ0[1 + (p − p0)/K − β(T − T0)], Vogel/Andrade viscosity.
+  **Cavitation**: below the vapour pressure p_v(T) (Antoine; water 3.17 kPa at 25 °C) a vapour cavity opens rather
+  than the liquid taking tension: ρ = ρ_l·e^{−φ}, φ = ¼·ln(1 + e^{4(p_v − p)/B_c}), B_c = 0.2·max(p_v, 500 Pa) — the
+  pressure falls only B_c per e-fold of liquid lost, so it stays near p_v while the void grows, and the void
+  refills when the pressure returns. Cavity vapour mass and latent heat neglected (ρ_v/ρ_l ~ 10⁻⁵).
 * **`FluidVolume`**: d(ρV)/dt = Σṁ_in; d(m·u)/dt = Σṁ_in·h_in + Q̇ (first law for an open system, well mixed).
 * **`FluidBranch`** (quasi-steady, ṁ unknown): p_a − p_b = Δp_friction + Δp_minor + ρgΔz − Δp_rotor.
   Darcy–Weisbach with f = 64/Re (Hagen–Poiseuille exactly) and Haaland's fit to Colebrook (±2 %), blended

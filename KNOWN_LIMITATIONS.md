@@ -58,6 +58,9 @@ behaviour; where physics is missing the effect is simply absent.
 * Rotors: one blade row at the mean radius; swirl is not passed to a downstream rotor; no tip leakage or
   radial (centrifugal) machines; blades have no camber.
 * Gas properties are ideal-gas (Z ≈ 1); real-gas effects at high pressure are ignored.
+* Cavitation is lumped (a void fraction per volume, pressure held near p_v by a regularising cavity modulus); no
+  bubble dynamics, collapse pressure pulses, erosion, or dissolved-gas release (oil, which has no vapour-pressure
+  data here, cavitates near 0 Pa where real oil releases air at tens of kPa).
 * Internal natural convection in closed vessels is not modelled (laminar forced-convection Nu as floor).
 * Pistons: massless piston and rod, no blow-by; crankcase always at ambient pressure. Cam-worked valves
   take no force from the cam (valve-gear work and inertia neglected).

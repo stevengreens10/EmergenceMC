@@ -26,7 +26,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ⬜ Ferromagnetic cores (magnetic equivalent circuits / induced magnetisation), eddy currents
 ✅ Slides on linear bearings, helical springs, end stops, gravity along the guide, magnetics on slides
 ✅ Rams: cylinders driving slides (hydraulic press)
-⬜ Linkages, free rigid bodies, rotor–slide couplings (rack and pinion, lead screws), check-valve pumps (hydraulic jack)
+✅ Check-valve pumps (hydraulic jack); cavitation in liquids
+⬜ Linkages, free rigid bodies, rotor–slide couplings (rack and pinion, lead screws)
 
 ## Phase 3 — Thermal and fluid physics
 🟡 Heat transfer: conduction, natural convection, radiation, thermal masses ✅; forced convection ⬜

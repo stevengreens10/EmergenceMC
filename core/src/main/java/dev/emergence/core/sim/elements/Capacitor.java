@@ -21,7 +21,10 @@ public final class Capacitor implements Element {
 
     @Override
     public void setup(SetupContext ctx) {
-        slot = ctx.allocState(c * 1e-6);
+        // truncation-error floor: the charge of 1 mV. Newton resolves node voltages only to ~1e-4 relative, so a
+        // tighter floor makes the step controller chase Newton noise on nearly floating nodes (e.g. the
+        // internal node of a stack of off transistors) and collapse the time step
+        slot = ctx.allocState(c * 1e-3);
     }
 
     @Override

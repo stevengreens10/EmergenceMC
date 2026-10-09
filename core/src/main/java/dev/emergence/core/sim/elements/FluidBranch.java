@@ -40,7 +40,16 @@ import dev.emergence.core.units.PhysicalConstants;
  * Energy: the flow carries the upstream specific enthalpy h = u + p/ρ (upwinded, smoothly through
  * ṁ = 0) and the rotor's shaft work is added to the downstream volume, so friction heat stays in the
  * fluid and the first law holds exactly. Kinetic energy of the flow and fluid inertia are neglected
- * (low Mach number, no acoustic or water-hammer transients); flow is single phase and unchoked.
+ * (low Mach number, no acoustic or water-hammer transients).
+ * <p>
+ * <b>Water/steam ends</b> ({@link FluidVolume.Port}): the fluid leaving a two-phase volume is the phase at the
+ * port's height (liquid below the level, vapour above). Its enthalpy, density and viscosity then come from the
+ * port, upwinded like the enthalpy, and the flow is treated as homogeneous. A valve passing vapour uses the
+ * compressible nozzle relation with γ = 1.3 and R = 461.5 J/(kg·K) (steam); a liquid the incompressible one;
+ * a mixture the vapour-mass-weighted blend (flashing two-phase choking is not modelled).
+ * <p>
+ * <b>Check and relief valves</b> ({@link #withCheck}): a spring-loaded disc that opens only for forward flow,
+ * lifting in proportion to the pressure difference above its cracking pressure (quasi-static spring).
  */
 public final class FluidBranch implements Element {
     private final Node pa, ta, pb, tb;
@@ -53,6 +62,8 @@ public final class FluidBranch implements Element {
     private double rotorRadius, rotorArea, stagger, pitch = 1, bodySense = 1, flowAlongAxis = 1, cd0 = 0.02, solidity = 0.8;
     private int mIdx;
     private String tag = "";
+    private FluidVolume.Port portA, portB;
+    private double crack = Double.NaN, fullOpen;
     private double mScale;
 
     /**
@@ -98,22 +109,38 @@ public final class FluidBranch implements Element {
 
     /** Mass flow a → b through the orifice for the given end states [kg/s]. */
     double orificeFlow(double pA, double pB, double tA, double tB) {
+        return orificeFlow(pA, pB, tA, tB, null, null);
+    }
+
+    /** As {@link #orificeFlow(double, double, double, double)}, with the outflow properties of two-phase ends. */
+    double orificeFlow(double pA, double pB, double tA, double tB, double[] endA, double[] endB) {
         double dp = pA - pB;
         boolean fwd = dp >= 0;
         double pu = Math.max(fwd ? pA : pB, 1.0), pd = Math.max(fwd ? pB : pA, 0.0), tu = Math.max(fwd ? tA : tB, 1.0);
         double area = dischargeCoefficient * orificeArea * opening;
+        if (!Double.isNaN(crack)) area *= checkLift(dp);
         double reg = Math.tanh(Math.abs(dp) / 1.0);
         double m;
+        double[] up = fwd ? endA : endB;
         if (fluid instanceof dev.emergence.core.fluids.IdealGas g) {
-            double gam = g.gamma(tu), r = g.gasConstant();
-            double rCrit = Math.pow(2 / (gam + 1), gam / (gam - 1));
-            double ratio = Math.max(pd / pu, rCrit);
-            double psi = Math.pow(ratio, 2 / gam) - Math.pow(ratio, (gam + 1) / gam);
-            m = area * pu * Math.sqrt(Math.max(2 * gam / ((gam - 1) * r * tu) * psi, 0));
+            m = area * gasNozzle(pu, pd, tu, g.gamma(tu), g.gasConstant());
+        } else if (up != null) {
+            double x = up[3];
+            double gas = x > 0 ? gasNozzle(pu, pd, tu, 1.3, 461.5) : 0;
+            double liq = x < 1 ? Math.sqrt(2 * up[1] * Math.abs(dp)) : 0;
+            m = area * (x * gas + (1 - x) * liq);
         } else {
             m = area * Math.sqrt(2 * fluid.density(pu, tu) * Math.abs(dp));
         }
         return (fwd ? 1 : -1) * m * reg;
+    }
+
+    /** Isentropic ideal-gas nozzle mass flux ṁ/A [kg/(s·m²)], choking at the critical pressure ratio. */
+    static double gasNozzle(double pu, double pd, double tu, double gam, double r) {
+        double rCrit = Math.pow(2 / (gam + 1), gam / (gam - 1));
+        double ratio = Math.max(pd / pu, rCrit);
+        double psi = Math.pow(ratio, 2 / gam) - Math.pow(ratio, (gam + 1) / gam);
+        return pu * Math.sqrt(Math.max(2 * gam / ((gam - 1) * r * tu) * psi, 0));
     }
 
     /**
@@ -148,6 +175,30 @@ public final class FluidBranch implements Element {
         return Math.sin(2 * alpha) * (1 + (Math.PI - 1) * Math.exp(-(s / 0.25) * (s / 0.25)));
     }
 
+    /** Phase-aware ends: the ports at which this branch meets two-phase volumes (null for an ordinary end). */
+    public FluidBranch withPorts(FluidVolume.Port a, FluidVolume.Port b) {
+        this.portA = a;
+        this.portB = b;
+        return this;
+    }
+
+    /**
+     * Makes this branch's orifice a spring-loaded check (or relief) valve passing only a → b: closed below the
+     * cracking pressure difference, fully open {@code fullOpenRise} above it.
+     */
+    public FluidBranch withCheck(double crackingPressure, double fullOpenRise) {
+        this.crack = crackingPressure;
+        this.fullOpen = Math.max(fullOpenRise, 1);
+        return this;
+    }
+
+    /** Lift fraction of a check valve for the pressure difference p_a − p_b. */
+    double checkLift(double dp) {
+        double u = (dp - crack) / fullOpen;
+        if (u <= 0) return 1e-6 * Math.exp(Math.max(u, -50)); // a seated disc: a vanishing leak keeps Newton smooth
+        return Math.min(1, u) + 1e-6;
+    }
+
     /** Diagnostic tag (e.g. the parts this branch joins), shown in solver messages. */
     public FluidBranch withTag(String tag) {
         this.tag = "[" + tag + "]";
@@ -169,12 +220,29 @@ public final class FluidBranch implements Element {
         mIdx = ctx.allocUnknown("mdot" + tag, 1e-6 * mScale);
     }
 
+    private final double[] endA = new double[5], endB = new double[5];
+
     /** Evaluates [R (Pa), energy leaving a (W), energy leaving b (W), torque taken from the rotor (N·m)]. */
-    private void eval(double m, double pA, double pB, double tA, double tB, double w, double[] out) {
+    private void eval(double m, double pA, double pB, double tA, double tB, double w, double sA, double sB, double[] out) {
         tA = Math.max(tA, 1.0);
         tB = Math.max(tB, 1.0);
-        double pm = Math.max(0.5 * (pA + pB), fluid.isGas() ? 1.0 : -1e9), tm = 0.5 * (tA + tB);
-        double rho = Math.max(fluid.density(pm, tm), 1e-9), mu = fluid.viscosity(tm);
+        double up = 0.5 * (1 + Math.tanh(m / (1e-3 * mScale)));
+        double rho, mu, hA, hB;
+        boolean ported = portA != null || portB != null;
+        if (ported) {
+            end(portA, pA, tA, sA, endA);
+            end(portB, pB, tB, sB, endB);
+            rho = Math.max(1 / (up * endA[4] + (1 - up) * endB[4]), 1e-9);
+            mu = up * endA[2] + (1 - up) * endB[2];
+            hA = endA[0];
+            hB = endB[0];
+        } else {
+            double pm = Math.max(0.5 * (pA + pB), fluid.isGas() ? 1.0 : -1e9), tm = 0.5 * (tA + tB);
+            rho = Math.max(fluid.density(pm, tm), 1e-9);
+            mu = fluid.viscosity(tm);
+            hA = fluid.enthalpy(pA, tA);
+            hB = fluid.enthalpy(pB, tB);
+        }
         boolean orifice = orificeArea > 0;
         double v = m / (rho * area);
         double dp = frictionLoss(v, rho, mu);
@@ -209,14 +277,28 @@ public final class FluidBranch implements Element {
             power = ft * u;                          // work done on the fluid by the moving blades
             torque = -bodySense * (-ft) * rotorRadius; // torque taken from the body node (= −torque on the rotor)
         }
-        double up = 0.5 * (1 + Math.tanh(m / (1e-3 * mScale)));
-        double h = up * fluid.enthalpy(pA, tA) + (1 - up) * fluid.enthalpy(pB, tB);
+        double h = up * hA + (1 - up) * hB;
         double flowH = m * h;
         // orifice branch: flow set by the nozzle relation (residual in kg/s)
-        out[0] = orifice ? (m - orificeFlow(pA, pB, tA, tB)) * 1e5 / Math.max(mScale * 1e3, 1e-12) : pA - pB - dp;
+        out[0] = orifice ? (m - orificeFlow(pA, pB, tA, tB, ported ? endA : null, ported ? endB : null)) * 1e5 / Math.max(mScale * 1e3, 1e-12)
+                : pA - pB - dp;
         out[1] = flowH - (1 - up) * power;
         out[2] = -flowH - up * power;
         out[3] = torque;
+    }
+
+    /** Outflow properties [h, ρ, μ, x, 1/ρ] at one end: from its port, or from the single-phase fluid. */
+    private void end(FluidVolume.Port port, double p, double t, double s, double[] out) {
+        if (port != null) {
+            port.outflow(t, s, out);
+            return;
+        }
+        double rho = Math.max(fluid.density(p, t), 1e-9);
+        out[0] = fluid.enthalpy(p, t);
+        out[1] = rho;
+        out[2] = fluid.viscosity(t);
+        out[3] = fluid.isGas() ? 1 : 0;
+        out[4] = 1 / rho;
     }
 
     private double frictionLoss(double v, double rho, double mu) {
@@ -238,12 +320,13 @@ public final class FluidBranch implements Element {
 
     @Override
     public void load(LoadContext ctx) {
-        int[] idx = {mIdx, pa.index(), pb.index(), ta.index(), tb.index(), rotor == null ? -1 : rotor.index()};
-        double[] val = new double[6];
-        for (int k = 0; k < 6; k++) val[k] = ctx.x(idx[k]);
+        int[] idx = {mIdx, pa.index(), pb.index(), ta.index(), tb.index(), rotor == null ? -1 : rotor.index(),
+                portA == null ? -1 : portA.phaseIndex(), portB == null ? -1 : portB.phaseIndex()};
+        double[] val = new double[8];
+        for (int k = 0; k < 8; k++) val[k] = idx[k] < 0 ? 0 : ctx.x(idx[k]);
         double[] f0 = new double[4];
         boolean closed = opening <= 0;
-        eval(val[0], val[1], val[2], val[3], val[4], val[5], f0);
+        eval(val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], f0);
         int[] rows = {mIdx, ta.index(), tb.index(), rotor == null ? -1 : rotor.index()};
         if (closed) {
             ctx.addF(mIdx, val[0] * 1e3);
@@ -258,17 +341,18 @@ public final class FluidBranch implements Element {
         ctx.addJ(pb.index(), mIdx, -1);
         // finite-difference Jacobian of the residual, energy and torque rows
         double[] f1 = new double[4];
-        for (int k = 0; k < 6; k++) {
+        for (int k = 0; k < 8; k++) {
             if (idx[k] < 0) continue;
             double step = switch (k) {
                 case 0 -> 1e-6 * Math.max(Math.abs(val[0]), mScale);
                 case 1, 2 -> 1e-7 * Math.max(Math.abs(val[k]), 1e3);
                 case 3, 4 -> 1e-5 * Math.max(Math.abs(val[k]), 1);
+                case 6, 7 -> 1e-6;
                 default -> 1e-6 * Math.max(Math.abs(val[k]), 1);
             };
             double[] v = val.clone();
             v[k] += step;
-            eval(v[0], v[1], v[2], v[3], v[4], v[5], f1);
+            eval(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], f1);
             for (int r = 0; r < 4; r++) {
                 if (r == 0 && closed) continue;
                 ctx.addJ(rows[r], idx[k], (f1[r] - f0[r]) / step);

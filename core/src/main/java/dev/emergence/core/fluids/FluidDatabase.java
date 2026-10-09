@@ -60,7 +60,11 @@ public final class FluidDatabase {
             String id = (String) m.get("id"), name = (String) m.get("name");
             int code = ((Double) m.get("code")).intValue();
             Fluid f;
-            if ("gas".equals(m.get("phase"))) {
+            if ("two_phase".equals(m.get("phase"))) {
+                Fluid l = byId.get((String) m.get("liquid"));
+                if (!(l instanceof Liquid liq)) throw new IllegalStateException(id + ": liquid transport fluid must be listed first");
+                f = new WaterSteam(id, name, code, liq);
+            } else if ("gas".equals(m.get("phase"))) {
                 List<Object> cp = (List<Object>) m.get("cp_poly");
                 double[] a = new double[cp.size()];
                 for (int i = 0; i < a.length; i++) a[i] = (Double) cp.get(i);

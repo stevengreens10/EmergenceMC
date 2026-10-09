@@ -39,6 +39,9 @@
     {"id": "carbon_dioxide", "code": 6, "name": "Carbon dioxide", "phase": "gas", "molar_mass": "0.04401 kg/mol",
      "cp_poly": [421.2, 1869.4, -1667.0, 611.2, 0],
      "mu_sutherland": ["1.370e-5 Pa*s", "273.15 K", "222 K"], "k_sutherland": ["0.0146 W/(m*K)", "273.15 K", "1800 K"],
-     "source": "INC (c_p fit ±0.6 % 250-1000 K), WHITE"}
+     "source": "INC (c_p fit ±0.6 % 250-1000 K), WHITE"},
+    {"id": "water_steam", "code": 7, "name": "Water / steam", "phase": "two_phase", "liquid": "water",
+     "range": "273.16-640 K, liquid, saturated mixture and superheated vapour",
+     "source": "IAPWS supplementary release on saturation properties (1992), Wagner & Pruss (1993); transport from water"}
   ]
 }

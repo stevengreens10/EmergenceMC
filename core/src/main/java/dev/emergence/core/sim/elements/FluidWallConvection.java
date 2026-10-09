@@ -1,6 +1,7 @@
 package dev.emergence.core.sim.elements;
 
 import dev.emergence.core.fluids.Fluid;
+import dev.emergence.core.fluids.WaterSteam;
 import dev.emergence.core.sim.Element;
 import dev.emergence.core.sim.LoadContext;
 import dev.emergence.core.sim.Node;
@@ -14,12 +15,24 @@ import dev.emergence.core.sim.StateView;
  * (±10 %, 0.5 &lt; Pr &lt; 2000), blended in between. Re is taken from the mean |ṁ| of the branches
  * through the volume. A quiescent volume therefore exchanges heat at the laminar (conduction-like)
  * rate; natural convection inside closed vessels is not modelled separately (conservative).
+ * <p>
+ * <b>Boiling and condensation</b> (water/steam volumes, {@link #withTwoPhase}): the wall is wetted by liquid
+ * over the fraction 1 − α_v of its area and by vapour over α_v. Where the liquid wall is hotter than the
+ * saturation temperature it boils with Rohsenow's nucleate-boiling flux
+ * q'' = μ_l h_fg √(g(ρ_l − ρ_v)/σ)·(c_p,l ΔT_e/(C_sf h_fg Pr_l))³, C_sf = 0.013 (water on copper or steel;
+ * ±100 % in flux, ±25 % in ΔT_e), limited smoothly by Zuber's critical heat flux
+ * q''_max = 0.149 h_fg ρ_v (σg(ρ_l − ρ_v)/ρ_v²)^¼ (film boiling beyond burnout is not modelled). Where the
+ * vapour wall is colder than saturation, vapour condenses on it as a laminar film (Nusselt):
+ * h = 0.943 (ρ_l(ρ_l − ρ_v) g h'_fg k_l³/(μ_l L ΔT))^¼, h'_fg = h_fg + 0.68 c_p,l ΔT, L the wall height
+ * (±20 %). Single-phase convection to each phase is added as above.
  */
 public final class FluidWallConvection implements Element {
     private final Node fluidT, wallT;
     private final Fluid fluid;
     private final double area, dh, flowArea;
     private final java.util.List<FluidBranch> branches;
+    private FluidVolume volume;
+    private double wallHeight;
 
     /**
      * @param branches the flow branches through this volume (their flow sets the Reynolds number)
@@ -33,6 +46,57 @@ public final class FluidWallConvection implements Element {
         this.dh = hydraulicDiameter;
         this.flowArea = flowArea;
         this.branches = java.util.List.copyOf(branches);
+    }
+
+    /** Enables boiling and condensation on this wall for a water/steam volume whose wall is {@code height} tall. */
+    public FluidWallConvection withTwoPhase(FluidVolume v, double height) {
+        if (v.twoPhase()) {
+            this.volume = v;
+            this.wallHeight = Math.max(height, 1e-3);
+        }
+        return this;
+    }
+
+    private double reynoldsFlow(StateView s) {
+        double mdot = 0;
+        for (FluidBranch b : branches) mdot += Math.abs(b.massFlow(s));
+        if (!branches.isEmpty()) mdot /= branches.size();
+        return mdot * dh / flowArea;
+    }
+
+    private final double[] st = new double[9];
+
+    /** Heat flow from the wall into a water/steam volume [W]. */
+    double twoPhaseHeat(double tw, double tf, double s, double mdotDh) {
+        WaterSteam w = (WaterSteam) fluid;
+        WaterSteam.state(tf, s, st);
+        double ts = WaterSteam.tSat(st[WaterSteam.P]);
+        double av = st[WaterSteam.ALPHA_V], fl = 1 - av;
+        double rl = WaterSteam.rhoLiquidSat(ts), rv = WaterSteam.rhoVapourSat(ts), hfg = WaterSteam.latentHeat(ts);
+        double mul = w.liquidViscosity(tf), kl = w.liquidConductivity(tf), cpl = w.cp(tf), prl = mul * cpl / kl;
+        double g = dev.emergence.core.units.PhysicalConstants.STANDARD_GRAVITY, sigma = Math.max(WaterSteam.surfaceTension(ts), 1e-4);
+        double q = 0;
+        // single-phase convection to each phase
+        double hl = nusselt(mdotDh / mul, prl) * kl / dh;
+        double muv = w.vapourViscosity(tf), kv = WaterSteam.vapourConductivity(tf);
+        double hv = nusselt(mdotDh / muv, muv * w.cpVapour() / kv) * kv / dh;
+        q += (hl * fl + hv * av) * area * (tw - tf);
+        // nucleate boiling on the wetted wall, smoothly capped at the critical heat flux
+        double dte = tw - ts;
+        if (dte > 0 && fl > 0) {
+            double nb = mul * hfg * Math.sqrt(g * (rl - rv) / sigma) * Math.pow(cpl * dte / (0.013 * hfg * prl), 3);
+            double chf = 0.149 * hfg * rv * Math.pow(sigma * g * (rl - rv) / (rv * rv), 0.25);
+            double flux = nb / Math.pow(1 + Math.pow(nb / chf, 4), 0.25);
+            q += flux * area * fl;
+        }
+        // film condensation on the vapour-covered wall
+        double dtc = ts - tw;
+        if (dtc > 0 && av > 0) {
+            double hfgP = hfg + 0.68 * cpl * dtc;
+            double c = 0.943 * Math.pow(rl * (rl - rv) * g * hfgP * kl * kl * kl / (mul * wallHeight), 0.25);
+            q -= c * dtc * Math.pow(dtc * dtc + 1e-4, -0.125) * area * av;
+        }
+        return q;
     }
 
     /** Heat transfer coefficient h [W/(m²·K)] at the current state. */
@@ -59,6 +123,23 @@ public final class FluidWallConvection implements Element {
 
     @Override
     public void load(LoadContext ctx) {
+        if (volume != null) {
+            int iw = wallT.index(), iff = fluidT.index(), is = volume.phaseIndex();
+            double tw = ctx.x(iw), tf = ctx.x(iff), s = ctx.x(is), md = reynoldsFlow(ctx);
+            double q = twoPhaseHeat(tw, tf, s, md);
+            ctx.addF(iw, q);
+            ctx.addF(iff, -q);
+            double h = 1e-4;
+            double dw = (twoPhaseHeat(tw + h, tf, s, md) - q) / h, df = (twoPhaseHeat(tw, tf + h, s, md) - q) / h;
+            double ds = (twoPhaseHeat(tw, tf, s + 1e-6, md) - q) / 1e-6;
+            ctx.addJ(iw, iw, dw);
+            ctx.addJ(iw, iff, df);
+            ctx.addJ(iw, is, ds);
+            ctx.addJ(iff, iw, -dw);
+            ctx.addJ(iff, iff, -df);
+            ctx.addJ(iff, is, -ds);
+            return;
+        }
         double ha = coefficient(ctx) * area;
         double q = ha * (ctx.x(wallT.index()) - ctx.x(fluidT.index())); // into the fluid
         ctx.addF(wallT.index(), q);

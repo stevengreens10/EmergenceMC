@@ -112,6 +112,28 @@
       "sources": ["SZE App. G", "CRC"]
     },
     {
+      "id": "bi2te3_p", "name": "Bismuth antimony telluride, p-type (Bi0.5Sb1.5Te3, Peltier grade)", "category": "semiconductor",
+      "color": "#6B6E78",
+      "properties": {
+        "density": "6.8 g/cm^3", "youngs_modulus": "40 GPa", "poisson_ratio": 0.24, "ultimate_tensile_strength": "30 MPa",
+        "thermal_conductivity": "1.3 W/(m*K)", "specific_heat": "160 J/(kg*K)", "thermal_expansion": "16.8e-6 1/K",
+        "melting_point": "858 K", "electrical_resistivity": "1.0e-5 ohm*m", "resistivity_temperature_coefficient": "0.004 1/K",
+        "seebeck_coefficient": "210e-6 V/K", "emissivity": 0.6, "relative_permeability": 1.0
+      },
+      "sources": ["Rowe, CRC Handbook of Thermoelectrics (1995) ch. 19", "Goldsmid, Introduction to Thermoelectricity (2016)"]
+    },
+    {
+      "id": "bi2te3_n", "name": "Bismuth telluride selenide, n-type (Bi2Te2.7Se0.3, Peltier grade)", "category": "semiconductor",
+      "color": "#5E626C",
+      "properties": {
+        "density": "7.7 g/cm^3", "youngs_modulus": "40 GPa", "poisson_ratio": 0.24, "ultimate_tensile_strength": "30 MPa",
+        "thermal_conductivity": "1.5 W/(m*K)", "specific_heat": "154 J/(kg*K)", "thermal_expansion": "16.8e-6 1/K",
+        "melting_point": "858 K", "electrical_resistivity": "1.0e-5 ohm*m", "resistivity_temperature_coefficient": "0.004 1/K",
+        "seebeck_coefficient": "-200e-6 V/K", "emissivity": 0.6, "relative_permeability": 1.0
+      },
+      "sources": ["Rowe, CRC Handbook of Thermoelectrics (1995) ch. 19", "Goldsmid, Introduction to Thermoelectricity (2016)"]
+    },
+    {
       "id": "germanium", "name": "Germanium (intrinsic)", "category": "semiconductor", "color": "#6A6C70",
       "properties": {
         "density": "5.323 g/cm^3", "youngs_modulus": "103 GPa", "poisson_ratio": 0.26,

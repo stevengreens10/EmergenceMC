@@ -121,3 +121,11 @@ multimeter, oscilloscope/data logging.
   well-stirred volumes, not propagating fronts (no flame speed, no flashback). Vessel walls do not burst
   under pressure. Parts radiate to the surroundings whatever encloses them (no view factors), so an enclosure
   does not insulate radiatively.
+
+## Thermoelectricity
+* Constant Seebeck coefficients (no Thomson effect); contacts through component leads (all tinned copper) are not
+  split, so a resistor's own thermocouple EMFs are ignored. Block-scale Bi₂Te₃ legs are 6 cm long, so a Peltier
+  couple at that scale needs hundreds of amperes; real modules (mm legs) are a miniature-scale build.
+## Simulation pace
+* Machines advance only within the simulation distance of a player (like Minecraft's block ticking); all islands
+  together are held to ~35 ms per tick by slowing every island in proportion when the world holds too many.

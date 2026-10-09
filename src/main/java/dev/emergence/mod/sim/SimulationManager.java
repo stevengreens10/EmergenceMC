@@ -140,13 +140,17 @@ public final class SimulationManager {
         tickCount++;
         if (!dirty.isEmpty()) rebuild();
         Set<Island> islands = new HashSet<>(islandOf.values());
+        double total = 0;
         for (Island isl : islands) {
             if (isl.compiled == null) continue;
+            // like block entities, machines advance only within the simulation distance of a player; further
+            // away their state waits, intact
+            if (!level.shouldTickBlocksAt(isl.blocks.iterator().next())) continue;
             updateCranks(isl);
             List<Long> failed;
             long t0 = System.nanoTime();
             try {
-                failed = isl.compiled.step(TICK_SECONDS * isl.timeScale);
+                failed = isl.compiled.step(TICK_SECONDS * isl.timeScale * globalScale);
             } catch (RuntimeException e) {
                 // restart from the last good state at rest (charges, heat, positions kept); if even that will not
                 // run, from nothing
@@ -162,6 +166,7 @@ public final class SimulationManager {
                 continue;
             }
             long cost = System.nanoTime() - t0;
+            total += cost / 1e6;
             Profiler.record(cost, isl.compiled.network().size());
             pace(isl, cost / 1e6);
             if (!failed.isEmpty()) destroyParts(isl, failed);
@@ -173,7 +178,15 @@ public final class SimulationManager {
             if (tickCount % 100 == 0) saveIsland(isl);
         }
         tickLoggers();
+        // all islands together within the server's budget: if they cost more, every one slows in proportion
+        double want = total > GLOBAL_BUDGET_MS ? GLOBAL_BUDGET_MS / total : 1.25;
+        globalScale = Math.max(0.05, Math.min(1, globalScale * Math.min(want, 1.25)));
     }
+
+    /** Wall-clock budget for all islands together per server tick [ms] (a tick is 50 ms). */
+    public static final double GLOBAL_BUDGET_MS = 35;
+    /** Common slow-motion factor applied on top of each island's own when all of them together are too costly. */
+    private double globalScale = 1;
 
     // ------------------------------------------------------------------ data loggers
 

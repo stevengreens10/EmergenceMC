@@ -196,3 +196,9 @@ its body a second, filling chamber (valves now have one seat in mixture networks
 lean flammability limit, too little left it smouldering rich; and a small flame in a cold steel box went out
 because the walls radiate more than it makes — it needed ~0.8 kW. Lit furnace-style (igniter, then gas, then
 igniter off) it burns on by itself near stoichiometric.
+
+**Thermoelectricity and pace.** Every contact between dissimilar conductors now has its Seebeck EMF and Peltier
+heat (energy-exact): a thermocouple exhibit amplifies a copper–constantan junction's 40.7 µV/K. Seebeck data were
+a mix of absolute and platinum-relative values; now all absolute and checked against the type T/J tables. The
+tour showed the whole gallery overloading the server (every island ticking everywhere): islands now tick only
+within the players' simulation distance, under a shared time budget.

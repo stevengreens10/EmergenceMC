@@ -51,6 +51,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Optical links with occlusion (light barriers, choppers on rotors) and daylight
 ✅ Logic from transistors (CMOS NAND exhibit) and a validated chip-level model (gates, D flip-flop,
    Schmitt trigger): oscillator + 4-bit counter exhibit
+✅ Thermoelectricity (Seebeck EMF and Peltier heat at every dissimilar contact): thermocouple exhibit
 ✅ NTC thermistor sensor; closed-loop thermostat exhibit (thermistor → Schmitt trigger → MOSFET → heater)
 ✅ MSI chips from multi-block packages: counter, register, 4-bit adder, programmable ROM
 ✅ **Milestone: a programmable computer controls a physical machine** — the EM-4 (PC, ROM program,

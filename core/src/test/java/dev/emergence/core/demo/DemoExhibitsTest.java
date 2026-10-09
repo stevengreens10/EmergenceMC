@@ -831,4 +831,20 @@ class DemoExhibitsTest {
         assertTrue(g.temperature(c.solverView()) > 1100, "still burning with the heater off: " + g.temperature(c.solverView()));
         assertTrue(c.gas(top).moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))) > 0.02, "CO2 goes up the chimney");
     }
+
+    /** The amplified thermocouple voltage tracks (S_Cu − S_con)·(T_hot − T_cold)·201. */
+    @Test
+    void thermocoupleReadsTheTemperatureDifference() {
+        Exhibit e = ThermoExhibits.thermocouple();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        for (int k = 0; k < 3; k++) {
+            run(c, 5);
+            double hot = c.probe(b.id(e, "junction")).temperature(), cold = c.probe(b.id(e, "cold")).temperature();
+            double out = c.probe(b.id(e, "load")).voltage();
+            double expected = 201 * (1.83e-6 + 38.9e-6) * (hot - cold);
+            System.out.printf("thermocouple: hot %.1f K, cold %.2f K → amplifier %.4f V (expected %.4f V)%n", hot, cold, out, expected);
+            assertEquals(expected, out, 0.03 * expected + 1e-3, "type-T EMF ×201, positive when the junction is hot");
+        }
+    }
 }

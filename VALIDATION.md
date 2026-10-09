@@ -160,6 +160,11 @@ A well-stirred reactor fed premixed methane–air (λ = 1.5) settles at the adia
 from the enthalpy balance (1782.4 K, to 0.1 K). Gas burner: lit furnace-style (igniter, then fuel, then igniter
 off) it burns on unaided — chamber > 1100 K, CO₂ > 2 % up the chimney, air drawn only by natural draft.
 
+## Thermoelectricity (`ThermoelectricTest`, `DemoExhibitsTest`)
+Copper–constantan junction 100 K above the open ends: 4.073 mV = 40.73 µV/K × ΔT; a current through an
+isothermal junction warms it at exactly (S_Cu − S_con)·T·I and the reversed current cools it equally, with the
+energy ledger closed; the thermocouple exhibit's amplified output equals 201·(S_Cu − S_con)·(T_hot − T_cold) to 0.3 %.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

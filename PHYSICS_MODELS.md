@@ -363,3 +363,11 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   belong to the bulk, so the heat appears there and energy stays exact. A hot wall thus ignites a mixture the bulk
   temperature alone would not; at a wall no hotter than the gas it only adds the film's share of the rate.
 * **Valves in mixture networks** have one seat (their bore) on the +axis face; their other faces open into the body.
+
+## Thermoelectricity (`Conductor.withSeebeck`)
+* Each conductor half-segment between a part's centre (its temperature) and a contact (at the conductance-weighted
+  mean of the two parts' temperatures) obeys I·R = V_a − V_b − S·(T_b − T_a) and carries Peltier heat S·T·I from
+  end a to end b; Joule heat stays in the part. Around a loop the EMFs sum to ∮S dT, so any two dissimilar
+  conductors at different temperatures form a thermocouple, and a current pumps heat across a junction; the EMF's
+  work equals the heat moved, so energy is conserved. S is the absolute Seebeck coefficient, constant (no Thomson
+  heat). Applied wherever two bulk or wire conductors touch (component leads, all copper, are not split).

@@ -859,10 +859,24 @@ public final class AssemblyCompiler {
                     // two bulk/wire conductors: split at the contact face so each half's Joule heat goes
                     // into its own part (exact heat allocation, e.g. along a filament)
                     Node mid = enode("m" + k.pk + "|" + k.qk);
-                    c.network.add(new Conductor(np, mid, conductorMaterial(p), rHalfP, conductorArea(p),
-                            c.thermalOfPart.get(p.id()), ambientT));
-                    c.network.add(new Conductor(mid, nq, conductorMaterial(q), rHalfQ, conductorArea(q),
-                            c.thermalOfPart.get(q.id()), ambientT));
+                    Node tp = c.thermalOfPart.get(p.id()), tq = c.thermalOfPart.get(q.id());
+                    Conductor cp = new Conductor(np, mid, conductorMaterial(p), rHalfP, conductorArea(p), tp, ambientT);
+                    Conductor cq = new Conductor(mid, nq, conductorMaterial(q), rHalfQ, conductorArea(q), tq, ambientT);
+                    // thermoelectricity: each half runs from its part's temperature to the contact's, which lies between
+                    // the two parts' in proportion to the halves' thermal conductances
+                    double sp = conductorMaterial(p).get(MaterialProperty.SEEBECK_COEFFICIENT, 0);
+                    double sq = conductorMaterial(q).get(MaterialProperty.SEEBECK_COEFFICIENT, 0);
+                    if ((sp != 0 || sq != 0) && tp != tq) {
+                        double gp = conductorMaterial(p).get(MaterialProperty.THERMAL_CONDUCTIVITY, 1) * conductorArea(p) / rHalfP;
+                        double gq = conductorMaterial(q).get(MaterialProperty.THERMAL_CONDUCTIVITY, 1) * conductorArea(q) / rHalfQ;
+                        double lp = gp / (gp + gq);
+                        Node[] contact = {tp, tq};
+                        double[] w = {lp, 1 - lp};
+                        if (sp != 0) cp.withSeebeck(sp, new Node[]{tp}, new double[]{1}, contact, w);
+                        if (sq != 0) cq.withSeebeck(sq, contact, w, new Node[]{tq}, new double[]{1});
+                    }
+                    c.network.add(cp);
+                    c.network.add(cq);
                     if (!joinedPairs.contains(pairKey(p.id(), q.id())) && c.bodyOfPart.get(p.id()) == c.bodyOfPart.get(q.id())) {
                         thermalLink(p, q);
                         joinedPairs.add(pairKey(p.id(), q.id()));

@@ -1,5 +1,8 @@
 {
-  // Room-temperature (20 °C) properties unless noted. Primary sources:
+  // Room-temperature (20 °C) properties unless noted. Seebeck coefficients are absolute (not relative to platinum),
+  // near 300 K: Cusack & Kendall (1958), Roberts (1977) for lead, CRC "Thermoelectric properties of metals"; the
+  // thermocouple alloys are set so pairs match the NIST ITS-90 sensitivities (type T 40.7, J 51.7 µV/K near 20 °C).
+  // Primary sources:
   //  [CRC] CRC Handbook of Chemistry and Physics, 97th ed. (2016)
   //  [ASM] ASM Handbook Vol. 2 (non-ferrous) and Vol. 1 (irons/steels), ASM International
   //  [MW]  MatWeb material datasheets (aggregated manufacturer data)
@@ -16,7 +19,7 @@
         "melting_point": "1357.77 K", "boiling_point": "2835 K", "latent_heat_fusion": "208.7 kJ/kg",
         "electrical_resistivity": "1.71e-8 ohm*m", "resistivity_temperature_coefficient": "0.00393 1/K",
         "relative_permeability": 0.999994, "emissivity": 0.15,
-        "seebeck_coefficient": "6.5e-6 V/K", "friction_coefficient": 0.36,
+        "seebeck_coefficient": "1.83e-6 V/K", "friction_coefficient": 0.36,
         "standard_electrode_potential": "0.337 V", "molar_mass": "63.546 g/mol"
       },
       "sources": ["CRC", "ASM Vol.2 C11000", "IC Table A.1"]
@@ -32,7 +35,7 @@
         "melting_point": "933.47 K", "boiling_point": "2743 K", "latent_heat_fusion": "397 kJ/kg",
         "electrical_resistivity": "2.82e-8 ohm*m", "resistivity_temperature_coefficient": "0.00403 1/K",
         "relative_permeability": 1.000022, "emissivity": 0.09,
-        "seebeck_coefficient": "-1.7e-6 V/K", "friction_coefficient": 0.47,
+        "seebeck_coefficient": "-1.66e-6 V/K", "friction_coefficient": 0.47,
         "standard_electrode_potential": "-1.662 V", "molar_mass": "26.982 g/mol"
       },
       "sources": ["CRC", "ASM Vol.2 1350-O"]
@@ -40,6 +43,7 @@
     {
       "id": "aluminium_6061", "name": "Aluminium alloy 6061-T6", "category": "alloy", "color": "#B8BEC4",
       "properties": {
+        "seebeck_coefficient": "-1.7e-6 V/K",
         "density": "2.70 g/cm^3",
         "youngs_modulus": "68.9 GPa", "shear_modulus": "26 GPa", "poisson_ratio": 0.33,
         "yield_strength": "276 MPa", "ultimate_tensile_strength": "310 MPa", "fatigue_limit": "96.5 MPa",
@@ -63,7 +67,7 @@
         "melting_point": "1811 K", "boiling_point": "3134 K", "latent_heat_fusion": "247 kJ/kg",
         "electrical_resistivity": "9.71e-8 ohm*m", "resistivity_temperature_coefficient": "0.00651 1/K",
         "relative_permeability": 2000, "saturation_flux_density": "2.15 T", "curie_temperature": "1043 K",
-        "emissivity": 0.3, "seebeck_coefficient": "19e-6 V/K", "friction_coefficient": 0.4,
+        "emissivity": 0.3, "seebeck_coefficient": "12.8e-6 V/K", "friction_coefficient": 0.4,
         "standard_electrode_potential": "-0.44 V", "molar_mass": "55.845 g/mol"
       },
       "sources": ["CRC", "ASM Vol.1", "IC Table A.1"]
@@ -71,6 +75,7 @@
     {
       "id": "steel_1045", "name": "Carbon steel AISI 1045 (cold drawn)", "category": "alloy", "color": "#6E7378",
       "properties": {
+        "seebeck_coefficient": "11e-6 V/K",
         "density": "7.85 g/cm^3",
         "youngs_modulus": "205 GPa", "shear_modulus": "80 GPa", "poisson_ratio": 0.29,
         "yield_strength": "530 MPa", "ultimate_tensile_strength": "625 MPa", "fatigue_limit": "280 MPa",
@@ -87,6 +92,7 @@
     {
       "id": "stainless_304", "name": "Stainless steel AISI 304 (annealed)", "category": "alloy", "color": "#A7ABAF",
       "properties": {
+        "seebeck_coefficient": "2.0e-6 V/K",
         "density": "8.00 g/cm^3",
         "youngs_modulus": "193 GPa", "shear_modulus": "77 GPa", "poisson_ratio": 0.29,
         "yield_strength": "215 MPa", "ultimate_tensile_strength": "505 MPa", "fatigue_limit": "240 MPa",
@@ -111,13 +117,14 @@
         "electrical_resistivity": "5.28e-8 ohm*m", "resistivity_temperature_coefficient": "0.0045 1/K",
         "resistivity_exponent": 1.215,
         "relative_permeability": 1.000068, "emissivity": 0.30,
-        "seebeck_coefficient": "7.5e-6 V/K", "molar_mass": "183.84 g/mol"
+        "seebeck_coefficient": "1.1e-6 V/K", "molar_mass": "183.84 g/mol"
       },
       "sources": ["CRC", "Forsythe & Worthing, Astrophys. J. 61 (1925) 146", "IC Table A.1"]
     },
     {
       "id": "nichrome", "name": "Nichrome 80/20 (NiCr resistance alloy)", "category": "alloy", "color": "#8F8A80",
       "properties": {
+        "seebeck_coefficient": "20e-6 V/K",
         "density": "8.40 g/cm^3",
         "youngs_modulus": "214 GPa", "shear_modulus": "83 GPa", "poisson_ratio": 0.3,
         "yield_strength": "340 MPa", "ultimate_tensile_strength": "700 MPa",
@@ -137,7 +144,7 @@
         "thermal_conductivity": "21.2 W/(m*K)", "specific_heat": "390 J/(kg*K)", "thermal_expansion": "14.9e-6 1/K",
         "melting_point": "1483 K",
         "electrical_resistivity": "4.9e-7 ohm*m", "resistivity_temperature_coefficient": "0.00001 1/K",
-        "relative_permeability": 1.0, "emissivity": 0.2, "seebeck_coefficient": "-35e-6 V/K",
+        "relative_permeability": 1.0, "emissivity": 0.2, "seebeck_coefficient": "-38.9e-6 V/K",
         "molar_mass": "61.3 g/mol"
       },
       "sources": ["CRC", "NIST ITS-90 thermocouple tables (Type T)"]
@@ -150,7 +157,7 @@
         "thermal_conductivity": "429 W/(m*K)", "specific_heat": "235 J/(kg*K)", "thermal_expansion": "18.9e-6 1/K",
         "melting_point": "1234.93 K", "boiling_point": "2435 K", "latent_heat_fusion": "104.6 kJ/kg",
         "electrical_resistivity": "1.59e-8 ohm*m", "resistivity_temperature_coefficient": "0.0038 1/K",
-        "relative_permeability": 0.99998, "emissivity": 0.03, "seebeck_coefficient": "6.5e-6 V/K",
+        "relative_permeability": 0.99998, "emissivity": 0.03, "seebeck_coefficient": "1.51e-6 V/K",
         "standard_electrode_potential": "0.7996 V", "molar_mass": "107.868 g/mol"
       },
       "sources": ["CRC"]
@@ -163,7 +170,7 @@
         "thermal_conductivity": "318 W/(m*K)", "specific_heat": "129 J/(kg*K)", "thermal_expansion": "14.2e-6 1/K",
         "melting_point": "1337.33 K", "boiling_point": "3129 K", "latent_heat_fusion": "63.7 kJ/kg",
         "electrical_resistivity": "2.44e-8 ohm*m", "resistivity_temperature_coefficient": "0.0034 1/K",
-        "relative_permeability": 0.99996, "emissivity": 0.02, "seebeck_coefficient": "6.5e-6 V/K",
+        "relative_permeability": 0.99996, "emissivity": 0.02, "seebeck_coefficient": "1.94e-6 V/K",
         "standard_electrode_potential": "1.50 V", "molar_mass": "196.967 g/mol"
       },
       "sources": ["CRC"]
@@ -177,7 +184,7 @@
         "melting_point": "1728 K", "boiling_point": "3186 K", "latent_heat_fusion": "297.9 kJ/kg",
         "electrical_resistivity": "6.99e-8 ohm*m", "resistivity_temperature_coefficient": "0.006 1/K",
         "relative_permeability": 300, "saturation_flux_density": "0.61 T", "curie_temperature": "627 K",
-        "emissivity": 0.1, "seebeck_coefficient": "-15e-6 V/K",
+        "emissivity": 0.1, "seebeck_coefficient": "-19.5e-6 V/K",
         "standard_electrode_potential": "-0.257 V", "molar_mass": "58.693 g/mol"
       },
       "sources": ["CRC", "Special Metals Nickel 200 datasheet"]
@@ -185,6 +192,7 @@
     {
       "id": "zinc", "name": "Zinc", "category": "metal", "color": "#B7BEC2",
       "properties": {
+        "seebeck_coefficient": "2.9e-6 V/K",
         "density": "7.14 g/cm^3", "youngs_modulus": "108 GPa", "shear_modulus": "43 GPa", "poisson_ratio": 0.25,
         "yield_strength": "100 MPa", "ultimate_tensile_strength": "120 MPa",
         "thermal_conductivity": "116 W/(m*K)", "specific_heat": "388 J/(kg*K)", "thermal_expansion": "30.2e-6 1/K",
@@ -197,6 +205,7 @@
     {
       "id": "lead", "name": "Lead", "category": "metal", "color": "#6C7078",
       "properties": {
+        "seebeck_coefficient": "-1.05e-6 V/K",
         "density": "11.34 g/cm^3", "youngs_modulus": "16 GPa", "shear_modulus": "5.6 GPa", "poisson_ratio": 0.44,
         "yield_strength": "5.5 MPa", "ultimate_tensile_strength": "17 MPa",
         "thermal_conductivity": "35.3 W/(m*K)", "specific_heat": "129 J/(kg*K)", "thermal_expansion": "28.9e-6 1/K",
@@ -209,6 +218,7 @@
     {
       "id": "tin", "name": "Tin (white, β)", "category": "metal", "color": "#C8C8C0",
       "properties": {
+        "seebeck_coefficient": "-1.0e-6 V/K",
         "density": "7.265 g/cm^3", "youngs_modulus": "50 GPa", "shear_modulus": "18 GPa", "poisson_ratio": 0.36,
         "yield_strength": "14 MPa", "ultimate_tensile_strength": "220 MPa",
         "thermal_conductivity": "66.8 W/(m*K)", "specific_heat": "228 J/(kg*K)", "thermal_expansion": "22.0e-6 1/K",
@@ -233,6 +243,7 @@
     {
       "id": "brass", "name": "Cartridge brass C26000 (annealed)", "category": "alloy", "color": "#C8A951",
       "properties": {
+        "seebeck_coefficient": "1.3e-6 V/K",
         "density": "8.53 g/cm^3", "youngs_modulus": "110 GPa", "shear_modulus": "40 GPa", "poisson_ratio": 0.375,
         "yield_strength": "75 MPa", "ultimate_tensile_strength": "300 MPa", "fatigue_limit": "90 MPa",
         "thermal_conductivity": "120 W/(m*K)", "specific_heat": "375 J/(kg*K)", "thermal_expansion": "20.0e-6 1/K",

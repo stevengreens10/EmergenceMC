@@ -139,9 +139,10 @@ public final class AutoShowcase {
             }
             if (id.equals("burner")) {
                 // igniter on; two minutes later the fuel; a minute later the burning chamber on the logger
-                STEPS.add(new Step(2400, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
-                        "showcase-" + (i + 1) + "-" + id + "-glowing"));
-                STEPS.add(new Step(1200, () -> {
+                BlockPos chamberAt = DemoBuilder.partBlock(plot, e, "chamber");
+                STEPS.add(new Step(9000, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-glowing", () -> chamber(server, chamberAt, false) > 1000));
+                STEPS.add(new Step(6000, () -> {
                     ServerPlayer p = server.getPlayerList().getPlayers().get(0);
                     p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
                             new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
@@ -153,7 +154,7 @@ public final class AutoShowcase {
                     SimulationManager.get(server.overworld()).showLogger(p, "fluid temperature", 3);
                     toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "valve"));
                     LoggerHud.showcase = true;
-                }, "showcase-" + (i + 1) + "-" + id + "-burning"));
+                }, "showcase-" + (i + 1) + "-" + id + "-burning", () -> chamber(server, chamberAt, true) > 1300));
             }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
@@ -211,6 +212,17 @@ public final class AutoShowcase {
             var compiled = SimulationManager.get(level).compiledAt(at);
             if (c != null && compiled != null) compiled.setCrankEffort(c.id, dir, dir > 0);
         }
+    }
+
+    /** The burner chamber's wall (or, with {@code gas}, its gas) temperature, read from the integrated server. */
+    private static double chamber(net.minecraft.server.MinecraftServer server, BlockPos at, boolean gas) {
+        if (!(server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be)) return 0;
+        PlacedPart ch = find(be, PartKind.TANK);
+        var c = ch == null ? null : SimulationManager.get(server.overworld()).compiledAt(at);
+        if (c == null) return 0;
+        if (gas) return c.gas(ch.id) == null ? 0 : c.gas(ch.id).temperature(c.solverView());
+        var pr = c.probe(ch.id);
+        return pr == null ? 0 : pr.temperature();
     }
 
     private static double hottest(BlockPos at) {

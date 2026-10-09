@@ -43,3 +43,8 @@ from NIST-JANAF (Chase 1998) and CODATA key values, 4 significant figures. Atomi
 the molar masses. N₂O₄'s high-temperature C_p is an extrapolation (it is fully dissociated there).
 Reactions (`chemistry/reactions.json`): N₂O₄ ⇌ 2NO₂ (Borrell et al. 1988 activation energy, rate scaled to the
 1-bar fall-off), CH₄ + 2O₂ → CO₂ + 2H₂O (Westbrook & Dryer 1981 global step as used in Fluent's methane-air-1step).
+
+## Seebeck coefficients
+Absolute values near 300 K for the metals (Cusack & Kendall 1958; Roberts 1977 for lead; CRC), with the thermocouple
+alloys set so pairs match the NIST ITS-90 sensitivities (type T Cu−constantan 40.7, type J Fe−constantan 51.7 µV/K).
+New: p-type Bi₀.₅Sb₁.₅Te₃ (+210 µV/K) and n-type Bi₂Te₂.₇Se₀.₃ (−200 µV/K), ρ = 10 µΩ·m, k ≈ 1.4 W/m·K (Rowe 1995).

@@ -187,3 +187,37 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
 β-model R(T) = R₂₅·exp(β(1/T − 1/298.15 K)), ±1 % over 0–100 °C for β ≈ 3950 K. Its temperature is its own
 thermal node (the part and whatever it is clamped to), and its Joule heat is deposited there — so
 self-heating error appears naturally. A RESISTOR part with an `ntc_beta` parameter compiles to this element.
+
+## Water and steam with phase change (`fluids.WaterSteam`, two-phase `FluidVolume`)
+* **Properties** from the IAPWS supplementary release on saturation properties (Wagner & Pruß): p_s(T)
+  (±0.1 %), ρ'(T), ρ''(T), and h', h'' from the auxiliary α(T) so h_fg = T(v''−v')dp_s/dT holds exactly
+  (Clapeyron). Liquid c_p = dh'/dT; liquid conductivity cubic fit to IAPWS 2011 (±0.4 %, 0–300 °C); steam
+  viscosity and conductivity Sutherland/power fits (±5–8 %); surface tension IAPWS 1994.
+* **State of a volume**: unknowns (p, T, s) with the constraint p = p(T, s). The phase coordinate s runs
+  through compressed liquid (s < 0, p = p_s + |s|·K·L), the saturated dome (0 ≤ s ≤ 1, ρ = ρ'^{1−s}ρ''^{s},
+  logarithmic so the Jacobian is well conditioned at both the nearly-full and nearly-dry ends) and
+  superheated vapour (s > 1, p = p_s·e^{−L(s−1)}, ideal-gas extension of the saturated vapour with
+  c_v = 1500 J/(kg·K)), L = ln(ρ'/ρ''). Mass and internal energy are the stored quantities, so boiling and
+  condensation are not rules — they are what the balances do when heat or flow moves a volume across the
+  dome. **C¹ joins**: dρ/ds is continuous at both dome boundaries by construction; the pressure's slope
+  jump is replaced by monotone cubic Hermite joins just outside the dome (1 < s < 1.06, steam superheated
+  by ≲ 10 K; −2·10⁻⁵ < s < 0), where the single-phase pressure deviates by a few per cent. Newton's method
+  cycles on the raw slope jump when a volume sits on the boundary (dry saturated steam).
+* **Ports** (`FluidVolume.Port`): gravity-separated phases; a connection below the liquid level draws
+  liquid, above it vapour, mixed within ±5 % of the height (homogeneous flow, McAdams viscosity).
+* **Wall heat transfer**: Rohsenow nucleate boiling (C_sf = 0.013) capped smoothly at Zuber's critical heat
+  flux; Nusselt laminar film condensation on vapour-covered walls, and film evaporation from wetted walls
+  above saturation (continuous through ΔT = 0).
+* **Valves**: steam through a seat uses the compressible nozzle relation (γ = 1.3, R = 461.5 J/(kg·K)),
+  liquid the incompressible one, mixtures the vapour-mass-weighted blend. All seats turn laminar below
+  Δp ≈ 10 Pa (ṁ ∝ Δp, smoothly joined). Valve bodies have a chamber ≥ 40 % of the cell width around the seat.
+  **Relief/check valves** (`relief` = cracking pressure): spring-loaded discs passing flow only along +axis,
+  lift ∝ excess pressure. **Cam-worked valves**: a valve whose stem lines up with an eccentric on a turning
+  shaft opens with it, opening = smoothstep((cos(θ − θ_c) − lap)/(1 − lap)); the eccentric's `phase` sets
+  the timing, `lap` the open fraction of the revolution (valve-gear forces neglected).
+
+## Brake pad (`BRAKE` part)
+Dry Coulomb friction τ = μ·F·r between the turning body in front of the pad and the stationary frame
+(tanh-regularised at 0.01 rad/s), r the contact point's distance from that body's axis, μ the pad
+material's friction coefficient, F the spring force. The dissipated power heats the pad: a Prony-brake
+dynamometer, a brake, or a constant-torque load.

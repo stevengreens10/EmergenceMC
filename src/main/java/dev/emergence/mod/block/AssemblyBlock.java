@@ -97,7 +97,7 @@ public final class AssemblyBlock extends BaseEntityBlock {
         int[] c = cellAt(be, hit.getLocation(), hit.getDirection());
         PlacedPart part = be.partAt(c[0], c[1], c[2]);
         if (part == null) return InteractionResult.PASS;
-        if (part.kind == PartKind.CRANK || part.kind == PartKind.SWITCH || part.kind == PartKind.VALVE) {
+        if (part.kind == PartKind.CRANK || part.kind == PartKind.SWITCH || part.kind == PartKind.VALVE || part.kind == PartKind.BRAKE) {
             if (level instanceof ServerLevel sl) {
                 SimulationManager sim = SimulationManager.get(sl);
                 if (part.kind == PartKind.CRANK) {
@@ -105,6 +105,7 @@ public final class AssemblyBlock extends BaseEntityBlock {
                 } else {
                     boolean closed = sim.toggleSwitch(pos, part.id);
                     String key = part.kind == PartKind.VALVE ? (closed ? "message.emergence.valve_open" : "message.emergence.valve_shut")
+                            : part.kind == PartKind.BRAKE ? (closed ? "message.emergence.brake_on" : "message.emergence.brake_off")
                             : (closed ? "message.emergence.switch_closed" : "message.emergence.switch_open");
                     player.displayClientMessage(Component.translatable(key), true);
                 }

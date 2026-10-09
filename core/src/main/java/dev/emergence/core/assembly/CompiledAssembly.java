@@ -71,6 +71,9 @@ public final class CompiledAssembly {
     final Map<Long, ElectrochemicalCell> cells = new HashMap<>();
     final Map<Long, FluidVolume> fluidOfPart = new HashMap<>();
     final Map<Long, List<FluidBranch>> valveBranches = new HashMap<>();
+    /** Brake pads: their full friction torques and friction elements, by part. */
+    final Map<Long, List<double[]>> brakes = new HashMap<>();
+    final Map<Long, List<dev.emergence.core.sim.elements.CoulombFriction>> brakeElements = new HashMap<>();
     final Map<Long, FluidBranch> rotorBranches = new HashMap<>();
     final List<Vent> vents = new ArrayList<>();
     final Map<Long, dev.emergence.core.sim.elements.PistonCoupling> pistons = new HashMap<>();
@@ -189,6 +192,16 @@ public final class CompiledAssembly {
 
     /** Applies a toggle to a switch (closes/opens the contact) or a valve (opens/shuts it); returns its new state. */
     public boolean toggleSwitch(long partId) {
+        List<dev.emergence.core.sim.elements.CoulombFriction> bf = brakeElements.get(partId);
+        if (bf != null) {
+            Part p = assembly.get(partId);
+            boolean on = p == null || !p.switchClosed();
+            if (p != null) p.setSwitchClosed(on);
+            List<double[]> tq = brakes.get(partId);
+            for (int i = 0; i < bf.size(); i++) bf.get(i).setFrictionTorque(on ? tq.get(i)[0] : 0);
+            solver.markDiscontinuity();
+            return on;
+        }
         List<FluidBranch> vb = valveBranches.get(partId);
         if (vb != null) {
             Part p = assembly.get(partId);
@@ -206,6 +219,19 @@ public final class CompiledAssembly {
         if (p != null) p.setSwitchClosed(c);
         solver.markDiscontinuity();
         return c;
+    }
+
+    /** Friction torque [N·m] and power [W] a brake pad is absorbing now, or null if the part is not a brake. */
+    public double[] brake(long partId) {
+        List<dev.emergence.core.sim.elements.CoulombFriction> bf = brakeElements.get(partId);
+        if (bf == null) return null;
+        double tq = 0, pw = 0;
+        for (var f : bf) {
+            double[] tp = f.torqueAndPower(solver);
+            tq += tp[0];
+            pw += tp[1];
+        }
+        return new double[]{tq, pw};
     }
 
     /** Light emitted by a part (an LED) [W], 0 otherwise. */

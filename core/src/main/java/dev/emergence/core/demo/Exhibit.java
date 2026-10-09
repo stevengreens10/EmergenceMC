@@ -101,6 +101,14 @@ public final class Exhibit {
     /** Electrical net label of wire parts (by part index), used to check layouts for accidental shorts. */
     public final Map<Integer, String> nets = new LinkedHashMap<>();
 
+    /** Parts whose toggle starts set: a switch closed, a valve open. */
+    public final java.util.Set<Integer> latched = new java.util.LinkedHashSet<>();
+
+    /** Starts this part's toggle set (a switch closed, a valve open). */
+    public void latch(int index) {
+        latched.add(index);
+    }
+
     /** Lays insulated copper wire along cells, all belonging to the named net. */
     public void net(String name, int[][] cells) {
         for (int[] c : cells) nets.put(add(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP), name);

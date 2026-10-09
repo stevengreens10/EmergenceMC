@@ -47,9 +47,12 @@ public final class FluidVolume implements Element {
         this.steam = fluid instanceof WaterSteam w ? w : null;
     }
 
-    /** Initial liquid volume fraction of a water/steam volume (0 = all vapour, 1 = all liquid, at saturation). */
-    public FluidVolume withLiquidFraction(double fill) {
-        this.phase0 = 1 - Math.max(0, Math.min(1, fill));
+    /**
+     * Initial state of a water/steam volume: saturated at temperature t with liquid filling the given fraction of
+     * the volume (0 = all vapour, 1 = all liquid).
+     */
+    public FluidVolume withLiquidFraction(double fill, double t) {
+        this.phase0 = WaterSteam.phaseForLiquidFraction(t, fill);
         return this;
     }
 
@@ -77,7 +80,9 @@ public final class FluidVolume implements Element {
     /** Vapour volume fraction now (1 for a gas, 0 for a liquid). */
     public double vapourFraction(StateView s) {
         if (steam == null) return fluid.isGas() ? 1 : 0;
-        return Math.max(0, Math.min(1, s.x(sIdx)));
+        double[] st = new double[9];
+        WaterSteam.state(s.x(t), s.x(sIdx), st);
+        return st[WaterSteam.ALPHA_V];
     }
 
     /**
@@ -106,7 +111,12 @@ public final class FluidVolume implements Element {
 
         /** Fills out = [h, ρ, μ, x (vapour mass fraction), 1/ρ] of the outflow for temperature t and phase s. */
         public void outflow(double t, double s, double[] out) {
-            WaterSteam.state(t, s, st);
+            // finite-difference Jacobians perturb p and ṁ far more often than (T, s): reuse the last result
+            if (t == lastT && s == lastS) {
+                System.arraycopy(last, 0, out, 0, 5);
+                return;
+            }
+            WaterSteam.state(t, s, st, join);
             double av = st[WaterSteam.ALPHA_V], level = 1 - av, band = 0.05;
             double w = smooth((z - level) / band + 0.5);
             double wv = w * Math.min(1, av / band), wl = (1 - w) * Math.min(1, (1 - av) / band);
@@ -119,7 +129,14 @@ public final class FluidVolume implements Element {
             out[1] = 1 / out[4];
             out[2] = 1 / (x / steam.vapourViscosity(tt) + (1 - x) / steam.liquidViscosity(tt));
             out[3] = x;
+            lastT = t;
+            lastS = s;
+            System.arraycopy(out, 0, last, 0, 5);
         }
+
+        private double lastT = Double.NaN, lastS = Double.NaN;
+        private final WaterSteam.JoinCache join = new WaterSteam.JoinCache();
+        private final double[] last = new double[5];
     }
 
     private static double smooth(double u) {
@@ -205,6 +222,7 @@ public final class FluidVolume implements Element {
     }
 
     private final double[] st0 = new double[9], stT = new double[9], stS = new double[9];
+    private final WaterSteam.JoinCache join0 = new WaterSteam.JoinCache(), joinT = new WaterSteam.JoinCache();
 
     private void loadTwoPhase(LoadContext ctx) {
         int ip = p.index(), it = t.index();
@@ -217,10 +235,10 @@ public final class FluidVolume implements Element {
             vol = crank.volume(th);
             dvol = crank.dVolume(th);
         }
-        double hT = 1e-4, hS = 1e-6;
-        WaterSteam.state(tt, s, st0);
-        WaterSteam.state(tt + hT, s, stT);
-        WaterSteam.state(tt, s + hS, stS);
+        double hT = 1e-4, hS = 1e-9;
+        WaterSteam.state(tt + hT, s, stT, joinT);
+        WaterSteam.state(tt, s, st0, join0);
+        WaterSteam.state(tt, s + hS, stS, join0);
         double drT = (stT[WaterSteam.RHO] - st0[WaterSteam.RHO]) / hT, drS = (stS[WaterSteam.RHO] - st0[WaterSteam.RHO]) / hS;
         double deT = (stT[WaterSteam.RHO_U] - st0[WaterSteam.RHO_U]) / hT, deS = (stS[WaterSteam.RHO_U] - st0[WaterSteam.RHO_U]) / hS;
         double dpT = (stT[WaterSteam.P] - st0[WaterSteam.P]) / hT, dpS = (stS[WaterSteam.P] - st0[WaterSteam.P]) / hS;

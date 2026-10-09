@@ -266,6 +266,44 @@ public final class TransientSolver implements StateView {
         return "Last non-converging unknown: " + lastBadUnknown;
     }
 
+    /** Diagnostics: at the 9th Newton iteration of a step, compare the assembled Jacobian with finite differences. */
+    public static boolean CHECK_JACOBIAN = false;
+
+    private void checkJacobian(dev.emergence.core.math.DenseLinearSystem dj) {
+        double[][] a = new double[n][n];
+        for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) a[i][j] = dj.get(i, j);
+        double[] f0 = f.clone(), x0 = xTrial.clone();
+        StringBuilder sb = new StringBuilder("JACOBIAN CHECK t=" + t + System.lineSeparator());
+        for (int j = 0; j < n; j++) {
+            double d = 1e-7 * Math.max(Math.abs(x0[j]), 1e3 * absTol[j]);
+            System.arraycopy(x0, 0, xTrial, 0, n);
+            xTrial[j] += d;
+            Arrays.fill(f, 0.0);
+            jac.clear();
+            for (Element e : elements) e.load(ctx);
+            for (int i = 0; i < n; i++) if (gmin[i] != 0) f[i] += (relGmin[i] ? Math.max(gmin[i], 1e-12 * Math.abs(jac.diagonal(i))) : gmin[i]) * xTrial[i];
+            for (int i = 0; i < n; i++) {
+                double fd = (f[i] - f0[i]) / d;
+                double an = a[i][j] - (i == j ? 0 : 0);
+                double scale = 0;
+                for (int k = 0; k < n; k++) scale = Math.max(scale, Math.abs(a[i][k]) * Math.max(Math.abs(x0[k]) * 1e-7, absTol[k]));
+                if (Math.abs(fd - an) * Math.max(Math.abs(x0[j]) * 1e-7, absTol[j]) > 1e-2 * scale + 1e-300) {
+                    sb.append(String.format("  d[%d %s]/d[%d %s]: assembled %.6g, numeric %.6g x=%.6g%n", i, net.unknownName(i), j, net.unknownName(j), an, fd, x0[j]));
+                }
+            }
+        }
+        System.out.print(sb);
+        System.arraycopy(x0, 0, xTrial, 0, n);
+        Arrays.fill(f, 0.0);
+        jac.clear();
+        for (Element e : elements) e.load(ctx);
+        for (int i = 0; i < n; i++) if (gmin[i] != 0) {
+            double g = relGmin[i] ? Math.max(gmin[i], 1e-12 * Math.abs(jac.diagonal(i))) : gmin[i];
+            f[i] += g * xTrial[i];
+            jac.add(i, i, g);
+        }
+    }
+
     /** @return 0 accepted, 1 Newton failure, 2 LTE rejection */
     private int tryStep(double h) {
         boolean be = restart || forceBE || validHistory == 0 || method == IntegrationMethod.BACKWARD_EULER;
@@ -310,6 +348,7 @@ public final class TransientSolver implements StateView {
                     jac.add(i, i, 0.0); // keep structural diagonal for the sparse pivot search
                 }
             }
+            if (CHECK_JACOBIAN && it == 8 && jac instanceof dev.emergence.core.math.DenseLinearSystem dj) checkJacobian(dj);
             for (int i = 0; i < n; i++) dx[i] = -f[i];
             try {
                 jac.solve(dx);
@@ -347,7 +386,7 @@ public final class TransientSolver implements StateView {
                 }
             }
             if (DEBUG) System.out.println("t=" + t + " h=" + h + " it=" + it + " m=" + m + " x=" + Arrays.toString(xTrial) + " dx=" + Arrays.toString(dx));
-            if (TRACE && h < 1e-9) {
+            if (TRACE && (h < 1e-9 || it >= maxNewton - 2)) {
                 Integer[] order = new Integer[n];
                 for (int i = 0; i < n; i++) order[i] = i;
                 final double[] ratio = new double[n];

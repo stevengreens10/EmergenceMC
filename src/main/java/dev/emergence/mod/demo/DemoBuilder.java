@@ -91,7 +91,7 @@ public final class DemoBuilder {
             });
             PartSpec spec = new PartSpec(d.material(), 1, 1, d.params());
             long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
-            be.addPart(new PlacedPart(id, d.kind(), spec, 0, 0, 0, 0, 0, 0, d.axis(), false));
+            be.addPart(new PlacedPart(id, d.kind(), spec, 0, 0, 0, 0, 0, 0, d.axis(), e.latched.contains(d.index())));
             Exhibit.Initial in = e.initial.get(d.index());
             if (in != null) {
                 double t = Double.isNaN(in.temperature()) ? ambient : in.temperature();

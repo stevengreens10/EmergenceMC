@@ -77,6 +77,18 @@ Pistons: isentropic compression (entropy drift < 0.2 J/(kg·K)) with a closed le
 from raw elements accelerates its flywheel; the Stirling exhibit runs on its copper block for 20 s and
 drives > 1 mA through its generator's load.
 
+## Phase change (`PhaseChangeValidationTest`)
+Steam tables (IAPWS-IF97): p_s at 0.01/100/120/180 °C, T_s(1 atm), ρ', ρ'', h', h'', h_fg, σ, liquid c_p
+and k; Clapeyron identity to 1e-6. State continuity across both dome boundaries. Sealed vessel heated
+at 400 W: mass exact, first law to 1e-4, p = p_s(T), T matches an independent (m, V, U) inversion to
+0.05 K. Open kettle: boils at T_s(1 atm) ± 0.1 K with boil-off ṁ = Q(1 − ρ''/ρ')/h_fg ± 1 %.
+Condensation on a 30 °C wall: initial rate = Nusselt film ± 3 %, final p → p_s(T_wall) ± 5 %, energy to
+the wall exact. Rohsenow flux vs Incropera Ex. 10.1 (836 kW/m², ±12 % from property data); critical
+heat flux 1.26 MW/m² ± 5 %. Check valve: no reverse flow, closed below cracking pressure.
+Exhibit: the steam engine keeps running (mean ω > 5 rad/s), vents steam, delivers > 2 W to the brake,
+and coasts to rest within 20 s of shutting the regulator; in-world GameTest checks the boiler sits on
+the saturation curve and the engine turns.
+
 ## Semiconductors and logic (`SemiconductorValidationTest`, `LogicValidationTest`)
 BJT collector current vs Ebers–Moll (0.1 %), gain with the Early factor, output conductance I_C/V_A; PNP;
 MOSFET square law (3 %), subthreshold slope n·V_T·ln10 (3 %), triode law (2 %); LED forward voltage from

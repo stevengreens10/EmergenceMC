@@ -81,6 +81,15 @@ public final class PartPresets {
         l.add(stack(PartKind.TANK, PartSpec.of("aluminium_6061", 1, 1, "fluid", 2, "pressure", 5e5, "gauge_range", 10)));
         l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.025)));
         l.add(stack(PartKind.VALVE, PartSpec.of("steel_1045", 1, 1, "bore", 0.04)));
+        // water and steam (fluid 7): a boiler a third full, steam pipe, safety valve, cam-worked valve, throttle
+        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "fluid", 7, "fill", 0.6, "wall", 0.003, "gauge_range", 6)));
+        l.add(stack(PartKind.PIPE, PartSpec.of("copper", 1, 1, "bore", 0.008, "fluid", 7)));
+        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.006, "fluid", 7, "relief", 4.5e5)));
+        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.008, "fluid", 7, "lap", 0.7)));
+        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.0012, "fluid", 7)));
+        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.01, "relief", 2e4)));
+        l.add(stack(PartKind.BRAKE, PartSpec.of("oak", 1, 1, "force", 20)));
+        l.add(stack(PartKind.BRAKE, PartSpec.of("alumina", 1, 1, "force", 100)));
         l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1)));
         l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", -1)));
         l.add(stack(PartKind.ROTOR, PartSpec.of("steel_1045", 1, 1, "blade_angle", 65, "pitch", 1)));

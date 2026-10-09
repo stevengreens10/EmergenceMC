@@ -89,6 +89,11 @@ public final class AutoShowcase {
             if (id.equals("stirling")) {
                 STEPS.add(new Step(100, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
             }
+            if (id.equals("steam")) {
+                STEPS.add(new Step(80, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
+                STEPS.add(new Step(80, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "regulator")),
+                        "showcase-" + (i + 1) + "-" + id + "-shut"));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }

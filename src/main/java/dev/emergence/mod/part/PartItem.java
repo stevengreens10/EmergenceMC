@@ -72,6 +72,7 @@ public final class PartItem extends Item {
             case TRANSISTOR -> PartSpec.of("silicon", 1, 1, "type", 0);
             case LED -> PartSpec.of("silicon", 1, 1, "wavelength", 630);
             case LOGIC -> PartSpec.of("silicon", 1, 1, "function", 2);
+            case BRAKE -> PartSpec.of("oak", 1, 1, "force", 20);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -96,13 +97,18 @@ public final class PartItem extends Item {
             case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m");
             case BEARING -> p.getOrDefault("type", 0.0) >= 1 ? ", plain bushing" : ", ball";
             case SHAFT -> ", " + s.length() + " long";
-            case PIPE, VALVE -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.025), "m") + fluidLabel(p);
-            case TANK -> fluidLabel(p) + (p.containsKey("pressure") ? String.format(", %.0f bar", p.get("pressure") / 1e5) : "");
+            case PIPE -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.025), "m") + fluidLabel(p);
+            case VALVE -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.025), "m") + fluidLabel(p)
+                    + (p.containsKey("relief") ? String.format(", relief %.2f bar", p.get("relief") / 1e5) : "")
+                    + (p.containsKey("lap") ? ", cam-worked" : "");
+            case TANK -> fluidLabel(p) + (p.containsKey("pressure") ? String.format(", %.0f bar", p.get("pressure") / 1e5) : "")
+                    + (p.containsKey("fill") ? String.format(", %.0f%% full", 100 * p.get("fill")) : "");
             case ROTOR -> String.format(", %.0f° blades%s", p.getOrDefault("blade_angle", 45.0), p.getOrDefault("pitch", 1.0) < 0 ? ", left-hand" : "");
             case CYLINDER -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.04), "m") + (p.getOrDefault("fins", 0.0) > 0 ? ", finned" : "");
             case ECCENTRIC -> ", throw " + Units.formatSI(p.getOrDefault("throw", 0.015), "m");
             case TRANSISTOR -> ", " + new String[]{"NPN", "PNP", "N-MOSFET", "P-MOSFET"}[(int) Math.max(0, Math.min(3, Math.round(p.getOrDefault("type", 0.0))))];
             case LED -> String.format(", %.0f nm", p.getOrDefault("wavelength", 630.0));
+            case BRAKE -> String.format(", %.0f N spring", p.getOrDefault("force", 20.0));
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[
                     (int) Math.max(0, Math.min(8, Math.round(p.getOrDefault("function", 2.0))))];
             default -> "";

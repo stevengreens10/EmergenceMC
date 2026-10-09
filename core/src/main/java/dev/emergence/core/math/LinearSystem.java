@@ -24,6 +24,6 @@ public interface LinearSystem {
     void solve(double[] rhs);
 
     static LinearSystem create(int n) {
-        return n <= 48 ? new DenseLinearSystem(n) : new SparseLinearSystem(n);
+        return n <= 48 || Boolean.getBoolean("emergence.denseSolver") ? new DenseLinearSystem(n) : new SparseLinearSystem(n);
     }
 }

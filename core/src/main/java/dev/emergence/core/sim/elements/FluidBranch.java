@@ -34,8 +34,9 @@ import dev.emergence.core.units.PhysicalConstants;
  * <b>Orifice branches</b> (valves): when an orifice is set the restriction dominates and the flow is that of
  * an isentropic nozzle of area C_d·A·φ — for a gas ṁ = C_d A p_u √(2γ/((γ−1)RT_u)·(r^{2/γ} − r^{(γ+1)/γ}))
  * with r = p_d/p_u, choking at the critical ratio r* = (2/(γ+1))^{γ/(γ−1)} (flow then independent of the
- * downstream pressure); for a liquid ṁ = C_d A √(2ρΔp). The flow is regularised for |Δp| ≲ 1 Pa so it
- * stays differentiable through zero. Pipe friction in such a short branch is neglected.
+ * downstream pressure); for a liquid ṁ = C_d A √(2ρΔp). Below |Δp| ≈ 10 Pa the seat flow turns laminar,
+ * ṁ ∝ Δp: the nozzle flow is scaled by (|Δp|/√(Δp² + Δp₀²))^½, smooth with a finite slope through zero.
+ * Pipe friction in such a short branch is neglected.
  * <p>
  * Energy: the flow carries the upstream specific enthalpy h = u + p/ρ (upwinded, smoothly through
  * ṁ = 0) and the rotor's shaft work is added to the downstream volume, so friction heat stays in the
@@ -66,6 +67,8 @@ public final class FluidBranch implements Element {
     private double rotorRadius, rotorArea, stagger, pitch = 1, bodySense = 1, flowAlongAxis = 1, cd0 = 0.02, solidity = 0.8;
     private int mIdx;
     private String tag = "";
+    /** Pressure drop below which flow through a valve seat is treated as laminar (linear) [Pa]. */
+    static final double LAMINAR_DP = 10;
     private FluidVolume.Port portA, portB;
     private double crack = Double.NaN, fullOpen, checkSense = 1;
     private AngleTracker cam;
@@ -125,7 +128,8 @@ public final class FluidBranch implements Element {
         double pu = Math.max(fwd ? pA : pB, 1.0), pd = Math.max(fwd ? pB : pA, 0.0), tu = Math.max(fwd ? tA : tB, 1.0);
         double area = dischargeCoefficient * orificeArea * opening * camOpening;
         if (!Double.isNaN(crack)) area *= checkLift(checkSense * dp);
-        double reg = Math.tanh(Math.abs(dp) / 1.0);
+        // below ~10 Pa the flow through the seat turns laminar: ṁ ∝ Δp (smoothly joined to the nozzle law)
+        double reg = Math.sqrt(Math.abs(dp) / Math.sqrt(dp * dp + LAMINAR_DP * LAMINAR_DP));
         double m;
         double[] up = fwd ? endA : endB;
         if (fluid instanceof dev.emergence.core.fluids.IdealGas g) {
@@ -257,7 +261,12 @@ public final class FluidBranch implements Element {
     @Override
     public void setup(SetupContext ctx) {
         mScale = Math.max(fluid.density(101_325, 293.15) * area * 1e-3, 1e-9); // 1 mm/s through the bore
-        mIdx = ctx.allocUnknown("mdot" + tag, 1e-6 * mScale);
+        // flow resolution consistent with the pressure tolerance (10 mPa): the laminar conductance
+        // ρAD²/(32μL) of the lightest phase the branch carries (vapour for water/steam)
+        boolean wet = fluid instanceof dev.emergence.core.fluids.WaterSteam;
+        double rho = wet ? 0.6 : fluid.density(101_325, 293.15), mu = wet ? 1.2e-5 : fluid.viscosity(293.15);
+        double g = rho * area * dh * dh / (32 * mu * Math.max(length, 1e-3));
+        mIdx = ctx.allocUnknown("mdot" + tag, Math.max(1e-6 * mScale, 1e-2 * g));
     }
 
     private final double[] endA = new double[5], endB = new double[5];
@@ -390,7 +399,7 @@ public final class FluidBranch implements Element {
                 case 0 -> 1e-6 * Math.max(Math.abs(val[0]), mScale);
                 case 1, 2 -> 1e-7 * Math.max(Math.abs(val[k]), 1e3);
                 case 3, 4 -> 1e-5 * Math.max(Math.abs(val[k]), 1);
-                case 6, 7 -> 1e-6;
+                case 6, 7 -> 1e-9;
                 default -> 1e-6 * Math.max(Math.abs(val[k]), 1);
             };
             double[] v = val.clone();

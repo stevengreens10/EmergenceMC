@@ -32,7 +32,12 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    vents, wall heat transfer, ideal-gas and liquid equations of state, gravity head
 ✅ Bladed rotors by blade-element theory: fans, pumps, turbines, windmills from one part
 ✅ Piston cylinders and crank throws (slider-crank, variable-volume thermodynamics)
-⬜ Phase transitions (boiling/condensation), free surfaces, valve gear, free translational bodies
+✅ Phase transitions: IAPWS water/steam, boiling (Rohsenow/Zuber), film condensation, saturated
+   two-phase volumes with gravity-separated ports
+✅ Valve gear: cam-worked valves on eccentrics; spring-loaded relief/check valves; brake pads
+✅ **Steam engine from parts**: boiler on a hearth, safety valve, throttle, cam-timed admission and exhaust,
+   single-acting cylinder, flywheel, Prony brake load
+⬜ Free surfaces in open vessels, free translational bodies, non-condensable gases mixed with steam
 ✅ **Milestone: heat engine driving a generator** — an alpha Stirling engine from parts (hot and cold
    cylinders 90° apart, transfer pipe, flywheel) runs on a hot block and drives magnets past a coil
 

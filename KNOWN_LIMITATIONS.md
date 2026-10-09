@@ -46,13 +46,20 @@ behaviour; where physics is missing the effect is simply absent.
 * Quasi-steady branches: no fluid inertia (no water hammer, acoustics, Helmholtz resonance) and no flow
   kinetic energy — a jet's velocity is not carried into the next volume, so impulse turbines fed by a
   nozzle are under-powered (the throttling loss stays in the gas as heat).
-* Single phase only: no boiling, condensation or free surfaces (tanks are always full; an open water pipe
-  end behaves like a connection to a pool at atmospheric pressure). One fluid per connected network.
+* Phase change for water only (`water_steam`); other fluids are single-phase. Phases are in equilibrium
+  in each volume (no superheated liquid, no subcooled vapour, no nucleation delay) and separated by
+  gravity; no non-condensable gas mixed with steam (a steam vent's back-flow is steam, not air). Ice
+  is not modelled (T clamped at the triple point). Slightly superheated (≲ 10 K) and very slightly
+  compressed states pass through smoothing joins with a few per cent pressure error. One fluid per
+  connected network; open vessels hold no free surface to the air.
+* Two-phase flow through branches is homogeneous (no slip, no flashing choke); film boiling beyond the
+  critical heat flux is not modelled (flux is capped instead).
 * Rotors: one blade row at the mean radius; swirl is not passed to a downstream rotor; no tip leakage or
   radial (centrifugal) machines; blades have no camber.
 * Gas properties are ideal-gas (Z ≈ 1); real-gas effects at high pressure are ignored.
 * Internal natural convection in closed vessels is not modelled (laminar forced-convection Nu as floor).
-* Pistons: massless piston and rod, no blow-by, no valve gear; crankcase always at ambient pressure.
+* Pistons: massless piston and rod, no blow-by; crankcase always at ambient pressure. Cam-worked valves
+  take no force from the cam (valve-gear work and inertia neglected).
 * A single small blade row cannot make a self-sustaining gas turbine (consistent with real physics at this
   scale); jet kinetic energy is not modelled, so impulse turbines are under-powered.
 
@@ -63,7 +70,7 @@ behaviour; where physics is missing the effect is simply absent.
 * No photodiodes/phototransistors yet; LED light is not received by anything.
 
 ## Not yet started (see ROADMAP.md)
-Phase change, combustion/general chemistry, CPUs and memory arrays, optics, acoustics, structural analysis, manufacturing, sensors beyond the
+Combustion/general chemistry, CPUs and memory arrays, optics, acoustics, structural analysis, manufacturing, sensors beyond the
 multimeter, oscilloscope/data logging.
 
 ## Gameplay / UI

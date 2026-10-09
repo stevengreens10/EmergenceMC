@@ -51,7 +51,9 @@ class PhaseChangeValidationTest {
             }
         }
         // phaseOf inverts the single-phase branches
-        assertEquals(-0.3, WaterSteam.phaseOf(WaterSteam.pSat(350) + 3e5, 350), 1e-9);
+        double s0 = WaterSteam.phaseOf(WaterSteam.pSat(350) + 3e6, 350);
+        WaterSteam.state(350, s0, a);
+        assertEquals(WaterSteam.pSat(350) + 3e6, a[WaterSteam.P], 1e-2);
         double[] st = new double[9];
         WaterSteam.state(450, 1.4, st);
         assertEquals(1.4, WaterSteam.phaseOf(st[WaterSteam.P], 450), 1e-6);
@@ -64,7 +66,7 @@ class PhaseChangeValidationTest {
         for (int i = 0; i < 100; i++) {
             double t = 0.5 * (lo + hi), rho = m / v;
             double rl = WaterSteam.rhoLiquidSat(t), rv = WaterSteam.rhoVapourSat(t);
-            double s = (rl - rho) / (rl - rv);
+            double s = Math.log(rl / rho) / Math.log(rl / rv);
             WaterSteam.state(t, s, st);
             if (st[WaterSteam.RHO_U] * v < energy) lo = t;
             else hi = t;
@@ -77,7 +79,7 @@ class PhaseChangeValidationTest {
         double v = 1e-3, t0 = 293.15, q = 400, dt = 600;
         Network n = new Network();
         Node pn = n.node(Domain.FLUID, "p", WaterSteam.pSat(t0)), tn = n.node(Domain.THERMAL, "T", t0);
-        FluidVolume vol = n.add(new FluidVolume(pn, tn, steam, v).withLiquidFraction(0.5));
+        FluidVolume vol = n.add(new FluidVolume(pn, tn, steam, v).withLiquidFraction(0.5, t0));
         n.add(new FlowSource(n.reference(Domain.THERMAL), tn, q));
         TransientSolver s = new TransientSolver(n);
         double m0 = vol.mass(s), e0 = s.storedEnergy();
@@ -98,7 +100,7 @@ class PhaseChangeValidationTest {
         Network n = new Network();
         double tStart = 372.0;
         Node pn = n.node(Domain.FLUID, "p", WaterSteam.pSat(tStart)), tn = n.node(Domain.THERMAL, "T", tStart);
-        FluidVolume vol = n.add(new FluidVolume(pn, tn, steam, v).withLiquidFraction(0.5));
+        FluidVolume vol = n.add(new FluidVolume(pn, tn, steam, v).withLiquidFraction(0.5, tStart));
         Node ap = n.node(Domain.FLUID, "atm.p", P0), at = n.node(Domain.THERMAL, "atm.T", 374);
         FluidReservoir atm = n.add(new FluidReservoir(ap, at, P0, 374));
         FluidBranch spout = n.add(new FluidBranch(pn, tn, ap, at, steam, 0.05, 0.01, 0, 1.0, 0.05)
@@ -126,7 +128,7 @@ class PhaseChangeValidationTest {
         double v = 1e-3, t0 = 393.15, tw = 303.15;
         Network n = new Network();
         Node pn = n.node(Domain.FLUID, "p", WaterSteam.pSat(t0)), tn = n.node(Domain.THERMAL, "T", t0);
-        FluidVolume vol = n.add(new FluidVolume(pn, tn, steam, v).withLiquidFraction(0.001));
+        FluidVolume vol = n.add(new FluidVolume(pn, tn, steam, v).withLiquidFraction(0.001, t0));
         Node wall = n.node(Domain.THERMAL, "wall", tw);
         FixedTemperature cold = n.add(new FixedTemperature(wall, tw));
         FluidWallConvection conv = n.add(new FluidWallConvection(tn, wall, steam, 0.06, 0.1, 0.01, java.util.List.of())

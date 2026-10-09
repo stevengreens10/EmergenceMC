@@ -23,7 +23,7 @@ public final class Exhibits {
 
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
-                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(),
+                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), miniatureGenerator());
     }
 
@@ -434,6 +434,94 @@ public final class Exhibits {
     }
 
     /**
+     * A single-acting steam engine from parts. A steel boiler, 60 % full of water at 145 °C, sits on a granite
+     * hearth over red-hot copper; a safety valve on its dome lifts at 4.5 bar. Steam goes through a hand regulator to an
+     * inlet valve worked by a cam on the crankshaft, which admits it to the cylinder just after top dead centre
+     * and cuts it off part way down the stroke; the steam then expands. A second cam opens the exhaust valve for
+     * the return stroke and the steam puffs out to the air.
+     */
+    public static Exhibit steamEngine() {
+        Exhibit e = new Exhibit("steam", "Steam engine",
+                List.of("STEAM ENGINE", "Boiler, cam valves,", "piston, flywheel.", "Shut the regulator"),
+                "Water boils in the steel boiler, heated through a granite hearth by red-hot copper; its pressure follows the "
+                        + "saturation curve of water (4 bar at 145 °C) and a spring-loaded safety valve on top lifts "
+                        + "if it climbs past 4.5 bar above the air. Through the open regulator steam flows to the inlet "
+                        + "valve, which a cam on the crankshaft opens just after the piston passes the top of its "
+                        + "stroke and closes part way down (cut-off); the trapped steam expands and keeps pushing. "
+                        + "A second cam opens the exhaust valve for the upward stroke and the spent steam puffs out. "
+                        + "The flywheel carries the crank through the exhaust stroke. An oak brake block pressed against "
+                        + "the flywheel is the load: its friction turns the engine's work into heat (a Prony-brake "
+                        + "dynamometer: torque μFr times speed). Shut the regulator and the engine "
+                        + "coasts to a stop while the boiler pressure climbs until the safety valve blows; open it "
+                        + "and give the flywheel a turn to restart. Nothing here is a scripted "
+                        + "'engine': boiling, valve flow, expansion work and friction are each computed.");
+        String st = "steel_1045";
+        int y = 3;
+        Object[] steam = {"fluid", 7};
+        int shaft = e.fill(SHAFT, st, 0, y, 8, 9, y, 8, Dir.EAST, "diameter", 0.012);
+        e.name("shaft", shaft);
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 15, 0, 0.3)); // running: given a turn to start
+        e.add(BEARING, st, 0, y, 8, Dir.EAST);
+        e.add(BEARING, st, 9, y, 8, Dir.EAST);
+        e.fill(BLOCK, st, 0, 0, 8, 0, y - 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 9, 0, 8, 9, y - 1, 8, Dir.UP);
+        // crank between two cams: exhaust cam (west) and inlet cam (east)
+        e.add(ECCENTRIC, st, 2, y, 8, Dir.EAST, "throw", 0.012, "phase", 95);
+        e.add(ECCENTRIC, st, 3, y, 8, Dir.EAST, "throw", 0.012);
+        e.add(ECCENTRIC, st, 4, y, 8, Dir.EAST, "throw", 0.012, "phase", -40);
+        e.name("flywheel", e.fill(BLOCK, st, 7, y - 1, 7, 7, y + 1, 9, Dir.EAST, "fill", 0.3));
+        // cylinder above the crank, its head closed by a cap; valves on either side, their stems over the cams
+        double warm = 412; // the engine is warmed through (lagged cylinder): steam does not flood it with condensate
+        int cyl = e.add(CYLINDER, st, 3, y + 2, 8, Dir.DOWN, with(steam, "bore", 0.035, "ring_friction", 3.0));
+        e.name("cylinder", cyl);
+        e.add(BLOCK, st, 3, y + 3, 8, Dir.UP, "fill", 0.3);
+        int exhaust = e.add(VALVE, "brass", 2, y + 2, 8, Dir.WEST, with(steam, "bore", 0.010));
+        e.name("exhaust", exhaust);
+        int inlet = e.add(VALVE, "brass", 4, y + 2, 8, Dir.WEST, with(steam, "bore", 0.008, "lap", 0.7));
+        e.name("inlet", inlet);
+        // steam line: elbow, regulator, boiler riser
+        int elbow = e.add(PIPE, "copper", 5, y + 2, 8, Dir.SOUTH, with(steam, "bore", 0.008));
+        e.add(BLOCK, st, 5, y + 2, 7, Dir.UP, "fill", 0.2); // blind flange
+        int l1 = e.add(PIPE, "copper", 5, y + 2, 9, Dir.SOUTH, with(steam, "bore", 0.008));
+        int reg = e.add(VALVE, "brass", 5, y + 2, 10, Dir.NORTH, with(steam, "bore", 0.0012)); // the throttle
+        e.name("regulator", reg);
+        e.latch(reg); // open
+        int l2 = e.add(PIPE, "copper", 5, y + 2, 11, Dir.SOUTH, with(steam, "bore", 0.008));
+        int l3 = e.add(PIPE, "copper", 5, y + 2, 12, Dir.SOUTH, with(steam, "bore", 0.008));
+        int riser = e.add(PIPE, "copper", 5, y + 2, 13, Dir.UP, with(steam, "bore", 0.012));
+        int safety = e.add(VALVE, "brass", 5, y + 3, 13, Dir.UP, with(steam, "bore", 0.006, "relief", 4.5e5));
+        e.name("safety", safety);
+        int boiler = e.add(TANK, st, 5, y + 1, 13, Dir.UP, with(steam, "fill", 0.6, "wall", 0.003, "gauge_range", 6));
+        e.name("boiler", boiler);
+        // the boiler and its pipework up to the regulator are at steam temperature
+        for (int i : new int[]{cyl, exhaust, inlet, elbow, l1}) e.init(i, new Exhibit.Initial(warm, 0, 0));
+        for (int i : new int[]{reg, l2, l3, riser, safety, boiler}) e.init(i, new Exhibit.Initial(418, 0, 0));
+        // load: a Prony brake, an oak block sprung against the underside of the flywheel (a dynamometer)
+        int brake = e.add(BRAKE, "oak", 7, y - 2, 8, Dir.UP, "force", 8);
+        e.name("brake", brake);
+        e.latch(brake); // applied
+        e.add(BLOCK, st, 7, 0, 8, Dir.UP);
+        // firebox: red-hot copper under a granite hearth slab, which passes ~150 W into the boiler's floor
+        int hearth = e.add(BLOCK, "granite", 5, y, 13, Dir.UP);
+        e.name("hearth", hearth);
+        e.init(hearth, new Exhibit.Initial(800, 0, 0));
+        for (int fy = y - 2; fy <= y - 1; fy++) {
+            int k = e.add(BLOCK, "copper", 5, fy, 13, Dir.UP);
+            e.init(k, new Exhibit.Initial(1200, 0, 0));
+            if (fy == y - 1) e.name("fire", k);
+        }
+        e.fill(BLOCK, st, 5, 0, 13, 5, y - 3, 13, Dir.UP);
+        return e.view(5.5, 7.5, 19, 25);
+    }
+
+    /** Parameter list {@code base} followed by {@code more}. */
+    static Object[] with(Object[] base, Object... more) {
+        Object[] o = java.util.Arrays.copyOf(base, base.length + more.length);
+        System.arraycopy(more, 0, o, base.length, more.length);
+        return o;
+    }
+
+    /**
      * An NPN transistor switching an LED: a small base current through a switch and 10 kΩ controls a
      * 20 mA collector current. Powered by a 10 F supercapacitor charged to 5 V.
      */
@@ -683,8 +771,10 @@ public final class Exhibits {
         for (Exhibit.PartDef d : e.parts) {
             long id = d.index() + 1;
             ids.put(d.index(), id);
-            a.add(new Part(id, d.kind(), MaterialDatabase.standard().get(d.material()), d.x0(), d.y0(), d.z0(),
-                    d.x1(), d.y1(), d.z1(), d.axis(), d.params()));
+            Part part = new Part(id, d.kind(), MaterialDatabase.standard().get(d.material()), d.x0(), d.y0(), d.z0(),
+                    d.x1(), d.y1(), d.z1(), d.axis(), d.params());
+            if (e.latched.contains(d.index())) part.setSwitchClosed(true);
+            a.add(part);
         }
         a.anchoredWhen(p -> p.minY() == 0 && p.kind().structural && p.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
         for (var en : e.initial.entrySet()) {

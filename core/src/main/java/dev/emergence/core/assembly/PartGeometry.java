@@ -178,7 +178,8 @@ public final class PartGeometry {
     /** Volume of fluid held [m³]. */
     public static double fluidVolume(Part p) {
         return switch (p.kind()) {
-            case PIPE, VALVE -> passageArea(p) * axialLength(p);
+            case PIPE -> passageArea(p) * axialLength(p);
+            case VALVE -> Math.PI * valveChamber(p) * valveChamber(p) / 4 * axialLength(p);
             case CYLINDER -> passageArea(p) * axialLength(p) * 0.5; // piston at mid-stroke when not linked
             case ROTOR -> passageArea(p) * axialLength(p) * 0.85;
             case TANK -> {
@@ -193,13 +194,23 @@ public final class PartGeometry {
     public static double wettedArea(Part p) {
         return switch (p.kind()) {
             // internal longitudinal fins ("fins" = fin area per bare-tube area) at 85 % fin efficiency
-            case PIPE, VALVE -> Math.PI * pipeBore(p) * axialLength(p) * (1 + 0.85 * fins(p));
+            case PIPE -> Math.PI * pipeBore(p) * axialLength(p) * (1 + 0.85 * fins(p));
+            case VALVE -> Math.PI * valveChamber(p) * axialLength(p);
             // bore wall at mid-stroke, head and piston crown; fins on the head side
             case CYLINDER -> (Math.PI * cylinderBore(p) * 0.5 * axialLength(p) + 2 * passageArea(p)) * (1 + 0.85 * fins(p));
             case ROTOR -> 2 * Math.PI * (rotorTipRadius(p) + rotorHubRadius(p)) * axialLength(p);
             case TANK -> 2 * (p.boxSize(0) * p.boxSize(1) + p.boxSize(1) * p.boxSize(2) + p.boxSize(0) * p.boxSize(2));
             default -> 0;
         };
+    }
+
+    /**
+     * Diameter of a valve's body chamber around its seat [m]: the seat bore ("bore") sets the flow restriction, the
+     * chamber is at least 40 % of the part's width (a globe-valve body), so a fine seat does not make a vanishing
+     * volume.
+     */
+    public static double valveChamber(Part p) {
+        return Math.max(pipeBore(p), 0.4 * transverseSize(p));
     }
 
     /** Internal fin area of a pipe relative to its bare bore surface (parameter "fins", default 0). */
@@ -210,7 +221,8 @@ public final class PartGeometry {
     /** Hydraulic diameter 4A/P of the passage [m]. */
     public static double hydraulicDiameter(Part p) {
         return switch (p.kind()) {
-            case PIPE, VALVE -> pipeBore(p) / (1 + fins(p)); // 4A/P with the fins' extra perimeter
+            case PIPE -> pipeBore(p) / (1 + fins(p)); // 4A/P with the fins' extra perimeter
+            case VALVE -> valveChamber(p);
             case CYLINDER -> cylinderBore(p) / (1 + fins(p));
             case ROTOR -> 2 * (rotorTipRadius(p) - rotorHubRadius(p));
             case TANK -> transverseSize(p) - 2 * wallThickness(p);
@@ -252,6 +264,7 @@ public final class PartGeometry {
             case WIRE, INSULATED_WIRE -> wireArea(p) * CELL * Math.max(p.extent(0), Math.max(p.extent(1), p.extent(2)));
             case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC -> p.param("mass", 0.002) / p.material().density();
             case BRUSH -> 0.6 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
+            case BRAKE -> 0.5 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // shoe and its lining
             // liquid volume: the vessel wall and headspace take the rest of the cells
             case ELECTROLYTE -> p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * p.param("fill", 0.8);
             case PIPE -> tubeWall(p) * axialLength(p);

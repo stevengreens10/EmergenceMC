@@ -56,9 +56,14 @@ public final class SparseLinearSystem implements LinearSystem {
     private int[] hvals = new int[256];
     private int hsize;
 
+    /** Fibonacci hashing: the high bits of key·2⁶⁴/φ spread (row, col) keys evenly (no probe clustering). */
+    private static int hash(long key) {
+        return (int) ((key * 0x9E3779B97F4A7C15L) >>> 32);
+    }
+
     private int lookup(long key) {
         int mask = hkeys.length - 1;
-        int h = (int) (key ^ (key >>> 29) ^ (key >>> 47)) * 0x9E3779B9;
+        int h = hash(key);
         for (int i = h & mask; ; i = (i + 1) & mask) {
             long k = hkeys[i];
             if (k == 0) return -1;
@@ -76,7 +81,7 @@ public final class SparseLinearSystem implements LinearSystem {
             for (int i = 0; i < ok.length; i++) if (ok[i] != 0) insert(ok[i], ov[i]);
         }
         int mask = hkeys.length - 1;
-        int h = (int) (key ^ (key >>> 29) ^ (key >>> 47)) * 0x9E3779B9;
+        int h = hash(key);
         int i = h & mask;
         while (hkeys[i] != 0) i = (i + 1) & mask;
         hkeys[i] = key;

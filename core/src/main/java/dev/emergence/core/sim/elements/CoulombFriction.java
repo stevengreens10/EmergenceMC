@@ -36,7 +36,7 @@ public final class CoulombFriction implements Element {
 
     @Override
     public void load(LoadContext ctx) {
-        if (tauC == 0) return;
+        // (stamped even when released, so the matrix pattern does not change when a brake is applied)
         double dw = ctx.x(a.index()) - ctx.x(b.index());
         double th = Math.tanh(dw / ws);
         double tau = tauC * th;
@@ -51,6 +51,12 @@ public final class CoulombFriction implements Element {
             ctx.addJ(t, a.index(), -dp);
             ctx.addJ(t, b.index(), dp);
         }
+    }
+
+    /** {friction torque [N·m], dissipated power [W]} now. */
+    public double[] torqueAndPower(StateView s) {
+        double dw = s.across(a, b), tau = tauC * Math.tanh(dw / ws);
+        return new double[]{tau, tau * dw};
     }
 
     public double torque(StateView s) {

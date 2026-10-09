@@ -101,6 +101,7 @@ public final class AssemblyCompiler {
             buildBodies();
             buildThermal();
             buildMechanics();
+            buildBrakes();
             buildFluids();
             buildElectrical();
             c.network.compile();
@@ -137,6 +138,7 @@ public final class AssemblyCompiler {
                     // A brush is spring-loaded in its holder and merely slides on what it touches: it never
                     // joins rigid bodies (brushes always belong to the stationary frame — see KNOWN_LIMITATIONS).
                     if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) continue;
+                    if (p.kind() == PartKind.BRAKE || q.kind() == PartKind.BRAKE) continue; // a pad presses, it does not weld
                     union(idx.get(p.id()), idx.get(q.id()));
                     joinedPairs.add(pairKey(p.id(), q.id()));
                 }
@@ -976,6 +978,38 @@ public final class AssemblyCompiler {
             c.warnings.addAll(ms.warnings());
         }
 
+        // ------------------------------------------------------------ brakes
+        /**
+         * Friction pads: each brake presses its +axis face on the parts in the cell in front of it. For a part on a
+         * turning body, the contact point's distance r from that body's axis gives the friction torque μ·F·r
+         * (dry Coulomb friction, regularised at very low slip), reacting on the stationary frame; the dissipated
+         * work heats the pad.
+         */
+        void buildBrakes() {
+            for (Part p : parts) {
+                if (p.kind() != PartKind.BRAKE) continue;
+                Dir ax = p.axis();
+                int a0 = ax.axis();
+                int[] cell = {(p.minX() + p.maxX()) / 2, (p.minY() + p.maxY()) / 2, (p.minZ() + p.maxZ()) / 2};
+                cell[a0] = ax.sign() > 0 ? new int[]{p.maxX(), p.maxY(), p.maxZ()}[a0] + 1 : new int[]{p.minX(), p.minY(), p.minZ()}[a0] - 1;
+                Vec3 contact = p.center().add(ax.vec().mul(p.boxSize(a0) / 2));
+                double mu = p.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4), force = p.param("force", 20);
+                Set<CompiledAssembly.Body> done = new HashSet<>();
+                for (Part q : a.at(cell[0], cell[1], cell[2])) {
+                    CompiledAssembly.Body qb = c.bodyOfPart.get(q.id());
+                    if (qb == null || qb.isStatic || !done.add(qb)) continue;
+                    Vec3 rel = contact.sub(qb.pivot);
+                    double r = rel.sub(qb.axis.mul(rel.dot(qb.axis))).length();
+                    if (r < 1e-6) continue; // pressing on the axis itself exerts no torque
+                    double torque = mu * force * r;
+                    CoulombFriction f = c.network.add(new CoulombFriction(qb.node, refR, p.switchClosed() ? torque : 0, 1e-2,
+                            c.thermalOfPart.get(p.id())));
+                    c.brakes.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(new double[]{torque});
+                    c.brakeElements.computeIfAbsent(p.id(), k -> new ArrayList<>()).add(f);
+                }
+            }
+        }
+
         // ------------------------------------------------------------ fluids
         /**
          * Every fluid-holding part is a control volume; volumes sharing a face are joined by a flow branch
@@ -1000,7 +1034,8 @@ public final class AssemblyCompiler {
                 double s0 = 1;
                 if (wet) {
                     // water/steam: the state is (T, phase); a fresh part is saturated with its "fill" of liquid
-                    s0 = st != null && st.length > 2 ? st[2] : 1 - Math.max(0, Math.min(1, p.param("fill", 0)));
+                    s0 = st != null && st.length > 2 ? st[2]
+                            : dev.emergence.core.fluids.WaterSteam.phaseForLiquidFraction(t0, p.param("fill", 0));
                     double[] sv = new double[9];
                     dev.emergence.core.fluids.WaterSteam.state(t0, s0, sv);
                     p0 = sv[dev.emergence.core.fluids.WaterSteam.P];
@@ -1112,6 +1147,8 @@ public final class AssemblyCompiler {
                 boolean outletFace = face == valve.axis();
                 double sense = (outletFace == valveIsA) ? 1 : -1;
                 b.withCheck(crack / 2, Math.max(crack / 4, 2e3), sense);
+                b.setOpening(1); // spring-loaded: always armed, no hand wheel
+                return false;
             }
             Object[] cam = cams.computeIfAbsent(valve.id(), k -> findCam(valve));
             if (cam.length > 0) {

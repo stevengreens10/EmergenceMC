@@ -67,16 +67,34 @@ public final class FluidWallConvection implements Element {
     }
 
     private final double[] st = new double[9];
+    private final WaterSteam.JoinCache join = new WaterSteam.JoinCache();
+    private double cpT = Double.NaN, cpVal, cpT2 = Double.NaN, cpVal2;
 
     /** Heat flow from the wall into a water/steam volume [W]. */
     double twoPhaseHeat(double tw, double tf, double s, double mdotDh) {
         WaterSteam w = (WaterSteam) fluid;
-        WaterSteam.state(tf, s, st);
+        WaterSteam.state(tf, s, st, join);
         // saturated: the fluid is at the saturation temperature (exactly, so the film law is smooth through ΔT = 0)
         double ts = s >= 0 && s <= 1 ? tf : WaterSteam.tSat(st[WaterSteam.P]);
         double av = st[WaterSteam.ALPHA_V], fl = 1 - av;
-        double rl = WaterSteam.rhoLiquidSat(ts), rv = WaterSteam.rhoVapourSat(ts), hfg = WaterSteam.latentHeat(ts);
-        double mul = w.liquidViscosity(tf), kl = w.liquidConductivity(tf), cpl = w.cp(tf), prl = mul * cpl / kl;
+        double[] sat = WaterSteam.saturationSet(ts);
+        double rl = sat[WaterSteam.SAT_RHO_L], rv = sat[WaterSteam.SAT_RHO_V], hfg = sat[WaterSteam.SAT_H_V] - sat[WaterSteam.SAT_H_L];
+        // liquid c_p ≈ dh'/dT from the saturation slope, held per temperature (it varies slowly)
+        if (tf != cpT) {
+            if (tf == cpT2) {
+                double a = cpT, b = cpVal;
+                cpT = cpT2;
+                cpVal = cpVal2;
+                cpT2 = a;
+                cpVal2 = b;
+            } else {
+                cpT2 = cpT;
+                cpVal2 = cpVal;
+                cpT = tf;
+                cpVal = w.cp(tf);
+            }
+        }
+        double mul = w.liquidViscosity(tf), kl = w.liquidConductivity(tf), cpl = cpVal, prl = mul * cpl / kl;
         double g = dev.emergence.core.units.PhysicalConstants.STANDARD_GRAVITY, sigma = Math.max(WaterSteam.surfaceTension(ts), 1e-4);
         double q = 0;
         // single-phase convection to each phase
@@ -136,7 +154,7 @@ public final class FluidWallConvection implements Element {
             ctx.addF(iff, -q);
             double h = 1e-4;
             double dw = (twoPhaseHeat(tw + h, tf, s, md) - q) / h, df = (twoPhaseHeat(tw, tf + h, s, md) - q) / h;
-            double ds = (twoPhaseHeat(tw, tf, s + 1e-6, md) - q) / 1e-6;
+            double ds = (twoPhaseHeat(tw, tf, s + 1e-9, md) - q) / 1e-9;
             ctx.addJ(iw, iw, dw);
             ctx.addJ(iw, iff, df);
             ctx.addJ(iw, is, ds);

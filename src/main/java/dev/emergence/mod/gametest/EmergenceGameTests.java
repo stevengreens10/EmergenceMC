@@ -173,6 +173,29 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** Phase change in the world: the steam exhibit's boiler sits on the saturation curve and its engine keeps turning. */
+    @GameTest(template = "arena", timeoutTicks = 300)
+    public static void steamEngineRunsInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.steamEngine();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos shaftAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "shaft");
+        BlockPos boilerAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "boiler");
+        PlacedPart shaft = only(h, shaftAt, PartKind.SHAFT), boiler = only(h, boilerAt, PartKind.TANK);
+        h.runAtTickTime(5, () -> {
+            double[] f = sim.compiledAt(boilerAt).fluid(boiler.id);
+            h.assertTrue(Math.abs(f[0] - dev.emergence.core.fluids.WaterSteam.pSat(f[1])) < 0.01 * f[0],
+                    "boiler pressure on the saturation curve: " + f[0] + " Pa at " + f[1] + " K");
+            h.assertTrue(f[4] > 0.2 && f[4] < 0.6, "boiler partly full of water: vapour fraction " + f[4]);
+        });
+        h.runAtTickTime(200, () -> {
+            Probe ps = sim.probe(shaftAt, shaft.id);
+            h.assertTrue(ps != null && Math.abs(ps.angularVelocity()) > 5, "the engine runs on steam: ω " + (ps == null ? "-" : ps.angularVelocity()));
+            h.succeed();
+        });
+    }
+
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
         AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
         return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();

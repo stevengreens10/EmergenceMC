@@ -209,7 +209,24 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 drawPiston(c, p, f, ez);
             }
             case ECCENTRIC -> drawEccentric(c, p, f);
+            case BRAKE -> drawBrake(c, p);
         }
+    }
+
+    /** Brake block: a shoe of the pad material with a dark friction lining on its +axis face, sprung from a base
+     *  plate; released, it stands back from what it presses on. */
+    private void drawBrake(Ctx c, PlacedPart p) {
+        float back = p.closed ? 0f : 0.08f;
+        int pad = tintOf(c, tintable(c.materialTexture) ? c.materialRgb : 0xFFFFFF);
+        box(c, PartModels.sprite("metal_cast"), tintOf(c, 0x5E6266), -0.45f, -0.45f, -0.5f, 0.45f, 0.45f, -0.42f);
+        for (float x : new float[]{-0.25f, 0.25f}) {
+            c.ps.pushPose();
+            c.ps.translate(x, 0, 0);
+            cylinder(c, PartModels.sprite("metal_smooth"), tintOf(c, 0x9AA0A6), 0.06f, -0.42f, -0.08f - back, 10, true);
+            c.ps.popPose();
+        }
+        box(c, PartModels.sprite(c.materialTexture), pad, -0.42f, -0.42f, -0.08f - back, 0.42f, 0.42f, 0.4f - back);
+        box(c, PartModels.sprite("rubber"), tintOf(c, 0x2B2724), -0.4f, -0.4f, 0.4f - back, 0.4f, 0.4f, 0.5f - back);
     }
 
     // ------------------------------------------------------------------ OBJ models

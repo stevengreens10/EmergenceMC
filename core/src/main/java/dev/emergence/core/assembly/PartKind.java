@@ -76,7 +76,14 @@ public enum PartKind {
      * 7 Schmitt NOT, 8 D flip-flop. Input A (D) on the −axis face, output (Q) on the +axis face, GND and V_DD on
      * the −/+ lead-axis sides, input B (clock) on the −side of the remaining axis and Q̄ on its +side.
      */
-    LOGIC(false, true);
+    LOGIC(false, true),
+    /**
+     * Friction pad (brake shoe, Prony-brake block) whose +axis face presses with a spring force ("force", N)
+     * against whatever turning body is in front of it, while applied (toggled). Its friction torque μ·F·r opposes
+     * the motion and the work becomes heat in the pad; μ is the pad material's friction coefficient. Like a brush
+     * it belongs to the stationary frame and never joins bodies.
+     */
+    BRAKE(false, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

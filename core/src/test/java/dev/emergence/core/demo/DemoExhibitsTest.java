@@ -388,4 +388,42 @@ class DemoExhibitsTest {
         assertTrue(tMin > 295 && tMax < 335, "regulated band " + tMin + " .. " + tMax + " K");
         assertTrue(tMax - tMin > 5, "Schmitt hysteresis gives a temperature band: " + (tMax - tMin));
     }
+
+    @Test
+    void steamEngineRunsOnBoilerSteam() {
+        Exhibit e = Exhibits.steamEngine();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long shaft = b.id(e, "shaft"), boiler = b.id(e, "boiler"), cyl = b.id(e, "cylinder");
+        assertNotNull(c.piston(cyl), "cylinder linked to the crank");
+        double p0 = c.fluid(boiler)[0];
+        assertEquals(dev.emergence.core.fluids.WaterSteam.pSat(418), p0, 2e3, "boiler on the saturation curve");
+        double sumW = 0, vent = 0, minW = 1e9, brakeWork = 0;
+        int n = 0;
+        for (int i = 0; i < 600; i++) {
+            c.step(0.05);
+            double w = c.probe(shaft).angularVelocity();
+            if (i > 200) {
+                sumW += w;
+                minW = Math.min(minW, Math.abs(w));
+                brakeWork += c.brake(b.id(e, "brake"))[1] * 0.05;
+                n++;
+            }
+            for (var v : c.vents()) vent += Math.max(0, c.ventOutflow(v)) * 0.05;
+        }
+        double mean = sumW / n;
+        double[] bf = c.fluid(boiler);
+        System.out.println("steam engine: mean w " + mean + " rad/s (min " + minW + "), steam vented " + vent * 1e3 + " g, boiler "
+                + bf[0] + " Pa " + bf[1] + " K, vapour fraction " + bf[4]);
+        assertTrue(Math.abs(mean) > 5 && minW > 1, "the engine keeps running on steam: mean ω " + mean + ", min " + minW);
+        assertTrue(vent > 1e-3, "spent steam puffs out of the exhaust: " + vent + " kg");
+        System.out.println("brake absorbs " + brakeWork / (n * 0.05) + " W");
+        assertTrue(brakeWork / (n * 0.05) > 2, "the engine delivers shaft power to the brake: " + brakeWork / (n * 0.05) + " W");
+        assertTrue(bf[0] > 2e5, "the fire keeps the boiler pressed: " + bf[0]);
+        // shut the regulator: the engine coasts to a stop
+        c.toggleSwitch(b.id(e, "regulator"));
+        run(c, 20);
+        assertTrue(Math.abs(c.probe(shaft).angularVelocity()) < 0.2 * Math.abs(mean),
+                "regulator shut: the engine stops, ω " + c.probe(shaft).angularVelocity());
+    }
 }

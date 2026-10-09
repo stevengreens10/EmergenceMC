@@ -17,11 +17,22 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 | RC mesh 30×30 | 901 | ~230 | 235 — **exceeds budget** |
 | RC mesh 60×60 | 3601 | ~235 | 1040 — **exceeds budget** |
 
+## Time dilation
+Each island has a wall-clock budget of 12 ms per server tick. An island whose smoothed cost exceeds it
+simulates less time per tick (down to 5 %) and recovers when cheap: the physics stays exact and the
+server keeps its tick rate, but that machine runs in slow motion. The steam engine (≈ 230 unknowns,
+≈ 750 steps per simulated second at 650 rpm) costs ≈ 1.5× real time on the dev machine.
+
 ## History
 * Generator 52 → 28 ms: coil flux LTE absolute tolerance was 1e-12 Wb (signal ~0.02 Wb); now scaled to the
   signal.
 * 28 → 2.8 ms: primitive open-addressing index in the sparse matrix (no boxing); realistic human cranking
   (in-solver force–velocity model) instead of a constant 2 N·m that spun the rotor to 1000+ rad/s.
+
+* Steam engine 57 → 22 s per 15 simulated s: one-pass saturation properties with integer power chains
+  and an analytic dp_s/dT (the IAPWS correlations' fractional powers were the hot spot), tSat on a light
+  ln p evaluation, memoised port states (finite differences perturb p and ṁ more than T and s), cached
+  Hermite-join ends, Fibonacci hashing in the sparse matrix's (row, col) table (the old hash clustered).
 
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC

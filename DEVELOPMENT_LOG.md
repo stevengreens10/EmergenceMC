@@ -97,3 +97,18 @@ trigger chip, a power MOSFET and a heater on an aluminium plate. Getting it to r
 thermal isolation — clamped component bodies now conduct heat through their contact area — and (2) step-size
 underflow after ringing from stale truncation-error history, fixed by a restart rule in the solver. A net
 labelling check now catches accidental shorts between touching insulated wires in exhibit layouts.
+
+**Phase change and a steam engine.** IAPWS water/steam with a phase coordinate that spans compressed
+liquid, the saturated dome and superheated vapour; Rohsenow boiling, Nusselt condensation, phase-aware
+ports, relief and cam-worked valves, and a brake pad as a load. Getting a steam engine to run from parts
+was mostly numerical work, each problem found with a new finite-difference Jacobian check in the solver:
+a condensation equilibrium limit-cycled because a reservoir's heat-flow tolerance (1e-9 W) was below what a
+6 kW/K film conductance can resolve; a volume-fraction phase coordinate was ill-conditioned near dryness
+(now logarithmic in density); dry saturated pipes sit exactly on the dome boundary, where the pressure's
+slope jumps (now C¹ Hermite joins outside the dome); the phase FD step was as wide as the liquid-side join;
+mass-flow tolerances were 10⁴ times finer than the pressure tolerance allows (now from each branch's laminar
+conductance); valve seats had zero conductance at zero flow (now laminar below 10 Pa); and a throttle's
+seat-sized body held 0.07 cm³ of steam (valves now have a chamber). The engine first flooded its cold
+cylinder with condensate — hydraulic lock, a real failure — so the gallery starts it warm. Profiling then
+took it from 3.8× to 1.5× real time, and islands over budget now run in slow motion rather than stall the
+server.

@@ -39,74 +39,112 @@ public final class WaterSteam implements Fluid {
         return Math.max(273.16, Math.min(t, 640));
     }
 
-    /** Saturation pressure p_s(T) [Pa]. */
-    public static double pSat(double t) {
+    /** Indices into the saturation property set filled by {@link #saturation}. */
+    private static final int S_P = 0, S_DP = 1, S_RL = 2, S_RV = 3, S_UL = 4, S_UV = 5, S_HL = 6, S_HV = 7;
+
+    /**
+     * All saturation properties at T in one pass: [p_s, dp_s/dT (analytic), ρ', ρ'', u', u'', h', h''], with the
+     * fractional powers of the IAPWS correlations built from integer powers of τ^{1/6} and θ^{1/2}.
+     */
+    private static double[] saturation(double t) {
         t = clampT(t);
-        double tau = 1 - t / TC;
-        double s = -7.85951783 * tau + 1.84408259 * Math.pow(tau, 1.5) - 11.7866497 * Math.pow(tau, 3)
-                + 22.6807411 * Math.pow(tau, 3.5) - 15.9618719 * Math.pow(tau, 4) + 1.80122502 * Math.pow(tau, 7.5);
-        return PC * Math.exp(TC / t * s);
+        double[] c = new double[9];
+        double tau = 1 - t / TC, st = Math.sqrt(tau), t2 = tau * tau, t3 = t2 * tau;
+        double sum = -7.85951783 * tau + 1.84408259 * tau * st - 11.7866497 * t3 + 22.6807411 * t3 * st
+                - 15.9618719 * t3 * tau + 1.80122502 * t3 * t3 * tau * st;
+        double dsum = -7.85951783 + 1.5 * 1.84408259 * st - 3 * 11.7866497 * t2 + 3.5 * 22.6807411 * t2 * st
+                - 4 * 15.9618719 * t3 + 7.5 * 1.80122502 * t3 * t3 * st;
+        double ps = PC * Math.exp(TC / t * sum);
+        double dps = ps * (-TC * sum / (t * t) - dsum / t);
+        // ρ': powers of τ^{1/3}
+        double k1 = Math.cbrt(tau), k2 = k1 * k1, k4 = k2 * k2, k5 = k4 * k1, k8 = k4 * k4, k16 = k8 * k8, k32 = k16 * k16;
+        double k43 = k32 * k8 * k2 * k1, k110 = k32 * k32 * k32 * k8 * k4 * k2;
+        double rl = RHOC * (1 + 1.99274064 * k1 + 1.09965342 * k2 - 0.510839303 * k5 - 1.75493479 * k16 - 45.5170352 * k43
+                - 6.74694450e5 * k110);
+        // ρ'': powers of τ^{1/6}
+        double r1 = Math.sqrt(k1), r2 = k1, r4 = k2, r8 = k4, r16 = k8, r18 = r16 * r2, r32 = k16, r37 = r32 * r4 * r1;
+        double r71 = r32 * r32 * r4 * r2 * r1;
+        double rv = RHOC * Math.exp(-2.03150240 * r2 - 2.68302940 * r4 - 5.38626492 * r8 - 17.2991605 * r18
+                - 44.7586581 * r37 - 63.9201063 * r71);
+        // α(θ)
+        double th = t / TC, sth = Math.sqrt(th), th2 = th * th, th4 = th2 * th2, th5 = th4 * th, th8 = th4 * th4, th16 = th8 * th8;
+        double th19 = th16 * th2 * th, th54 = th16 * th16 * th16 * th4 * th2;
+        double alpha = 1000 * (-1135.905627715 - 5.65134998e-8 / th19 + 2690.66631 * th + 127.287297 * th4 * sth
+                - 135.003439 * th5 + 0.981825814 * th54 * sth);
+        double hl = alpha + t / rl * dps, hv = alpha + t / rv * dps;
+        c[0] = t;
+        c[1 + S_P] = ps;
+        c[1 + S_DP] = dps;
+        c[1 + S_RL] = rl;
+        c[1 + S_RV] = rv;
+        c[1 + S_UL] = hl - ps / rl;
+        c[1 + S_UV] = hv - ps / rv;
+        c[1 + S_HL] = hl;
+        c[1 + S_HV] = hv;
+        return c;
     }
 
-    /** dp_s/dT [Pa/K] (central difference of the smooth correlation). */
+    private static double sat(double t, int k) {
+        return saturation(t)[1 + k];
+    }
+
+    /** Saturation pressure p_s(T) [Pa] (Wagner &amp; Pruß). */
+    public static double pSat(double t) {
+        return sat(t, S_P);
+    }
+
+    /** dp_s/dT [Pa/K] (analytic derivative of the correlation). */
     public static double dpSatDt(double t) {
-        double h = 1e-3;
-        return (pSat(t + h) - pSat(t - h)) / (2 * h);
+        return sat(t, S_DP);
     }
 
-    /** Saturation temperature T_s(p) [K] (Newton on p_s). */
+    /** Saturation temperature T_s(p) [K] (Newton on ln p_s, quadratically convergent). */
     public static double tSat(double p) {
         p = Math.max(Math.min(p, 0.99 * PC), 612);
-        double t = 373.15 + 30 * Math.log(p / 101_325); // decent start
-        t = clampT(t);
-        for (int i = 0; i < 30; i++) {
-            double f = Math.log(pSat(t) / p);
-            double d = dpSatDt(t) / pSat(t);
-            double dt = f / d;
-            t = clampT(t - dt);
-            if (Math.abs(dt) < 1e-9) break;
+        double lp = Math.log(p / PC);
+        // start: Clausius–Clapeyron through the normal boiling point, 1/T = 1/373.12 − (R/h_fg)·ln(p/p0)
+        double t = clampT(1 / (1 / 373.124 - 461.5 / 2.26e6 * Math.log(p / 101_325)));
+        for (int i = 0; i < 20; i++) {
+            double tau = 1 - t / TC, st = Math.sqrt(tau), t2 = tau * tau, t3 = t2 * tau;
+            double sum = -7.85951783 * tau + 1.84408259 * tau * st - 11.7866497 * t3 + 22.6807411 * t3 * st
+                    - 15.9618719 * t3 * tau + 1.80122502 * t3 * t3 * tau * st;
+            double dsum = -7.85951783 + 1.5 * 1.84408259 * st - 3 * 11.7866497 * t2 + 3.5 * 22.6807411 * t2 * st
+                    - 4 * 15.9618719 * t3 + 7.5 * 1.80122502 * t3 * t3 * st;
+            // ln(p_s/p_c) = (T_c/T)·Σ and its T-derivative
+            double dt = (TC / t * sum - lp) / (-TC * sum / (t * t) - dsum / t);
+            double tn = clampT(t - dt);
+            if (Math.abs(tn - t) < 1e-11 * t) return tn;
+            t = tn;
         }
         return t;
     }
 
     /** Saturated liquid density ρ'(T). */
     public static double rhoLiquidSat(double t) {
-        double tau = 1 - clampT(t) / TC;
-        return RHOC * (1 + 1.99274064 * Math.cbrt(tau) + 1.09965342 * Math.pow(tau, 2.0 / 3) - 0.510839303 * Math.pow(tau, 5.0 / 3)
-                - 1.75493479 * Math.pow(tau, 16.0 / 3) - 45.5170352 * Math.pow(tau, 43.0 / 3) - 6.74694450e5 * Math.pow(tau, 110.0 / 3));
+        return sat(t, S_RL);
     }
 
     /** Saturated vapour density ρ''(T). */
     public static double rhoVapourSat(double t) {
-        double tau = 1 - clampT(t) / TC;
-        double s = -2.03150240 * Math.pow(tau, 2.0 / 6) - 2.68302940 * Math.pow(tau, 4.0 / 6) - 5.38626492 * Math.pow(tau, 8.0 / 6)
-                - 17.2991605 * Math.pow(tau, 18.0 / 6) - 44.7586581 * Math.pow(tau, 37.0 / 6) - 63.9201063 * Math.pow(tau, 71.0 / 6);
-        return RHOC * Math.exp(s);
+        return sat(t, S_RV);
     }
 
-    /** Auxiliary quantity α(T) [J/kg] of the IAPWS saturation-property equations. */
-    private static double alpha(double t) {
-        double th = clampT(t) / TC;
-        return 1000 * (-1135.905627715 - 5.65134998e-8 * Math.pow(th, -19) + 2690.66631 * th + 127.287297 * Math.pow(th, 4.5)
-                - 135.003439 * Math.pow(th, 5) + 0.981825814 * Math.pow(th, 54.5));
-    }
-
-    /** Saturated liquid enthalpy h'(T) [J/kg]. */
+    /** Saturated liquid enthalpy h'(T) [J/kg]: α + (T/ρ')·dp_s/dT. */
     public static double hLiquidSat(double t) {
-        return alpha(t) + clampT(t) / rhoLiquidSat(t) * dpSatDt(t);
+        return sat(t, S_HL);
     }
 
-    /** Saturated vapour enthalpy h''(T) [J/kg]. */
+    /** Saturated vapour enthalpy h''(T) [J/kg]: α + (T/ρ'')·dp_s/dT. */
     public static double hVapourSat(double t) {
-        return alpha(t) + clampT(t) / rhoVapourSat(t) * dpSatDt(t);
+        return sat(t, S_HV);
     }
 
     public static double uLiquidSat(double t) {
-        return hLiquidSat(t) - pSat(t) / rhoLiquidSat(t);
+        return sat(t, S_UL);
     }
 
     public static double uVapourSat(double t) {
-        return hVapourSat(t) - pSat(t) / rhoVapourSat(t);
+        return sat(t, S_UV);
     }
 
     /** Latent heat of vaporisation h'' − h' [J/kg]. */
@@ -116,10 +154,10 @@ public final class WaterSteam implements Fluid {
 
     // ------------------------------------------------------------------ control-volume states (T, s)
 
-    /** Pressure scale of the compressed-liquid branch of the phase coordinate [Pa per unit s]. */
-    public static final double COMPRESSION_SCALE = 1e6;
-    /** Logarithmic pressure scale of the superheated branch: p = p_s(T)·e^{−SUPERHEAT_SCALE·(s − 1)}. */
-    public static final double SUPERHEAT_SCALE = 3;
+    /** L(T) = ln(ρ'/ρ''): the density ratio across the dome on the logarithmic phase coordinate. */
+    public static double logDensityRatio(double t) {
+        return Math.log(rhoLiquidSat(t) / rhoVapourSat(t));
+    }
 
     /** Indices into the array filled by {@link #state}. */
     public static final int P = 0, RHO = 1, RHO_U = 2, RHO_L = 3, H_L = 4, RHO_V = 5, H_V = 6, ALPHA_V = 7, U_V = 8;
@@ -128,28 +166,118 @@ public final class WaterSteam implements Fluid {
      * State of a control volume from its temperature T and a phase coordinate s that runs smoothly through
      * all three regions, so that one set of unknowns covers boiling and condensation:
      * <ul>
-     *   <li>s &lt; 0 — compressed liquid at p = p_s(T) + |s|·1 MPa;</li>
-     *   <li>0 ≤ s ≤ 1 — liquid and vapour in equilibrium at p = p_s(T), s being the vapour volume fraction;</li>
-     *   <li>s &gt; 1 — superheated vapour at p = p_s(T)·e^{−3(s−1)} (below the saturation pressure for T).</li>
+     *   <li>s &lt; 0 — compressed liquid at p = p_s(T) + |s|·K·L;</li>
+     *   <li>0 ≤ s ≤ 1 — liquid and vapour in equilibrium at p = p_s(T), with mixture density
+     *       ρ = ρ'^{1−s}·ρ''^{s} (logarithmic in density, so a given change of s is the same relative change of
+     *       the mass held anywhere in the dome — well conditioned at both the nearly-full and nearly-dry ends);</li>
+     *   <li>s &gt; 1 — superheated vapour at p = p_s(T)·e^{−L(s−1)} (below the saturation pressure for T),</li>
      * </ul>
+     * where L = ln(ρ'/ρ'') and K is the liquid bulk modulus; these scales make dρ/ds continuous at both
+     * boundaries.
      * Fills {@code out} with [p, ρ (mixture), ρu (mixture, per volume), ρ_liquid, h_liquid, ρ_vapour, h_vapour,
      * vapour volume fraction, u_vapour]. The pressure, density and energy are continuous across the region
-     * boundaries.
+     * boundaries, and continuously differentiable: just outside the dome (1 &lt; s &lt; 1.06, steam superheated by up to ~10 K, and −2·10⁻⁵ &lt; s &lt; 0)
+     * the single-phase state is replaced by a cubic Hermite join to the dome's slope (monotone there), so Newton's method does not cycle on the slope jump of
+     * the real saturation boundary when a volume sits exactly on it (a dry pipe of saturated steam).
      */
+    /** Half-widths of the Hermite joins at the dry (s = 1) and full (s = 0) ends; the latter is narrow because
+     *  the compressed-liquid pressure rises by K·L ≈ 13 GPa per unit s. */
+    private static final double BAND = 3e-2, BAND_LIQUID = 1e-5;
+
     public static void state(double t, double s, double[] out) {
-        t = clampT(t);
-        double ps = pSat(t), rl = rhoLiquidSat(t), ul = uLiquidSat(t);
-        if (s < 0) {
-            double p = ps - s * COMPRESSION_SCALE, rho = rl * (1 + (p - ps) / BULK);
-            set(out, p, rho, rho * ul, rho, ul + p / rho, rhoVapourSat(t), hVapourSat(t), 0, uVapourSat(t));
-        } else if (s <= 1) {
-            double rv = rhoVapourSat(t), uv = uVapourSat(t);
-            double rho = (1 - s) * rl + s * rv;
-            set(out, ps, rho, (1 - s) * rl * ul + s * rv * uv, rl, ul + ps / rl, rv, uv + ps / rv, s, uv);
+        state(t, s, out, null);
+    }
+
+    /**
+     * Per-caller memo of the Hermite join's end states (they depend on T only). Not thread-safe: each element
+     * keeps its own.
+     */
+    public static final class JoinCache {
+        double t = Double.NaN, c = Double.NaN;
+        final double[] ya = new double[9], ya2 = new double[9], yb = new double[9], yb2 = new double[9];
+        /** A second slot: finite differences alternate between T and T + δT. */
+        JoinCache other;
+    }
+
+    /** As {@link #state(double, double, double[])}, reusing the join ends in {@code cache} when T is unchanged. */
+    public static void state(double t, double s, double[] out, JoinCache cache) {
+        if (s > 1 && s < 1 + 2 * BAND) {
+            blend(t, s, 1, out, cache);
+        } else if (s < 0 && s > -2 * BAND_LIQUID) {
+            blend(t, s, 0, out, cache);
         } else {
-            double p = ps * Math.exp(-SUPERHEAT_SCALE * (s - 1));
-            double ts = Math.min(tSat(p), t), pst = pSat(ts);
-            double rv = rhoVapourSat(ts) * (p / pst) * ts / t, uv = uVapourSat(ts) + CV_VAPOUR * (t - ts);
+            raw(t, s, out);
+        }
+    }
+
+    private static void blend(double t, double s, double c, double[] out, JoinCache cache) {
+        // the join lies wholly in the single-phase region, so the two-phase states are exact
+        double band = c == 1 ? BAND : BAND_LIQUID;
+        double a = c == 1 ? 1 : -2 * band, b = c == 1 ? 1 + 2 * band : 0, d = 1e-3 * band, h = b - a;
+        JoinCache j = cache != null ? cache : new JoinCache();
+        if (cache != null && (j.t != t || j.c != c)) {
+            if (cache.other == null) cache.other = new JoinCache();
+            JoinCache o = cache.other;
+            if (o.t == t && o.c == c) {
+                j = o;
+            } else {
+                // evict the first slot into the second, refill the first
+                cache.other = new JoinCache();
+                copy(cache, cache.other);
+            }
+        }
+        if (j.t != t || j.c != c) {
+            raw(t, a, j.ya);
+            raw(t, a - d, j.ya2);
+            raw(t, b, j.yb);
+            raw(t, b + d, j.yb2);
+            j.t = t;
+            j.c = c;
+        }
+        double u = (s - a) / h, u2 = u * u, u3 = u2 * u;
+        double h00 = 2 * u3 - 3 * u2 + 1, h10 = u3 - 2 * u2 + u, h01 = -2 * u3 + 3 * u2, h11 = u3 - u2;
+        for (int k = 0; k < 9; k++) {
+            double ma = (j.ya[k] - j.ya2[k]) / d, mb = (j.yb2[k] - j.yb[k]) / d;
+            out[k] = h00 * j.ya[k] + h10 * h * ma + h01 * j.yb[k] + h11 * h * mb;
+        }
+    }
+
+    private static void copy(JoinCache from, JoinCache to) {
+        to.t = from.t;
+        to.c = from.c;
+        System.arraycopy(from.ya, 0, to.ya, 0, 9);
+        System.arraycopy(from.ya2, 0, to.ya2, 0, 9);
+        System.arraycopy(from.yb, 0, to.yb, 0, 9);
+        System.arraycopy(from.yb2, 0, to.yb2, 0, 9);
+    }
+
+    /** Saturation property set at T (a fresh array): see {@link #SAT_P} etc. */
+    public static double[] saturationSet(double t) {
+        double[] c = saturation(t);
+        return java.util.Arrays.copyOfRange(c, 1, 9);
+    }
+
+    /** Indices into {@link #saturationSet}: p_s, dp_s/dT, ρ', ρ'', u', u'', h', h''. */
+    public static final int SAT_P = S_P, SAT_DP = S_DP, SAT_RHO_L = S_RL, SAT_RHO_V = S_RV, SAT_U_L = S_UL, SAT_U_V = S_UV,
+            SAT_H_L = S_HL, SAT_H_V = S_HV;
+
+    private static void raw(double t, double s, double[] out) {
+        t = clampT(t);
+        double[] c = saturation(t);
+        double ps = c[1 + S_P], rl = c[1 + S_RL], ul = c[1 + S_UL], rvs = c[1 + S_RV], uvs = c[1 + S_UV], hvs = c[1 + S_HV];
+        double lr = Math.log(rl / rvs);
+        if (s < 0) {
+            double p = ps - s * BULK * lr, rho = rl * (1 + (p - ps) / BULK);
+            set(out, p, rho, rho * ul, rho, ul + p / rho, rvs, hvs, 0, uvs);
+        } else if (s <= 1) {
+            double uv = uvs;
+            double rho = rl * Math.exp(-lr * s), av = (rl - rho) / (rl - rvs);
+            set(out, ps, rho, (1 - av) * rl * ul + av * rvs * uv, rl, ul + ps / rl, rvs, uv + ps / rvs, av, uv);
+        } else {
+            double p = ps * Math.exp(-lr * (s - 1));
+            double ts = Math.min(tSat(p), t);
+            double[] cs = saturation(ts);
+            double rv = cs[1 + S_RV] * (p / cs[1 + S_P]) * ts / t, uv = cs[1 + S_UV] + CV_VAPOUR * (t - ts);
             set(out, p, rv, rv * uv, rl, ul + p / rl, rv, uv + p / rv, 1, uv);
         }
     }
@@ -160,10 +288,17 @@ public final class WaterSteam implements Fluid {
 
     /** Phase coordinate s of the state with this temperature and pressure (single phase; saturated → s = 0.5). */
     public static double phaseOf(double p, double t) {
-        double ps = pSat(t);
+        double ps = pSat(t), lr = logDensityRatio(t);
         if (Math.abs(p - ps) < 1e-6 * ps) return 0.5;
-        if (p > ps) return -(p - ps) / COMPRESSION_SCALE;
-        return 1 + Math.log(ps / Math.max(p, 1e-3)) / SUPERHEAT_SCALE;
+        if (p > ps) return -(p - ps) / (BULK * lr);
+        return 1 + Math.log(ps / Math.max(p, 1e-3)) / lr;
+    }
+
+    /** Phase coordinate of a saturated mixture at T whose liquid fills the given fraction of the volume. */
+    public static double phaseForLiquidFraction(double t, double fill) {
+        double av = 1 - Math.max(0, Math.min(1, fill)), rl = rhoLiquidSat(t), rv = rhoVapourSat(t);
+        double rho = (1 - av) * rl + av * rv;
+        return Math.log(rl / rho) / Math.log(rl / rv);
     }
 
     /** Surface tension of water against its vapour, IAPWS (1994): σ = 235.8 mN/m·τ^1.256·(1 − 0.625τ). */

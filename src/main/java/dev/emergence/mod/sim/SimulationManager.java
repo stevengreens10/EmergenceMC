@@ -57,7 +57,21 @@ public final class SimulationManager {
         final Map<BlockPos, Integer> light = new HashMap<>();
         double ambient;
         int resolution = AssemblyBlockEntity.MINIATURE;
+        /** Simulated seconds per real second: below 1 when the island cannot keep up within its budget. */
+        double timeScale = 1;
+        /** Smoothed wall-clock cost of this island's tick [ms]. */
+        double costMs;
+
+        public double timeScale() {
+            return timeScale;
+        }
     }
+
+    /**
+     * Wall-clock budget per island per server tick [ms]. An island that needs more runs in slow motion (time
+     * dilation) instead of stalling the server: physics stays exact, only its pace relative to the world slows.
+     */
+    public static final double ISLAND_BUDGET_MS = 12;
 
     private SimulationManager(ServerLevel level) {
         this.level = level;
@@ -104,13 +118,15 @@ public final class SimulationManager {
             List<Long> failed;
             long t0 = System.nanoTime();
             try {
-                failed = isl.compiled.step(TICK_SECONDS);
+                failed = isl.compiled.step(TICK_SECONDS * isl.timeScale);
             } catch (RuntimeException e) {
                 EmergenceMod.LOG.error("Simulation of island at {} failed; resetting its state", isl.blocks.iterator().next(), e);
                 isl.compiled = compile(isl, AssemblyState.empty());
                 continue;
             }
-            Profiler.record(System.nanoTime() - t0, isl.compiled.network().size());
+            long cost = System.nanoTime() - t0;
+            Profiler.record(cost, isl.compiled.network().size());
+            pace(isl, cost / 1e6);
             if (!failed.isEmpty()) destroyParts(isl, failed);
             updateLight(isl);
             bubbles(isl);
@@ -118,6 +134,13 @@ public final class SimulationManager {
             sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
         }
+    }
+
+    /** Time dilation: shrink an island's simulated step while its cost exceeds the budget, recover when cheap. */
+    static void pace(Island isl, double ms) {
+        isl.costMs = isl.costMs == 0 ? ms : 0.8 * isl.costMs + 0.2 * ms;
+        if (isl.costMs > ISLAND_BUDGET_MS) isl.timeScale = Math.max(0.05, isl.timeScale * 0.92);
+        else if (isl.costMs < 0.6 * ISLAND_BUDGET_MS) isl.timeScale = Math.min(1, isl.timeScale * 1.05);
     }
 
     private void rebuild() {

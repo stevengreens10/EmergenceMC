@@ -44,6 +44,9 @@ public final class GasReactor implements Element {
     private final int[] nIdx, nSlot;
     private int uSlot;
     private double uRef;
+    private Node pNode;
+    private AngleTracker tracker;
+    private SliderCrank crank;
 
     /**
      * @param species  species present (their order fixes the unknowns)
@@ -87,7 +90,33 @@ public final class GasReactor implements Element {
         }
     }
 
-    private int indexOf(Species s) {
+    /**
+     * Gives the gas a pressure unknown (a fluid-domain node) defined by p·V = Σn·R·T, so that pipes, valves and pistons
+     * can act on it like on any fluid volume.
+     */
+    public GasReactor withPressureNode(Node p) {
+        if (p.domain() != Domain.FLUID) throw new IllegalArgumentException("pressure node must be a fluid node");
+        this.pNode = p;
+        return this;
+    }
+
+    /** Makes the volume a piston cylinder's: V(θ) from the slider-crank (work on the piston via {@link PistonCoupling}). */
+    public GasReactor withPiston(AngleTracker tracker, SliderCrank crank) {
+        this.tracker = tracker;
+        this.crank = crank;
+        return this;
+    }
+
+    public Node pressureNode() {
+        return pNode;
+    }
+
+    /** Unknown index of species i's moles. */
+    public int molesIndex(int i) {
+        return nIdx[i];
+    }
+
+    public int indexOf(Species s) {
         for (int i = 0; i < sp.length; i++) if (sp[i] == s) return i;
         throw new IllegalArgumentException(s.id() + " is not in the reactor");
     }
@@ -137,6 +166,9 @@ public final class GasReactor implements Element {
         int ti = temp.index();
         double t = Math.max(ctx.x(ti), 50);
         int m = sp.length;
+        int ia = tracker == null ? -1 : tracker.angleIndex();
+        double th = ia < 0 ? 0 : ctx.x(ia);
+        double volume = crank == null ? this.volume : crank.volume(th), dV = crank == null ? 0 : crank.dVolume(th);
         double[] n = new double[m];
         for (int i = 0; i < m; i++) n[i] = ctx.x(nIdx[i]);
         // energy: dU/dt (heat flows in from other elements' contributions to this row)
@@ -180,14 +212,35 @@ public final class GasReactor implements Element {
                 rate -= rr;
                 dRdT -= rr * (rx[r].dlnKfdT(t) - rx[r].dlnKcdT(t));
             }
+            // with a moving piston, V·r(n/V) also depends on the angle: d(V r)/dV = r − Σ_j (∂r/∂c_j)·c_j
+            double dVr = 0;
+            if (ia >= 0) {
+                dVr = rate;
+                for (int j = 0; j < m; j++) dVr -= dRdn[j] * volume * (n[j] / volume);
+                dVr *= dV;
+            }
             for (int i = 0; i < m; i++) {
                 if (nu[r][i] == 0) continue;
                 double g = -volume * nu[r][i];
                 ctx.addF(nIdx[i], g * rate);
                 ctx.addJ(nIdx[i], ti, g * dRdT);
                 for (int j = 0; j < m; j++) if (dRdn[j] != 0) ctx.addJ(nIdx[i], nIdx[j], g * dRdn[j]);
+                if (ia >= 0) ctx.addJ(nIdx[i], ia, -nu[r][i] * dVr);
             }
         }
+        if (pNode != null) loadPressure(ctx, t, volume, dV, ia);
+    }
+
+    /** Pressure row p·V − R·T·Σn = 0 (only with a pressure node). */
+    private void loadPressure(LoadContext ctx, double t, double volume, double dV, int ia) {
+        int pi = pNode.index(), ti = temp.index();
+        double p = ctx.x(pi), nt = 0;
+        for (int i = 0; i < sp.length; i++) nt += ctx.x(nIdx[i]);
+        ctx.addF(pi, p * volume - R * t * nt);
+        ctx.addJ(pi, pi, volume);
+        ctx.addJ(pi, ti, -R * nt);
+        for (int i = 0; i < sp.length; i++) ctx.addJ(pi, nIdx[i], -R * t);
+        if (ia >= 0) ctx.addJ(pi, ia, p * dV);
     }
 
     public List<Species> species() {
@@ -210,15 +263,21 @@ public final class GasReactor implements Element {
         return temp;
     }
 
+    /** Volume at the reference (or fixed) state [m³]. */
     public double volume() {
         return volume;
+    }
+
+    /** Current volume [m³]. */
+    public double volume(StateView s) {
+        return crank == null ? volume : crank.volume(s.x(tracker.angleIndex()));
     }
 
     /** Pressure of the gas mixture [Pa]. */
     public double pressure(StateView s) {
         double nt = 0;
         for (int i = 0; i < sp.length; i++) if (sp[i].isGas()) nt += Math.max(0, s.x(nIdx[i]));
-        return nt * R * s.x(temp) / volume;
+        return pNode != null ? s.x(pNode) : nt * R * s.x(temp) / volume(s);
     }
 
     /** Mole fraction of species i in the gas. */

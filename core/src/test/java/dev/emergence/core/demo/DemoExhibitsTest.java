@@ -464,6 +464,32 @@ class DemoExhibitsTest {
         }
     }
 
+    /**
+     * In the world, parts past their failure temperature or strength are destroyed — something the other tests,
+     * which watch quantities, would not notice. Every exhibit must run (cranked, if it has a crank) without losing
+     * a part, except the ones built to fail.
+     */
+    @Test
+    void noExhibitBurnsOutByItself() {
+        java.util.Set<String> meantToFail = java.util.Set.of("fuse", "glow", "shelves");
+        java.util.List<String> bad = new java.util.ArrayList<>();
+        for (Exhibit e : Exhibits.all()) {
+            if (meantToFail.contains(e.id)) continue;
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = compile(e, b);
+            Long crank = e.named.containsKey("crank") ? b.id(e, "crank") : null;
+            for (int i = 0; i < 100; i++) {
+                if (crank != null) c.setCrankEffort(crank, 1, true);
+                var failed = c.step(0.05);
+                if (!failed.isEmpty()) {
+                    bad.add(e.id + ": " + failed.stream().map(id -> b.assembly().get(id).kind() + "#" + id).toList());
+                    break;
+                }
+            }
+        }
+        assertTrue(bad.isEmpty(), "parts fail: " + bad);
+    }
+
     /** Saving and reloading a running exhibit (its state exported, recompiled, stepped on) must not fail. */
     @Test
     void everyExhibitRestartsFromItsRunningState() {
@@ -714,7 +740,9 @@ class DemoExhibitsTest {
         c.toggleSwitch(b.id(e, "switch"));
         double peakT = 0, peakP = 0, tIgnite = Double.NaN;
         for (int i = 0; i < 6000; i++) {
-            c.step(0.05);
+            var broken = c.step(0.05);
+            assertTrue(broken.isEmpty(), "no part burns out: " + broken.stream().map(id -> b.assembly().get(id).kind() + "#" + id).toList()
+                    + " heater " + c.probe(b.id(e, "heater")).temperature() + " K");
             double t = g.temperature(c.solverView());
             if (t > peakT) peakT = t;
             peakP = Math.max(peakP, g.pressure(c.solverView()));
@@ -728,10 +756,41 @@ class DemoExhibitsTest {
         assertTrue(peakP > 6e5, "the pressure spikes: " + peakP);
         double maxWall = 0;
         for (int i = 0; i < 6000; i++) {
-            c.step(0.05);
+            assertTrue(c.step(0.05).isEmpty(), "no part burns out afterwards");
             maxWall = Math.max(maxWall, c.probe(b.id(e, "can")).temperature());
         }
         assertTrue(maxWall < 1300, "the heater's bank runs down before the can overheats: " + maxWall);
         assertTrue(g.moles(c.solverView(), ch.species("CH4")) < 1e-6, "all the methane burns");
+    }
+
+    @Test
+    void servoFragmentsExhaustive() {
+        Exhibit e = ControlExhibits.servo();
+        Exhibits.Built full = Exhibits.build(e, AMBIENT);
+        CompiledAssembly running = compile(e, full);
+        run(running, 1.0);
+        var rest = running.exportState();
+        java.util.List<String> bad = new java.util.ArrayList<>();
+        for (int cx = 0; cx <= 32; cx++)
+            for (int cz = 0; cz <= 16; cz += (cx == 0 || cx == 32 ? 1 : 16)) {
+                for (int quad = 0; quad < 4; quad++) {
+                    Exhibits.Built b = Exhibits.build(e, AMBIENT);
+                    var a = new dev.emergence.core.assembly.Assembly().ambientTemperature(AMBIENT);
+                    for (var part : b.assembly().parts()) {
+                        boolean left = part.minX() < cx, near = part.minZ() < cz;
+                        if (left == (quad % 2 == 0) && near == (quad / 2 == 0)) a.add(part);
+                    }
+                    if (a.parts().isEmpty()) continue;
+                    a.anchoredWhen(q -> q.minY() == 0 && q.kind().structural && q.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
+                    try {
+                        CompiledAssembly c = AssemblyCompiler.compile(a, rest);
+                        for (int k = 0; k < 4; k++) c.step(0.05);
+                    } catch (RuntimeException ex) {
+                        bad.add("x" + cx + " z" + cz + " q" + quad + " (" + a.parts().size() + " parts): " + ex.getMessage());
+                    }
+                }
+            }
+        bad.forEach(m -> System.out.println("FRAG " + m));
+        assertTrue(bad.isEmpty(), bad.size() + " fragments fail");
     }
 }

@@ -73,6 +73,8 @@ public final class CompiledAssembly {
     final Map<Long, dev.emergence.core.sim.elements.GasReactor> gasOfPart = new HashMap<>();
     final Map<Long, FluidVolume> fluidOfPart = new HashMap<>();
     final Map<Long, List<FluidBranch>> valveBranches = new HashMap<>();
+    /** Valves in gas-mixture networks, by part. */
+    final Map<Long, List<dev.emergence.core.sim.elements.MixtureBranch>> mixtureValves = new HashMap<>();
     /** Brake pads: their full friction torques and friction elements, by part. */
     final Map<Long, List<double[]>> brakes = new HashMap<>();
     final Map<Long, List<dev.emergence.core.sim.elements.CoulombFriction>> brakeElements = new HashMap<>();
@@ -221,6 +223,15 @@ public final class CompiledAssembly {
             for (int i = 0; i < bf.size(); i++) bf.get(i).setFrictionTorque(on ? tq.get(i)[0] : 0);
             solver.markDiscontinuity();
             return on;
+        }
+        List<dev.emergence.core.sim.elements.MixtureBranch> mv = mixtureValves.get(partId);
+        if (mv != null) {
+            Part p = assembly.get(partId);
+            boolean open = p == null || !p.switchClosed();
+            if (p != null) p.setSwitchClosed(open);
+            for (var b : mv) b.setOpening(open ? 1 : 0);
+            solver.markDiscontinuity();
+            return open;
         }
         List<FluidBranch> vb = valveBranches.get(partId);
         if (vb != null) {

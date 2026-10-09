@@ -22,8 +22,9 @@ public final class Radiation implements Element {
 
     @Override
     public void load(LoadContext ctx) {
-        double ts = ctx.x(surface.index());
-        double ta = ctx.x(surroundings.index());
+        // bounded for Newton iterates that stray (T⁴ of an absurd temperature would overflow); converged states lie inside
+        double ts = Math.max(0, Math.min(2e4, ctx.x(surface.index())));
+        double ta = Math.max(0, Math.min(2e4, ctx.x(surroundings.index())));
         double k = PhysicalConstants.STEFAN_BOLTZMANN * epsA;
         double q = k * (ts * ts * ts * ts - ta * ta * ta * ta);
         ctx.addFlow(surface, surroundings, q);

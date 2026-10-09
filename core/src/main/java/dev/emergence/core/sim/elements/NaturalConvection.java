@@ -57,8 +57,16 @@ public final class NaturalConvection implements Element {
         return nusselt * Air.conductivity(tf) / length;
     }
 
+    /**
+     * Heat flow: h·A·(T_s − T_a) with h evaluated at temperatures bounded to 100–4000 K, so a Newton iterate that
+     * strays to an unphysical temperature (even a negative one) still sees a finite coefficient and can recover.
+     */
     private double q(double ts, double ta) {
-        return heatTransferCoefficient(ts, ta) * area * (ts - ta);
+        return heatTransferCoefficient(bound(ts), bound(ta)) * area * (ts - ta);
+    }
+
+    private static double bound(double t) {
+        return Double.isNaN(t) ? 300 : Math.max(100, Math.min(4000, t));
     }
 
     @Override

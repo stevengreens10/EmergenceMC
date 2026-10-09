@@ -286,8 +286,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         TextureAtlasSprite gl = PartModels.sprite("glass");
         int gas = ClientSimState.colour(p.id, -1);
         if (gas >= 0) {
-            c.quadAlpha = 190;
-            box(c, gl, gas, -0.43f, -0.43f, -0.43f, 0.43f, 0.43f, 0.43f);
+            c.quadAlpha = 175;
+            box(c, PartModels.sprite("liquid"), gas, -0.43f, -0.43f, -0.43f, 0.43f, 0.43f, 0.43f);
         }
         c.quadAlpha = 80;
         box(c, gl, 0xE8F4F8, -0.46f, -0.46f, -0.46f, 0.46f, 0.46f, 0.46f);

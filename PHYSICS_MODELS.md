@@ -346,3 +346,15 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   natural convection (h ≈ 10 W/m²K over the wetted area) and gas radiation (ε ≈ 0.05). Seen through glass, the
   gas colour is Beer–Lambert transmission over the vessel width with NO₂'s absorption cross-sections (Vandaele
   et al. 1998) at 610/545/465 nm.
+
+## Flowing gas mixtures (`MixtureBranch`, mixture networks)
+* A `GasReactor` may carry a pressure unknown (p·V = ΣnRT) and a piston-driven volume V(θ); `PistonCoupling` then
+  takes p·dV/dt from its energy and turns the crank, as for single fluids.
+* `MixtureBranch`: molar flow ṅ driven by Δp against K·ṁ|ṁ|/(2ρA²) + 32μLṁ/(ρAD²) (ρ, M, T, composition upstream,
+  blended smoothly through ṅ = 0), plus the gas column's weight ρgΔz (a hot chimney draws) and choking (the
+  downstream pressure felt is never below the critical ratio (2/(γ+1))^{γ/(γ−1)} of the upstream; with K ≈ 2 an
+  orifice reproduces the isentropic choked mass flow within 0.5 %). It carries species ṅ·x_i and enthalpy ṅ·h(T_up)
+  (formation enthalpy included); flow to or from a reservoir is the system's external power.
+* In builds, every fluid part connected to a gas-charged one joins one mixture network over a shared species list
+  (charged species, air, reaction products); uncharged parts hold air; open ends breathe the atmosphere at the
+  hydrostatic pressure of their height; valves scale their passage.

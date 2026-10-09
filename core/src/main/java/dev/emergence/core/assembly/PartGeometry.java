@@ -401,7 +401,8 @@ public final class PartGeometry {
     public static double failureTemperature(Part p) {
         double melt = p.material().get(MaterialProperty.MELTING_POINT, 2000);
         return switch (p.kind()) {
-            case INSULATED_WIRE -> Math.min(melt, 433);       // PVC jacket decomposes
+            // PVC jacket decomposes at ~160 °C; "max_temperature" for other insulation (PTFE ~530 K, glass fibre ~800 K)
+            case INSULATED_WIRE -> Math.min(melt, p.param("max_temperature", 433));
             case COIL -> Math.min(melt, 473);                 // class H enamel limit ~ 180–200 °C
             case MAGNET -> Math.min(melt, p.material().get(MaterialProperty.CURIE_TEMPERATURE, melt));
             case RESISTOR -> p.param("max_temperature", 523);

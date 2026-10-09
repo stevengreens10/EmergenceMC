@@ -307,6 +307,31 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** The heated can of methane-air ignites in the world too (Semenov thermal explosion). */
+    @GameTest(template = "arena", timeoutTicks = 3000, batch = "explosion")
+    public static void canIgnitesInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ChemistryExhibits.thermalExplosion();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos canAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "can");
+        BlockPos swAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "switch");
+        BlockPos heaterAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "heater");
+        PlacedPart can = only(h, canAt, PartKind.TANK), sw = only(h, swAt, PartKind.SWITCH), heater = only(h, heaterAt, PartKind.RESISTOR);
+        double[] peak = {0};
+        h.runAtTickTime(20, () -> sim.toggleSwitch(swAt, sw.id));
+        h.onEachTick(() -> {
+            var c = sim.compiledAt(canAt);
+            if (c == null || c.gas(can.id) == null) return;
+            double t = c.gas(can.id).temperature(c.solverView());
+            peak[0] = Math.max(peak[0], t);
+            if (h.getTick() % 400 == 0 && c.probe(heater.id) != null) dev.emergence.mod.EmergenceMod.LOG.info("explosion GameTest tick {}: gas {} K, can {} K, heater {} A {} K",
+                    h.getTick(), (int) t, (int) c.probe(can.id).temperature(), c.probe(heater.id).current(), (int) c.probe(heater.id).temperature());
+            if (peak[0] > 1500) h.succeed();
+        });
+        h.runAtTickTime(2900, () -> h.fail("the can did not ignite: peak " + peak[0] + " K"));
+    }
+
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
         AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
         return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();

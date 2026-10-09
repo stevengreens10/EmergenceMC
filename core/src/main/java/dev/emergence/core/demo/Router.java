@@ -49,6 +49,14 @@ public final class Router {
         return new int[]{(int) (k >> 22) - 1024, (int) ((k >> 11) & 0x7FF) - 1024, (int) (k & 0x7FF) - 1024};
     }
 
+    private final Map<String, Double> insulation = new HashMap<>();
+
+    /** Lays this net in wire with high-temperature insulation rated to {@code maxTemperature} [K] (e.g. glass fibre). */
+    public Router insulation(String net, double maxTemperature) {
+        insulation.put(net, maxTemperature);
+        return this;
+    }
+
     /** Keeps a box of cells free of wire (the space a moving part sweeps through). */
     public Router keepClear(int ax, int ay, int az, int bx, int by, int bz) {
         for (int x = ax; x <= bx; x++)
@@ -168,7 +176,10 @@ public final class Router {
         }
         for (var en : wireNet.entrySet()) {
             int[] c = cell(en.getKey());
-            int idx = e.add(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "color", colour.get(en.getValue()));
+            Double hot = insulation.get(en.getValue());
+            int idx = hot == null ? e.add(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "color", colour.get(en.getValue()))
+                    : e.add(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "color", colour.get(en.getValue()),
+                    "max_temperature", hot);
             e.nets.put(idx, en.getValue());
         }
     }

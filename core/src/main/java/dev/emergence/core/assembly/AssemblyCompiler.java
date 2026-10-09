@@ -1394,67 +1394,191 @@ public final class AssemblyCompiler {
          * axis). An open axial end of a pipe, valve or rotor facing free air vents to the atmosphere. A rotor
          * adds its blade row to the branch on its +axis face, acting through its rigid body's rotation.
          */
-        /** A sealed vessel charged with a gas mixture ("x_" + species id = mole fraction) holds reacting gases. */
+        /** A fluid part charged with a gas mixture ("x_" + species id = mole fraction). */
         static boolean isGasVessel(Part p) {
-            if (p.kind() != PartKind.TANK) return false;
+            if (!p.kind().holdsFluid()) return false;
             for (String k : p.params().keySet()) if (k.startsWith("x_")) return true;
             return false;
         }
 
-        /**
-         * Gas vessels: the charged species and every product the database's reactions can make from them, the
-         * reactions among those, initial moles from the charge pressure ("pressure", default ambient), the part's
-         * temperature and its inner volume (or the saved composition). The gas exchanges heat with the vessel wall by
-         * natural convection (h ≈ 10 W/m²K) and gas radiation (emissivity 0.05, a few-cm path of CO₂/H₂O).
-         */
-        void buildGasVessels() {
-            var chem = dev.emergence.core.chem.Chemistry.standard();
-            for (Part p : parts) {
-                if (!isGasVessel(p)) continue;
-                Set<dev.emergence.core.chem.Species> present = new LinkedHashSet<>();
-                Map<dev.emergence.core.chem.Species, Double> x = new LinkedHashMap<>();
-                double sum = 0;
-                for (var e : p.params().entrySet()) {
-                    if (!e.getKey().startsWith("x_")) continue;
-                    String id = e.getKey().substring(2);
-                    if (!chem.hasSpecies(id)) {
-                        c.warnings.add("Unknown gas \"" + id + "\" in vessel #" + p.id());
-                        continue;
+        /** Parts of each gas-mixture network: the fluid parts connected (through ports) to a gas-charged part. */
+        List<List<Part>> mixtureComponents() {
+            List<Part> fl = new ArrayList<>();
+            for (Part p : parts) if (p.kind().holdsFluid()) fl.add(p);
+            Map<Long, Integer> comp = new HashMap<>();
+            List<List<Part>> out = new ArrayList<>();
+            for (Part start : fl) {
+                if (comp.containsKey(start.id())) continue;
+                List<Part> group = new ArrayList<>();
+                Deque<Part> todo = new ArrayDeque<>(List.of(start));
+                comp.put(start.id(), out.size());
+                while (!todo.isEmpty()) {
+                    Part p = todo.pop();
+                    group.add(p);
+                    for (Part q : fluidNeighbours(p)) {
+                        if (comp.containsKey(q.id())) continue;
+                        comp.put(q.id(), out.size());
+                        todo.push(q);
                     }
-                    var sp = chem.species(id);
-                    present.add(sp);
-                    x.put(sp, Math.max(0, e.getValue()));
-                    sum += Math.max(0, e.getValue());
                 }
-                boolean grew = true;
-                while (grew) {
-                    grew = false;
-                    for (var rx : chem.reactions()) {
-                        if (present.containsAll(rx.reactants().keySet()) && present.containsAll(rx.orders().keySet())
-                                && !present.containsAll(rx.products().keySet())) {
-                            present.addAll(rx.products().keySet());
-                            grew = true;
+                out.add(group);
+            }
+            out.removeIf(g -> g.stream().noneMatch(Builder::isGasVessel));
+            return out;
+        }
+
+        /** Fluid parts connected to p through matching ports. */
+        List<Part> fluidNeighbours(Part p) {
+            List<Part> out = new ArrayList<>();
+            for (int x = p.minX(); x <= p.maxX(); x++)
+                for (int y = p.minY(); y <= p.maxY(); y++)
+                    for (int z = p.minZ(); z <= p.maxZ(); z++)
+                        for (Dir d : Dir.values()) {
+                            int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
+                            if (p.containsCell(nx, ny, nz)) continue;
+                            for (Part o : a.at(nx, ny, nz)) {
+                                if (o == p || !o.kind().holdsFluid() || out.contains(o)) continue;
+                                if (ports(p, d, o) && ports(o, d.opposite(), p)) out.add(o);
+                            }
                         }
+            return out;
+        }
+
+        /**
+         * Gas-mixture networks: every fluid part connected to a gas-charged one holds a {@link GasReactor} over one
+         * shared species list — everything charged anywhere in the network, the air species (uncharged parts and the
+         * open air hold air), and every product the database's reactions can make from them. Adjacent parts are joined
+         * by {@link MixtureBranch} passages (valves scale their opening; the rise between centres gives the gas
+         * column's weight), open ends breathe the atmosphere at the hydrostatic pressure of their height, and a
+         * cylinder's gas drives its piston. Each gas exchanges heat with its own wall by convection (h ≈ 10 W/m²K) and
+         * gas radiation (ε ≈ 0.05).
+         */
+        void buildMixtureNetworks() {
+            var chem = dev.emergence.core.chem.Chemistry.standard();
+            for (List<Part> comp : mixtureComponents()) buildMixtureNetwork(comp, chem);
+        }
+
+        static final String[] AIR_SPECIES = {"N2", "O2", "Ar"};
+        static final double[] AIR_FRACTIONS = {0.7809, 0.2095, 0.0096};
+
+        void buildMixtureNetwork(List<Part> comp, dev.emergence.core.chem.Chemistry chem) {
+            double pAtm = a.ambientPressure(), g = PartGeometry.gravity();
+            Set<dev.emergence.core.chem.Species> present = new LinkedHashSet<>();
+            for (String s : AIR_SPECIES) present.add(chem.species(s));
+            for (Part p : comp)
+                for (String k : p.params().keySet())
+                    if (k.startsWith("x_") && chem.hasSpecies(k.substring(2))) present.add(chem.species(k.substring(2)));
+                    else if (k.startsWith("x_")) c.warnings.add("Unknown gas \"" + k.substring(2) + "\" in part #" + p.id());
+            boolean grew = true;
+            while (grew) {
+                grew = false;
+                for (var rx : chem.reactions()) {
+                    if (present.containsAll(rx.reactants().keySet()) && present.containsAll(rx.orders().keySet())
+                            && !present.containsAll(rx.products().keySet())) {
+                        present.addAll(rx.products().keySet());
+                        grew = true;
                     }
                 }
-                List<dev.emergence.core.chem.Species> list = new ArrayList<>(present);
+            }
+            List<dev.emergence.core.chem.Species> list = new ArrayList<>(present);
+            var reactions = chem.reactionsAmong(present);
+            double[] xAir = new double[list.size()];
+            for (int i = 0; i < AIR_SPECIES.length; i++) xAir[list.indexOf(chem.species(AIR_SPECIES[i]))] = AIR_FRACTIONS[i];
+            double rhoAir = pAtm * 0.028965 / (dev.emergence.core.units.PhysicalConstants.GAS_CONSTANT * ambientT);
+            double yRef = Double.MAX_VALUE;
+            for (Part p : parts) yRef = Math.min(yRef, p.center().y());
+            Map<Long, Object[]> pistons = new HashMap<>();
+            for (Part p : comp) if (p.kind() == PartKind.CYLINDER) linkPiston(p, pistons);
+            Map<Long, GasReactor> gas = new HashMap<>();
+            for (Part p : comp) {
                 double[] st = prev.fluids().get(p.id());
                 double t0 = st != null ? st[1] : prev.temperatures().getOrDefault(p.id(), ambientT);
-                double v = Math.max(PartGeometry.fluidVolume(p), 1e-9);
-                double nt = p.param("pressure", a.ambientPressure()) * v / (dev.emergence.core.units.PhysicalConstants.GAS_CONSTANT * t0);
+                Object[] link = pistons.get(p.id());
+                SliderCrank k = link == null ? null : (SliderCrank) link[0];
+                CompiledAssembly.Body body = link == null ? null : (CompiledAssembly.Body) link[1];
+                double v = k != null ? k.volume(body.tracker == null ? 0 : prev.bodyMotion().getOrDefault(p.id(), new double[]{0, 0})[1])
+                        : Math.max(PartGeometry.fluidVolume(p), 1e-9);
+                double pHydro = pAtm - rhoAir * g * (p.center().y() - yRef);
+                double p0 = st != null ? st[0] : p.param("pressure", pHydro);
+                double nt = p0 * v / (dev.emergence.core.units.PhysicalConstants.GAS_CONSTANT * t0);
+                double sum = 0;
+                for (var e : p.params().entrySet()) if (e.getKey().startsWith("x_")) sum += Math.max(0, e.getValue());
                 double[] n0 = new double[list.size()];
                 for (int i = 0; i < list.size(); i++) {
                     Double saved = prev.chemistry().get(gasKey(p.id(), list.get(i).id()));
-                    n0[i] = saved != null ? saved : sum > 0 ? nt * x.getOrDefault(list.get(i), 0.0) / sum : 0;
+                    double xi = sum > 0 ? Math.max(0, p.param("x_" + list.get(i).id(), 0)) / sum : xAir[i];
+                    n0[i] = saved != null ? saved : nt * xi;
                 }
                 Node tn = c.network.node(Domain.THERMAL, "Tg" + p.id(), t0);
-                var g = c.network.add(new dev.emergence.core.sim.elements.GasReactor(list, chem.reactionsAmong(present), v, tn, n0));
-                c.gasOfPart.put(p.id(), g);
+                Node pn = c.network.node(Domain.FLUID, "pg" + p.id(), p0);
+                GasReactor r = new GasReactor(list, reactions, v, tn, n0).withPressureNode(pn);
+                if (k != null) {
+                    r.withPiston(body.tracker, k);
+                    PistonCoupling pc = c.network.add(new PistonCoupling(pn, tn, body.node, body.tracker, k, pAtm,
+                            p.param("ring_friction", 2.0), c.thermalOfPart.get(p.id())));
+                    c.pistons.put(p.id(), pc);
+                    c.pistonLateral.put(p.id(), (Vec3) link[2]);
+                }
+                c.network.add(r);
+                gas.put(p.id(), r);
+                c.gasOfPart.put(p.id(), r);
                 Node wall = c.thermalOfPart.get(p.id());
                 double area = PartGeometry.wettedArea(p);
                 c.network.add(new ThermalConductance(tn, wall, 10 * area));
-                c.network.add(new dev.emergence.core.sim.elements.Radiation(tn, wall, 0.05, area));
+                c.network.add(new Radiation(tn, wall, 0.05, area));
             }
+            Set<Long> seen = new HashSet<>();
+            for (Part p : comp) {
+                for (int x = p.minX(); x <= p.maxX(); x++)
+                    for (int y = p.minY(); y <= p.maxY(); y++)
+                        for (int z = p.minZ(); z <= p.maxZ(); z++)
+                            for (Dir d : Dir.values()) {
+                                int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
+                                if (p.containsCell(nx, ny, nz)) continue;
+                                boolean axial = d.axis() == p.axis().axis();
+                                Part q = null;
+                                for (Part o : a.at(nx, ny, nz)) if (o.kind().holdsFluid() && o != p) q = o;
+                                if (q == null) {
+                                    if (!axial || p.kind() == PartKind.TANK || !a.at(nx, ny, nz).isEmpty() || a.isSolidCell(nx, ny, nz)) continue;
+                                    if (p.kind() == PartKind.CYLINDER && d == p.axis()) continue;
+                                    // an open end: the atmosphere at the vent's height
+                                    double half = halfExtent(p, d), yv = p.center().y() + d.dy * half;
+                                    double pv = pAtm - rhoAir * g * (yv - yRef);
+                                    var b = new MixtureBranch(list, MixtureBranch.End.of(gas.get(p.id())),
+                                            MixtureBranch.End.reservoir(pv, ambientT, xAir), PartGeometry.passageArea(p),
+                                            equivalentDiameter(PartGeometry.passageArea(p)), half, 1.0)
+                                            .withRise(d.dy * half).withTag(p.kind() + "#" + p.id() + "->air");
+                                    mixtureValve(p, b);
+                                    c.network.add(b);
+                                    continue;
+                                }
+                                if (!gas.containsKey(q.id())) {
+                                    c.warnings.add("Parts #" + p.id() + " and #" + q.id() + " hold different fluids and are not connected");
+                                    continue;
+                                }
+                                if (!ports(p, d, q) || !ports(q, d.opposite(), p)) continue;
+                                if (!seen.add(pairKey(p.id(), q.id()))) continue;
+                                double ap = PartGeometry.passageArea(p), aq = PartGeometry.passageArea(q);
+                                double amin = Math.min(ap, aq), sigma = amin / Math.max(ap, aq);
+                                double kk = 0.5 * (1 - sigma) + (1 - sigma) * (1 - sigma) + 0.5;
+                                if (!axial && p.kind() != PartKind.TANK) kk += 0.9;
+                                if (d.axis() != q.axis().axis() && q.kind() != PartKind.TANK) kk += 0.9;
+                                double len = halfExtent(p, d) + halfExtent(q, d.opposite());
+                                var b = new MixtureBranch(list, MixtureBranch.End.of(gas.get(p.id())), MixtureBranch.End.of(gas.get(q.id())),
+                                        amin, equivalentDiameter(amin), len, kk).withRise(q.center().y() - p.center().y())
+                                        .withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id());
+                                mixtureValve(p, b);
+                                mixtureValve(q, b);
+                                c.network.add(b);
+                            }
+            }
+        }
+
+        /** A valve's seat in a mixture passage: an orifice (C_d ≈ 0.6) of the valve's bore, opened by hand. */
+        void mixtureValve(Part v, MixtureBranch b) {
+            if (v.kind() != PartKind.VALVE) return;
+            b.setOpening(v.switchClosed() ? 1 : 0);
+            c.mixtureValves.computeIfAbsent(v.id(), kk -> new ArrayList<>()).add(b);
         }
 
         static String gasKey(long part, String species) {
@@ -1462,10 +1586,10 @@ public final class AssemblyCompiler {
         }
 
         void buildFluids() {
-            buildGasVessels();
+            buildMixtureNetworks();
             var db = dev.emergence.core.fluids.FluidDatabase.standard();
             List<Part> fluids = new ArrayList<>();
-            for (Part p : parts) if (p.kind().holdsFluid() && !isGasVessel(p)) fluids.add(p);
+            for (Part p : parts) if (p.kind().holdsFluid() && !c.gasOfPart.containsKey(p.id())) fluids.add(p);
             if (fluids.isEmpty()) return;
             double pAtm = a.ambientPressure();
             Map<Long, Object[]> pistons = new HashMap<>();

@@ -148,6 +148,13 @@ Brown gas: each flask's reaction quotient equals K_p at its own temperature (2 %
 more NO₂ and renders darker (also in-world). Thermal explosion: cold until switched on; ignites after 30–240 s of
 heating, peak > 2000 K and > 6 bar, all methane burnt; the heater's bank fades before the can exceeds 1300 K.
 
+## Gas-mixture flow (`MixtureFlowTest`)
+Adiabatic filling of an evacuated tank: 417.4 K, equal to the energy-balance solution (≈ γT₀); equalising volumes
+conserve moles, oxygen and energy (the emptying gas cools, the receiving one warms); a 10 bar orifice is choked at
+the isentropic mass flow (0.3 %) independent of the downstream pressure; a hot column draws air up a chimney.
+In-world GameTest: the heated can ignites. Every exhibit runs without a part failing (except those built to
+fail); servo fragments split at every chunk boundary restart.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

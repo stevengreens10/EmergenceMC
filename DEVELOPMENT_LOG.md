@@ -176,3 +176,13 @@ Getting the explosion took physics, not tuning: alumina legs radiated the heater
 insulator, instead), a small resistor's 2 cm² contact could not pass the heat (a cartridge heater pressed over
 20 cm²), and slow heating let the fuel burn away quietly before runaway (heating must outpace consumption — a real
 effect); 2.3 kW ignites it after about 70 s.
+
+**Mixture flow and robustness.** Gas volumes can now connect: pipes and valves carry mixtures (species and
+enthalpy upwind, gravity head, choking), open ends breathe the hydrostatic atmosphere, cylinders get piston-driven
+gas — the groundwork for burners and engines. The in-world thermal explosion failed where the core test passed:
+the mod destroys parts past their failure temperature, and the 2.3 kW element (rated 523 K by default) burned out,
+then its PVC leads would have charred. It is now a silicon-carbide element (1800 K) on glass-fibre-insulated wire
+(800 K); a new test runs every exhibit and fails if any part is lost. The servo's island still failed on reload when
+a chunk boundary cut its negative supply: a Newton iterate drove part temperatures negative and the convection
+correlation's fractional powers gave NaN. Convection and radiation now evaluate at bounded temperatures, and the
+solver names the element that produced a non-finite value.

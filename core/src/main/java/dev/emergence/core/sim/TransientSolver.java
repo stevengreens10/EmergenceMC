@@ -397,7 +397,7 @@ public final class TransientSolver implements StateView {
             double scale = 1.0;
             for (int i = 0; i < n; i++) {
                 if (!Double.isFinite(dx[i])) {
-                    lastBadUnknown = net.unknownName(i) + " (non-finite)";
+                    lastBadUnknown = net.unknownName(i) + " (non-finite" + nonFiniteSource() + ")";
                     return 1;
                 }
             }
@@ -514,6 +514,34 @@ public final class TransientSolver implements StateView {
         updateLedger(h);
         for (int i = 0; i < stepListeners.size(); i++) stepListeners.get(i).accept(this);
         return 0;
+    }
+
+    /** Diagnostic after a non-finite Newton update: which elements produce non-finite residuals at the iterate. */
+    private String nonFiniteSource() {
+        StringBuilder sb = new StringBuilder();
+        for (Element e : elements) {
+            Arrays.fill(f, 0.0);
+            jac.clear();
+            try {
+                e.load(ctx);
+            } catch (RuntimeException ex) {
+                sb.append("; ").append(e.label()).append(" threw ").append(ex.getMessage());
+                continue;
+            }
+            for (int i = 0; i < n; i++) {
+                if (!Double.isFinite(f[i])) {
+                    sb.append("; ").append(e.label()).append(" → ").append(net.unknownName(i));
+                    break;
+                }
+            }
+            if (sb.length() > 300) break;
+        }
+        int bad = 0;
+        for (int i = 0; i < n && bad < 3; i++) if (!Double.isFinite(xTrial[i])) {
+            sb.append("; x[").append(net.unknownName(i)).append("] = ").append(xTrial[i]);
+            bad++;
+        }
+        return sb.toString();
     }
 
     private void updateLedger(double h) {

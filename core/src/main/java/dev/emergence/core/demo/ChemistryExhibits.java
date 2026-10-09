@@ -51,7 +51,7 @@ public final class ChemistryExhibits {
         r.pin("ret", 9, 0, 12).pin("ret", 7, 0, 10);
         r.pin("sw", 5, 0, 10).pin("sw", 9, 0, 7);
         r.route();
-        return e.view(7.5, 4, 14, 18);
+        return e.view(7.5, 3.5, 12.5, 14);
     }
 
     /**
@@ -72,9 +72,10 @@ public final class ChemistryExhibits {
                         + "vapour. Meter the can for its pressure, temperature and composition, or clip the data logger "
                         + "on it and watch the spike.");
         String st = "steel_1045";
-        // a 2.3 kW cartridge heater (4 Ω on 96 V) pressed against the can's base over 20 cm²
+        // a 2.3 kW silicon-carbide heating element (4 Ω on 96 V, good to ~1800 K, as in furnaces) pressed against the
+        // can's base over 20 cm²
         e.name("heater", e.add(RESISTOR, "alumina", 8, 0, 7, Dir.EAST, "resistance", 4.0, "contact_area", 0.002,
-                "surface_area", 0.002, "mass", 0.1));
+                "surface_area", 0.002, "mass", 0.1, "max_temperature", 1800));
         int can = e.add(TANK, st, 8, 1, 7, Dir.UP, "x_CH4", 0.095, "x_O2", 0.19, "x_N2", 0.715, "pressure", 101325, "wall", 0.0015);
         e.name("can", can);
         // legs of mica, a refractory insulator (alumina conducts the heat away and radiates it; wood would char;
@@ -90,6 +91,8 @@ public final class ChemistryExhibits {
         r.pin("live", 9, 0, 12).pin("live", 9, 0, 7);
         r.pin("ret", 7, 0, 12).pin("ret", 5, 0, 10);
         r.pin("sw", 3, 0, 10).pin("sw", 7, 0, 7);
+        // the heater's leads run hot: glass-fibre insulated wire (PVC would char at 160 °C)
+        r.insulation("live", 800).insulation("sw", 800);
         r.route();
         return e.view(8, 3.5, 13, 18);
     }

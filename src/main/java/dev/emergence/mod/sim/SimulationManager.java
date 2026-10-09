@@ -78,6 +78,7 @@ public final class SimulationManager {
         final Map<Long, BlockPos> partPos = new HashMap<>();
         CompiledAssembly compiled;
         final Map<Long, Integer> crankTicks = new HashMap<>();
+        final Map<Long, Integer> pushTicks = new HashMap<>();
         final Map<BlockPos, Integer> light = new HashMap<>();
         double ambient;
         int resolution = AssemblyBlockEntity.MINIATURE;
@@ -505,7 +506,26 @@ public final class SimulationManager {
         isl.crankTicks.put(partId, 6); // right-click repeats every 4 ticks while held
     }
 
+    /** A player pushes a slide along its axis (sneaking: the other way) while holding use. */
+    public boolean pushSlider(BlockPos pos, long partId, Player player) {
+        Island isl = islandAt(pos);
+        if (isl == null || isl.compiled == null) return false;
+        if (!isl.compiled.setPushEffort(partId, player.isShiftKeyDown() ? -1 : 1)) return false;
+        isl.pushTicks.put(partId, 6);
+        return true;
+    }
+
     private void updateCranks(Island isl) {
+        for (var it = isl.pushTicks.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            int left = e.getValue() - 1;
+            if (left <= 0) {
+                isl.compiled.setPushEffort(e.getKey(), 0);
+                it.remove();
+            } else {
+                e.setValue(left);
+            }
+        }
         Iterator<Map.Entry<Long, Integer>> it = isl.crankTicks.entrySet().iterator();
         while (it.hasNext()) {
             var e = it.next();
@@ -704,7 +724,7 @@ public final class SimulationManager {
             Vec3 pv = b.pivot(), ax = b.axis();
             long[] ids = b.parts().stream().mapToLong(Long::longValue).toArray();
             bodies.add(new IslandSyncPayload.BodyState(pv.x(), pv.y(), pv.z(), ax.x(), ax.y(), ax.z(),
-                    c.angle(b), c.angularVelocity(b), ids));
+                    c.angle(b), c.angularVelocity(b), ids, b.slider()));
         }
         List<Long> hotIds = new ArrayList<>();
         List<Float> hotT = new ArrayList<>();

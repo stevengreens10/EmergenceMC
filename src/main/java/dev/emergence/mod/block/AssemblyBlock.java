@@ -97,6 +97,10 @@ public final class AssemblyBlock extends BaseEntityBlock {
         int[] c = cellAt(be, hit.getLocation(), hit.getDirection());
         PlacedPart part = be.partAt(c[0], c[1], c[2]);
         if (part == null) return InteractionResult.PASS;
+        // a part on a slide: push it along its guide (sneak to push it back)
+        if (level instanceof ServerLevel sl0 && SimulationManager.get(sl0).pushSlider(pos, part.id, player)) {
+            return InteractionResult.SUCCESS;
+        }
         if (part.kind == PartKind.CRANK || part.kind == PartKind.SWITCH || part.kind == PartKind.VALVE || part.kind == PartKind.BRAKE) {
             if (level instanceof ServerLevel sl) {
                 SimulationManager sim = SimulationManager.get(sl);

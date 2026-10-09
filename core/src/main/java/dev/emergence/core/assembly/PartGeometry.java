@@ -272,6 +272,11 @@ public final class PartGeometry {
             case SOURCE -> p.param("mass", 0.005) / p.material().density();
             case GM_TUBE -> p.param("mass", 0.01) / p.material().density();
             case POTENTIOMETER -> p.param("mass", 0.03) / p.material().density();
+            case LINEAR_BEARING -> 0.4 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
+            case SPRING -> {
+                double d = p.param("wire", 0.002), dc = p.param("coil", 0.6 * transverseSize(p));
+                yield Math.PI * d * d / 4 * Math.PI * dc * p.param("turns", 10);
+            }
             case BRUSH -> 0.6 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
             case BRAKE -> 0.5 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // shoe and its lining
             // liquid volume: the vessel wall and headspace take the rest of the cells
@@ -413,6 +418,13 @@ public final class PartGeometry {
             case CAPACITOR -> p.param("max_temperature", 398);
             default -> melt;
         };
+    }
+
+    /** Helical spring rate k = G·d⁴/(8·D³·N) [N/m]. */
+    public static double springRate(Part p) {
+        double d = p.param("wire", 0.002), dc = p.param("coil", 0.6 * transverseSize(p)), n = p.param("turns", 10);
+        double g = p.material().get(dev.emergence.core.materials.MaterialProperty.SHEAR_MODULUS, 79e9);
+        return g * d * d * d * d / (8 * dc * dc * dc * n);
     }
 
     public static double gravity() {

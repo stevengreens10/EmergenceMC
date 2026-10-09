@@ -209,3 +209,8 @@ hit times). The first tube never pulsed into the counter: its capacitance was pl
 charge circulates inside the tube; the pulse comes from the anode node's capacitance to ground. Then it never
 stopped: a discharge modelled as decaying towards its extinction voltage never quite reaches it — real tubes stop
 when the current falls below the holding current, which is why they need a large quench resistor.
+
+**Things that slide.** Linear bearings make shafts into slides (travel from geometry, end stops, gravity along
+the guide), helical springs from wire geometry, magnet–coil couplings tabulated over the travel, and a hand that
+pushes. Exhibits: a spring–mass oscillator and a magnet bouncing on a spring beside a coil — close the switch and
+the coil's current brakes it (Lenz).

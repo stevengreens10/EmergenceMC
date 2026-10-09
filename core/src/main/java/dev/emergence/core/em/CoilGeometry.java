@@ -69,6 +69,10 @@ public final class CoilGeometry implements FieldSource {
         return filR.length;
     }
 
+    public CoilGeometry translated(Vec3 d) {
+        return new CoilGeometry(center.add(d), axis, meanRadius, length, build, turns);
+    }
+
     public CoilGeometry rotated(Vec3 pivot, Vec3 k, double angle) {
         if (angle == 0) return this;
         Vec3 c = center.sub(pivot).rotateAbout(k, angle).add(pivot);

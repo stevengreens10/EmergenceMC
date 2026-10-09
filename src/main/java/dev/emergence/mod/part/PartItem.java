@@ -79,6 +79,8 @@ public final class PartItem extends Item {
             case OPAMP -> PartSpec.of("silicon", 1, 1);
             case SOURCE -> PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5);
             case GM_TUBE -> PartSpec.of("stainless_304", 1, 1);
+            case LINEAR_BEARING -> PartSpec.of("steel_1045", 1, 1);
+            case SPRING -> PartSpec.of("steel_1045", 1, 1, "wire", 0.002);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -125,6 +127,7 @@ public final class PartItem extends Item {
             case SOURCE -> ", " + dev.emergence.core.nuclear.NuclearData.standard().byCode((int) Math.round(p.getOrDefault("nuclide", 0.0))).name()
                     + ", " + Units.formatSI(p.getOrDefault("activity", 3.7e5), "Bq");
             case GM_TUBE -> String.format(", %.0f V start", p.getOrDefault("start", 350.0));
+            case SPRING -> String.format(", %.1f mm wire, %.0f turns", 1000 * p.getOrDefault("wire", 0.002), p.getOrDefault("turns", 10.0));
             case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
                     + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[

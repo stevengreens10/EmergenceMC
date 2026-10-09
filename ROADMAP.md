@@ -24,7 +24,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    (synchronous motor driven by a rotating current pattern)
 ✅ Player-built brushed DC motor: angle-dependent brush/segment contacts → commutation emerges (exhibit)
 ⬜ Ferromagnetic cores (magnetic equivalent circuits / induced magnetisation), eddy currents
-⬜ Translational bodies, linkages, free rigid bodies, gravity loads
+✅ Slides on linear bearings, helical springs, end stops, gravity along the guide, magnetics on slides
+⬜ Linkages, free rigid bodies, rotor–slide couplings (rack and pinion, lead screws)
 
 ## Phase 3 — Thermal and fluid physics
 🟡 Heat transfer: conduction, natural convection, radiation, thermal masses ✅; forced convection ⬜

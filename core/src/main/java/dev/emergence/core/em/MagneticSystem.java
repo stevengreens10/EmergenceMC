@@ -1,6 +1,7 @@
 package dev.emergence.core.em;
 
 import dev.emergence.core.materials.Material;
+import dev.emergence.core.math.UniformSpline;
 import dev.emergence.core.math.PeriodicFourier;
 import dev.emergence.core.math.PeriodicFunction;
 import dev.emergence.core.math.Vec3;
@@ -171,7 +172,9 @@ public final class MagneticSystem implements Element {
                     t.j = j;
                     t.k = k;
                     final Vec3[] ax = commonAxis(cj.body, ck.body);
-                    t.spline = new PeriodicFourier(sample(phi -> cj.geom.mutualInductance(ck.geom.rotated(ax[0], ax[1], phi))));
+                    boolean sl = slides(cj.body, ck.body);
+                    t.spline = table(cj.body, ck.body, phi -> cj.geom.mutualInductance(sl ? ck.geom.translated(ax[1].mul(phi))
+                            : ck.geom.rotated(ax[0], ax[1], phi)));
                     terms.add(t);
                 }
             }
@@ -189,11 +192,12 @@ public final class MagneticSystem implements Element {
                 t.kind = Kind.FLUX;
                 t.j = j;
                 Vec3[] ax = commonAxis(cj.body, mb);
-                t.spline = new PeriodicFourier(sample(phi -> {
+                boolean sl = slides(cj.body, mb);
+                t.spline = table(cj.body, mb, phi -> {
                     List<CuboidMagnet> rot = new ArrayList<>(ms.size());
-                    for (CuboidMagnet m : ms) rot.add(m.rotated(ax[0], ax[1], phi));
+                    for (CuboidMagnet m : ms) rot.add(sl ? m.translated(ax[1].mul(phi)) : m.rotated(ax[0], ax[1], phi));
                     return cj.geom.fluxLinkage(composite(rot));
-                }));
+                });
                 terms.add(t);
             }
         }
@@ -208,11 +212,12 @@ public final class MagneticSystem implements Element {
                 if (t == null) continue;
                 t.kind = Kind.MAGNET;
                 Vec3[] ax = commonAxis(ba, bb);
-                t.spline = new PeriodicFourier(sample(phi -> {
+                boolean sl = slides(ba, bb);
+                t.spline = table(ba, bb, phi -> {
                     List<CuboidMagnet> rot = new ArrayList<>(mbs.size());
-                    for (CuboidMagnet m : mbs) rot.add(m.rotated(ax[0], ax[1], phi));
+                    for (CuboidMagnet m : mbs) rot.add(sl ? m.translated(ax[1].mul(phi)) : m.rotated(ax[0], ax[1], phi));
                     return interactionEnergy(ma, composite(rot));
-                }));
+                });
                 terms.add(t);
             }
         }
@@ -226,6 +231,27 @@ public final class MagneticSystem implements Element {
         dTdI = new double[nb][nc];
         dTdTh = new double[nb][nb];
         built = true;
+    }
+
+    /** True if the pair's relative motion is a slide (one of them a slider, the other static). */
+    private static boolean slides(EmBody a, EmBody b) {
+        return a.slider || b.slider;
+    }
+
+    /**
+     * The coupling table over the pair's relative coordinate φ (B relative to A): a full revolution for a rotor
+     * (Fourier series), the travel for a slide (cubic spline over the stroke plus a margin; φ = −x when the slider is
+     * A, since then B moves by −x relative to it).
+     */
+    private PeriodicFunction table(EmBody a, EmBody b, java.util.function.DoubleUnaryOperator f) {
+        if (!slides(a, b)) return new PeriodicFourier(sample(f));
+        EmBody s = a.slider ? a : b;
+        double margin = 0.1 * (s.hi - s.lo) + 1e-3;
+        double lo = a.slider ? -s.hi - margin : s.lo - margin, hi = a.slider ? -s.lo + margin : s.hi + margin;
+        int n = Math.max(32, samples / 2);
+        double[] y = new double[n];
+        IntStream.range(0, n).parallel().forEach(k -> y[k] = f.applyAsDouble(lo + (hi - lo) * k / (n - 1)));
+        return new UniformSpline(lo, hi, y);
     }
 
     private double[] sample(java.util.function.DoubleUnaryOperator f) {
@@ -280,6 +306,10 @@ public final class MagneticSystem implements Element {
         Term t = new Term();
         t.bodyA = bodies.indexOf(a);
         t.bodyB = bodies.indexOf(b);
+        if (!a.isStatic() && !b.isStatic() && (a.slider || b.slider)) {
+            warnings.add("Two moving bodies " + a.name + " / " + b.name + " where one slides are not magnetically coupled (not yet supported)");
+            return null;
+        }
         if (!a.isStatic() && !b.isStatic()) {
             double d = a.axis.dot(b.axis);
             Vec3 off = b.pivot.sub(a.pivot);

@@ -387,3 +387,15 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   lets it run on. Hits during recovery are lost: dead time follows from the circuit.
 * **Events in the solver**: elements implementing `EventSource` declare their next discontinuity; the solver lands a
   step exactly on it, lets the element switch, and restarts the integration there.
+
+## Slides and springs (prismatic joints, `PositionSpring`, `TravelStops`)
+* A shaft through **linear bearings** on the frame makes its rigid group a slide: one translational degree of freedom
+  along the shaft axis (mass on a velocity node, displacement tracked). Its travel ends where a bearing reaches the
+  end of the shaft through it (stiff C¹ stops with contact damping). Gravity acts along the guide (m·g·axis), ball
+  bushings add rolling friction μ ≈ 0.003 of the transverse load and grease drag.
+* **Helical springs** join the bodies touching their end faces: k = G·d⁴/(8·D³·N) (wire d, coil diameter D, N
+  active turns); the force acts on the ends' tracked positions (F = −k·e, energy ½k·e²), so a reloaded machine
+  resumes with the force its positions imply. The spring's own mass is neglected.
+* **Magnetics on slides**: couplings between a slide and the frame (coil flux linkage, mutual inductance, magnet
+  energy) are tabulated over the travel (plus 10 %) and represented by a natural cubic spline; force = i·dΨ/dx etc.
+* **Pushing**: a hand on a slide follows the same force–speed–power limits as on a crank (200 N at rest, 3 m/s).

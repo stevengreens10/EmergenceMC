@@ -892,4 +892,75 @@ class DemoExhibitsTest {
         System.out.printf("Geiger: lead plate %.1f mm transmits %.3f (e^-μx = %.3f)%n", 0.0625 * 0.16 * 1000, t, expected);
         assertEquals(expected, t, 0.03, "Beer–Lambert attenuation in lead");
     }
+
+    /** The slide oscillates about the static sag m·g/k with period 2π√(m/k). */
+    @Test
+    void springMassOscillates() {
+        Exhibit e = MechanicsExhibits.springMass();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long rod = b.id(e, "rod");
+        var body = c.bodyOf(rod);
+        assertTrue(body.slider(), "the rod slides");
+        double k = dev.emergence.core.assembly.PartGeometry.springRate(b.assembly().get(b.id(e, "spring"))), m = body.mass();
+        java.util.List<Double> ups = new java.util.ArrayList<>();
+        double prev = 0, sum = 0;
+        int n = 0;
+        for (int i = 0; i < 2000; i++) {
+            c.step(0.001);
+            double v = c.probe(rod).angularVelocity();
+            if (prev < 0 && v >= 0) ups.add(0.001 * (i + 1));
+            prev = v;
+            sum += c.probe(rod).angle();
+            n++;
+        }
+        double period = (ups.get(ups.size() - 1) - ups.get(0)) / (ups.size() - 1);
+        System.out.printf("spring and mass: m %.3f kg, k %.0f N/m, period %.4f s (2π√(m/k) = %.4f s), mean %.4f m (−mg/k = %.4f m)%n",
+                m, k, period, 2 * Math.PI * Math.sqrt(m / k), sum / n, -m * 9.80665 / k);
+        assertEquals(2 * Math.PI * Math.sqrt(m / k), period, 0.02 * period, "period");
+        assertEquals(-m * 9.80665 / k, sum / n, 0.1 * m * 9.80665 / k, "oscillates about the static sag");
+    }
+
+    /**
+     * Faraday and Lenz on a slide: with the coils loaded, the bouncing magnet loses more mechanical energy than with
+     * them open — the energy that appears as heat in the load and the coils.
+     */
+    @Test
+    void magnetOnASpringHarvestsEnergy() {
+        double[] mech = new double[2];
+        double elec = 0;
+        for (int k = 0; k < 2; k++) {
+            Exhibit e = MechanicsExhibits.harvester();
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = compile(e, b);
+            if (k == 1) c.toggleSwitch(b.id(e, "switch"));
+            long rod = b.id(e, "rod");
+            c.setPushEffort(rod, 1);
+            for (int i = 0; i < 2; i++) c.step(0.005);
+            c.setPushEffort(rod, 0);
+            var body = c.bodyOf(rod);
+            double k0 = dev.emergence.core.assembly.PartGeometry.springRate(b.assembly().get(b.id(e, "spring")));
+            java.util.function.DoubleSupplier energy = () -> {
+                double x = c.probe(rod).angle(), v = c.probe(rod).angularVelocity();
+                return 0.5 * body.mass() * v * v + 0.5 * k0 * x * x + body.mass() * 9.80665 * x;
+            };
+            double e0 = energy.getAsDouble();
+            for (int i = 0; i < 800; i++) {
+                c.step(0.005);
+                if (k == 1) {
+                    double p = c.probe(b.id(e, "load")).power();
+                    for (var en : b.assembly().parts()) if (en.kind() == dev.emergence.core.assembly.PartKind.COIL) p += c.probe(en.id()).power();
+                    elec += 0.005 * p;
+                }
+            }
+            mech[k] = e0 - energy.getAsDouble();
+        }
+        System.out.printf("magnet on a spring: mechanical energy lost in 4 s %.4f J open, %.4f J loaded; electrical %.4f J%n",
+                mech[0], mech[1], elec);
+        assertTrue(mech[1] > mech[0], "the loaded coils brake the magnet");
+        // the electrical energy comes out of the motion (never more than it lost) and accounts for the extra braking
+        // (the open run, swinging wider, loses somewhat more to bearing friction, so the two differ a little)
+        assertTrue(elec < mech[1], "no more electrical energy than the motion lost");
+        assertTrue(elec > 0.8 * (mech[1] - mech[0]), "the extra loss went into the circuit");
+    }
 }

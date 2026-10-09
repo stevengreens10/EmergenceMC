@@ -23,7 +23,7 @@ behaviour; where physics is missing the effect is simply absent.
 
 ## Mechanical
 * Rigid bodies rotate only about fixed axes (bearing joints). No free 6-DOF bodies, no translation,
-  no linkages/cranks converting rotation to translation, no collisions. Gravity acts on each rotating body
+  slides only on the frame (not on moving bodies), no rack/pinion or lead screw yet, no collisions. Gravity acts on each rotating body
   about its own axis only (no joint reactions on moving parents).
   Unsupported groups are treated as resting on the world.
 * Gears: external spur meshes between parallel shafts only; no backlash, tooth compliance, internal/ring

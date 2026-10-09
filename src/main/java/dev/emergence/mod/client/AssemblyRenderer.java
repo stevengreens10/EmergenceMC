@@ -103,10 +103,15 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 double bodyAngle = 0;
                 if (pose != null) {
                     bodyAngle = pose.angle() + pose.omega() * (now - pose.time()) / 20.0;
-                    float lx = (float) (pose.px() - pos.getX()), ly = (float) (pose.py() - pos.getY()), lz = (float) (pose.pz() - pos.getZ());
-                    ps.translate(lx, ly, lz);
-                    ps.mulPose(new Quaternionf().rotateAxis((float) bodyAngle, (float) pose.ax(), (float) pose.ay(), (float) pose.az()));
-                    ps.translate(-lx, -ly, -lz);
+                    if (pose.slider()) {
+                        ps.translate((float) (bodyAngle * pose.ax()), (float) (bodyAngle * pose.ay()), (float) (bodyAngle * pose.az()));
+                        bodyAngle = 0;
+                    } else {
+                        float lx = (float) (pose.px() - pos.getX()), ly = (float) (pose.py() - pos.getY()), lz = (float) (pose.pz() - pos.getZ());
+                        ps.translate(lx, ly, lz);
+                        ps.mulPose(new Quaternionf().rotateAxis((float) bodyAngle, (float) pose.ax(), (float) pose.ay(), (float) pose.az()));
+                        ps.translate(-lx, -ly, -lz);
+                    }
                 }
                 Material m = p.spec.resolveMaterial();
                 c.materialRgb = ClientSimState.colour(p.id, m.color());
@@ -182,6 +187,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             }
             case BEARING, BRUSH, RESISTOR, CAPACITOR, DIODE -> drawModel(c, p.kind.name().toLowerCase(), p,
                     Math.min(ex, ey), Math.min(ex, ey), ez, false);
+            case LINEAR_BEARING -> drawModel(c, "bearing", p, Math.min(ex, ey), Math.min(ex, ey), ez * 1.2f, false);
+            case SPRING -> drawSpring(c, p, ez);
             case COIL -> drawModel(c, "coil", p, ex, ey, ez, false);
             case SWITCH -> drawModel(c, "switch", p, 1, 1, ez, false);
             case CRANK -> drawModel(c, "crank", p, 1, 1, 1, false);
@@ -275,6 +282,25 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         lo[rem] = r0;
         hi[rem] = r1;
         box(c, s, rgb, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
+    }
+
+    /** Helical spring along its axis: stacked rings of wire (drawn at its placed length). */
+    private void drawSpring(Ctx c, PlacedPart p, float len) {
+        double coil = p.spec.params().getOrDefault("coil", 0.6 / 16) * 16, wire = p.spec.params().getOrDefault("wire", 0.002) * 16;
+        int turns = (int) Math.round(p.spec.params().getOrDefault("turns", 10.0));
+        float r = (float) Math.min(0.48, coil / 2), w = (float) Math.max(0.02, wire / 2);
+        TextureAtlasSprite s = PartModels.sprite("metal_smooth");
+        for (int k = 0; k < turns; k++) {
+            float z = -len / 2 + len * (k + 0.5f) / turns;
+            c.ps.pushPose();
+            c.ps.translate(0, 0, z);
+            for (int q = 0; q < 8; q++) {
+                double a = q * Math.PI / 4;
+                float x = (float) (r * Math.cos(a)), y = (float) (r * Math.sin(a));
+                box(c, s, tintOf(c, c.materialRgb), x - w, y - w, -w, x + w, y + w, w);
+            }
+            c.ps.popPose();
+        }
     }
 
     /** A sealed check source: a small steel capsule in a yellow holder disc with a dark trefoil mark. */

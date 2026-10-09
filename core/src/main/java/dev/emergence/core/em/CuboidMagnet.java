@@ -57,6 +57,11 @@ public final class CuboidMagnet implements FieldSource {
         return new CuboidMagnet(c, a0, a1, a2, half[0], half[1], half[2], m);
     }
 
+    /** Returns this magnet moved rigidly by d. */
+    public CuboidMagnet translated(Vec3 d) {
+        return new CuboidMagnet(center.add(d), axes[0], axes[1], axes[2], half[0], half[1], half[2], magnetization());
+    }
+
     /** Scales the magnetisation (e.g. temperature dependence of B_r). */
     public CuboidMagnet scaled(double factor) {
         return new CuboidMagnet(center, axes[0], axes[1], axes[2], half[0], half[1], half[2], magnetization().mul(factor));

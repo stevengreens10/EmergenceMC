@@ -122,7 +122,18 @@ public enum PartKind {
      * area facing the source [m²] (default 3 cm²), starting and extinction voltages "start" (350 V) and "stop"
      * (300 V). Needs a few hundred volts through a megohm anode resistor.
      */
-    GM_TUBE(false, true);
+    GM_TUBE(false, true),
+    /**
+     * Linear bearing (ball bushing): a shaft passing along its axis slides through it but cannot turn in it. The
+     * shaft and what is fixed to it form a slider whose travel ends where the bearing reaches the shaft's ends.
+     */
+    LINEAR_BEARING(true, false),
+    /**
+     * Helical spring along its axis, joining whatever touches its two end faces (a slider and the frame, or two
+     * sliders): stiffness k = G·d⁴/(8·D³·N) from its wire diameter "wire" (default 2 mm), coil diameter "coil"
+     * (default 60 % of the cell) and active turns "turns" (default 10).
+     */
+    SPRING(false, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

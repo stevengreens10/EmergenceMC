@@ -38,6 +38,9 @@ public final class CompiledAssembly {
         Node node;
         AngleTracker tracker;
         double inertia, mass;
+        /** A slider translates along its axis (node: velocity, tracker: displacement) instead of turning. */
+        boolean slider;
+        double strokeLo, strokeHi;
         FlowSource drive; // external torque input (cranks, couplings to the world)
 
         Body(int index, boolean isStatic, Vec3 pivot, Vec3 axis) {
@@ -53,6 +56,7 @@ public final class CompiledAssembly {
         public Vec3 axis() { return axis; }
         public List<Long> parts() { return Collections.unmodifiableList(parts); }
         public double inertia() { return inertia; }
+        public boolean slider() { return slider; }
         public double mass() { return mass; }
     }
 
@@ -80,6 +84,22 @@ public final class CompiledAssembly {
     public dev.emergence.core.sim.elements.GeigerTube tube(long partId) {
         return tubeOfPart.get(partId);
     }
+
+    /** A hand pushing each slide (same force–speed–power limits as on a crank, at 1 m "radius"). */
+    final Map<Body, dev.emergence.core.sim.elements.HumanCrank> pushers = new HashMap<>();
+
+    /** A person pushes the slide carrying this part along its axis (+1, −1) or lets go (0). Returns false if it does not slide. */
+    public boolean setPushEffort(long partId, int direction) {
+        Body b = bodyOfPart.get(partId);
+        var h = b == null ? null : pushers.get(b);
+        if (h == null) return false;
+        if (h.direction() != Integer.signum(direction)) solver.markDiscontinuity();
+        h.set(direction, false);
+        return true;
+    }
+
+    /** Springs by part id: {stiffness [N/m]}. */
+    final Map<Long, double[]> springs = new HashMap<>();
 
     /** Sealed vessels of reacting gas, by part id. */
     final Map<Long, dev.emergence.core.sim.elements.GasReactor> gasOfPart = new HashMap<>();

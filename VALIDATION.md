@@ -171,6 +171,10 @@ losses at 20 000 interactions/s; Ba-137m half-life measured from counts per minu
 secular equilibrium; 1 cm of lead transmits e^{−μx} = 0.287 (exact); the counter chip stays in step with the
 tube; in-world counting at the expected rate.
 
+## Slides (`DemoExhibitsTest`)
+Spring and mass: period equal to 2π√(m/k) (2 %), oscillating about the static sag m·g/k; magnet on a spring:
+with the coils loaded the magnet loses more mechanical energy than open-circuit, and the extra is the electrical energy in the load and coils (Lenz); in-world GameTest of the bouncing slide.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

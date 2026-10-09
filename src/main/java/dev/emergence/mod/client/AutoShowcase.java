@@ -156,6 +156,15 @@ public final class AutoShowcase {
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-burning", () -> chamber(server, chamberAt, true) > 1300));
             }
+            if (id.equals("harvester")) {
+                // a push sets the magnet bouncing between the coils; the switch connects the load
+                BlockPos magnetAt = DemoBuilder.partBlock(plot, e, "magnet");
+                STEPS.add(new Step(3, () -> push(server.overworld(), magnetAt, 1), "showcase-" + (i + 1) + "-" + id + "-push"));
+                STEPS.add(new Step(30, () -> {
+                    push(server.overworld(), magnetAt, 0);
+                    toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch"));
+                }, "showcase-" + (i + 1) + "-" + id + "-bouncing"));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }
@@ -198,6 +207,15 @@ public final class AutoShowcase {
             PlacedPart s = find(be, PartKind.SWITCH);
             if (s == null) s = find(be, PartKind.VALVE);
             if (s != null) EmergenceMod.LOG.info("Showcase: switch at {} now closed={}", at, SimulationManager.get(level).toggleSwitch(at, s.id));
+        }
+    }
+
+    /** A hand on the slide carrying the magnet: pushing (1) or let go (0). */
+    private static void push(ServerLevel level, BlockPos at, int dir) {
+        if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+            PlacedPart m = find(be, PartKind.MAGNET);
+            var c = SimulationManager.get(level).compiledAt(at);
+            if (m != null && c != null) c.setPushEffort(m.id, dir);
         }
     }
 
@@ -244,6 +262,7 @@ public final class AutoShowcase {
         if (mc.level == null || mc.player == null || mc.getSingleplayerServer() == null) return;
         if (joinedTicks++ == 0) {
             mc.options.hideGui = true;
+            mc.options.pauseOnLostFocus = false; // the tour runs in the background while people use the computer
             mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
             plan(mc);
         }
@@ -259,6 +278,7 @@ public final class AutoShowcase {
         } else if (s.ready != null && wait > 2 && wait < s.delayTicks - 1 && s.ready.getAsBoolean()) {
             wait = 2; // condition met: grab after a couple of frames have rendered the new state
         } else if (wait-- == 0) {
+            if (mc.screen != null) mc.setScreen(null); // never photograph a menu
             Screenshot.grab(mc.gameDirectory, s.shot + ".png", mc.getMainRenderTarget(),
                     msg -> EmergenceMod.LOG.info("Showcase screenshot: {}", msg.getString()));
             index++;

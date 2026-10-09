@@ -359,6 +359,31 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** Slides in the world: the weight on the spring bounces about the point where the spring carries it. */
+    @GameTest(template = "arena", timeoutTicks = 200, batch = "slides")
+    public static void springMassBouncesInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.MechanicsExhibits.springMass();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos rodAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "rod");
+        PlacedPart rod = only(h, rodAt, PartKind.SHAFT);
+        double[] range = {Double.MAX_VALUE, -Double.MAX_VALUE};
+        h.onEachTick(() -> {
+            var p = sim.probe(rodAt, rod.id);
+            if (p == null) return;
+            range[0] = Math.min(range[0], p.angle());
+            range[1] = Math.max(range[1], p.angle());
+        });
+        h.runAtTickTime(160, () -> {
+            var c = sim.compiledAt(rodAt);
+            h.assertTrue(c != null && c.bodyOf(rod.id) != null && c.bodyOf(rod.id).slider(), "the rod is a slide");
+            h.assertTrue(range[1] - range[0] > 0.005, "it moves: " + range[0] + " … " + range[1] + " m");
+            h.assertTrue(range[0] < -0.01, "down below the unloaded position, where the spring takes its weight: " + range[0]);
+            h.succeed();
+        });
+    }
+
     private static PlacedPart only(GameTestHelper h, BlockPos abs, PartKind kind) {
         AssemblyBlockEntity be = (AssemblyBlockEntity) h.getLevel().getBlockEntity(abs);
         return be.parts().stream().filter(p -> p.kind == kind).findFirst().orElseThrow();

@@ -12,7 +12,8 @@ import java.util.Map;
 public final class ClientSimState {
     private ClientSimState() {}
 
-    public record Pose(double px, double py, double pz, double ax, double ay, double az, double angle, double omega, long time) {}
+    /** A body's pose; for a slide, angle and ω are its displacement and velocity in world blocks. */
+    public record Pose(double px, double py, double pz, double ax, double ay, double az, double angle, double omega, long time, boolean slider) {}
 
     private static final Map<Long, Pose> POSE = new HashMap<>();
     private static final Map<Long, Float> TEMP = new HashMap<>();
@@ -31,7 +32,8 @@ public final class ClientSimState {
         double s = p.worldScale();
         for (IslandSyncPayload.BodyState b : p.bodies()) {
             // pivot arrives in physical metres; convert to world block coordinates
-            Pose pose = new Pose(b.px() * s, b.py() * s, b.pz() * s, b.ax(), b.ay(), b.az(), b.angle(), b.omega(), p.gameTime());
+            double k = b.slider() ? s : 1;
+            Pose pose = new Pose(b.px() * s, b.py() * s, b.pz() * s, b.ax(), b.ay(), b.az(), b.angle() * k, b.omega() * k, p.gameTime(), b.slider());
             for (long id : b.partIds()) POSE.put(id, pose);
         }
         for (int i = 0; i < p.hotIds().length; i++) TEMP.put(p.hotIds()[i], p.hotTemps()[i]);

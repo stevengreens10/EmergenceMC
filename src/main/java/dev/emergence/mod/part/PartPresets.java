@@ -130,6 +130,10 @@ public final class PartPresets {
         l.add(stack(PartKind.OPAMP, PartSpec.of("silicon", 1, 1)));
         l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 0, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
         l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 1, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
+        // slides: linear bearings and springs
+        l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1)));
+        l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.002)));
+        l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.003)));
         // radioactivity: school check sources (sealed), a Ba-137m sample, a Geiger–Müller tube, lead shielding
         l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5)));
         l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 2, "activity", 3.7e4)));

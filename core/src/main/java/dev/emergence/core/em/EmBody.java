@@ -14,8 +14,17 @@ public final class EmBody {
     final Vec3 pivot, axis;
     final Node node;             // null for static
     final AngleTracker tracker;  // null for static
+    final boolean slider;        // translates along axis (tracker: displacement) instead of turning
+    final double lo, hi;         // a slider's travel [m]
 
     private EmBody(String name, Vec3 pivot, Vec3 axis, Node node, AngleTracker tracker) {
+        this(name, pivot, axis, node, tracker, false, 0, 0);
+    }
+
+    private EmBody(String name, Vec3 pivot, Vec3 axis, Node node, AngleTracker tracker, boolean slider, double lo, double hi) {
+        this.slider = slider;
+        this.lo = lo;
+        this.hi = hi;
         this.name = name;
         this.pivot = pivot;
         this.axis = axis == null ? null : axis.normalize();
@@ -29,6 +38,15 @@ public final class EmBody {
 
     public static EmBody rotor(String name, Vec3 pivot, Vec3 axis, Node node, AngleTracker tracker) {
         return new EmBody(name, pivot, axis, node, tracker);
+    }
+
+    /** A body sliding along {@code axis} (unit, fixed to the world) over the travel [lo, hi]. */
+    public static EmBody slider(String name, Vec3 axis, Node node, AngleTracker tracker, double lo, double hi) {
+        return new EmBody(name, Vec3.ZERO, axis, node, tracker, true, lo, hi);
+    }
+
+    public boolean isSlider() {
+        return slider;
     }
 
     public boolean isStatic() {

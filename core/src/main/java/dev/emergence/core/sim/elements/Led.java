@@ -16,7 +16,7 @@ import dev.emergence.core.units.PhysicalConstants;
 public final class Led implements Element {
     private final Node a, k, thermal;
     private final double photonEv, n, is, rs, eta;
-    private int iIdx;
+    private int uIdx;
 
     public Led(Node anode, Node cathode, double wavelengthNm, double quantumEfficiency, Node thermal) {
         this.a = anode;
@@ -37,34 +37,56 @@ public final class Led implements Element {
 
     @Override
     public void setup(dev.emergence.core.sim.SetupContext ctx) {
-        // the junction current is an unknown so series resistance and the exponential stay well conditioned
-        iIdx = ctx.allocUnknown("I(led)", 1e-9);
+        // unknown: the junction voltage behind the series resistance, with SPICE's logarithmic limiting
+        uIdx = ctx.allocUnknown("V(led junction)", 1e-6);
+        ctx.limitNewton(uIdx, (old, proposed) -> pnjlim(proposed, old));
+    }
+
+    /** SPICE p-n junction limiting: forward steps above the critical voltage grow only logarithmically. */
+    private double pnjlim(double vnew, double vold) {
+        double nvt = n * PhysicalConstants.K_OVER_Q * 300;
+        double vcrit = nvt * Math.log(nvt / (Math.sqrt(2) * is));
+        if (vnew > vcrit && Math.abs(vnew - vold) > 2 * nvt) {
+            if (vold > 0) {
+                double arg = 1 + (vnew - vold) / nvt;
+                return arg > 0 ? vold + nvt * Math.log(arg) : vcrit;
+            }
+            return nvt * Math.log(vnew / nvt);
+        }
+        return vnew;
+    }
+
+    /** Junction current {i, di/du}, continued linearly far above any reachable current. */
+    private double[] junction(double u) {
+        double nvt = n * PhysicalConstants.K_OVER_Q * 300;
+        double x = u / nvt;
+        if (x > 80) {
+            double m = Math.exp(80);
+            return new double[]{is * (m * (1 + x - 80) - 1), is * m / nvt};
+        }
+        double e = Math.exp(x);
+        return new double[]{is * (e - 1), is * e / nvt};
     }
 
     @Override
     public void load(LoadContext ctx) {
-        double vt = PhysicalConstants.K_OVER_Q * 300;
-        double i = ctx.x(iIdx);
-        double v = ctx.x(a.index()) - ctx.x(k.index());
-        // v = R_s·i + n·V_T·ln(1 + i/I_s) (inverse Shockley); continued linearly below i = −I_s/2, where the
-        // slope n·V_T/(I_s/2) is so steep that a reverse-biased junction is an open circuit
-        double i0 = -0.5 * is, vj, dvj;
-        if (i >= i0) {
-            vj = n * vt * Math.log1p(i / is);
-            dvj = n * vt / (is + i);
-        } else {
-            dvj = n * vt / (is + i0);
-            vj = n * vt * Math.log1p(i0 / is) + dvj * (i - i0);
-        }
-        ctx.addF(iIdx, v - rs * i - vj);
-        ctx.addJ(iIdx, a.index(), 1);
-        ctx.addJ(iIdx, k.index(), -1);
-        ctx.addJ(iIdx, iIdx, -rs - dvj);
-        ctx.addF(a.index(), i);
-        ctx.addF(k.index(), -i);
-        ctx.addJ(a.index(), iIdx, 1);
-        ctx.addJ(k.index(), iIdx, -1);
-        if (thermal != null) ctx.addF(thermal.index(), -(v * i - optical(i)));
+        double va = ctx.x(a.index()), vk = ctx.x(k.index()), u = ctx.x(uIdx);
+        double[] j = junction(u);
+        double gs = 1 / rs, ir = gs * (va - vk - u);
+        // anode: current into the series resistance
+        ctx.addF(a.index(), ir);
+        ctx.addJ(a.index(), a.index(), gs);
+        ctx.addJ(a.index(), k.index(), -gs);
+        ctx.addJ(a.index(), uIdx, -gs);
+        // internal node: resistor current = junction current
+        ctx.addF(uIdx, -ir + j[0]);
+        ctx.addJ(uIdx, a.index(), -gs);
+        ctx.addJ(uIdx, k.index(), gs);
+        ctx.addJ(uIdx, uIdx, gs + j[1]);
+        // cathode: the junction current arrives
+        ctx.addF(k.index(), -j[0]);
+        ctx.addJ(k.index(), uIdx, -j[1]);
+        if (thermal != null) ctx.addF(thermal.index(), -((va - vk) * j[0] - optical(j[0])));
     }
 
     private double optical(double i) {
@@ -72,12 +94,12 @@ public final class Led implements Element {
     }
 
     public double current(StateView s) {
-        return s.x(iIdx);
+        return junction(s.x(uIdx))[0];
     }
 
     /** Emitted optical power [W]. */
     public double opticalPower(StateView s) {
-        return optical(s.x(iIdx));
+        return optical(current(s));
     }
 
     @Override
@@ -88,7 +110,7 @@ public final class Led implements Element {
     @Override
     public double untrackedLoss(StateView s) {
         if (thermal != null) return 0;
-        double i = s.x(iIdx);
+        double i = current(s);
         return s.across(a, k) * i - optical(i);
     }
 }

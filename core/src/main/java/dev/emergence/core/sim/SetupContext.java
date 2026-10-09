@@ -29,4 +29,11 @@ public interface SetupContext {
      */
     default void limitNewtonStep(int index, double maxDelta) {
     }
+
+    /**
+     * Installs a nonlinear Newton limiter on an unknown: given its value before an iteration and the
+     * proposed value, it returns the value to use (e.g. SPICE's logarithmic p-n junction limiting).
+     */
+    default void limitNewton(int index, java.util.function.DoubleBinaryOperator limiter) {
+    }
 }

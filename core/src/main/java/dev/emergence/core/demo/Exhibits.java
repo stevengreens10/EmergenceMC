@@ -24,7 +24,7 @@ public final class Exhibits {
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(),
-                transistorSwitch(), nandGate(), miniatureGenerator());
+                transistorSwitch(), nandGate(), binaryCounter(), miniatureGenerator());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -512,6 +512,69 @@ public final class Exhibits {
         e.add(RESISTOR, "alumina", 10, 0, 8, Dir.SOUTH, "resistance", 470);
         e.path(INSULATED_WIRE, cu, new int[][]{{10, 0, 9}, {10, 0, 10}, {10, 0, 11}, {10, 0, 12}, {10, 0, 13}});
         return e.view(7, 9, 19, 50);
+    }
+
+    /**
+     * A 4-bit ripple counter: a Schmitt-trigger RC oscillator clocks four D flip-flops, each wired to toggle
+     * (D ← Q̄) and to clock the next from its Q̄. LEDs on the Q outputs show the count in binary.
+     */
+    public static Exhibit binaryCounter() {
+        Exhibit e = new Exhibit("counter", "Binary counter",
+                List.of("BINARY COUNTER", "Schmitt oscillator +", "4 flip-flops count", "0..15 on the LEDs"),
+                "Digital logic at chip level. A Schmitt-trigger inverter with 100 kΩ feedback and a 10 µF capacitor "
+                        + "oscillates (its threshold jumps between 0.4 and 0.6 of the supply, so the capacitor "
+                        + "charges and discharges between them: period 2RC·ln 1.5 ≈ 0.8 s). Each D flip-flop feeds "
+                        + "its inverted output back to its input, so it toggles on every rising clock edge and "
+                        + "clocks the next stage at half the rate: the LEDs count in binary. The chips draw their "
+                        + "current from the 5 V supercapacitor through real output resistances.");
+        e.plots = 2;
+        String cu = "copper";
+        int y = 2;
+        // supply: supercapacitor and the V_DD (z = 4) and GND (z = 12) buses
+        int bat = e.add(CAPACITOR, "alumina", 0, y, 8, Dir.NORTH, "capacitance", 10);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        e.path(INSULATED_WIRE, cu, new int[][]{{0, y, 7}, {0, y, 6}, {0, y, 5}, {0, y, 9}, {0, y, 10}, {0, y, 11}});
+        for (int x = 0; x <= 35; x++) {
+            e.add(INSULATED_WIRE, cu, x, y, 4, Dir.UP);
+            e.add(INSULATED_WIRE, cu, x, y, 12, Dir.UP);
+        }
+        // oscillator: Schmitt inverter at x = 4 with feedback resistor above and timing capacitor to V_DD
+        chipSupply(e, 4, y);
+        e.name("clock", e.add(LOGIC, "silicon", 4, y, 8, Dir.SOUTH, "function", 7));
+        e.path(INSULATED_WIRE, cu, new int[][]{{4, y, 7}, {4, y, 9}, {4, y + 1, 9}, {4, y + 1, 7}, {4, y, 5}});
+        e.add(RESISTOR, "alumina", 4, y + 1, 8, Dir.NORTH, "resistance", 100_000);
+        e.add(CAPACITOR, "alumina", 4, y, 6, Dir.NORTH, "capacitance", 10e-6);
+        // clock to the first flip-flop, along the floor
+        e.path(INSULATED_WIRE, cu, new int[][]{{4, y - 1, 9}, {4, 0, 9}});
+        for (int x = 5; x <= 12; x++) e.add(INSULATED_WIRE, cu, x, 0, 9, Dir.UP);
+        e.path(INSULATED_WIRE, cu, new int[][]{{12, 0, 8}, {12, 1, 8}});
+        for (int k = 0; k < 4; k++) {
+            int x = 12 + 7 * k;
+            chipSupply(e, x, y);
+            e.name("bit" + k, e.add(LOGIC, "silicon", x, y, 8, Dir.SOUTH, "function", 8));
+            // D ← Q̄ (toggle), Q → LED → 470 Ω → GND
+            e.path(INSULATED_WIRE, cu, new int[][]{{x, y, 7}, {x, y + 1, 8}, {x, y + 1, 7}, {x, y, 9}});
+            e.name("led" + k, e.add(LED, "silicon", x, y, 10, Dir.SOUTH, "wavelength", k % 2 == 0 ? 630 : 590));
+            e.add(RESISTOR, "alumina", x, y, 11, Dir.SOUTH, "resistance", 470);
+            if (k < 3) {
+                // Q̄ clocks the next stage: up, along y + 2, down a free column, along the floor, up into its clock pin
+                int nx = x + 7;
+                e.add(INSULATED_WIRE, cu, x, y + 2, 7, Dir.UP);
+                for (int xx = x + 1; xx <= nx - 3; xx++) e.add(INSULATED_WIRE, cu, xx, y + 2, 7, Dir.UP);
+                for (int yy = y + 1; yy >= 0; yy--) e.add(INSULATED_WIRE, cu, nx - 3, yy, 7, Dir.UP);
+                for (int xx = nx - 2; xx <= nx; xx++) e.add(INSULATED_WIRE, cu, xx, 0, 7, Dir.UP);
+                e.path(INSULATED_WIRE, cu, new int[][]{{nx, 0, 8}, {nx, 1, 8}});
+            }
+        }
+        return e.view(20, 9, 20, 40);
+    }
+
+    /** Supply connections of a chip at (x, y, 8): GND face → column x−2 down to the GND bus, V_DD face → column x+2 up to V_DD. */
+    private static void chipSupply(Exhibit e, int x, int y) {
+        String cu = "copper";
+        e.path(INSULATED_WIRE, cu, new int[][]{{x - 1, y, 8}, {x - 2, y, 8}, {x - 2, y, 9}, {x - 2, y, 10}, {x - 2, y, 11},
+                {x + 1, y, 8}, {x + 2, y, 8}, {x + 2, y, 7}, {x + 2, y, 6}, {x + 2, y, 5}});
     }
 
     /**

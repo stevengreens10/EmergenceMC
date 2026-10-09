@@ -26,6 +26,7 @@ public final class Network {
     private final List<Double> slotAbsTol = new ArrayList<>();
     private final List<String> slotOwner = new ArrayList<>();
     private final java.util.Map<Integer, Double> stepLimits = new java.util.HashMap<>();
+    private final java.util.Map<Integer, java.util.function.DoubleBinaryOperator> limiters = new java.util.HashMap<>();
     private String currentOwner = "";
 
     public Node node(Domain d, String name) {
@@ -104,6 +105,11 @@ public final class Network {
             public void limitNewtonStep(int index, double maxDelta) {
                 if (index >= 0) stepLimits.merge(index, maxDelta, Math::min);
             }
+
+            @Override
+            public void limitNewton(int index, java.util.function.DoubleBinaryOperator limiter) {
+                if (index >= 0) limiters.put(index, limiter);
+            }
         };
         for (Element e : elements) {
             currentOwner = e.label();
@@ -138,6 +144,10 @@ public final class Network {
     }
 
     /** Per-iteration Newton step limit of an unknown (+∞ if none). */
+    java.util.function.DoubleBinaryOperator limiter(int i) {
+        return limiters.get(i);
+    }
+
     double stepLimit(int i) {
         return stepLimits.getOrDefault(i, Double.POSITIVE_INFINITY);
     }

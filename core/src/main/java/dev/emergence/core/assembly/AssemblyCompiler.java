@@ -540,6 +540,15 @@ public final class AssemblyCompiler {
                 case WIRE, INSULATED_WIRE -> {
                     return "p" + p.id();
                 }
+                case LOGIC -> {
+                    Dir ax = p.axis();
+                    int la = PartGeometry.leadAxis(p);
+                    if (d.axis() == ax.axis()) return "p" + p.id() + (d.sign() == ax.sign() ? "o" : "a");
+                    if (d.axis() == la) return "p" + p.id() + (d.sign() > 0 ? "v" : "n");
+                    int fn = (int) Math.round(p.param("function", 2));
+                    if (d.sign() < 0) return fn >= 2 && fn != 7 ? "p" + p.id() + "b" : null;
+                    return fn == 8 ? "p" + p.id() + "q" : null;
+                }
                 case TRANSISTOR -> {
                     // emitter/source (−) and collector/drain (+) on the axial faces, base/gate on the lead-axis sides
                     Dir ax = p.axis();
@@ -692,6 +701,22 @@ public final class AssemblyCompiler {
                         c.deviceOfPart.put(p.id(), c.network.add(new Led(l[0], l[1], p.param("wavelength", 630),
                                 p.param("efficiency", 0.2), th)));
                         c.network.add(new Capacitor(l[0], l[1], 20e-12));
+                    }
+                    case LOGIC -> {
+                        int fn = (int) Math.round(p.param("function", 2));
+                        var f = dev.emergence.core.sim.elements.LogicGate.Function.values()[Math.max(0, Math.min(8, fn))];
+                        Node in = enode("p" + p.id() + "a"), o = enode("p" + p.id() + "o"), v = enode("p" + p.id() + "v"),
+                                gnd = enode("p" + p.id() + "n");
+                        boolean twoIn = fn >= 2 && fn != 7;
+                        Node inB = twoIn ? enode("p" + p.id() + "b") : null;
+                        Node qb = fn == 8 ? enode("p" + p.id() + "q") : null;
+                        c.deviceOfPart.put(p.id(), c.network.add(new dev.emergence.core.sim.elements.LogicGate(f, in, inB, o, qb, v, gnd,
+                                p.param("delay", 10e-9), p.param("output_resistance", 50), th)));
+                        c.leadsOfPart.put(p.id(), new Node[]{gnd, o});
+                        // CMOS input capacitance, and the supply bypass capacitor every logic chip sits next to
+                        c.network.add(new Capacitor(in, gnd, 5e-12));
+                        if (inB != null) c.network.add(new Capacitor(inB, gnd, 5e-12));
+                        c.network.add(new Capacitor(v, gnd, 100e-9));
                     }
                     case TRANSISTOR -> {
                         Node[] l = leads(p);
@@ -866,7 +891,8 @@ public final class AssemblyCompiler {
         }
 
         boolean isLeadKey(String k) {
-            return k.endsWith("+") || k.endsWith("-") || k.endsWith("g");
+            char e = k.charAt(k.length() - 1);
+            return e == '+' || e == '-' || Character.isLetter(e);
         }
 
         Node[] leads(Part p) {
@@ -903,7 +929,7 @@ public final class AssemblyCompiler {
         Material conductorMaterial(Part p) {
             return switch (p.kind()) {
                 // manufactured components carry (tinned) copper leads, whatever their body is made of
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED -> MaterialDatabase.standard().get("copper");
+                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC -> MaterialDatabase.standard().get("copper");
                 default -> p.material();
             };
         }

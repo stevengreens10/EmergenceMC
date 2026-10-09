@@ -59,9 +59,12 @@ public final class LogicGate implements Element {
     @Override
     public void setup(SetupContext ctx) {
         sIdx = ctx.allocUnknown("logic(" + fn + ")", 1e-6);
+        ctx.setInitial(sIdx, 0);
+        ctx.limitNewtonStep(sIdx, 0.4);
         sSlot = ctx.allocState(0.02);
         if (fn == Function.DFF) {
             mIdx = ctx.allocUnknown("master", 1e-6);
+            ctx.limitNewtonStep(mIdx, 0.4);
             mSlot = ctx.allocState(0.02);
         }
     }
@@ -70,10 +73,14 @@ public final class LogicGate implements Element {
         return 1 / (1 + Math.exp(-x));
     }
 
-    /** Logic value of a node voltage and its derivative wrt that voltage (supply span given). */
+    /**
+     * Logic value of a node voltage and its derivative wrt that voltage (supply span given). An unpowered
+     * chip (span below ~1 V) reads its inputs as low.
+     */
     private static double[] level(double v, double span, double frac) {
-        double w = 0.03 * Math.max(span, 0.1);
-        double x = (v - frac * span) / w;
+        double sp = Math.max(span, 1.0);
+        double w = 0.03 * sp;
+        double x = (v - frac * sp) / w;
         double s = sig(Math.max(-40, Math.min(40, x)));
         return new double[]{s, s * (1 - s) / w};
     }
@@ -103,21 +110,30 @@ public final class LogicGate implements Element {
             default -> { t = 0; tx = 0; ty = 0; }
         }
         if (fn == Function.DFF) {
-            // master follows D while the clock is low; slave (the output) copies the master while it is high
+            // master follows D while the clock is low; slave (the output) copies the master while it is high.
+            // The two are transparent in non-overlapping windows of the clock level (master below 35 %, slave
+            // above 65 %), so data cannot race through while the clock edge passes; a latch that is holding
+            // regenerates — its cross-coupled inverters amplify any departure from the midpoint towards the
+            // nearer rail — so no state can sit metastable at 1/2.
             double m = ctx.x(mIdx), clk = y;
+            double wm = sig(Math.max(-40, Math.min(40, (0.35 - clk) / 0.04))), dwm = -wm * (1 - wm) / 0.04;
+            double ws = sig(Math.max(-40, Math.min(40, (clk - 0.65) / 0.04))), dws = ws * (1 - ws) / 0.04;
+            double[] rm = regen(m), rs = regen(s);
             double dm = ctx.ddt(mSlot, m);
-            ctx.addF(mIdx, tpd * dm - (x - m) * (1 - clk));
-            ctx.addJ(mIdx, mIdx, tpd * ctx.alpha() + (1 - clk));
-            ctx.addJ(mIdx, a.index(), -la[1] * (1 - clk));
-            ctx.addJ(mIdx, gnd.index(), la[1] * (1 - clk));
-            ctx.addJ(mIdx, b.index(), (x - m) * lb[1]);
-            ctx.addJ(mIdx, gnd.index(), -(x - m) * lb[1]);
+            ctx.addF(mIdx, tpd * dm - (x - m) * wm - (rm[0] - m) * (1 - wm));
+            ctx.addJ(mIdx, mIdx, tpd * ctx.alpha() + wm - (rm[1] - 1) * (1 - wm));
+            ctx.addJ(mIdx, a.index(), -la[1] * wm);
+            ctx.addJ(mIdx, gnd.index(), la[1] * wm);
+            double dmClk = (-(x - m) + (rm[0] - m)) * dwm;
+            ctx.addJ(mIdx, b.index(), dmClk * lb[1]);
+            ctx.addJ(mIdx, gnd.index(), -dmClk * lb[1]);
             double ds = ctx.ddt(sSlot, s);
-            ctx.addF(sIdx, tpd * ds - (m - s) * clk);
-            ctx.addJ(sIdx, sIdx, tpd * ctx.alpha() + clk);
-            ctx.addJ(sIdx, mIdx, -clk);
-            ctx.addJ(sIdx, b.index(), -(m - s) * lb[1]);
-            ctx.addJ(sIdx, gnd.index(), (m - s) * lb[1]);
+            ctx.addF(sIdx, tpd * ds - (m - s) * ws - (rs[0] - s) * (1 - ws));
+            ctx.addJ(sIdx, sIdx, tpd * ctx.alpha() + ws - (rs[1] - 1) * (1 - ws));
+            ctx.addJ(sIdx, mIdx, -ws);
+            double dsClk = (-(m - s) + (rs[0] - s)) * dws;
+            ctx.addJ(sIdx, b.index(), dsClk * lb[1]);
+            ctx.addJ(sIdx, gnd.index(), -dsClk * lb[1]);
         } else {
             double ds = ctx.ddt(sSlot, s);
             ctx.addF(sIdx, tpd * ds - (t - s));
@@ -135,6 +151,12 @@ public final class LogicGate implements Element {
         }
         stage(ctx, out, Math.max(0, Math.min(1, s)), sIdx, 1);
         if (outBar != null) stage(ctx, outBar, Math.max(0, Math.min(1, 1 - s)), sIdx, -1);
+    }
+
+    /** Regeneration target of a holding latch: a steep sigmoid of its own state, and its slope. */
+    private static double[] regen(double q) {
+        double r = sig(Math.max(-40, Math.min(40, (q - 0.5) / 0.1)));
+        return new double[]{r, r * (1 - r) / 0.1};
     }
 
     /** Output stage: pull-up conductance s·G_on to V_DD and pull-down (1 − s)·G_on to GND. */

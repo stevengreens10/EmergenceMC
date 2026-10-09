@@ -70,7 +70,13 @@ public enum PartKind {
      */
     TRANSISTOR(false, true),
     /** Light-emitting diode (manufactured): anode on the −axis lead, cathode on the +axis lead; colour by wavelength. */
-    LED(false, true);
+    LED(false, true),
+    /**
+     * CMOS logic chip (manufactured, 74HC class): "function" 0 buffer, 1 NOT, 2 NAND, 3 NOR, 4 AND, 5 OR, 6 XOR,
+     * 7 Schmitt NOT, 8 D flip-flop. Input A (D) on the −axis face, output (Q) on the +axis face, GND and V_DD on
+     * the −/+ lead-axis sides, input B (clock) on the −side of the remaining axis and Q̄ on its +side.
+     */
+    LOGIC(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

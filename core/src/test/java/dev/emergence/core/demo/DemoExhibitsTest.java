@@ -309,4 +309,34 @@ class DemoExhibitsTest {
             assertEquals(!(sa && sb), lit, "A=" + sa + " B=" + sb + " LED current " + c.probe(led).current());
         }
     }
+
+    @Test
+    void binaryCounterCounts() {
+        Exhibit e = Exhibits.binaryCounter();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long clock = b.id(e, "clock");
+        // count rising clock edges while sampling the counter value after each
+        int edges = 0;
+        double prev = c.probe(clock).current();
+        int[] seen = new int[64];
+        for (int i = 0; i < 200; i++) {
+            c.step(0.05);
+            double s = c.probe(clock).current();
+            if (prev < 0.5 && s >= 0.5) {
+                edges++;
+            }
+
+            prev = s;
+            int v = 0;
+            for (int k = 0; k < 4; k++) if (c.probe(b.id(e, "bit" + k)).current() > 0.5) v |= 1 << k;
+            seen[edges % 64] = v;
+        }
+        assertTrue(edges >= 8, "the oscillator runs: " + edges + " clock edges in 10 s");
+        // after n rising edges the counter holds n mod 16
+        int v = 0;
+        for (int k = 0; k < 4; k++) if (c.probe(b.id(e, "bit" + k)).current() > 0.5) v |= 1 << k;
+        assertEquals(edges % 16, v, "counter value after " + edges + " clock edges");
+        assertTrue(c.lightOutput(b.id(e, "led0")) > 0 || c.lightOutput(b.id(e, "led1")) > 0 || v == 0, "LEDs show the count");
+    }
 }

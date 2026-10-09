@@ -33,6 +33,7 @@ public final class TransientSolver implements StateView {
     private final double[] absTol, slotTol;
     private final double[] gmin;
     private final double[] stepLimit;
+    private final java.util.function.DoubleBinaryOperator[] limiters;
     /** Electrical nodes get a GMIN relative to their diagonal (floating conductive islands). */
     private final boolean[] relGmin;
 
@@ -98,6 +99,8 @@ public final class TransientSolver implements StateView {
         for (int s = 0; s < ns; s++) slotTol[s] = net.slotAbsTol(s);
         stepLimit = new double[n];
         for (int i = 0; i < n; i++) stepLimit[i] = net.stepLimit(i);
+        limiters = new java.util.function.DoubleBinaryOperator[n];
+        for (int i = 0; i < n; i++) limiters[i] = net.limiter(i);
         ctx.q0 = q0;
         ctx.q1 = q1;
         ctx.qd0 = qd0;
@@ -322,6 +325,11 @@ public final class TransientSolver implements StateView {
                 }
             }
             for (int i = 0; i < n; i++) {
+                if (limiters[i] != null) {
+                    double lim = limiters[i].applyAsDouble(xTrial[i], xTrial[i] + scale * dx[i]);
+                    if (lim != xTrial[i] + scale * dx[i]) limited = true;
+                    dx[i] = (lim - xTrial[i]) / scale;
+                }
                 xTrial[i] += scale * dx[i];
                 double tol = relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i];
                 if (Math.abs(dx[i]) > tol) {

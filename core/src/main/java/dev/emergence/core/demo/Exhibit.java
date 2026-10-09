@@ -46,6 +46,9 @@ public final class Exhibit {
      */
     public boolean miniature;
 
+    /** Number of gallery plots this exhibit occupies along x (wide machines take two). */
+    public int plots = 1;
+
     /** Suggested camera position (blocks from the plot origin; the camera looks north) and pitch [°]. */
     public double viewX = 8, viewHeight = 6, viewZ = 18, viewPitch = 25;
 

@@ -1,0 +1,30 @@
+{
+  // Pure substances for reacting mixtures. Thermochemistry at the standard state (298.15 K, 1 bar):
+  //   "hf"  standard enthalpy of formation [J/mol]
+  //   "s0"  standard molar entropy [J/(mol·K)]
+  //   "cp"  isobaric molar heat capacity [J/(mol·K)] at 298.15, 1000 and 2000 K; the model fits a quadratic
+  //         Cp(T) = a + bT + cT² through the three points and holds it constant outside 298.15–3000 K.
+  //         (The fit reproduces the tabulated Cp to ~1–2 % over 298–2000 K for these species; JANAF
+  //         shows it flattening above that, which the clamp at 3000 K only roughly captures.)
+  // Sources:
+  //  [JANAF] M. W. Chase, NIST-JANAF Thermochemical Tables, 4th ed., J. Phys. Chem. Ref. Data Monograph 9 (1998)
+  //  [CODATA] Cox, Wagman & Medvedev, CODATA Key Values for Thermodynamics (1989)
+  //  [NIST]  NIST Chemistry WebBook, SRD 69 (gas-phase thermochemistry pages)
+  // Values are rounded to 4 significant figures. N2O4 above ~600 K is outside its useful range (it is fully
+  // dissociated there), so its 1000/2000 K Cp are extrapolations from the JANAF table's trend.
+  "atomic_masses": {"H": 1.008, "C": 12.011, "N": 14.007, "O": 15.999, "Ar": 39.948, "Ca": 40.078,
+                    "S": 32.06, "Cl": 35.45, "Na": 22.990, "Fe": 55.845, "Cu": 63.546, "Zn": 65.38},
+  "species": [
+    {"id": "N2",   "name": "Nitrogen",          "formula": {"N": 2},         "phase": "gas", "hf": 0,       "s0": 191.61, "cp": [29.12, 32.70, 36.01], "source": "JANAF"},
+    {"id": "O2",   "name": "Oxygen",            "formula": {"O": 2},         "phase": "gas", "hf": 0,       "s0": 205.15, "cp": [29.38, 34.88, 37.74], "source": "JANAF"},
+    {"id": "Ar",   "name": "Argon",             "formula": {"Ar": 1},        "phase": "gas", "hf": 0,       "s0": 154.85, "cp": [20.79, 20.79, 20.79], "source": "JANAF"},
+    {"id": "H2",   "name": "Hydrogen",          "formula": {"H": 2},         "phase": "gas", "hf": 0,       "s0": 130.68, "cp": [28.84, 30.20, 34.28], "source": "JANAF"},
+    {"id": "H2O",  "name": "Water vapour",      "formula": {"H": 2, "O": 1}, "phase": "gas", "hf": -241826, "s0": 188.84, "cp": [33.59, 41.27, 51.18], "source": "JANAF, CODATA"},
+    {"id": "CO2",  "name": "Carbon dioxide",    "formula": {"C": 1, "O": 2}, "phase": "gas", "hf": -393522, "s0": 213.79, "cp": [37.13, 54.31, 60.44], "source": "JANAF, CODATA"},
+    {"id": "CO",   "name": "Carbon monoxide",   "formula": {"C": 1, "O": 1}, "phase": "gas", "hf": -110527, "s0": 197.66, "cp": [29.14, 33.18, 36.25], "source": "JANAF"},
+    {"id": "CH4",  "name": "Methane",           "formula": {"C": 1, "H": 4}, "phase": "gas", "hf": -74873,  "s0": 186.25, "cp": [35.69, 71.80, 94.40], "source": "JANAF"},
+    {"id": "NH3",  "name": "Ammonia",           "formula": {"N": 1, "H": 3}, "phase": "gas", "hf": -45898,  "s0": 192.77, "cp": [35.65, 56.49, 72.03], "source": "JANAF"},
+    {"id": "NO2",  "name": "Nitrogen dioxide",  "formula": {"N": 1, "O": 2}, "phase": "gas", "hf": 33095,   "s0": 240.04, "cp": [36.97, 52.03, 56.60], "source": "JANAF"},
+    {"id": "N2O4", "name": "Dinitrogen tetroxide", "formula": {"N": 2, "O": 4}, "phase": "gas", "hf": 9079, "s0": 304.38, "cp": [77.26, 128.0, 134.0], "source": "JANAF (Cp above 600 K extrapolated)"}
+  ]
+}

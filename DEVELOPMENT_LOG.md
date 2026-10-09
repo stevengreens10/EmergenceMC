@@ -161,3 +161,11 @@ hot power transistor) restarted from zero node voltages let a Newton iterate dri
 infinity and its saturation current to NaN. Device equations now see a temperature bounded to 50–1500 K, every
 exhibit is tested to restart from its own running state, and a failed island restarts at rest keeping its charges,
 temperatures and positions instead of being wiped.
+
+**Gas chemistry core.** Substances with JANAF thermochemistry, reactions with Arrhenius kinetics and
+Gibbs-energy equilibrium (detailed balance), and a reacting gas volume whose energy includes formation energies —
+heat of reaction emerges from composition change, conserving energy exactly. Validated against analytical
+equilibrium, energy-balance flame temperature, and Semenov's critical-temperature behaviour. A fractional rate
+order kept eating a vanished species into negative amounts; it is now cut off at trace concentration. Also fixed:
+the server hung at shutdown because unloading a chunk re-marked block entities in other unloading chunks as
+changed, re-requesting them forever; the unload path now writes state without marking.

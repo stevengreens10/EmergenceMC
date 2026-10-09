@@ -135,6 +135,14 @@ period (autocorrelation peak) equals 2π/ω of the logged speed (3 %), the logge
 the logged speed (1 %). Every exhibit restarts from its own exported running state; servo fragments restart from a
 running state (a hot transistor once sent Newton to NaN: device temperatures are now bounded to 50–1500 K).
 
+## Gas chemistry (`ChemistryValidationTest`)
+Molar masses; the C_p fit through the JANAF points; dh/dT = c_p and ds/dT = c_p/T numerically (including across
+the clamps); element balance of every reaction; methane's lower heating value 802.3 kJ/mol; K_p(N₂O₄ ⇌ 2NO₂,
+298 K) = 0.148 and van 't Hoff consistency; N₂O₄ relaxing to the analytical equilibrium extent at 298 and 330 K
+(1e-5 mol); adiabatic constant-volume combustion of stoichiometric methane–air: complete, elements conserved to
+1e-9, internal energy to 1e-6, final temperature equal to the energy-balance solution within 1 K; Semenov thermal
+explosion: a vessel at 800 K smoulders (peak 802 K), at 950 K explodes (peak > 2000 K).
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

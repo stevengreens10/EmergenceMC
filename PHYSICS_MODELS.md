@@ -320,3 +320,23 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * Display: peak-detect envelope (min/max per column) of one channel over 0.1/1/10/60 s, auto-ranged. Export:
   `/emergence log export` writes CSV (time plus every channel, empty fields where a part lacks a quantity).
 * A recompiled island restarts its clock; the logger rebases so its record runs on without a jump.
+
+## Gas-phase chemistry (`Species`, `Reaction`, `Chemistry`, `GasReactor`)
+* **Substances** (`substances.json`): formula (element counts → molar mass), ΔH_f°, S°, and C_p at 298.15, 1000
+  and 2000 K (NIST-JANAF). C_p(T) = a + bT + cT² through those points, held constant outside 298.15–3000 K;
+  h = ΔH_f° + ∫C_p dT, s° = S° + ∫C_p/T dT and g° = h − Ts° are integrated analytically, so equilibrium constants
+  obey van 't Hoff exactly. Ideal gases: u = h − RT, c_v = c_p − R.
+* **Reactions** (`reactions.json`): stoichiometry checked for element balance on load; forward rate
+  r_f = A·T^b·e^{−Ea/RT}·Π c_i^{order_i} [mol/(m³·s)]; reversible reactions run backwards at
+  r_f(products)/K_c, K_c = K_p·(P°/RT)^{Δν}, K_p = e^{−ΔG°/RT}, so the net rate vanishes at equilibrium (detailed
+  balance). N₂O₄ ⇌ 2NO₂ (elementary, reversible); CH₄ + 2O₂ → CO₂ + 2H₂O (Westbrook–Dryer global step,
+  [CH₄]^0.2[O₂]^1.3, irreversible).
+* **Reacting gas volume** (`GasReactor`): a closed, well-mixed volume; unknowns are the moles of each species and the
+  gas temperature (a thermal node — heaters, walls and coolers attach with ordinary thermal elements). Balances:
+  dn_i/dt = V·Σν_ir·r_r and dU/dt = ΣQ̇_in with U = Σn_i·u_i(T) including formation energies, so reaction heat is
+  a change of composition at constant energy (no source term) and energy and elements are conserved to solver
+  tolerance. p = ΣnRT/V. Concentrations enter rate laws softly bounded at zero; a fractional order < 1 is multiplied
+  by c/(c + 10⁻⁴ mol/m³) so a global law shuts off at trace level instead of driving a species negative.
+* **Ignition** is homogeneous: the bulk runs away when heat release outgrows heat loss (Semenov thermal
+  explosion). Flame fronts, dissociation (adiabatic temperatures come out ~100–200 K high at 2500 K+), condensation
+  of water and intermediate species are not modelled.

@@ -61,7 +61,11 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ## Phase 5 — Chemistry and manufacturing
 ✅ Electrochemistry: Butler–Volmer/Nernst electrodes, galvanic cells, corrosion, displacement plating,
    electrolysis, Faraday bookkeeping (exhibits: Daniell cell, plating, galvanic corrosion)
-⬜ Substance database, general reaction networks, equilibrium, processing, manufacturing
+✅ Substance database (JANAF thermochemistry), gas reactions with Arrhenius kinetics and Gibbs-energy
+   equilibrium, reacting gas volumes conserving energy and elements (N₂O₄ equilibrium, methane combustion,
+   Semenov thermal explosion)
+⬜ Reacting gases in assemblies (vessels, flows of mixtures), liquids/solutions, separation processes,
+   manufacturing
 
 ## Phase 6 — Advanced multiphysics
 ✅ Control parts: potentiometers (angle sensors/knobs with end stops), op-amps (single pole, slew, rails),

@@ -36,3 +36,10 @@ per entry in the JSON `sources` field.
 * Emissivity is a single representative value (tungsten's 0.30 is chosen for incandescent temperatures).
 * Fluids (air) are modelled in code (`fluids.Air`); a data-driven fluid/substance database is planned with
   the chemistry phase.
+
+## Substances for gas chemistry (`chemistry/substances.json`)
+N₂, O₂, Ar, H₂, H₂O(g), CO₂, CO, CH₄, NH₃, NO₂, N₂O₄: formula, ΔH_f°(298.15 K), S°(298.15 K), C_p at 298.15/1000/2000 K
+from NIST-JANAF (Chase 1998) and CODATA key values, 4 significant figures. Atomic masses (IUPAC conventional) give
+the molar masses. N₂O₄'s high-temperature C_p is an extrapolation (it is fully dissociated there).
+Reactions (`chemistry/reactions.json`): N₂O₄ ⇌ 2NO₂ (Borrell et al. 1988 activation energy, rate scaled to the
+1-bar fall-off), CH₄ + 2O₂ → CO₂ + 2H₂O (Westbrook & Dryer 1981 global step as used in Fluent's methane-air-1step).

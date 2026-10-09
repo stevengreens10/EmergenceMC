@@ -116,7 +116,11 @@ public final class SimulationManager {
 
     public void unregister(BlockPos pos) {
         Island isl = islandOf.get(pos);
-        if (isl != null) saveIsland(isl);
+        // write the latest state into the block entities but do not mark them changed: this runs while chunks
+        // unload, and marking a block entity in a chunk that is itself unloading makes the level request that
+        // chunk again, which reschedules its unload — forever, at server shutdown. The periodic save has already
+        // marked the chunks unsaved, so what is written here goes out with them.
+        if (isl != null) saveIsland(isl, false);
         blocks.remove(pos);
         markDirty(pos);
     }
@@ -617,6 +621,10 @@ public final class SimulationManager {
     }
 
     private void saveIsland(Island isl) {
+        saveIsland(isl, true);
+    }
+
+    private void saveIsland(Island isl, boolean markChanged) {
         if (isl.compiled == null) return;
         AssemblyState s = isl.compiled.exportState();
         for (BlockPos b : isl.blocks) {
@@ -635,7 +643,7 @@ public final class SimulationManager {
                 be.savedState().put(p.id, new double[]{s.temperatures().getOrDefault(p.id, isl.ambient), m[0], m[1],
                         s.coilCurrents().getOrDefault(p.id, 0.0), s.capacitorVoltages().getOrDefault(p.id, 0.0), fl[0], fl[1]});
             }
-            be.setChanged();
+            if (markChanged) be.setChanged();
         }
     }
 

@@ -112,3 +112,9 @@ multimeter, oscilloscope/data logging.
 * The data logger records one part per player, one channel on screen at a time; it loads nothing (ideal,
   infinite input impedance) and adds no noise or quantisation beyond float storage; its record lives only in
   memory (lost when the server stops) until exported. The multimeter's readings are ideal apart from rounding.
+
+## Gas chemistry
+* Gases only (no condensed phases, solutions or surface reactions in `GasReactor`); well mixed (no flame
+  propagation or stratification); global methane kinetics without CO, radicals or dissociation, so flame
+  temperatures are high by ~100–200 K and no CO forms in rich mixtures; ideal-gas mixing (no real-gas effects at
+  high pressure). Mixtures do not yet flow through pipes.

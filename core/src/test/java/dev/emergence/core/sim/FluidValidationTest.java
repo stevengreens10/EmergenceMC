@@ -244,4 +244,74 @@ class FluidValidationTest {
         double expected = cd * area * p1 * Math.sqrt(2 * gam / ((gam - 1) * r * t) * (Math.pow(ratio, 2 / gam) - Math.pow(ratio, (gam + 1) / gam)));
         assertEquals(expected, br.massFlow(s), 1e-3 * expected);
     }
+
+    /** Specific entropy of the thermally perfect gas relative to (T0, p0): ∫c_p/T dT − R ln(p/p0). */
+    double entropy(IdealGas g, double t, double p, double t0, double p0) {
+        int n = 2000;
+        double sum = 0;
+        for (int i = 0; i < n; i++) {
+            double ta = t0 + (t - t0) * i / n, tb = t0 + (t - t0) * (i + 1) / n;
+            sum += 0.5 * (g.cp(ta) / ta + g.cp(tb) / tb) * (tb - ta);
+        }
+        return sum - g.gasConstant() * Math.log(p / p0);
+    }
+
+    @Test
+    void pistonCompressionIsIsentropicAndConservesEnergy() {
+        // a sealed cylinder on a fast-spinning crank (heavy flywheel), starting at bottom dead centre: no time
+        // for heat transfer, so the gas follows its isentrope; the flywheel's kinetic energy pays exactly for
+        // the gas's internal energy
+        double t0 = 293.15, d = 0.04;
+        IdealGas g = (IdealGas) air;
+        SliderCrank k = new SliderCrank(Math.PI * d * d / 4, 0.02, 0.1, 0.005, Math.PI);
+        Network n = new Network();
+        Node w = n.node(Domain.ROTATIONAL, "crank", 30);
+        n.add(new Inertia(w, 0.5));
+        AngleTracker tr = n.add(new AngleTracker(w, 0));
+        Port gp = port(n, "gas", P0, t0);
+        FluidVolume v = n.add(new FluidVolume(gp.p, gp.t, air, k.volume(0)).withPiston(tr, k));
+        n.add(new PistonCoupling(gp.p, gp.t, w, tr, k, P0, 0, null));
+        TransientSolver s = new TransientSolver(n).maxStep(1e-3);
+        double m = v.mass(s), e0 = s.storedEnergy(), tMax = 0;
+        for (int i = 0; i < 20; i++) {
+            s.advance(0.01);
+            assertEquals(m, v.mass(s), 1e-6 * m, "sealed");
+            double ds = entropy(g, s.x(gp.t), s.x(gp.p), t0, P0);
+            assertEquals(0, ds, 0.2, "isentropic (Δs = " + ds + " J/(kg K) at T " + s.x(gp.t) + ")");
+            tMax = Math.max(tMax, s.x(gp.t));
+        }
+        assertTrue(tMax > 600, "compressed to ~9:1: " + tMax);
+        assertTrue(Math.abs(s.energyError()) < 1e-4 * Math.abs(e0), "ledger: " + s.energyError());
+    }
+
+    @Test
+    void alphaStirlingEngineProducesNetWork() {
+        // two cylinders 90° apart on one crank, joined by a pipe: one wall at 900 K, the other at 300 K
+        double d = 0.04, r = 0.015, l = 0.08, c = 0.004;
+        double a = Math.PI * d * d / 4;
+        Network n = new Network();
+        Node w = n.node(Domain.ROTATIONAL, "crank", 20);
+        n.add(new Inertia(w, 0.02));
+        AngleTracker tr = n.add(new AngleTracker(w, 0));
+        Node ref = n.reference(Domain.THERMAL);
+        SliderCrank hot = new SliderCrank(a, r, l, c, 0), cold = new SliderCrank(a, r, l, c, Math.PI / 2);
+        Port ph = port(n, "hot", P0, 600), pc = port(n, "cold", P0, 300);
+        n.add(new FluidVolume(ph.p, ph.t, air, hot.volume(0)).withPiston(tr, hot));
+        n.add(new FluidVolume(pc.p, pc.t, air, cold.volume(0)).withPiston(tr, cold));
+        n.add(new PistonCoupling(ph.p, ph.t, w, tr, hot, P0, 0, null));
+        n.add(new PistonCoupling(pc.p, pc.t, w, tr, cold, P0, 0, null));
+        FluidBranch link = n.add(new FluidBranch(ph.p, ph.t, pc.p, pc.t, air, 0.1, 0.012, 0, 1, 0));
+        Node wh = n.node(Domain.THERMAL, "hotWall", 900), wc = n.node(Domain.THERMAL, "coldWall", 300);
+        n.add(new FixedTemperature(wh, 900));
+        n.add(new FixedTemperature(wc, 300));
+        // generous internal fins: heat transfer is what limits small Stirling engines
+        n.add(new FluidWallConvection(ph.t, wh, air, 0.05, 0.004, a, java.util.List.of(link)));
+        n.add(new FluidWallConvection(pc.t, wc, air, 0.05, 0.004, a, java.util.List.of(link)));
+        TransientSolver s = new TransientSolver(n).maxStep(2e-3);
+        s.advance(2);
+        double w0 = s.x(w);
+        s.advance(6);
+        assertTrue(s.x(w) > w0 + 1, "the engine accelerates its flywheel: " + w0 + " -> " + s.x(w));
+        assertTrue(Math.abs(s.energyError()) < 1e-3 * s.externalEnergyIn() + 1, "ledger: " + s.energyError());
+    }
 }

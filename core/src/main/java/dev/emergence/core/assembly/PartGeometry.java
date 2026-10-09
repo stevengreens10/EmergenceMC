@@ -180,17 +180,23 @@ public final class PartGeometry {
     /** Wetted wall area inside the part [m²]. */
     public static double wettedArea(Part p) {
         return switch (p.kind()) {
-            case PIPE, VALVE -> Math.PI * pipeBore(p) * axialLength(p);
+            // internal longitudinal fins ("fins" = fin area per bare-tube area) at 85 % fin efficiency
+            case PIPE, VALVE -> Math.PI * pipeBore(p) * axialLength(p) * (1 + 0.85 * fins(p));
             case ROTOR -> 2 * Math.PI * (rotorTipRadius(p) + rotorHubRadius(p)) * axialLength(p);
             case TANK -> 2 * (p.boxSize(0) * p.boxSize(1) + p.boxSize(1) * p.boxSize(2) + p.boxSize(0) * p.boxSize(2));
             default -> 0;
         };
     }
 
+    /** Internal fin area of a pipe relative to its bare bore surface (parameter "fins", default 0). */
+    public static double fins(Part p) {
+        return Math.max(0, Math.min(20, p.param("fins", 0)));
+    }
+
     /** Hydraulic diameter 4A/P of the passage [m]. */
     public static double hydraulicDiameter(Part p) {
         return switch (p.kind()) {
-            case PIPE, VALVE -> pipeBore(p);
+            case PIPE, VALVE -> pipeBore(p) / (1 + fins(p)); // 4A/P with the fins' extra perimeter
             case ROTOR -> 2 * (rotorTipRadius(p) - rotorHubRadius(p));
             case TANK -> transverseSize(p) - 2 * wallThickness(p);
             default -> CELL;

@@ -20,6 +20,8 @@ public final class FluidVolume implements Element {
     private final Fluid fluid;
     private final double volume;
     private int slotM, slotU;
+    private AngleTracker tracker;
+    private SliderCrank crank;
 
     public FluidVolume(Node pressure, Node temperature, Fluid fluid, double volume) {
         if (pressure.domain() != Domain.FLUID || temperature.domain() != Domain.THERMAL) {
@@ -30,6 +32,21 @@ public final class FluidVolume implements Element {
         this.t = temperature;
         this.fluid = fluid;
         this.volume = volume;
+    }
+
+    /**
+     * Makes this a piston cylinder: the volume follows the crank angle, V(θ) = A·(c + s(θ)). The work the
+     * gas does on the piston is accounted by the matching {@link PistonCoupling}.
+     */
+    public FluidVolume withPiston(AngleTracker tracker, SliderCrank crank) {
+        this.tracker = tracker;
+        this.crank = crank;
+        return this;
+    }
+
+    /** Current volume [m³]. */
+    public double volume(StateView s) {
+        return crank == null ? volume : crank.volume(s.x(tracker.angleIndex()));
     }
 
     public Fluid fluid() {
@@ -59,20 +76,32 @@ public final class FluidVolume implements Element {
     public void load(LoadContext ctx) {
         double pp = ctx.x(p.index()), tt = Math.max(ctx.x(t.index()), 1.0);
         double rho = fluid.density(pp, tt), drp = fluid.dDensityDp(pp, tt), drt = fluid.dDensityDt(pp, tt);
-        double m = rho * volume, u = fluid.internalEnergy(pp, tt);
+        double vol = volume, dvol = 0;
+        int ia = -1;
+        if (crank != null) {
+            ia = tracker.angleIndex();
+            double th = ctx.x(ia);
+            vol = crank.volume(th);
+            dvol = crank.dVolume(th);
+        }
+        double m = rho * vol, u = fluid.internalEnergy(pp, tt);
         double dm = ctx.ddt(slotM, m);
         ctx.addF(p.index(), dm);
-        ctx.addJ(p.index(), p.index(), ctx.alpha() * volume * drp);
-        ctx.addJ(p.index(), t.index(), ctx.alpha() * volume * drt);
+        ctx.addJ(p.index(), p.index(), ctx.alpha() * vol * drp);
+        ctx.addJ(p.index(), t.index(), ctx.alpha() * vol * drt);
         double dU = ctx.ddt(slotU, m * u);
         ctx.addF(t.index(), dU);
-        ctx.addJ(t.index(), p.index(), ctx.alpha() * volume * drp * u);
-        ctx.addJ(t.index(), t.index(), ctx.alpha() * (volume * drt * u + m * fluid.cv(tt)));
+        ctx.addJ(t.index(), p.index(), ctx.alpha() * vol * drp * u);
+        ctx.addJ(t.index(), t.index(), ctx.alpha() * (vol * drt * u + m * fluid.cv(tt)));
+        if (ia >= 0) {
+            ctx.addJ(p.index(), ia, ctx.alpha() * rho * dvol);
+            ctx.addJ(t.index(), ia, ctx.alpha() * rho * dvol * u);
+        }
     }
 
     /** Mass of fluid currently held [kg]. */
     public double mass(StateView s) {
-        return fluid.density(s.x(p), s.x(t)) * volume;
+        return fluid.density(s.x(p), s.x(t)) * volume(s);
     }
 
     @Override

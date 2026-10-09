@@ -342,9 +342,32 @@ public final class AssemblyCompiler {
         void thermalLink(Part p, Part q) {
             double kp = p.material().get(MaterialProperty.THERMAL_CONDUCTIVITY, 1);
             double kq = q.material().get(MaterialProperty.THERMAL_CONDUCTIVITY, 1);
-            double ap = PartGeometry.conductionArea(p), aq = PartGeometry.conductionArea(q);
-            double r = (CELL / 2) / (kp * ap) + (CELL / 2) / (kq * aq) + 1 / (CONTACT_H * Math.min(ap, aq));
+            double[] cp = conductionPath(p, q), cq = conductionPath(q, p);
+            double r = cp[0] / (kp * cp[1]) + cq[0] / (kq * cq[1]) + 1 / (CONTACT_H * Math.min(cp[1], cq[1]));
             c.network.add(new ThermalConductance(c.thermalOfPart.get(p.id()), c.thermalOfPart.get(q.id()), 1 / r));
+        }
+
+        /**
+         * {length, area} of the conduction path from part p's bulk to its contact with q. Heat entering a pipe,
+         * valve or tank through its side crosses only the wall (thickness × contact face); along a pipe it runs
+         * through the tube wall's cross-section; solid parts conduct over half a cell.
+         */
+        double[] conductionPath(Part p, Part q) {
+            if (p.kind() == PartKind.TANK) {
+                return new double[]{PartGeometry.wallThickness(p), CELL * CELL};
+            }
+            if (p.kind() == PartKind.PIPE || p.kind() == PartKind.VALVE) {
+                boolean axial = false;
+                Vec3 d = q.center().sub(p.center());
+                int a = p.axis().axis();
+                double along = Math.abs(a == 0 ? d.x() : a == 1 ? d.y() : d.z());
+                axial = along > 0.5 * d.length();
+                if (!axial) {
+                    double outer = PartGeometry.pipeBore(p) + 2 * PartGeometry.wallThickness(p);
+                    return new double[]{PartGeometry.wallThickness(p), outer * PartGeometry.axialLength(p)};
+                }
+            }
+            return new double[]{CELL / 2, PartGeometry.conductionArea(p)};
         }
 
         // ------------------------------------------------------------ 4. mechanics
@@ -934,6 +957,8 @@ public final class AssemblyCompiler {
                                 FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(),
                                         vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin),
                                         Math.max(roughness(p), roughness(q)), k, dz);
+                                double dhMin = Math.min(PartGeometry.hydraulicDiameter(p), PartGeometry.hydraulicDiameter(q));
+                                if (p.kind() != PartKind.TANK && q.kind() != PartKind.TANK) b.withHydraulicDiameter(dhMin);
                                 Part rotor = rotorFor(p, d, q);
                                 if (rotor != null) attachRotor(b, rotor, rotor == p ? d : d.opposite(), rotor == p);
                                 for (Part valve : new Part[]{p, q}) {

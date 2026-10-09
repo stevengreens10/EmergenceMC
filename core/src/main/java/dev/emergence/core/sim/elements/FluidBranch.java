@@ -47,6 +47,7 @@ public final class FluidBranch implements Element {
     private final Fluid fluid;
     private final double length, diameter, area, roughness, minorK, dz;
     private double opening = 1.0;
+    private double dh;
     private double orificeArea = 0, dischargeCoefficient = 0.62;
     private Node rotor;
     private double rotorRadius, rotorArea, stagger, pitch = 1, bodySense = 1, flowAlongAxis = 1, cd0 = 0.02, solidity = 0.8;
@@ -66,9 +67,16 @@ public final class FluidBranch implements Element {
         this.length = length;
         this.diameter = diameter;
         this.area = Math.PI * diameter * diameter / 4;
+        this.dh = diameter;
         this.roughness = roughness;
         this.minorK = minorK;
         this.dz = dz;
+    }
+
+    /** Hydraulic diameter for friction when the passage is not a plain round bore (e.g. finned tube) [m]. */
+    public FluidBranch withHydraulicDiameter(double d) {
+        this.dh = Math.min(d, diameter);
+        return this;
     }
 
     /** Valve opening φ ∈ [0, 1] (1 = no valve restriction). */
@@ -205,10 +213,10 @@ public final class FluidBranch implements Element {
     }
 
     private double frictionLoss(double v, double rho, double mu) {
-        double re = Math.abs(v) * rho * diameter / mu;
-        double lam = 32 * mu * length * v / (diameter * diameter);
+        double re = Math.abs(v) * rho * dh / mu;
+        double lam = 32 * mu * length * v / (dh * dh);
         if (re <= 2000) return lam;
-        double turb = darcyTurbulent(Math.max(re, 2000), roughness / diameter) * (length / diameter) * rho * v * Math.abs(v) / 2;
+        double turb = darcyTurbulent(Math.max(re, 2000), roughness / dh) * (length / dh) * rho * v * Math.abs(v) / 2;
         if (re >= 4000) return turb;
         double s = (re - 2000) / 2000;
         s = s * s * (3 - 2 * s);

@@ -340,3 +340,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Ignition** is homogeneous: the bulk runs away when heat release outgrows heat loss (Semenov thermal
   explosion). Flame fronts, dissociation (adiabatic temperatures come out ~100–200 K high at 2500 K+), condensation
   of water and intermediate species are not modelled.
+* **Gas vessels in assemblies**: a TANK with "x_<species>" mole fractions (charge pressure "pressure" at its
+  starting temperature) holds a `GasReactor` with the charged species plus every product the database's reactions
+  can make from them. It is sealed (no pipe connections yet). The gas exchanges heat with the vessel wall by
+  natural convection (h ≈ 10 W/m²K over the wetted area) and gas radiation (ε ≈ 0.05). Seen through glass, the
+  gas colour is Beer–Lambert transmission over the vessel width with NO₂'s absorption cross-sections (Vandaele
+  et al. 1998) at 610/545/465 nm.

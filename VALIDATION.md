@@ -143,6 +143,11 @@ the clamps); element balance of every reaction; methane's lower heating value 80
 1e-9, internal energy to 1e-6, final temperature equal to the energy-balance solution within 1 K; Semenov thermal
 explosion: a vessel at 800 K smoulders (peak 802 K), at 950 K explodes (peak > 2000 K).
 
+## Chemistry exhibits (`DemoExhibitsTest`, `EmergenceGameTests`)
+Brown gas: each flask's reaction quotient equals K_p at its own temperature (2 %), the warm one holds > 20 points
+more NO₂ and renders darker (also in-world). Thermal explosion: cold until switched on; ignites after 30–240 s of
+heating, peak > 2000 K and > 6 bar, all methane burnt; the heater's bank fades before the can exceeds 1300 K.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

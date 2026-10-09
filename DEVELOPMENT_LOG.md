@@ -169,3 +169,10 @@ equilibrium, energy-balance flame temperature, and Semenov's critical-temperatur
 order kept eating a vanished species into negative amounts; it is now cut off at trace concentration. Also fixed:
 the server hung at shutdown because unloading a chunk re-marked block entities in other unloading chunks as
 changed, re-requesting them forever; the unload path now writes state without marking.
+
+**Chemistry in builds.** Tanks charged with gas mixtures react: the brown-gas exhibit shows N₂O₄ ⇌ 2NO₂ shifting
+with temperature (colour from Beer–Lambert absorption), and a heated can of methane–air self-ignites (Semenov).
+Getting the explosion took physics, not tuning: alumina legs radiated the heater's power away (mica, an
+insulator, instead), a small resistor's 2 cm² contact could not pass the heat (a cartridge heater pressed over
+20 cm²), and slow heating let the fuel burn away quietly before runaway (heating must outpace consumption — a real
+effect); 2.3 kW ignites it after about 70 s.

@@ -105,7 +105,8 @@ public final class PartItem extends Item {
             case VALVE -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.025), "m") + fluidLabel(p)
                     + (p.containsKey("relief") ? String.format(", relief %.2f bar", p.get("relief") / 1e5) : "")
                     + (p.containsKey("lap") ? ", cam-worked" : "");
-            case TANK -> fluidLabel(p) + (p.containsKey("pressure") ? String.format(", %.0f bar", p.get("pressure") / 1e5) : "")
+            case TANK -> fluidLabel(p) + (p.containsKey("pressure") && !p.keySet().stream().anyMatch(k -> k.startsWith("x_"))
+                    ? String.format(", %.0f bar", p.get("pressure") / 1e5) : "")
                     + (p.containsKey("fill") ? String.format(", %.0f%% full", 100 * p.get("fill")) : "");
             case ROTOR -> String.format(", %.0f° blades%s", p.getOrDefault("blade_angle", 45.0), p.getOrDefault("pitch", 1.0) < 0 ? ", left-hand" : "");
             case CYLINDER -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.04), "m") + (p.getOrDefault("fins", 0.0) > 0 ? ", finned" : "");
@@ -133,6 +134,16 @@ public final class PartItem extends Item {
     }
 
     private static String fluidLabel(java.util.Map<String, Double> p) {
+        StringBuilder gas = new StringBuilder();
+        double sum = 0;
+        for (var e : p.entrySet()) if (e.getKey().startsWith("x_")) sum += e.getValue();
+        for (var e : p.entrySet()) {
+            if (!e.getKey().startsWith("x_") || e.getValue() <= 0) continue;
+            gas.append(gas.length() == 0 ? ", " : " + ");
+            if (e.getValue() < sum) gas.append(String.format("%.0f%% ", 100 * e.getValue() / sum));
+            gas.append(e.getKey().substring(2));
+        }
+        if (gas.length() > 0) return gas + (p.containsKey("pressure") ? String.format(" at %.2f bar", p.get("pressure") / 1e5) : "");
         int code = (int) Math.round(p.getOrDefault("fluid", 0.0));
         return code == 0 ? "" : ", " + dev.emergence.core.fluids.FluidDatabase.standard().byCode(code).name().toLowerCase();
     }

@@ -207,6 +207,21 @@ public final class SimulationManager {
         return "Channel: " + ch.get(s.channel).name() + " [" + ch.get(s.channel).unit() + "]";
     }
 
+    /** Shows a channel by name and sets the time base (for scripted demonstrations). */
+    public void showLogger(ServerPlayer player, String channel, int spanIndex) {
+        LoggerSession s = loggers.get(player.getUUID());
+        if (s == null) return;
+        var ch = s.log.channels();
+        for (int c = 0; c < ch.size(); c++) if (ch.get(c).name().equals(channel)) s.channel = c;
+        s.span = Math.max(0, Math.min(LOGGER_SPANS.length - 1, spanIndex));
+    }
+
+    /** The newest value of a player's logger on its shown channel (NaN if none). */
+    public double loggerLatest(ServerPlayer player) {
+        LoggerSession s = loggers.get(player.getUUID());
+        return s == null || s.log.size() == 0 ? Double.NaN : s.log.value(s.channel, s.log.size() - 1);
+    }
+
     public String cycleLoggerSpan(ServerPlayer player) {
         LoggerSession s = loggers.get(player.getUUID());
         if (s == null) return "Clip the logger onto a part first";

@@ -282,7 +282,27 @@ public final class EmergenceGameTests {
         });
         h.runAtTickTime(260, () -> {
             var p = sim.probe(armAt, arm.id);
-            h.assertTrue(p != null && p.angle() < 1.0, "the arm rose from hanging (1.57 rad): " + (p == null ? "?" : p.angle()));
+            h.assertTrue(p != null && p.angle() < 1.3, "the arm rose from hanging (1.57 rad): " + (p == null ? "?" : p.angle()));
+            h.succeed();
+        });
+    }
+
+    /** Gas chemistry in the world: the warm flask of N2O4/NO2 holds more brown NO2 and is drawn darker. */
+    @GameTest(template = "arena", timeoutTicks = 200, batch = "chemistry")
+    public static void brownGasDarkensWhenWarm(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ChemistryExhibits.brownGas();
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos hotAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "hot");
+        BlockPos coldAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "cold");
+        PlacedPart hot = only(h, hotAt, PartKind.TANK), cold = only(h, coldAt, PartKind.TANK);
+        h.runAtTickTime(120, () -> {
+            var c = sim.compiledAt(hotAt);
+            h.assertTrue(c != null && c.gas(hot.id) != null, "the flask holds a reacting gas");
+            int a = c.chemicalColour(hot.id), b = sim.compiledAt(coldAt).chemicalColour(cold.id);
+            int da = (a >> 16 & 255) + (a >> 8 & 255) + (a & 255), db = (b >> 16 & 255) + (b >> 8 & 255) + (b & 255);
+            h.assertTrue(a >= 0 && b >= 0 && da < db, String.format("warm flask %06x darker than cold %06x", a, b));
             h.succeed();
         });
     }

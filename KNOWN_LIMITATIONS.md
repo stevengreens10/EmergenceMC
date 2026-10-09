@@ -117,4 +117,6 @@ multimeter, oscilloscope/data logging.
 * Gases only (no condensed phases, solutions or surface reactions in `GasReactor`); well mixed (no flame
   propagation or stratification); global methane kinetics without CO, radicals or dissociation, so flame
   temperatures are high by ~100–200 K and no CO forms in rich mixtures; ideal-gas mixing (no real-gas effects at
-  high pressure). Mixtures do not yet flow through pipes.
+  high pressure). Mixtures do not yet flow through pipes: a gas vessel is sealed. Vessel walls do not burst
+  under pressure. Parts radiate to the surroundings whatever encloses them (no view factors), so an enclosure
+  does not insulate radiatively.

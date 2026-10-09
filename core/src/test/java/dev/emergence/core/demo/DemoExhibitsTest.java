@@ -668,4 +668,70 @@ class DemoExhibitsTest {
         bad.forEach(System.out::println);
         assertTrue(bad.isEmpty(), bad.size() + " fragments fail: " + (bad.isEmpty() ? "" : bad.get(0)));
     }
+
+    /** Each flask's composition is the equilibrium at its own temperature; the warm one holds more NO2 and is darker. */
+    @Test
+    void brownGasEquilibriumFollowsTemperature() {
+        Exhibit e = ChemistryExhibits.brownGas();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        run(c, 20);
+        var rx = dev.emergence.core.chem.Chemistry.standard().reaction("n2o4_dissociation");
+        double[] xNo2 = new double[2];
+        int[] colour = new int[2];
+        String[] flask = {"cold", "hot"};
+        for (int k = 0; k < 2; k++) {
+            long id = b.id(e, flask[k]);
+            var g = c.gas(id);
+            var s = c.solverView();
+            double t = g.temperature(s);
+            double pNo2 = g.moles(s, dev.emergence.core.chem.Chemistry.standard().species("NO2")) * 8.314462618 * t / g.volume();
+            double pN2o4 = g.moles(s, dev.emergence.core.chem.Chemistry.standard().species("N2O4")) * 8.314462618 * t / g.volume();
+            double q = (pNo2 / 1e5) * (pNo2 / 1e5) / (pN2o4 / 1e5);
+            System.out.printf("brown gas: %s flask %.1f °C, %.4f bar, NO2 %.1f %%, Q = %.3f, K_p = %.3f, colour %06x%n", flask[k],
+                    t - 273.15, g.pressure(s) / 1e5, 100 * g.moleFraction(s, 1), q, rx.kp(t), c.chemicalColour(id));
+            assertEquals(rx.kp(t), q, 0.02 * rx.kp(t), flask[k] + ": at equilibrium for its temperature");
+            xNo2[k] = pNo2 / (pNo2 + pN2o4);
+            colour[k] = c.chemicalColour(id);
+        }
+        assertTrue(c.gas(b.id(e, "hot")).temperature(c.solverView()) > 340, "the hot plate keeps its flask warm");
+        assertTrue(xNo2[1] > xNo2[0] + 0.2, "warmer: more NO2 (" + xNo2[0] + " → " + xNo2[1] + ")");
+        int dark0 = (colour[0] >> 16 & 255) + (colour[0] >> 8 & 255) + (colour[0] & 255);
+        int dark1 = (colour[1] >> 16 & 255) + (colour[1] >> 8 & 255) + (colour[1] & 255);
+        assertTrue(dark1 < dark0 - 40, "the warm flask looks darker");
+    }
+
+    /** The preheated can of methane–air runs away thermally: a temperature and pressure spike, burnt to CO2 and water. */
+    @Test
+    void thermalExplosionIgnites() {
+        Exhibit e = ChemistryExhibits.thermalExplosion();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var g = c.gas(b.id(e, "can"));
+        var ch = dev.emergence.core.chem.Chemistry.standard();
+        run(c, 2);
+        assertEquals(AMBIENT, g.temperature(c.solverView()), 1, "cold until the switch is closed");
+        c.toggleSwitch(b.id(e, "switch"));
+        double peakT = 0, peakP = 0, tIgnite = Double.NaN;
+        for (int i = 0; i < 6000; i++) {
+            c.step(0.05);
+            double t = g.temperature(c.solverView());
+            if (t > peakT) peakT = t;
+            peakP = Math.max(peakP, g.pressure(c.solverView()));
+            if (Double.isNaN(tIgnite) && t > 1500) tIgnite = 0.05 * (i + 1);
+            if (i % 400 == 0) System.out.printf("explosion t=%.1f s heater %.0f K plate %.0f K %.1f W gas %.0f K wall %.0f K p %.2f bar CH4 %.4f mol%n", 0.05 * (i + 1), c.probe(b.id(e, "heater")).temperature(), c.probe(b.id(e, "can")).temperature(), c.probe(b.id(e, "heater")).power(), t,
+                    c.probe(b.id(e, "can")).temperature(), g.pressure(c.solverView()) / 1e5, g.moles(c.solverView(), ch.species("CH4")));
+        }
+        System.out.printf("explosion: ignition after %.1f s, peak %.0f K, %.2f bar%n", tIgnite, peakT, peakP / 1e5);
+        assertTrue(peakT > 2000, "it ignites: peak " + peakT);
+        assertTrue(tIgnite > 30 && tIgnite < 240, "after a few minutes' heating: " + tIgnite);
+        assertTrue(peakP > 6e5, "the pressure spikes: " + peakP);
+        double maxWall = 0;
+        for (int i = 0; i < 6000; i++) {
+            c.step(0.05);
+            maxWall = Math.max(maxWall, c.probe(b.id(e, "can")).temperature());
+        }
+        assertTrue(maxWall < 1300, "the heater's bank runs down before the can overheats: " + maxWall);
+        assertTrue(g.moles(c.solverView(), ch.species("CH4")) < 1e-6, "all the methane burns");
+    }
 }

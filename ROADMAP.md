@@ -64,7 +64,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Substance database (JANAF thermochemistry), gas reactions with Arrhenius kinetics and Gibbs-energy
    equilibrium, reacting gas volumes conserving energy and elements (N₂O₄ equilibrium, methane combustion,
    Semenov thermal explosion)
-⬜ Reacting gases in assemblies (vessels, flows of mixtures), liquids/solutions, separation processes,
+✅ Sealed gas vessels in builds: equilibrium (brown-gas exhibit) and thermal explosion (heated can of methane–air)
+⬜ Flows of gas mixtures (burners, engines), liquids/solutions, separation processes,
    manufacturing
 
 ## Phase 6 — Advanced multiphysics

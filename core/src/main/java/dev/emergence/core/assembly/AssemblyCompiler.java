@@ -1394,10 +1394,78 @@ public final class AssemblyCompiler {
          * axis). An open axial end of a pipe, valve or rotor facing free air vents to the atmosphere. A rotor
          * adds its blade row to the branch on its +axis face, acting through its rigid body's rotation.
          */
+        /** A sealed vessel charged with a gas mixture ("x_" + species id = mole fraction) holds reacting gases. */
+        static boolean isGasVessel(Part p) {
+            if (p.kind() != PartKind.TANK) return false;
+            for (String k : p.params().keySet()) if (k.startsWith("x_")) return true;
+            return false;
+        }
+
+        /**
+         * Gas vessels: the charged species and every product the database's reactions can make from them, the
+         * reactions among those, initial moles from the charge pressure ("pressure", default ambient), the part's
+         * temperature and its inner volume (or the saved composition). The gas exchanges heat with the vessel wall by
+         * natural convection (h ≈ 10 W/m²K) and gas radiation (emissivity 0.05, a few-cm path of CO₂/H₂O).
+         */
+        void buildGasVessels() {
+            var chem = dev.emergence.core.chem.Chemistry.standard();
+            for (Part p : parts) {
+                if (!isGasVessel(p)) continue;
+                Set<dev.emergence.core.chem.Species> present = new LinkedHashSet<>();
+                Map<dev.emergence.core.chem.Species, Double> x = new LinkedHashMap<>();
+                double sum = 0;
+                for (var e : p.params().entrySet()) {
+                    if (!e.getKey().startsWith("x_")) continue;
+                    String id = e.getKey().substring(2);
+                    if (!chem.hasSpecies(id)) {
+                        c.warnings.add("Unknown gas \"" + id + "\" in vessel #" + p.id());
+                        continue;
+                    }
+                    var sp = chem.species(id);
+                    present.add(sp);
+                    x.put(sp, Math.max(0, e.getValue()));
+                    sum += Math.max(0, e.getValue());
+                }
+                boolean grew = true;
+                while (grew) {
+                    grew = false;
+                    for (var rx : chem.reactions()) {
+                        if (present.containsAll(rx.reactants().keySet()) && present.containsAll(rx.orders().keySet())
+                                && !present.containsAll(rx.products().keySet())) {
+                            present.addAll(rx.products().keySet());
+                            grew = true;
+                        }
+                    }
+                }
+                List<dev.emergence.core.chem.Species> list = new ArrayList<>(present);
+                double[] st = prev.fluids().get(p.id());
+                double t0 = st != null ? st[1] : prev.temperatures().getOrDefault(p.id(), ambientT);
+                double v = Math.max(PartGeometry.fluidVolume(p), 1e-9);
+                double nt = p.param("pressure", a.ambientPressure()) * v / (dev.emergence.core.units.PhysicalConstants.GAS_CONSTANT * t0);
+                double[] n0 = new double[list.size()];
+                for (int i = 0; i < list.size(); i++) {
+                    Double saved = prev.chemistry().get(gasKey(p.id(), list.get(i).id()));
+                    n0[i] = saved != null ? saved : sum > 0 ? nt * x.getOrDefault(list.get(i), 0.0) / sum : 0;
+                }
+                Node tn = c.network.node(Domain.THERMAL, "Tg" + p.id(), t0);
+                var g = c.network.add(new dev.emergence.core.sim.elements.GasReactor(list, chem.reactionsAmong(present), v, tn, n0));
+                c.gasOfPart.put(p.id(), g);
+                Node wall = c.thermalOfPart.get(p.id());
+                double area = PartGeometry.wettedArea(p);
+                c.network.add(new ThermalConductance(tn, wall, 10 * area));
+                c.network.add(new dev.emergence.core.sim.elements.Radiation(tn, wall, 0.05, area));
+            }
+        }
+
+        static String gasKey(long part, String species) {
+            return "G" + part + ":" + species;
+        }
+
         void buildFluids() {
+            buildGasVessels();
             var db = dev.emergence.core.fluids.FluidDatabase.standard();
             List<Part> fluids = new ArrayList<>();
-            for (Part p : parts) if (p.kind().holdsFluid()) fluids.add(p);
+            for (Part p : parts) if (p.kind().holdsFluid() && !isGasVessel(p)) fluids.add(p);
             if (fluids.isEmpty()) return;
             double pAtm = a.ambientPressure();
             Map<Long, Object[]> pistons = new HashMap<>();

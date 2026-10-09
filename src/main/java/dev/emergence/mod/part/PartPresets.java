@@ -83,6 +83,11 @@ public final class PartPresets {
         l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1)));
         l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "pressure", 1e6, "wall", 0.004, "gauge_range", 16)));
         l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "fluid", 1)));
+        // sealed vessels charged with reacting gases
+        l.add(stack(PartKind.TANK, PartSpec.of("glass", 1, 1, "x_N2O4", 1, "pressure", 5000, "wall", 0.002)));
+        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "x_CH4", 0.095, "x_O2", 0.19, "x_N2", 0.715, "pressure", 101325,
+                "wall", 0.0015)));
+        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "x_N2", 0.78, "x_O2", 0.21, "x_Ar", 0.01, "pressure", 101325)));
         l.add(stack(PartKind.TANK, PartSpec.of("aluminium_6061", 1, 1, "fluid", 2, "pressure", 5e5, "gauge_range", 10)));
         l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.025)));
         l.add(stack(PartKind.VALVE, PartSpec.of("steel_1045", 1, 1, "bore", 0.04)));

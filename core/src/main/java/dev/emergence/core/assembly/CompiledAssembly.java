@@ -69,6 +69,8 @@ public final class CompiledAssembly {
     final Map<Long, dev.emergence.core.sim.elements.HumanCrank> cranks = new HashMap<>();
     MagneticSystem magnetics;
     final Map<Long, ElectrochemicalCell> cells = new HashMap<>();
+    /** Sealed vessels of reacting gas, by part id. */
+    final Map<Long, dev.emergence.core.sim.elements.GasReactor> gasOfPart = new HashMap<>();
     final Map<Long, FluidVolume> fluidOfPart = new HashMap<>();
     final Map<Long, List<FluidBranch>> valveBranches = new HashMap<>();
     /** Brake pads: their full friction torques and friction elements, by part. */
@@ -328,6 +330,16 @@ public final class CompiledAssembly {
     /** Chemical readouts: concentrations in an electrolyte; dissolved metal, deposits, current and gas at an electrode. */
     public Map<String, Double> chemistry(long partId) {
         Map<String, Double> out = new java.util.LinkedHashMap<>();
+        var gas = gasOfPart.get(partId);
+        if (gas != null) {
+            out.put("Gas pressure bar", gas.pressure(solver) / 1e5);
+            out.put("Gas temperature °C", gas.temperature(solver) - 273.15);
+            var sp = gas.species();
+            for (int i = 0; i < sp.size(); i++) {
+                double xf = gas.moleFraction(solver, i);
+                if (xf > 1e-6) out.put(sp.get(i).id() + " %", 100 * xf);
+            }
+        }
         ElectrochemicalCell cell = cells.get(partId);
         if (cell != null) {
             for (var sp : cell.allMoles(solver).entrySet()) {
@@ -353,6 +365,8 @@ public final class CompiledAssembly {
      * plated onto it as the film builds up (fully covered at ~1e-4 mol/m², a sub-micrometre film).
      */
     public int chemicalColour(long partId) {
+        var gas = gasOfPart.get(partId);
+        if (gas != null) return gasColour(gas, assembly.get(partId));
         ElectrochemicalCell cell = cells.get(partId);
         if (cell != null) {
             Map<String, Double> conc = new java.util.HashMap<>();
@@ -500,6 +514,8 @@ public final class CompiledAssembly {
     public double[] loggerSample(long partId) {
         Probe p = probe(partId);
         double[] f = fluid(partId);
+        var gas = gasOfPart.get(partId);
+        if (f == null && gas != null) f = new double[]{gas.pressure(solver), gas.temperature(solver), gas.mass(solver), Double.NaN};
         double nan = Double.NaN;
         if (p == null) return new double[]{nan, nan, nan, nan, nan, nan, nan, nan, nan};
         boolean moving = p.bodyIndex() > 0;
@@ -507,9 +523,40 @@ public final class CompiledAssembly {
                 moving ? p.angle() : nan, f == null ? nan : f[0], f == null ? nan : f[1], f == null ? nan : f[3]};
     }
 
+    /** The reacting gas held in a sealed vessel, or null. */
+    public dev.emergence.core.sim.elements.GasReactor gas(long partId) {
+        return gasOfPart.get(partId);
+    }
+
+    public TransientSolver solverView() {
+        return solver;
+    }
+
     /** A potentiometer's wiper position as a fraction of its track (0 at end A, 1 at end B), or NaN. */
     public double wiper(long partId) {
         return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Potentiometer pot ? pot.wiper(solver) : Double.NaN;
+    }
+
+    /**
+     * Colour of a gas seen through its vessel (glass): Beer–Lambert transmission e^{−σ N_A c L} per channel for
+     * the coloured species, over the vessel's width. NO₂ absorbs strongly in the blue (σ ≈ 5·10⁻²³ m² at 465 nm,
+     * 2.2·10⁻²³ at 545 nm, 0.7·10⁻²³ at 610 nm; Vandaele et al. 1998), so it looks yellow-brown to red-brown;
+     * the other species are colourless. Returns −1 for a colourless gas.
+     */
+    private int gasColour(dev.emergence.core.sim.elements.GasReactor gas, Part p) {
+        double[] sigma = {0.7e-23, 2.2e-23, 5.0e-23};
+        double na = dev.emergence.core.units.PhysicalConstants.AVOGADRO;
+        double len = p == null ? 0.05 : PartGeometry.transverseSize(p);
+        double c = 0;
+        var sp = gas.species();
+        for (int i = 0; i < sp.size(); i++) if (sp.get(i).id().equals("NO2")) c = Math.max(0, gas.moles(solver, i)) / gas.volume();
+        if (c * len < 1e-9) return -1;
+        int rgb = 0;
+        for (int k = 0; k < 3; k++) {
+            double t = Math.exp(-sigma[k] * na * c * len);
+            rgb = (rgb << 8) | (int) Math.round(235 * t + 10);
+        }
+        return rgb;
     }
 
     /** Captures the dynamic state keyed by part id. */
@@ -530,6 +577,12 @@ public final class CompiledAssembly {
             s.fluids().put(e.getKey(), v.twoPhase()
                     ? new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode()), v.phase(solver)}
                     : new double[]{solver.x(v.pressureNode()), solver.x(v.temperatureNode())});
+        }
+        for (var e : gasOfPart.entrySet()) {
+            var g = e.getValue();
+            s.fluids().put(e.getKey(), new double[]{g.pressure(solver), g.temperature(solver)});
+            var sp = g.species();
+            for (int i = 0; i < sp.size(); i++) s.chemistry().put("G" + e.getKey() + ":" + sp.get(i).id(), g.moles(solver, i));
         }
         for (var e : cells.entrySet()) {
             for (var sp : e.getValue().allMoles(solver).entrySet()) {

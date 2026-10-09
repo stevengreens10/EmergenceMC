@@ -116,6 +116,27 @@ public final class AutoShowcase {
                 STEPS.add(new Step(220, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank"), -1),
                         "showcase-" + (i + 1) + "-" + id + "-raised"));
             }
+            if (id.equals("explosion")) {
+                // close the heater switch with the data logger on the can's gas: shoot when the gas runs away
+                STEPS.add(new Step(4000, () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
+                    BlockPos at = DemoBuilder.partBlock(plot, e, "can");
+                    if (server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+                        PlacedPart can = find(be, PartKind.TANK);
+                        if (can != null) SimulationManager.get(server.overworld()).attachLogger(p, at, can.id, "Can (methane-air)");
+                    }
+                    SimulationManager.get(server.overworld()).showLogger(p, "fluid temperature", 2);
+                    toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch"));
+                    LoggerHud.showcase = true;
+                }, "showcase-" + (i + 1) + "-" + id + "-ignited", () -> {
+                    var players = server.getPlayerList().getPlayers();
+                    if (players.isEmpty()) return false;
+                    double t = SimulationManager.get(server.overworld()).loggerLatest(players.get(0));
+                    return t > 1500;
+                }));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }

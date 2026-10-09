@@ -66,6 +66,9 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     private static final class Ctx {
         PoseStack ps;
         VertexConsumer solid, glass;
+        /** Where box()/quad() draw (null: the opaque buffer) and with what alpha. */
+        VertexConsumer quadTarget;
+        int quadAlpha = 255;
         int light;
         int glowRgb = -1; // −1: not glowing
         float glowMix;
@@ -92,7 +95,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 c.glass = buffers.getBuffer(Sheets.translucentCullBlockSheet());
             }
             for (PlacedPart p : be.parts()) {
-                boolean glassy = p.kind == PartKind.ELECTROLYTE || p.kind == PartKind.LED;
+                boolean glassy = p.kind == PartKind.ELECTROLYTE || p.kind == PartKind.LED || isFlask(p);
                 if (pass == 1 && !glassy) continue;
                 if (glassy) glassPending = true;
                 ps.pushPose();
@@ -127,6 +130,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 float ex = ext[f.xAxis], ey = ext[f.yAxis], ez = ext[f.zAxis]; // extents in model axes [cells]
                 if (p.kind == PartKind.LED) ledState(c, p);
                 if (pass == 0) drawPart(c, be, p, f, ex, ey, ez, bodyAngle, pose);
+                else if (isFlask(p)) drawFlask(c, p);
                 else drawModel(c, p.kind == PartKind.LED ? "led" : "electrolyte", p, ex, ey, ez, true);
                 ps.popPose();
             }
@@ -197,7 +201,9 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case ELECTROLYTE -> {
                 // the jar's glass and liquid go in the translucent pass
             }
-            case TANK -> drawModel(c, "tank", p, ex, ey, ez, false);
+            case TANK -> {
+                if (!isFlask(p)) drawModel(c, "tank", p, ex, ey, ez, false);
+            }
             case VALVE -> drawModel(c, "valve", p, 1, 1, ez, false);
             case PIPE -> drawPipe(c, be, p, f);
             case ROTOR -> drawRotor(c, p, ex, ey, ez);
@@ -267,6 +273,26 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         lo[rem] = r0;
         hi[rem] = r1;
         box(c, s, rgb, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
+    }
+
+    /** A glass tank: drawn see-through in the translucent pass, with its gas in the colour chemistry gives it. */
+    private static boolean isFlask(PlacedPart p) {
+        return p.kind == PartKind.TANK && p.spec.resolveMaterial().id().equals("glass");
+    }
+
+    /** Glass shell and, if the gas inside is coloured, a tinted volume of gas within it. */
+    private void drawFlask(Ctx c, PlacedPart p) {
+        c.quadTarget = c.glass;
+        TextureAtlasSprite gl = PartModels.sprite("glass");
+        int gas = ClientSimState.colour(p.id, -1);
+        if (gas >= 0) {
+            c.quadAlpha = 190;
+            box(c, gl, gas, -0.43f, -0.43f, -0.43f, 0.43f, 0.43f, 0.43f);
+        }
+        c.quadAlpha = 80;
+        box(c, gl, 0xE8F4F8, -0.46f, -0.46f, -0.46f, 0.46f, 0.46f, 0.46f);
+        c.quadTarget = null;
+        c.quadAlpha = 255;
     }
 
     /** Photodiode: a small black body with a clear window on its sensitive face; a large-area one is a blue solar
@@ -812,9 +838,10 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         int k = Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz) ? 0 : Math.abs(ny) >= Math.abs(nz) ? 1 : 2;
         float[][] v = {{ax, ay, az}, {bx, by, bz}, {cx, cy, cz}, {dx, dy, dz}};
         int ui = k == 0 ? 1 : 0, vi = k == 2 ? 1 : 2;
+        VertexConsumer vc = c.quadTarget != null ? c.quadTarget : c.solid;
         for (float[] p : v) {
             float u = frac(p[ui] + 0.5f), w = frac(p[vi] + 0.5f);
-            vertex(c, c.solid, s, rgb, p[0], p[1], p[2], u, w, nx, ny, nz);
+            vertex(c, vc, s, rgb, p[0], p[1], p[2], u, w, nx, ny, nz);
         }
     }
 
@@ -826,7 +853,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     private static void vertex(Ctx c, VertexConsumer vc, TextureAtlasSprite s, int rgb, float x, float y, float z,
                                float u, float v, float nx, float ny, float nz) {
         PoseStack.Pose last = c.ps.last();
-        vc.addVertex(last.pose(), x, y, z).setColor((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, 255)
+        vc.addVertex(last.pose(), x, y, z).setColor((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255, c.quadAlpha)
                 .setUv(s.getU(u), s.getV(v)).setOverlay(OverlayTexture.NO_OVERLAY).setLight(c.light)
                 .setNormal(last, nx, ny, nz);
     }

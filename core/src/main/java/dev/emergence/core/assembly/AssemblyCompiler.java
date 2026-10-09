@@ -1018,7 +1018,8 @@ public final class AssemblyCompiler {
                                 double dz = q.center().y() - p.center().y();
                                 FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(),
                                         vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin),
-                                        Math.max(roughness(p), roughness(q)), k, dz);
+                                        Math.max(roughness(p), roughness(q)), k, dz)
+                                        .withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id());
                                 double dhMin = Math.min(PartGeometry.hydraulicDiameter(p), PartGeometry.hydraulicDiameter(q));
                                 if (p.kind() != PartKind.TANK && q.kind() != PartKind.TANK) b.withHydraulicDiameter(dhMin);
                                 Part rotor = rotorFor(p, d, q);
@@ -1054,7 +1055,8 @@ public final class AssemblyCompiler {
             double half = halfExtent(p, d);
             // exit (or entry) loss K = 1 of a free jet
             FluidBranch b = new FluidBranch(v.pressureNode(), v.temperatureNode(), atm[0], atm[1], v.fluid(), half,
-                    equivalentDiameter(PartGeometry.passageArea(p)), roughness(p), 1.0, d.dy * half);
+                    equivalentDiameter(PartGeometry.passageArea(p)), roughness(p), 1.0, d.dy * half)
+                    .withTag(p.kind() + "#" + p.id() + "->air");
             if (p.kind() == PartKind.VALVE) {
                 b.withOrifice(PartGeometry.passageArea(p), 0.6);
                 b.setOpening(p.switchClosed() ? 1 : 0);

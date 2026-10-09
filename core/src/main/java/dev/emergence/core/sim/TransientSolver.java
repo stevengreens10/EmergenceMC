@@ -326,7 +326,7 @@ public final class TransientSolver implements StateView {
                 double tol = relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i];
                 if (Math.abs(dx[i]) > tol) {
                     small = false;
-                    lastBadUnknown = net.unknownName(i);
+                    lastBadUnknown = net.unknownName(i) + " = " + xTrial[i] + " (step " + dx[i] + ")";
                 }
             }
             if (DEBUG) System.out.println("t=" + t + " h=" + h + " it=" + it + " m=" + m + " x=" + Arrays.toString(xTrial) + " dx=" + Arrays.toString(dx));

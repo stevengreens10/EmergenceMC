@@ -52,6 +52,7 @@ public final class FluidBranch implements Element {
     private Node rotor;
     private double rotorRadius, rotorArea, stagger, pitch = 1, bodySense = 1, flowAlongAxis = 1, cd0 = 0.02, solidity = 0.8;
     private int mIdx;
+    private String tag = "";
     private double mScale;
 
     /**
@@ -147,6 +148,12 @@ public final class FluidBranch implements Element {
         return Math.sin(2 * alpha) * (1 + (Math.PI - 1) * Math.exp(-(s / 0.25) * (s / 0.25)));
     }
 
+    /** Diagnostic tag (e.g. the parts this branch joins), shown in solver messages. */
+    public FluidBranch withTag(String tag) {
+        this.tag = "[" + tag + "]";
+        return this;
+    }
+
     public int flowIndex() {
         return mIdx;
     }
@@ -159,7 +166,7 @@ public final class FluidBranch implements Element {
     @Override
     public void setup(SetupContext ctx) {
         mScale = Math.max(fluid.density(101_325, 293.15) * area * 1e-3, 1e-9); // 1 mm/s through the bore
-        mIdx = ctx.allocUnknown("mdot", 1e-6 * mScale);
+        mIdx = ctx.allocUnknown("mdot" + tag, 1e-6 * mScale);
     }
 
     /** Evaluates [R (Pa), energy leaving a (W), energy leaving b (W), torque taken from the rotor (N·m)]. */

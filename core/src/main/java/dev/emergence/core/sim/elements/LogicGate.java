@@ -1,0 +1,180 @@
+package dev.emergence.core.sim.elements;
+
+import dev.emergence.core.sim.Element;
+import dev.emergence.core.sim.LoadContext;
+import dev.emergence.core.sim.Node;
+import dev.emergence.core.sim.SetupContext;
+import dev.emergence.core.sim.StateView;
+
+/**
+ * Reduced-order CMOS logic integrated circuit (74HC-class): the abstraction level above the transistor
+ * models, for circuits too large to simulate device by device. It keeps the physics that digital design
+ * depends on:
+ * <ul>
+ *   <li><b>Supply</b>: the chip has real V_DD and GND pins; its output stage is a pull-up and a pull-down
+ *       conductance (the on-resistances of the output transistors, ~50 Ω) weighted by the output state, so
+ *       output current comes from the supply and the dissipation heats the chip.</li>
+ *   <li><b>Input thresholds</b>: an input's logic value is a steep sigmoid of its voltage around V_DD/2
+ *       (transition width 3 % of V_DD) — the switching point of a CMOS input stage, validated against the
+ *       transistor-level inverter.</li>
+ *   <li><b>Propagation delay</b>: the output state relaxes towards the logic function with time constant
+ *       t_pd (default 10 ns), so outputs never jump and the solver integrates transitions smoothly.</li>
+ *   <li><b>Memory</b>: the D flip-flop is master–slave: the master follows D while the clock is low, the
+ *       slave copies the master while it is high — rising-edge triggered from the same relaxation law.</li>
+ *   <li><b>Hysteresis</b>: the Schmitt inverter's threshold moves between 0.4 and 0.6 V_DD with its own
+ *       output, the positive feedback that makes RC oscillators possible.</li>
+ * </ul>
+ * Fuzzy (continuous) forms of the Boolean functions keep everything differentiable.
+ */
+public final class LogicGate implements Element {
+    // (Fidelity note: real gate thresholds depend on internal device sizing — a transistor-level NAND with
+    // equal devices switches near 0.65 V_DD — whereas this model uses the V_DD/2 of ratioed 74HC parts.)
+    public enum Function { BUFFER, NOT, NAND, NOR, AND, OR, XOR, SCHMITT_NOT, DFF }
+
+    private final Function fn;
+    private final Node a, b, out, outBar, vdd, gnd, thermal;
+    private final double tpd, gOn;
+    private int sIdx, mIdx, sSlot, mSlot;
+
+    /**
+     * @param a      first input (D for a flip-flop)
+     * @param b      second input (clock for a flip-flop; unused for single-input functions — may be null)
+     * @param out    output (Q for a flip-flop)
+     * @param outBar complementary output Q̄ (flip-flop only; may be null)
+     */
+    public LogicGate(Function fn, Node a, Node b, Node out, Node outBar, Node vdd, Node gnd, double propagationDelay,
+                     double outputResistance, Node thermal) {
+        this.fn = fn;
+        this.a = a;
+        this.b = b;
+        this.out = out;
+        this.outBar = outBar;
+        this.vdd = vdd;
+        this.gnd = gnd;
+        this.tpd = propagationDelay;
+        this.gOn = 1 / outputResistance;
+        this.thermal = thermal;
+    }
+
+    @Override
+    public void setup(SetupContext ctx) {
+        sIdx = ctx.allocUnknown("logic(" + fn + ")", 1e-6);
+        sSlot = ctx.allocState(0.02);
+        if (fn == Function.DFF) {
+            mIdx = ctx.allocUnknown("master", 1e-6);
+            mSlot = ctx.allocState(0.02);
+        }
+    }
+
+    private static double sig(double x) {
+        return 1 / (1 + Math.exp(-x));
+    }
+
+    /** Logic value of a node voltage and its derivative wrt that voltage (supply span given). */
+    private static double[] level(double v, double span, double frac) {
+        double w = 0.03 * Math.max(span, 0.1);
+        double x = (v - frac * span) / w;
+        double s = sig(Math.max(-40, Math.min(40, x)));
+        return new double[]{s, s * (1 - s) / w};
+    }
+
+    @Override
+    public void load(LoadContext ctx) {
+        double vg = ctx.x(gnd.index()), span = ctx.x(vdd.index()) - vg;
+        double s = ctx.x(sIdx);
+        double va = ctx.x(a.index()) - vg, vb = b != null ? ctx.x(b.index()) - vg : 0;
+        // Schmitt: the threshold is 0.6 V_DD while the output is high and 0.4 V_DD while it is low, switching
+        // sharply with the output state (a soft dependence would fold the hysteresis loop shut)
+        double hs = sig(Math.max(-40, Math.min(40, (s - 0.5) / 0.05)));
+        double dhs = hs * (1 - hs) / 0.05;
+        double[] la = level(va, span, fn == Function.SCHMITT_NOT ? 0.4 + 0.2 * hs : 0.5);
+        double[] lb = b != null ? level(vb, span, 0.5) : new double[]{0, 0};
+        double x = la[0], y = lb[0];
+        // target and its partial derivatives wrt x and y (fuzzy Boolean algebra)
+        double t, tx, ty;
+        switch (fn) {
+            case BUFFER -> { t = x; tx = 1; ty = 0; }
+            case NOT, SCHMITT_NOT -> { t = 1 - x; tx = -1; ty = 0; }
+            case AND -> { t = x * y; tx = y; ty = x; }
+            case NAND -> { t = 1 - x * y; tx = -y; ty = -x; }
+            case OR -> { t = x + y - x * y; tx = 1 - y; ty = 1 - x; }
+            case NOR -> { t = (1 - x) * (1 - y); tx = -(1 - y); ty = -(1 - x); }
+            case XOR -> { t = x + y - 2 * x * y; tx = 1 - 2 * y; ty = 1 - 2 * x; }
+            default -> { t = 0; tx = 0; ty = 0; }
+        }
+        if (fn == Function.DFF) {
+            // master follows D while the clock is low; slave (the output) copies the master while it is high
+            double m = ctx.x(mIdx), clk = y;
+            double dm = ctx.ddt(mSlot, m);
+            ctx.addF(mIdx, tpd * dm - (x - m) * (1 - clk));
+            ctx.addJ(mIdx, mIdx, tpd * ctx.alpha() + (1 - clk));
+            ctx.addJ(mIdx, a.index(), -la[1] * (1 - clk));
+            ctx.addJ(mIdx, gnd.index(), la[1] * (1 - clk));
+            ctx.addJ(mIdx, b.index(), (x - m) * lb[1]);
+            ctx.addJ(mIdx, gnd.index(), -(x - m) * lb[1]);
+            double ds = ctx.ddt(sSlot, s);
+            ctx.addF(sIdx, tpd * ds - (m - s) * clk);
+            ctx.addJ(sIdx, sIdx, tpd * ctx.alpha() + clk);
+            ctx.addJ(sIdx, mIdx, -clk);
+            ctx.addJ(sIdx, b.index(), -(m - s) * lb[1]);
+            ctx.addJ(sIdx, gnd.index(), (m - s) * lb[1]);
+        } else {
+            double ds = ctx.ddt(sSlot, s);
+            ctx.addF(sIdx, tpd * ds - (t - s));
+            ctx.addJ(sIdx, sIdx, tpd * ctx.alpha() + 1);
+            ctx.addJ(sIdx, a.index(), -tx * la[1]);
+            ctx.addJ(sIdx, gnd.index(), tx * la[1]);
+            if (fn == Function.SCHMITT_NOT) {
+                // the threshold moves with the output: ∂t/∂s through the threshold
+                ctx.addJ(sIdx, sIdx, -tx * la[1] * (-0.2 * dhs * span));
+            }
+            if (b != null && ty != 0) {
+                ctx.addJ(sIdx, b.index(), -ty * lb[1]);
+                ctx.addJ(sIdx, gnd.index(), ty * lb[1]);
+            }
+        }
+        stage(ctx, out, Math.max(0, Math.min(1, s)), sIdx, 1);
+        if (outBar != null) stage(ctx, outBar, Math.max(0, Math.min(1, 1 - s)), sIdx, -1);
+    }
+
+    /** Output stage: pull-up conductance s·G_on to V_DD and pull-down (1 − s)·G_on to GND. */
+    private void stage(LoadContext ctx, Node o, double s, int stateIdx, double sense) {
+        double leak = 1e-9;
+        double gu = s * gOn + leak, gd = (1 - s) * gOn + leak;
+        double vo = ctx.x(o.index()), vu = ctx.x(vdd.index()), vl = ctx.x(gnd.index());
+        double iu = gu * (vo - vu), il = gd * (vo - vl); // currents leaving the output node
+        ctx.addFlow(o, vdd, iu);
+        ctx.addFlow(o, gnd, il);
+        ctx.stampConductance(o, vdd, gu);
+        ctx.stampConductance(o, gnd, gd);
+        double diu = sense * gOn * (vo - vu), dil = -sense * gOn * (vo - vl);
+        ctx.addFlowJ(o, vdd, stateIdx, diu);
+        ctx.addFlowJ(o, gnd, stateIdx, dil);
+        if (thermal != null) {
+            ctx.addF(thermal.index(), -(gu * (vo - vu) * (vo - vu) + gd * (vo - vl) * (vo - vl)));
+        }
+    }
+
+    /** Output logic state (0..1). */
+    public double state(StateView s) {
+        return s.x(sIdx);
+    }
+
+    @Override
+    public double untrackedLoss(StateView st) {
+        if (thermal != null) return 0;
+        double loss = 0;
+        for (Node o : new Node[]{out, outBar}) {
+            if (o == null) continue;
+            double s = Math.max(0, Math.min(1, o == out ? st.x(sIdx) : 1 - st.x(sIdx)));
+            double vo = st.x(o), vu = st.x(vdd), vl = st.x(gnd);
+            loss += (s * gOn + 1e-9) * (vo - vu) * (vo - vu) + ((1 - s) * gOn + 1e-9) * (vo - vl) * (vo - vl);
+        }
+        return loss;
+    }
+
+    @Override
+    public String label() {
+        return "LogicGate(" + fn + ")";
+    }
+}

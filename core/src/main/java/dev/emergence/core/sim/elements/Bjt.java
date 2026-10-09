@@ -38,7 +38,7 @@ public final class Bjt implements Element {
     }
 
     private double temp(StateView s) {
-        return thermal != null ? Math.max(s.x(thermal.index()), 50) : 300;
+        return thermal != null ? Diode.deviceTemperature(s.x(thermal.index())) : 300;
     }
 
     private static double isat(double is0, double t) {

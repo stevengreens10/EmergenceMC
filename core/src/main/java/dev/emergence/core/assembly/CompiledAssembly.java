@@ -461,6 +461,52 @@ public final class CompiledAssembly {
         return new Probe(partId, p.kind(), temp, i, v, pw, w, th, b == null ? 0 : b.index);
     }
 
+    /** The quantities a data logger records from a part (NaN where the part has no such quantity). */
+    public static final java.util.List<dev.emergence.core.instruments.DataLogger.Channel> LOGGER_CHANNELS = java.util.List.of(
+            new dev.emergence.core.instruments.DataLogger.Channel("temperature", "K"),
+            new dev.emergence.core.instruments.DataLogger.Channel("current", "A"),
+            new dev.emergence.core.instruments.DataLogger.Channel("voltage", "V"),
+            new dev.emergence.core.instruments.DataLogger.Channel("power", "W"),
+            new dev.emergence.core.instruments.DataLogger.Channel("angular velocity", "rad/s"),
+            new dev.emergence.core.instruments.DataLogger.Channel("angle", "rad"),
+            new dev.emergence.core.instruments.DataLogger.Channel("pressure", "Pa"),
+            new dev.emergence.core.instruments.DataLogger.Channel("fluid temperature", "K"),
+            new dev.emergence.core.instruments.DataLogger.Channel("mass flow", "kg/s"));
+
+    private final Map<dev.emergence.core.instruments.DataLogger, java.util.function.Consumer<TransientSolver>> loggers = new HashMap<>();
+
+    /** A logger for {@link #LOGGER_CHANNELS} sampling every {@code interval} seconds, holding {@code capacity} samples. */
+    public static dev.emergence.core.instruments.DataLogger newLogger(double interval, int capacity) {
+        return new dev.emergence.core.instruments.DataLogger(LOGGER_CHANNELS, interval, capacity);
+    }
+
+    /** Connects a data logger to a part: it is fed the part's quantities after every accepted solver step. */
+    public void attachLogger(dev.emergence.core.instruments.DataLogger log, long partId) {
+        detachLogger(log);
+        if (assembly.get(partId) == null) return;
+        java.util.function.Consumer<TransientSolver> l = s -> log.offer(s.time(), loggerSample(partId));
+        log.rebase(solver.time());
+        log.offer(solver.time(), loggerSample(partId));
+        solver.addStepListener(l);
+        loggers.put(log, l);
+    }
+
+    public void detachLogger(dev.emergence.core.instruments.DataLogger log) {
+        var l = loggers.remove(log);
+        if (l != null) solver.removeStepListener(l);
+    }
+
+    /** One reading of {@link #LOGGER_CHANNELS} from a part. */
+    public double[] loggerSample(long partId) {
+        Probe p = probe(partId);
+        double[] f = fluid(partId);
+        double nan = Double.NaN;
+        if (p == null) return new double[]{nan, nan, nan, nan, nan, nan, nan, nan, nan};
+        boolean moving = p.bodyIndex() > 0;
+        return new double[]{p.temperature(), p.current(), p.voltage(), p.power(), moving ? p.angularVelocity() : nan,
+                moving ? p.angle() : nan, f == null ? nan : f[0], f == null ? nan : f[1], f == null ? nan : f[3]};
+    }
+
     /** A potentiometer's wiper position as a fraction of its track (0 at end A, 1 at end B), or NaN. */
     public double wiper(long partId) {
         return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Potentiometer pot ? pot.wiper(solver) : Double.NaN;

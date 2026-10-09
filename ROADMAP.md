@@ -69,7 +69,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ⬜ Advanced EM, aerodynamics, multi-joint robots (joints on moving bodies), state-space control
 
 ## Phase 7–8 — Broad scientific expansion, continuous expansion
-⬜ Optics, acoustics, geology, environmental, nuclear (non-actionable), biology, instruments
+✅ Data logger / oscilloscope: 1 kHz sampling of any part, on-screen trace, CSV export
+⬜ Optics (ray), acoustics, geology, environmental, nuclear (non-actionable), biology; spectrum analyser,
+   logic analyser, multi-channel loggers
 
 ## Demo world
 ✅ Gallery generator (`./gradlew generateDemoWorld`), `/emergence demo`, automated screenshot tour.

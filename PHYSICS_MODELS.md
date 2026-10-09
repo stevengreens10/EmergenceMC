@@ -311,3 +311,12 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   ideal single pole (closed-loop bandwidth GBW/gain), large steps slew at SR, saturation recovers without wind-up.
   The output is s behind 75 Ω; sourced current is drawn from V₊, sunk current returned to V₋, plus 0.5 mA
   quiescent; all dissipation heats the part. Inputs draw no current (3 pF each).
+
+## Instruments: data logger / oscilloscope (`DataLogger`, `CompiledAssembly.attachLogger`)
+* Fed the probed quantities of one part (temperature, current, voltage, power, speed, angle, fluid pressure,
+  fluid temperature, mass flow) after every accepted solver step; resampled onto a fixed 1 kHz clock of simulated
+  time by linear interpolation between steps; stored as 32-bit floats in a 65 536-sample ring buffer (≈ 65 s).
+  Bandwidth is half the sample rate: faster phenomena the solver resolves alias, as on a real instrument.
+* Display: peak-detect envelope (min/max per column) of one channel over 0.1/1/10/60 s, auto-ranged. Export:
+  `/emergence log export` writes CSV (time plus every channel, empty fields where a part lacks a quantity).
+* A recompiled island restarts its clock; the logger rebases so its record runs on without a jump.

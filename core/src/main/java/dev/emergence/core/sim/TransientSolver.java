@@ -25,6 +25,7 @@ public final class TransientSolver implements StateView {
     private static final boolean DEBUG = Boolean.getBoolean("emergence.debugSolver");
     private final Network net;
     private final List<Element> elements;
+    private final List<java.util.function.Consumer<TransientSolver>> stepListeners = new java.util.ArrayList<>();
     private final int n, ns;
     private final LinearSystem jac;
     private final LoadContext ctx = new LoadContext();
@@ -217,6 +218,15 @@ public final class TransientSolver implements StateView {
             stepAdaptive(h);
         }
         return t - tStart;
+    }
+
+    /** Calls {@code l} after every accepted step (instruments sampling the state). */
+    public void addStepListener(java.util.function.Consumer<TransientSolver> l) {
+        stepListeners.add(l);
+    }
+
+    public void removeStepListener(java.util.function.Consumer<TransientSolver> l) {
+        stepListeners.remove(l);
     }
 
     public double advance(double duration) {
@@ -502,6 +512,7 @@ public final class TransientSolver implements StateView {
 
         for (Element e : elements) e.acceptStep(this, t, h);
         updateLedger(h);
+        for (int i = 0; i < stepListeners.size(); i++) stepListeners.get(i).accept(this);
         return 0;
     }
 

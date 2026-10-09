@@ -30,7 +30,7 @@ public final class Thermistor implements Element {
 
     @Override
     public void load(LoadContext ctx) {
-        double t = Math.max(ctx.x(thermal.index()), 50), v = ctx.x(a.index()) - ctx.x(b.index());
+        double t = Diode.deviceTemperature(ctx.x(thermal.index())), v = ctx.x(a.index()) - ctx.x(b.index());
         double g = 1 / resistance(t);
         double dg = g * beta / (t * t); // dG/dT
         ctx.addFlow(a, b, g * v);

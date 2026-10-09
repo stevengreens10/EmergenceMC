@@ -55,8 +55,11 @@ public final class AutoShowcase {
             var e = ex.get(i);
             String id = e.id;
             Runnable view = () -> look(server, plot.getX() + e.viewX, plot.getY() + e.viewHeight, plot.getZ() + e.viewZ,
-                    180, (float) e.viewPitch);
-            STEPS.add(new Step(50, view, "showcase-" + (i + 1) + "-" + id));
+                    (float) e.viewYaw, (float) e.viewPitch);
+            STEPS.add(new Step(50, () -> {
+                LoggerHud.showcase = false;
+                view.run();
+            }, "showcase-" + (i + 1) + "-" + id));
             if (id.equals("glow") || id.equals("fuse")) {
                 BlockPos wire = DemoBuilder.partBlock(plot, e, "wire");
                 STEPS.add(new Step(40, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
@@ -115,6 +118,21 @@ public final class AutoShowcase {
             }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
+            }
+            if (id.equals("generator")) {
+                // the data logger clipped to the load resistor: its screen shows the alternating EMF
+                STEPS.add(new Step(30, () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
+                    BlockPos at = DemoBuilder.partBlock(plot, e, "load");
+                    if (server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+                        PlacedPart load = find(be, PartKind.RESISTOR);
+                        if (load != null) SimulationManager.get(server.overworld()).attachLogger(p, at, load.id, "Resistor (load, 20 Ω)");
+                    }
+                    crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank"));
+                    LoggerHud.showcase = true;
+                }, "showcase-" + (i + 1) + "-" + id + "-scope"));
             }
             if (id.equals("generator") || id.equals("gears") || id.equals("miniature") || id.equals("fan") || id.equals("lightbarrier")) {
                 STEPS.add(new Step(40, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank")),

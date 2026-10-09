@@ -43,7 +43,7 @@ public final class Diode implements Element {
     }
 
     private double temp(StateView s) {
-        return thermal != null ? Math.max(s.x(thermal.index()), 50.0) : tFixed;
+        return thermal != null ? deviceTemperature(s.x(thermal.index())) : tFixed;
     }
 
     private double isat(double T) {
@@ -94,5 +94,15 @@ public final class Diode implements Element {
         if (thermal != null) return 0.0;
         double v = s.across(a, k);
         return v * iv(v, temp(s))[0];
+    }
+
+    /**
+     * The temperature a device equation is evaluated at: the part's temperature bounded to 50–1500 K. A Newton
+     * iterate far from the solution can put a junction's heat node anywhere (even non-finite); the bound keeps the
+     * temperature-dependent saturation current finite so the iteration can recover. Converged states lie well
+     * inside it (silicon devices fail long before 1500 K).
+     */
+    public static double deviceTemperature(double t) {
+        return Double.isNaN(t) ? 300 : Math.max(50, Math.min(1500, t));
     }
 }

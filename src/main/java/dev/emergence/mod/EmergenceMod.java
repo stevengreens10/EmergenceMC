@@ -46,7 +46,10 @@ public final class EmergenceMod {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("1").playToClient(IslandSyncPayload.TYPE, IslandSyncPayload.STREAM_CODEC, EmergenceMod::handleSync);
+        var reg = event.registrar("1");
+        reg.playToClient(IslandSyncPayload.TYPE, IslandSyncPayload.STREAM_CODEC, EmergenceMod::handleSync);
+        reg.playToClient(dev.emergence.mod.net.LoggerSyncPayload.TYPE, dev.emergence.mod.net.LoggerSyncPayload.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.LoggerHud.apply(payload)));
     }
 
     private static void handleSync(IslandSyncPayload payload, IPayloadContext ctx) {
@@ -87,6 +90,29 @@ public final class EmergenceMod {
                     ctx.getSource().sendSuccess(() -> Component.literal(Profiler.report()), false);
                     return Command.SINGLE_SUCCESS;
                 }))
+                .then(Commands.literal("log").then(Commands.literal("export").executes(ctx -> {
+                    var src = ctx.getSource();
+                    var player = src.getPlayerOrException();
+                    var s = SimulationManager.get(src.getLevel()).logger(player);
+                    if (s == null || s.log().size() == 0) {
+                        src.sendFailure(Component.literal("Your data logger has recorded nothing yet: use it on a part."));
+                        return 0;
+                    }
+                    try {
+                        java.nio.file.Path dir = src.getServer().getServerDirectory().resolve("emergence-logs");
+                        java.nio.file.Files.createDirectories(dir);
+                        String stamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+                        String name = stamp + "-" + s.title().replaceAll("[^A-Za-z0-9]+", "_").replaceAll("_+$", "") + ".csv";
+                        java.nio.file.Path file = dir.resolve(name);
+                        java.nio.file.Files.writeString(file, s.log().csv());
+                        int n = s.log().size();
+                        src.sendSuccess(() -> Component.literal("Saved " + n + " samples to " + file.toAbsolutePath()), false);
+                    } catch (java.io.IOException e) {
+                        src.sendFailure(Component.literal("Could not write the log: " + e.getMessage()));
+                        return 0;
+                    }
+                    return Command.SINGLE_SUCCESS;
+                })))
                 .then(Commands.literal("demo").requires(s -> s.hasPermission(2)).executes(ctx -> {
                     var src = ctx.getSource();
                     net.minecraft.core.BlockPos at = net.minecraft.core.BlockPos.containing(src.getPosition()).offset(3, 0, -6);

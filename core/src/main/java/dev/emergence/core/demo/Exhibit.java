@@ -51,6 +51,13 @@ public final class Exhibit {
 
     /** Suggested camera position (blocks from the plot origin; the camera looks north) and pitch [°]. */
     public double viewX = 8, viewHeight = 6, viewZ = 18, viewPitch = 25;
+    /** Camera heading [°, Minecraft yaw: 180 looks north, 90 west, −90 east]. */
+    public double viewYaw = 180;
+
+    public Exhibit view(double x, double height, double z, double pitch, double yaw) {
+        this.viewYaw = yaw;
+        return view(x, height, z, pitch);
+    }
 
     public Exhibit view(double x, double height, double z, double pitch) {
         this.viewX = x;

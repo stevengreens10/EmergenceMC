@@ -33,14 +33,14 @@ public final class ControlExhibits {
         String st = "steel_1045", ny = "nylon_66", cu = "copper";
         int y = 4, z = 5;
         // ---- arm shaft along x: ball bearing on a column at x = 1, the feedback potentiometer (also its second
-        // bearing) at x = 8 held from the south side
-        int shaft = e.fill(SHAFT, st, 1, y, z, 8, y, z, Dir.EAST, "diameter", 0.012);
+        // bearing) at x = 7 held from the south side, the arm on the outboard end at x = 9
+        int shaft = e.fill(SHAFT, st, 1, y, z, 9, y, z, Dir.EAST, "diameter", 0.012);
         e.name("arm", shaft);
         e.init(shaft, new Exhibit.Initial(Double.NaN, 0, 0, Math.PI / 2)); // hanging down
         e.add(BEARING, st, 1, y, z, Dir.EAST);
         e.fill(BLOCK, st, 1, 0, z, 1, y - 1, z, Dir.UP);
-        e.name("feedback", e.add(POTENTIOMETER, "nylon_66", 8, y, z, Dir.EAST, "lead_axis", 1));
-        e.fill(BLOCK, st, 8, 0, z + 1, 8, y, z + 1, Dir.UP);
+        e.name("feedback", e.add(POTENTIOMETER, "nylon_66", 7, y, z, Dir.EAST, "lead_axis", 1));
+        e.fill(BLOCK, st, 7, 0, z + 1, 7, y, z + 1, Dir.UP);
         // ---- torque motor: a magnet on the shaft (magnetised along +z at θ = 0) surrounded by four coils in series,
         // two with vertical axes (flux ∝ −sin θ) and two with horizontal axes (flux ∝ cos θ): the total linkage
         // ∝ cos θ − sin θ, so the torque i·dΨ/dθ ∝ cos(θ − 45°) is strong over the arm's working range
@@ -54,8 +54,8 @@ public final class ControlExhibits {
         e.fill(BLOCK, st, 3, 0, z - 2, 3, y + 1, z - 2, Dir.UP);
         e.fill(BLOCK, ny, 3, 0, z + 2, 3, y, z + 2, Dir.UP);
         // ---- the arm: nylon hub on the shaft and a thin aluminium bar reaching south (horizontal at θ = 0)
-        e.add(BLOCK, ny, 5, y, z, Dir.UP, "fill", 0.5);
-        e.fill(BLOCK, "aluminium_6061", 5, y, z + 1, 5, y, z + 3, Dir.UP, "fill", 0.06);
+        e.add(BLOCK, ny, 9, y, z, Dir.UP, "fill", 0.5);
+        e.fill(BLOCK, "aluminium_6061", 9, y, z + 1, 9, y, z + 3, Dir.UP, "fill", 0.06);
         // ---- set-point knob: shaft in a silicone-damped bearing (it stays where it is left), the knob
         // potentiometer and a crank
         int ky = 2, kz = 13;
@@ -69,8 +69,8 @@ public final class ControlExhibits {
         e.name("crank", e.add(CRANK, st, 13, ky, kz, Dir.EAST, "radius", 0.06));
         // the knob's track sits between 3 kΩ to +12 V and 11 kΩ to −12 V, so it spans +9 … −1 V: its 270° ask for
         // the arm's working range, from 10° above horizontal to 100° below (the arm's own track spans ±12 V)
-        e.add(RESISTOR, "alumina", 8, 1, 9, Dir.EAST, "resistance", 3_000);
-        e.add(RESISTOR, "alumina", 8, 1, 12, Dir.EAST, "resistance", 11_000);
+        e.add(RESISTOR, "alumina", 11, 1, 6, Dir.SOUTH, "resistance", 3_000);
+        e.add(RESISTOR, "alumina", 11, 1, 10, Dir.SOUTH, "resistance", 11_000);
         // ---- electronics on the floor (y = 1)
         int f = 1;
         int bp = e.add(CAPACITOR, "alumina", 24, f, 2, Dir.EAST, "capacitance", 3000);
@@ -91,15 +91,15 @@ public final class ControlExhibits {
         Router r = new Router(e, 0, 0, 0, 31, 8, 15);
         // nets
         r.pin("vp", 25, f, 2).pin("vp", 23, f, 10).pin("vp", 18, f, 9)              // bank+ , NPN collector, op-amp V+
-                .pin("vp", 8, y + 1, z).pin("vp", 7, 1, 9);                          // arm pot B, knob divider
+                .pin("vp", 7, y + 1, z).pin("vp", 11, 1, 5);                          // arm pot B, knob divider
         r.pin("vn", 27, f, 2).pin("vn", 23, f, 13).pin("vn", 18, f, 7)              // bank−, PNP collector, op-amp V−
-                .pin("vn", 8, y - 1, z).pin("vn", 7, 1, 12);                         // arm pot A, knob divider
-        r.pin("kB", 9, 1, 9).pin("kB", 11, ky + 1, kz);
-        r.pin("kA", 9, 1, 12).pin("kA", 11, ky - 1, kz);
+                .pin("vn", 7, y - 1, z).pin("vn", 11, 1, 11);                         // arm pot A, knob divider
+        r.pin("kB", 11, 1, 7).pin("kB", 11, ky + 1, kz);
+        r.pin("kA", 11, 1, 9).pin("kA", 11, ky - 1, kz);
         r.pin("gnd", 23, f, 2).pin("gnd", 29, f, 2).pin("gnd", 15, f, 11)           // banks' 0 V, in+ divider
                 .pin("gnd", 2, y + 1, z);                                            // motor return
         r.pin("set", 11, ky, kz - 1).pin("set", 13, f, 8);
-        r.pin("pos", 8, y, z - 1).pin("pos", 13, f, 4).pin("pos", 13, f, 2);
+        r.pin("pos", 7, y, z - 1).pin("pos", 13, f, 4).pin("pos", 13, f, 2);
         r.pin("inP", 15, f, 8).pin("inP", 13, f, 11).pin("inP", 17, f, 8);
         r.pin("inN", 15, f, 4).pin("inN", 15, f, 2).pin("inN", 21, f, 5).pin("inN", 18, 0, 8);
         r.pin("out", 19, f, 8).pin("out", 22, f, 9).pin("out", 22, f, 12);
@@ -108,11 +108,11 @@ public final class ControlExhibits {
         r.pin("c1", 4, y + 1, z).pin("c1", 2, y - 1, z);
         r.pin("c2", 4, y - 1, z).pin("c2", 2, y, z - 1);
         r.pin("c3", 4, y, z - 1).pin("c3", 2, y, z + 1);
-        // the arm sweeps the plane x = 5 and the magnet the cells round the shaft at x = 3; the knob's crank turns at x = 13
-        r.keepClear(5, 0, 0, 5, 8, 10);
+        // the arm sweeps the plane x = 9 and the magnet the cells round the shaft at x = 3; the knob's crank turns at x = 13
+        r.keepClear(9, 0, 1, 9, 8, 9);
         r.keepClear(3, y - 1, z - 1, 3, y + 1, z + 1);
         r.keepClear(13, 0, kz - 2, 13, ky + 2, 15);
         r.route();
-        return e.view(14, 9, 24, 30);
+        return e.view(15, 7.5, 13, 20, 140);
     }
 }

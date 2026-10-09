@@ -63,6 +63,9 @@ public final class ModRegistries {
     public static final DeferredItem<MultimeterItem> MULTIMETER = ITEMS.register("multimeter",
             () -> new MultimeterItem(new Item.Properties().stacksTo(1)));
 
+    public static final DeferredItem<dev.emergence.mod.item.DataLoggerItem> DATA_LOGGER = ITEMS.register("data_logger",
+            () -> new dev.emergence.mod.item.DataLoggerItem(new Item.Properties().stacksTo(1)));
+
     /** Held in the off-hand, part items place miniature (1/16-block, true-scale) parts. */
     public static final DeferredItem<Item> TWEEZERS = ITEMS.register("precision_tweezers",
             () -> new Item(new Item.Properties().stacksTo(1)) {
@@ -77,6 +80,7 @@ public final class ModRegistries {
             .icon(() -> new ItemStack(PART_ITEMS.get(PartKind.COIL).get()))
             .displayItems((params, out) -> {
                 out.accept(MULTIMETER.get());
+                out.accept(DATA_LOGGER.get());
                 out.accept(TWEEZERS.get());
                 PartPresets.all().forEach(out::accept);
             })

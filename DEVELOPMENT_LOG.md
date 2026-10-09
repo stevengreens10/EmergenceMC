@@ -150,3 +150,14 @@ target before its integrator capped its slew at lim/τ ≈ 370 V/s — slew must
 the state; a single coil pair gives no torque where the magnet aligns with it (the hanging rest position), so two
 pairs at right angles make τ ∝ cos(θ − 45°); and the knob's wiper is scaled by divider resistors to ask only for
 angles the motor can reach.
+
+**Data logger.** An instrument that samples a part at 1 kHz of simulated time, hooked to the solver's accepted
+steps and resampled by interpolation, so it sees waveforms the game tick (50 ms) could not: the hand generator's
+alternating EMF appears on its screen once per turn. Trace on a HUD screen while held; CSV export by command. The
+servo arm moved to the shaft's outboard end so it can be seen, and exhibits can now set a camera heading.
+
+**Restart robustness.** The tour showed the servo island failing on reload: a running state (2.4 A in the coils, a
+hot power transistor) restarted from zero node voltages let a Newton iterate drive the transistor's heat node to
+infinity and its saturation current to NaN. Device equations now see a temperature bounded to 50–1500 K, every
+exhibit is tested to restart from its own running state, and a failed island restarts at rest keeping its charges,
+temperatures and positions instead of being wiped.

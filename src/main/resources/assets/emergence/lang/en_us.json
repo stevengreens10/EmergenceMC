@@ -57,6 +57,8 @@
   "item.emergence.brake": "Brake Block",
   "item.emergence.chip": "MSI Chip Segment",
   "item.emergence.photodiode": "Photodiode",
+  "item.emergence.data_logger": "Data Logger",
+  "tooltip.emergence.data_logger": "Use on a part to log it at 1 kHz; its screen shows the trace while held. Use in the air: next channel; sneak: time base. /emergence log export saves CSV.",
   "item.emergence.potentiometer": "Potentiometer",
   "tooltip.emergence.potentiometer": "A shaft passes through it like a bearing and turns a wiper along a resistive track: an angle sensor or a knob. Track ends on the lead-axis sides, wiper below; 300° between its end stops.",
   "item.emergence.opamp": "Op-Amp",

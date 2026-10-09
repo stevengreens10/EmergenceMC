@@ -128,6 +128,13 @@ closed-loop single-pole step (τ = gain/2π·GBW), rail clipping without wind-up
 up past horizontal, settles at the expected proportional droop, the knob stops at 300°, returns without
 oscillating; in-world GameTest of the arm rising.
 
+## Instruments (`InstrumentsTest`)
+Resampling a ramp offered at irregular steps (exact at the sample instants), clock rebase, ring-buffer
+wrap, CSV layout and empty fields, envelope min/max; live capture of the hand generator: the logged EMF's
+period (autocorrelation peak) equals 2π/ω of the logged speed (3 %), the logged angle equals the integral of
+the logged speed (1 %). Every exhibit restarts from its own exported running state; servo fragments restart from a
+running state (a hot transistor once sent Newton to NaN: device temperatures are now bounded to 50–1500 K).
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

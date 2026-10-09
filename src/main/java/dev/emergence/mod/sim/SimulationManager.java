@@ -20,6 +20,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
@@ -48,6 +49,29 @@ public final class SimulationManager {
     private final Map<BlockPos, Island> islandOf = new HashMap<>();
     private final Set<BlockPos> dirty = new HashSet<>();
     private long tickCount;
+
+    /** A player's data logger: the part it is clipped to, its record and what its screen shows. */
+    public static final class LoggerSession {
+        BlockPos pos;
+        long partId;
+        String title;
+        final dev.emergence.core.instruments.DataLogger log = CompiledAssembly.newLogger(1e-3, 65_536);
+        CompiledAssembly attachedTo;
+        int channel = 2;
+        int span = 1;
+
+        public dev.emergence.core.instruments.DataLogger log() {
+            return log;
+        }
+
+        public String title() {
+            return title;
+        }
+    }
+
+    /** Time bases of the logger's screen [s]. */
+    public static final double[] LOGGER_SPANS = {0.1, 1, 10, 60};
+    private final Map<UUID, LoggerSession> loggers = new HashMap<>();
 
     public static final class Island {
         final Set<BlockPos> blocks = new HashSet<>();
@@ -120,8 +144,17 @@ public final class SimulationManager {
             try {
                 failed = isl.compiled.step(TICK_SECONDS * isl.timeScale);
             } catch (RuntimeException e) {
-                EmergenceMod.LOG.error("Simulation of island at {} failed; resetting its state", isl.blocks.iterator().next(), e);
-                isl.compiled = compile(isl, AssemblyState.empty());
+                // restart from the last good state at rest (charges, heat, positions kept); if even that will not
+                // run, from nothing
+                EmergenceMod.LOG.error("Simulation of island at {} failed; restarting it at rest", isl.blocks.iterator().next(), e);
+                AssemblyState keep = isl.compiled.exportState().recovery();
+                isl.compiled = compile(isl, keep);
+                try {
+                    if (isl.compiled != null) isl.compiled.step(1e-4);
+                } catch (RuntimeException again) {
+                    EmergenceMod.LOG.error("Restart failed too; resetting the island's state", again);
+                    isl.compiled = compile(isl, AssemblyState.empty());
+                }
                 continue;
             }
             long cost = System.nanoTime() - t0;
@@ -134,6 +167,73 @@ public final class SimulationManager {
             if (tickCount % 20 == 0) daylight(isl);
             sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
+        }
+        tickLoggers();
+    }
+
+    // ------------------------------------------------------------------ data loggers
+
+    /** Clips a player's logger onto a part (a new part starts a new record). */
+    public void attachLogger(ServerPlayer player, BlockPos pos, long partId, String title) {
+        LoggerSession s = loggers.computeIfAbsent(player.getUUID(), k -> new LoggerSession());
+        if (s.attachedTo != null) s.attachedTo.detachLogger(s.log);
+        s.attachedTo = null;
+        if (s.partId != partId) s.log.clear();
+        s.pos = pos.immutable();
+        s.partId = partId;
+        s.title = title;
+    }
+
+    public LoggerSession logger(ServerPlayer player) {
+        return loggers.get(player.getUUID());
+    }
+
+    /** Shows the next channel the part actually has; returns a status line. */
+    public String cycleLoggerChannel(ServerPlayer player) {
+        LoggerSession s = loggers.get(player.getUUID());
+        if (s == null) return "Clip the logger onto a part first";
+        var ch = s.log.channels();
+        for (int k = 1; k <= ch.size(); k++) {
+            int c = (s.channel + k) % ch.size();
+            if (s.log.size() > 0 && !Double.isNaN(s.log.value(c, s.log.size() - 1))) {
+                s.channel = c;
+                break;
+            }
+        }
+        return "Channel: " + ch.get(s.channel).name() + " [" + ch.get(s.channel).unit() + "]";
+    }
+
+    public String cycleLoggerSpan(ServerPlayer player) {
+        LoggerSession s = loggers.get(player.getUUID());
+        if (s == null) return "Clip the logger onto a part first";
+        s.span = (s.span + 1) % LOGGER_SPANS.length;
+        return "Time base: " + dev.emergence.core.units.Units.formatSI(LOGGER_SPANS[s.span], "s") + " across the screen";
+    }
+
+    /** Keeps each logger connected to its part's (possibly recompiled) island and streams its trace to its owner. */
+    private void tickLoggers() {
+        if (loggers.isEmpty()) return;
+        for (var it = loggers.entrySet().iterator(); it.hasNext(); ) {
+            var en = it.next();
+            LoggerSession s = en.getValue();
+            Island isl = islandOf.get(s.pos);
+            CompiledAssembly now = isl == null ? null : isl.compiled;
+            if (now != s.attachedTo) {
+                if (s.attachedTo != null) s.attachedTo.detachLogger(s.log);
+                s.attachedTo = null;
+                if (now != null && now.assembly().get(s.partId) != null) {
+                    now.attachLogger(s.log, s.partId);
+                    s.attachedTo = now;
+                }
+            }
+            if (tickCount % 2 != 0) continue;
+            if (!(level.getPlayerByUUID(en.getKey()) instanceof ServerPlayer player)) continue;
+            var ch = s.log.channels().get(s.channel);
+            float[][] env = s.log.envelope(s.channel, LOGGER_SPANS[s.span], 200);
+            float latest = s.log.size() == 0 ? Float.NaN : (float) s.log.value(s.channel, s.log.size() - 1);
+            String title = s.title + (s.attachedTo == null ? " — disconnected" : "");
+            PacketDistributor.sendToPlayer(player, new dev.emergence.mod.net.LoggerSyncPayload(title, ch.name(), ch.unit(),
+                    (float) LOGGER_SPANS[s.span], (float) (1 / s.log.interval()), latest, env[0], env[1]));
         }
     }
 

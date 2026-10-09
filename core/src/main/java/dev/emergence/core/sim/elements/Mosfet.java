@@ -37,7 +37,7 @@ public final class Mosfet implements Element {
     }
 
     private double temp(StateView st) {
-        return thermal != null ? Math.max(st.x(thermal.index()), 50) : 300;
+        return thermal != null ? Diode.deviceTemperature(st.x(thermal.index())) : 300;
     }
 
     /** F(x) = ln²(1 + e^{x/2}) and its derivative. */

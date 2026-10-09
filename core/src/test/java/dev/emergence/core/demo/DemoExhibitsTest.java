@@ -464,6 +464,24 @@ class DemoExhibitsTest {
         }
     }
 
+    /** Saving and reloading a running exhibit (its state exported, recompiled, stepped on) must not fail. */
+    @Test
+    void everyExhibitRestartsFromItsRunningState() {
+        for (Exhibit e : Exhibits.all()) {
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = compile(e, b);
+            Long crank = e.named.containsKey("crank") ? b.id(e, "crank") : null;
+            for (int i = 0; i < 10; i++) {
+                if (crank != null) c.setCrankEffort(crank, 1, true);
+                c.step(0.05);
+            }
+            CompiledAssembly again = AssemblyCompiler.compile(b.assembly(), c.exportState());
+            assertDoesNotThrow(() -> {
+                for (int i = 0; i < 4; i++) again.step(0.05);
+            }, e.id + " restarts");
+        }
+    }
+
     @Test
     void shelvesHoldOneLeadBlockAndBreakUnderTwo() {
         Exhibit e = Exhibits.shelves();
@@ -583,5 +601,71 @@ class DemoExhibitsTest {
         assertTrue(Math.abs(c.probe(arm).angularVelocity()) < 0.01, "settled without oscillating");
         assertTrue(c.probe(b.id(e, "pnp")).temperature() < 360, "the power transistor stays cool enough");
         assertTrue(Math.abs(c.probe(b.id(e, "batteryN")).voltage() - vBank0) < 0.2, "the banks barely discharge");
+    }
+
+    @Test
+    void servoSurvivesSaveAndReload() {
+        Exhibit e = ControlExhibits.servo();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        run(c, 0.5);
+        var st = c.exportState();
+        CompiledAssembly again = AssemblyCompiler.compile(b.assembly(), st);
+        run(again, 0.5);
+        assertEquals(c.probe(b.id(e, "arm")).angle(), again.probe(b.id(e, "arm")).angle(), 0.05);
+        // as the mod persists it: every part gets a temperature, motion, coil current and capacitor voltage entry
+        var w = dev.emergence.core.assembly.AssemblyState.empty();
+        for (var part : b.assembly().parts()) {
+            long id = part.id();
+            w.temperatures().put(id, st.temperatures().getOrDefault(id, AMBIENT));
+            w.bodyMotion().put(id, st.bodyMotion().getOrDefault(id, new double[]{0, 0}));
+            w.coilCurrents().put(id, st.coilCurrents().getOrDefault(id, 0.0));
+            w.capacitorVoltages().put(id, st.capacitorVoltages().getOrDefault(id, 0.0));
+        }
+        CompiledAssembly world = AssemblyCompiler.compile(b.assembly(), w);
+        run(world, 0.5);
+        System.out.println("servo reloaded as the mod does: arm " + world.probe(b.id(e, "arm")).angle());
+        // a fresh compile without any state, as after a failure reset
+        CompiledAssembly fresh = AssemblyCompiler.compile(b.assembly(), dev.emergence.core.assembly.AssemblyState.empty());
+        run(fresh, 0.5);
+    }
+
+    /**
+     * Restarting from a running state (the arm held up: 2.4 A in the coils, a hot power transistor) must work, for
+     * the whole build and for fragments of it (as when only some of its chunks are loaded). A Newton iterate once
+     * drove the transistor's heat node to infinity here, and its saturation current to NaN.
+     */
+    @Test
+    void servoFragmentsSimulate() {
+        Exhibit e = ControlExhibits.servo();
+        // a running state: the arm held up, current in the coils
+        Exhibits.Built full = Exhibits.build(e, AMBIENT);
+        CompiledAssembly running = compile(e, full);
+        for (int i = 0; i < 160; i++) {
+            running.setCrankEffort(full.id(e, "crank"), -1, false);
+            running.step(0.05);
+        }
+        var hot = running.exportState();
+        java.util.List<String> bad = new java.util.ArrayList<>();
+        for (int axis = 0; axis < 2; axis++)
+            for (int cut = 2; cut < (axis == 0 ? 31 : 15); cut += 3) {
+                for (int side = 0; side < 2; side++) {
+                    Exhibits.Built b = Exhibits.build(e, AMBIENT);
+                    var a = new dev.emergence.core.assembly.Assembly().ambientTemperature(AMBIENT);
+                    for (var part : b.assembly().parts()) {
+                        int c = axis == 0 ? part.minX() : part.minZ();
+                        if ((side == 0) == (c <= cut)) a.add(part);
+                    }
+                    a.anchoredWhen(q -> q.minY() == 0 && q.kind().structural && q.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
+                    try {
+                        CompiledAssembly c = AssemblyCompiler.compile(a, hot);
+                        for (int k = 0; k < 10; k++) c.step(0.05);
+                    } catch (RuntimeException ex) {
+                        bad.add((axis == 0 ? "x" : "z") + (side == 0 ? "<=" : ">") + cut + ": " + ex.getMessage());
+                    }
+                }
+            }
+        bad.forEach(System.out::println);
+        assertTrue(bad.isEmpty(), bad.size() + " fragments fail: " + (bad.isEmpty() ? "" : bad.get(0)));
     }
 }

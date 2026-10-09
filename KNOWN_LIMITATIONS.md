@@ -107,3 +107,8 @@ multimeter, oscilloscope/data logging.
   a pot riding on one moving body and turned by another is not supported. No wiper noise, wear or contact bounce.
 * Op-amp: one pole, no input offset/bias currents, no output current limit beyond the 75 Ω output resistance,
   no common-mode limits on the inputs; a single (not dual/quad) package per part.
+
+## Instruments
+* The data logger records one part per player, one channel on screen at a time; it loads nothing (ideal,
+  infinite input impedance) and adds no noise or quantisation beyond float storage; its record lives only in
+  memory (lost when the server stops) until exported. The multimeter's readings are ideal apart from rounding.

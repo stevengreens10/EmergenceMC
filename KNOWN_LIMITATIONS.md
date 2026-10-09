@@ -56,9 +56,14 @@ behaviour; where physics is missing the effect is simply absent.
 * A single small blade row cannot make a self-sustaining gas turbine (consistent with real physics at this
   scale); jet kinetic energy is not modelled, so impulse turbines are under-powered.
 
+## Electronics
+* Transistors: no breakdown, high-injection or short-channel effects; MOSFET body tied to source.
+* Logic chips are a reduced-order model (thresholds of ratioed 74HC parts, fixed 10 ns delay, no input
+  leakage or ESD diodes); large digital systems still run in the analog solver (no event-driven engine).
+* No photodiodes/phototransistors yet; LED light is not received by anything.
+
 ## Not yet started (see ROADMAP.md)
-Phase change, combustion/general chemistry, semiconductors beyond
-the diode, digital logic, optics, acoustics, structural analysis, manufacturing, sensors beyond the
+Phase change, combustion/general chemistry, CPUs and memory arrays, optics, acoustics, structural analysis, manufacturing, sensors beyond the
 multimeter, oscilloscope/data logging.
 
 ## Gameplay / UI

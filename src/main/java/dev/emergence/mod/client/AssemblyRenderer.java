@@ -92,8 +92,9 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 c.glass = buffers.getBuffer(Sheets.translucentCullBlockSheet());
             }
             for (PlacedPart p : be.parts()) {
-                if (pass == 1 && p.kind != PartKind.ELECTROLYTE) continue;
-                if (p.kind == PartKind.ELECTROLYTE) glassPending = true;
+                boolean glassy = p.kind == PartKind.ELECTROLYTE || p.kind == PartKind.LED;
+                if (pass == 1 && !glassy) continue;
+                if (glassy) glassPending = true;
                 ps.pushPose();
                 ClientSimState.Pose pose = ClientSimState.pose(p.id);
                 double bodyAngle = 0;
@@ -124,8 +125,9 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 ps.scale(C, C, C);
                 float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
                 float ex = ext[f.xAxis], ey = ext[f.yAxis], ez = ext[f.zAxis]; // extents in model axes [cells]
+                if (p.kind == PartKind.LED) ledState(c, p);
                 if (pass == 0) drawPart(c, be, p, f, ex, ey, ez, bodyAngle, pose);
-                else drawModel(c, "electrolyte", p, ex, ey, ez, true);
+                else drawModel(c, p.kind == PartKind.LED ? "led" : "electrolyte", p, ex, ey, ez, true);
                 ps.popPose();
             }
         }
@@ -142,7 +144,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         Vector3f z = new Vector3f(p.axis.dx, p.axis.dy, p.axis.dz);
         Vector3f x = new Vector3f(l == 0 ? 1 : 0, l == 1 ? 1 : 0, l == 2 ? 1 : 0);
         Vector3f y = new Vector3f(z).cross(x);
-        if ((p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE) && a != 1) {
+        if ((p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE || p.kind == PartKind.LED || p.kind == PartKind.TRANSISTOR
+                || p.kind == PartKind.LOGIC) && a != 1) {
             // a knife switch lying on its side: base down (model −Y), whatever the lead axis
             y.set(0, 1, 0);
             x.set(new Vector3f(y).cross(z));
@@ -198,6 +201,9 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case VALVE -> drawModel(c, "valve", p, 1, 1, ez, false);
             case PIPE -> drawPipe(c, be, p, f);
             case ROTOR -> drawRotor(c, p, ex, ey, ez);
+            case TRANSISTOR -> drawModel(c, "transistor", p, 1, 1, 1, false);
+            case LOGIC -> drawModel(c, "logic", p, 1, 1, 1, false);
+            case LED -> drawModel(c, "led", p, 1, 1, 1, false);
             case CYLINDER -> {
                 drawModel(c, "cylinder", p, Math.min(ex, ey), Math.min(ex, ey), ez, false);
                 drawPiston(c, p, f, ez);
@@ -244,7 +250,10 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 rgb = bands[Math.max(0, Math.min(3, piece.name().charAt(13) - '1'))];
             }
             if (mt[0].equals("material") && !tintable(c.materialTexture)) rgb = 0xFFFFFF;
-            int alpha = glass ? (mt[0].equals("liquid") ? 200 : 110) : 255;
+            if (flags.contains("green")) rgb = 0x1E6B33; // circuit-board green
+            if (flags.contains("yellow")) rgb = 0xF0C020;
+            if (flags.contains("blue")) rgb = 0x3570C0;
+            int alpha = glass ? (mt[0].equals("liquid") ? (p.kind == PartKind.LED ? 235 : 200) : 110) : 255;
             c.ps.pushPose();
             switch (piece.name()) {
                 case "crank_arm" -> c.ps.scale((float) crankR, 1, 1);
@@ -409,6 +418,37 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), to));
         cylinder(c, s, rgb, r, 0, len, 8, false);
         c.ps.popPose();
+    }
+
+    /**
+     * LED colour from its wavelength (CIE-like piecewise fit to the visible spectrum); when it emits, the dome
+     * is drawn full-bright and washed towards white in proportion to its light output.
+     */
+    private static void ledState(Ctx c, PlacedPart p) {
+        double nm = p.spec.params().getOrDefault("wavelength", 630.0);
+        int rgb = wavelengthRgb(nm);
+        float watts = ClientSimState.gauge(p.id);
+        if (watts > 1e-5f) {
+            float k = (float) Math.min(1, Math.log10(watts / 1e-5) / 3);
+            rgb = mix(darken(rgb, 0.55f), mix(rgb, 0xFFFFFF, 0.35f), k);
+            c.light = LightTexture.FULL_BRIGHT;
+        } else {
+            rgb = darken(rgb, 0.5f);
+        }
+        c.materialRgb = rgb;
+    }
+
+    /** Approximate sRGB of monochromatic light (Bruton's fit), 380–780 nm. */
+    static int wavelengthRgb(double nm) {
+        double r, g, b;
+        if (nm < 440) { r = -(nm - 440) / 60; g = 0; b = 1; }
+        else if (nm < 490) { r = 0; g = (nm - 440) / 50; b = 1; }
+        else if (nm < 510) { r = 0; g = 1; b = -(nm - 510) / 20; }
+        else if (nm < 580) { r = (nm - 510) / 70; g = 1; b = 0; }
+        else if (nm < 645) { r = 1; g = -(nm - 645) / 65; b = 0; }
+        else { r = 1; g = 0; b = 0; }
+        return ((int) (255 * Math.max(0, Math.min(1, r))) << 16) | ((int) (255 * Math.max(0, Math.min(1, g))) << 8)
+                | (int) (255 * Math.max(0, Math.min(1, b)));
     }
 
     // ------------------------------------------------------------------ fluid parts

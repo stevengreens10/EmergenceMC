@@ -159,3 +159,26 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   alpha Stirling from raw elements and the exhibit built from parts both run on a temperature difference.
 * **Limitations**: no piston/rod inertia or side thrust, no blow-by leakage, no valve gear yet (so no steam
   engine or internal-combustion cycle), gas spring forces against an unpressurised crankcase.
+
+## Semiconductors (`Bjt`, `Mosfet`, `Led`)
+* **BJT**: Ebers–Moll transport model with the Early effect, I_T = I_S(e^{V_BE/V_T} − e^{V_BC/V_T})(1 − V_BC/V_A);
+  I_S(T) ∝ T³e^{−E_g/kT}; PNP by symmetry; parts add C_je = 18 pF, C_jc = 4 pF. No high injection, base
+  resistance or breakdown.
+* **MOSFET**: EKV charge-sheet interpolation I = I_spec[F((V_P−V_S)/V_T) − F((V_P−V_D)/V_T)](1 + λ|V_DS|),
+  F(x) = ln²(1 + e^{x/2}), smooth from subthreshold (slope n·V_T·ln10) to the square law; V_th −2 mV/K,
+  mobility ∝ T^−1.5; body tied to source (so a three-terminal device is not drain/source symmetric); parts
+  add C_gs, C_gd.
+* **LED**: band gap from wavelength; Shockley junction behind 10 Ω series resistance with SPICE p-n junction
+  Newton limiting; optical power η·(E_photon/q)·I leaves the network, the rest heats the die.
+
+## Logic chips (`LogicGate`) — the abstraction level above transistors
+* Supply pins and an output stage of pull-up/pull-down on-resistances (50 Ω) weighted by an internal state
+  s ∈ [0, 1]: output current comes from the supply; dissipation heats the chip.
+* Inputs: logic level = sigmoid((V − V_DD/2)/(0.03 V_DD)); unpowered chips read inputs low.
+* Delay: τ ds/dt = f(inputs) − s with τ = t_pd (10 ns), using continuous (fuzzy) Boolean functions.
+* D flip-flop: master and slave relax in non-overlapping clock windows (below 35 % / above 65 % of the
+  clock level) and regenerate toward the nearer rail while holding — rising-edge triggered, race-free,
+  no lasting metastability. Schmitt inverter: threshold 0.4/0.6 V_DD switched sharply by its own output.
+* **Validated** against the transistor-level NAND (logic levels), the matched CMOS inverter (mid-rail
+  threshold) and the analytic Schmitt RC period. Fidelity note: thresholds are those of ratioed 74HC parts;
+  a transistor NAND with equal devices switches near 0.65 V_DD.

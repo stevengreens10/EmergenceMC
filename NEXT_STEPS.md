@@ -1,6 +1,9 @@
 # Next steps (priority order)
 
-1. **Phase change** (water ↔ steam, saturation pressure, two-phase volumes) → boiler; with **valve gear**
+1. **Computer milestone (Phase 4)**: a small programmable sequencer/CPU from logic chips (register,
+   ROM/diode matrix, counter) whose output drives a MOSFET switching a motor or valve; event-driven
+   simulation for large gate counts; photodiodes so light can be sensed.
+2. **Phase change** (water ↔ steam, saturation pressure, two-phase volumes) → boiler; with **valve gear**
    (a cam/eccentric-driven slide valve part) → a steam engine from parts.
 2. Check valves (one-way) → piston air compressor and pump exhibits.
 3. Brayton cycle: an experiment showed a single 5.6 cm blade row cannot sustain a gas turbine (pressure

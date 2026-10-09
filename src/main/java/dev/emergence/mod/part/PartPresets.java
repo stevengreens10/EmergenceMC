@@ -89,6 +89,13 @@ public final class PartPresets {
         l.add(stack(PartKind.CYLINDER, PartSpec.of("aluminium_6061", 1, 1, "bore", 0.04, "fins", 6)));
         l.add(stack(PartKind.CYLINDER, PartSpec.of("steel_1045", 1, 1, "bore", 0.025)));
         for (double t : new double[]{0.01, 0.015, 0.02}) l.add(stack(PartKind.ECCENTRIC, PartSpec.of("steel_1045", 1, 1, "throw", t)));
+        // semiconductors
+        for (int type = 0; type < 4; type++) l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", type)));
+        for (double nm : new double[]{630, 590, 525, 470}) l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", nm)));
+        l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10)));
+        l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10e-6)));
+        for (double r : new double[]{470, 10_000, 100_000}) l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", r)));
+        for (int fn = 0; fn <= 8; fn++) l.add(stack(PartKind.LOGIC, PartSpec.of("silicon", 1, 1, "function", fn)));
         return l;
     }
 }

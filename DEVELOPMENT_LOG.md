@@ -81,3 +81,13 @@ made it rock instead of turn (the gas spring against an unpressurised crankcase 
 real high-pressure Stirlings pressurise the crankcase), and an open cold-cylinder head vented the charge.
 In the world, two exhibits within gear reach merged into one island; plots are now 20 blocks apart and
 fluid unknowns have Newton step limits.
+
+**Electronics.** Ebers–Moll BJTs, EKV MOSFETs and wavelength-defined LEDs; transistor and LED parts. A CMOS
+NAND from four MOSFETs passed its truth table first time. Bugs found by the exhibits: leaded parts conducted
+through their silicon bodies (copper leads now general); a capacitor truncation-error floor below Newton's
+resolution collapsed the time step on floating CMOS stack nodes (~100× fix); a floating transistor base
+needed a pull-down (as in real design). Then a validated chip-level logic model (gates, Schmitt trigger, D
+flip-flop) as the next fidelity level: getting a ripple counter to count exposed metastability at power-up
+(fixed by latch regeneration), race-through on slow clock edges (non-overlapping master/slave windows), and
+LED Newton divergence (internal junction unknown with SPICE pnjlim limiting via a new solver hook). The
+4-bit counter now counts exactly with its clock.

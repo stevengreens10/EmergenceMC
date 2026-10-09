@@ -27,7 +27,7 @@ ICON_SIZE = 64
 ICON_TINT = {
     "material__tint": (0.43, 0.45, 0.47), "metal_cast__tint": (0.50, 0.52, 0.55),
     "metal_brushed__tint": (0.55, 0.57, 0.60), "metal_smooth__tint": (0.60, 0.62, 0.65),
-    "plastic__yellow": (0.95, 0.75, 0.15), "pvc__blue": (0.20, 0.42, 0.72),
+    "plastic__yellow": (0.95, 0.75, 0.15), "pvc__blue": (0.20, 0.42, 0.72), "plastic__green": (0.10, 0.45, 0.20),
     "liquid__tint_glass": (0.18, 0.52, 0.87), "band__tint": (1, 1, 1),
 }
 BAND_ICON = [(0.45, 0.25, 0.08), (0.05, 0.05, 0.05), (0.75, 0.10, 0.08), (0.83, 0.68, 0.22)]
@@ -352,6 +352,38 @@ def build_all():
     finish(box((0.24, 0.6, 0.16), loc=(0, 0.2, 0), name="ecc_web", bevel=0.04), "eccentric", "metal_brushed__tint")
     finish(cyl(0.07, 0.36, loc=(0, 0.42, 0.06), verts=16, name="ecc_pin"), "eccentric", "chrome", smooth=True)
 
+    # TRANSISTOR: TO-92 package standing on a small board (board at -Y, the side placed down); emitter lead to
+    # -Z, collector lead to +Z, base lead out to the side (+-X, the lead axis)
+    body = cyl(0.2, 0.42, loc=(0, -0.04, 0.0), verts=24, rot=(math.pi / 2, 0, 0), name="tr_body")
+    boolean(body, box((0.6, 0.3, 0.6), loc=(0, 0.24, 0), name="cut"))
+    finish(body, "transistor", "epoxy", smooth=True)
+    finish(box((0.4, 0.02, 0.3), loc=(0, 0.085, 0), name="tr_face"), "transistor", "epoxy")
+    finish(box((0.92, 0.06, 0.92), loc=(0, -0.3, 0), name="tr_board", bevel=0.01), "transistor", "plastic__green")
+    for z in (-0.33, 0.33):
+        finish(box((0.04, 0.04, 0.34), loc=(0, -0.25, z), name="tr_lead"), "transistor", "tinned")
+    for x in (-0.33, 0.33):
+        finish(box((0.34, 0.04, 0.04), loc=(x, -0.25, 0), name="tr_lead"), "transistor", "tinned")
+
+    # LED: 5 mm dome on a board; the epoxy dome is drawn translucent and coloured by wavelength
+    finish(box((0.92, 0.06, 0.92), loc=(0, -0.3, 0), name="led_board", bevel=0.01), "led", "plastic__green")
+    finish(cyl(0.17, 0.06, loc=(0, -0.24, 0), verts=24, rot=(math.pi / 2, 0, 0), name="led_rim"), "led", "liquid__tint_glass", smooth=True)
+    finish(cyl(0.14, 0.28, loc=(0, -0.08, 0), verts=24, rot=(math.pi / 2, 0, 0), name="led_dome"), "led", "liquid__tint_glass", smooth=True)
+    finish(sphere(0.14, loc=(0, 0.06, 0), name="led_tip"), "led", "liquid__tint_glass", smooth=True)
+    finish(box((0.06, 0.12, 0.04), loc=(0, -0.12, 0), name="led_die"), "led", "chrome")
+    for z in (-0.33, 0.33):
+        finish(box((0.04, 0.04, 0.34), loc=(0, -0.27, z), name="led_lead"), "led", "tinned")
+
+    # LOGIC: a DIP-14 chip on a board; pins along both long sides
+    finish(box((0.92, 0.06, 0.92), loc=(0, -0.3, 0), name="ic_board", bevel=0.01), "logic", "plastic__green")
+    finish(box((0.36, 0.14, 0.7), loc=(0, -0.2, 0), name="ic_body", bevel=0.02), "logic", "epoxy")
+    finish(cyl(0.035, 0.02, loc=(0.08, -0.13, 0.27), rot=(math.pi / 2, 0, 0), verts=12, name="ic_dot"), "logic", "ceramic")
+    for k in range(7):
+        z = -0.27 + k * 0.09
+        for x in (-0.21, 0.21):
+            finish(box((0.06, 0.12, 0.035), loc=(x, -0.24, z), name="ic_pin"), "logic", "tinned")
+    for (x, z) in ((0, -0.42), (0, 0.42), (-0.42, 0), (0.42, 0)):
+        finish(box((0.04 if x == 0 else 0.12, 0.04, 0.12 if x == 0 else 0.04), loc=(x, -0.25, z), name="ic_trace"), "logic", "tinned")
+
     # TOOLS
     finish(box((0.6, 0.18, 0.95), name="mm_body", bevel=0.06), "multimeter", "plastic__yellow")
     finish(box((0.44, 0.02, 0.26), loc=(0, -0.1, 0.25), name="mm_lcd", bevel=0.01), "multimeter", "silicon")
@@ -365,7 +397,7 @@ def build_all():
 
 
 # ------------------------------------------------------------------ export
-RUNTIME_MODELS = ["cylinder", "tank", "valve", "plate", "magnet", "bearing", "coil", "crank", "resistor", "capacitor", "diode", "switch",
+RUNTIME_MODELS = ["logic", "transistor", "led", "cylinder", "tank", "valve", "plate", "magnet", "bearing", "coil", "crank", "resistor", "capacitor", "diode", "switch",
                   "brush", "electrolyte"]
 
 
@@ -401,7 +433,7 @@ ICON_PARTS = {"plate": "block", "magnet": "magnet", "bearing": "bearing", "coil"
               "brush": "brush", "electrolyte": "electrolyte", "gear": "gear", "shaft": "shaft", "wire": "wire",
               "insulated_wire": "insulated_wire", "multimeter": "multimeter", "precision_tweezers": "precision_tweezers",
               "tank": "tank", "valve": "valve", "pipe": "pipe", "rotor": "rotor", "cylinder": "cylinder",
-              "eccentric": "eccentric"}
+              "eccentric": "eccentric", "transistor": "transistor", "led": "led", "logic": "logic"}
 
 
 def render_icons():

@@ -392,6 +392,9 @@ public final class SimulationManager {
         Map<BlockPos, Integer> lv = new HashMap<>();
         CompiledAssembly c = isl.compiled;
         for (var e : isl.partPos.entrySet()) {
+            // LEDs: light level rising with the logarithm of optical power (1 mW → 6, 30 mW → 10)
+            double opt = c.lightOutput(e.getKey());
+            if (opt > 1e-4) lv.merge(e.getValue(), (int) Math.min(15, Math.round(6 + 2.7 * Math.log10(opt / 1e-3))), Math::max);
             double t = c.temperature(e.getKey());
             if (t < 798) continue;
             int l = (int) Math.min(15, Math.round((t - 798) / 1700.0 * 15 + 3));
@@ -532,6 +535,12 @@ public final class SimulationManager {
             if (f != null && Math.abs(f[0] - pAmb) > 50) {
                 fIds.add(id);
                 gauges.add((float) (f[0] - pAmb));
+            }
+            // the same per-part scalar channel carries an LED's optical output [W]
+            double light = c.lightOutput(id);
+            if (light > 1e-6) {
+                fIds.add(id);
+                gauges.add((float) light);
             }
         }
         float[] ga = new float[gauges.size()];

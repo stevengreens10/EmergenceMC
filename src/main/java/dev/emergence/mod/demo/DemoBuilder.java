@@ -47,14 +47,14 @@ public final class DemoBuilder {
     /** Builds all exhibits with the first plot at {@code origin} (the block above the gallery floor). */
     public static BlockPos build(ServerLevel level, BlockPos origin) {
         List<Exhibit> exhibits = Exhibits.all();
-        int width = exhibits.size() * PLOT_SPACING;
+        int width = plotOffset(exhibits, exhibits.size());
         // gallery floor (a polished border between plots) and clear air above it
         for (int x = -3; x <= width + 1; x++) {
             for (int z = -3; z <= SIGN_Z + 6; z++) {
                 BlockPos f = origin.offset(x, -1, z);
-                int px = Math.floorMod(x, PLOT_SPACING);
-                boolean edge = x == -3 || x == width + 1 || z == -3 || z == SIGN_Z + 6 || px == PLOT_SPACING - 1
-                        || z == SIGN_Z - 1;
+                boolean between = false;
+                for (int i = 1; i <= exhibits.size(); i++) between |= x == plotOffset(exhibits, i) - 1;
+                boolean edge = x == -3 || x == width + 1 || z == -3 || z == SIGN_Z + 6 || between || z == SIGN_Z - 1;
                 level.setBlock(f, (edge ? Blocks.POLISHED_DEEPSLATE : Blocks.SMOOTH_STONE).defaultBlockState(), 2);
                 for (int y = 0; y < 18; y++) level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
             }
@@ -62,7 +62,7 @@ public final class DemoBuilder {
         sign(level, origin.offset(-2, 0, SIGN_Z + 1), List.of("EMERGENCE", "Engineering from", "first principles", "exhibits ->"));
         for (int i = 0; i < exhibits.size(); i++) {
             Exhibit e = exhibits.get(i);
-            BlockPos plot = origin.offset(i * PLOT_SPACING, 0, 0);
+            BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
             place(level, plot, e);
             sign(level, plot.offset(8, 0, SIGN_Z), e.sign);
         }
@@ -98,6 +98,13 @@ public final class DemoBuilder {
                 be.savedState().put(id, new double[]{t, in.omega(), in.angle(), 0, in.capacitorVoltage()});
             }
         }
+    }
+
+    /** x offset of exhibit i's plot from the gallery origin (wide exhibits take several plots). */
+    public static int plotOffset(List<Exhibit> exhibits, int i) {
+        int x = 0;
+        for (int k = 0; k < i; k++) x += exhibits.get(k).plots * PLOT_SPACING;
+        return x;
     }
 
     /** Where in its plot a miniature exhibit's single block goes. */

@@ -37,8 +37,10 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    cylinders 90° apart, transfer pipe, flywheel) runs on a hot block and drives magnets past a coil
 
 ## Phase 4 — Electronics and computation
-🟡 Diode ✅; BJT/MOSFET, LEDs, photodiodes ⬜
-⬜ Digital logic hierarchy (transistor → event-driven), memory, clocks, CPU; sensors and actuators
+✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED; ⬜ photodiodes, phototransistors
+✅ Logic from transistors (CMOS NAND exhibit) and a validated chip-level model (gates, D flip-flop,
+   Schmitt trigger): oscillator + 4-bit counter exhibit
+⬜ Memory arrays, CPU, sensors and actuators; event-driven simulation for thousands of gates
 ⬜ Milestone: programmable computer controlling a machine
 
 ## Phase 5 — Chemistry and manufacturing

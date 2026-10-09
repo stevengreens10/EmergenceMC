@@ -55,5 +55,11 @@
   "item.emergence.cylinder": "Piston Cylinder",
   "item.emergence.eccentric": "Crank Throw",
   "tooltip.emergence.cylinder": "Bore with a piston. Point its rod (+axis) face at a crank throw on a shaft, a block or more away: the gas pushes the crank (engine) or the crank pumps the gas (compressor). Head and sides take pipes.",
-  "tooltip.emergence.eccentric": "Mount on a shaft. Connecting rods of cylinders pointing at the shaft ride on its pin; where each cylinder sits around the shaft sets its timing."
+  "tooltip.emergence.eccentric": "Mount on a shaft. Connecting rods of cylinders pointing at the shaft ride on its pin; where each cylinder sits around the shaft sets its timing.",
+  "item.emergence.transistor": "Transistor",
+  "item.emergence.led": "LED",
+  "tooltip.emergence.transistor": "Emitter/source on the −axis face, collector/drain on the +axis face, base/gate on the sides. Bipolar (Ebers–Moll) or MOSFET physics.",
+  "tooltip.emergence.led": "Anode on the −axis lead, cathode on +axis. Light from recombining electrons: the colour sets the forward voltage.",
+  "item.emergence.logic": "Logic Chip",
+  "tooltip.emergence.logic": "CMOS logic (74HC class). Input A / D on the −axis face, output on +axis, GND and V_DD on the −/+ lead-axis sides, input B / clock on the remaining −side, Q̄ on its +side."
 }

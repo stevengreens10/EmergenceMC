@@ -77,6 +77,14 @@ Pistons: isentropic compression (entropy drift < 0.2 J/(kg·K)) with a closed le
 from raw elements accelerates its flywheel; the Stirling exhibit runs on its copper block for 20 s and
 drives > 1 mA through its generator's load.
 
+## Semiconductors and logic (`SemiconductorValidationTest`, `LogicValidationTest`)
+BJT collector current vs Ebers–Moll (0.1 %), gain with the Early factor, output conductance I_C/V_A; PNP;
+MOSFET square law (3 %), subthreshold slope n·V_T·ln10 (3 %), triode law (2 %); LED forward voltage from
+colour (±50 mV) and photon power; CMOS inverter rail-to-rail with mid-rail switching. Chip model vs the
+transistor NAND (±50 mV levels), output sag under load, D flip-flop edge behaviour, Schmitt RC period
+(8 %). Exhibits: transistor switch currents; NAND truth table; the counter's value equals its clock
+edges.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

@@ -69,6 +69,9 @@ public final class PartItem extends Item {
             case ROTOR -> PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1);
             case CYLINDER -> PartSpec.of("steel_1045", 1, 1, "bore", 0.04, "fins", 4);
             case ECCENTRIC -> PartSpec.of("steel_1045", 1, 1, "throw", 0.015);
+            case TRANSISTOR -> PartSpec.of("silicon", 1, 1, "type", 0);
+            case LED -> PartSpec.of("silicon", 1, 1, "wavelength", 630);
+            case LOGIC -> PartSpec.of("silicon", 1, 1, "function", 2);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -97,6 +100,10 @@ public final class PartItem extends Item {
             case ROTOR -> String.format(", %.0f° blades%s", p.getOrDefault("blade_angle", 45.0), p.getOrDefault("pitch", 1.0) < 0 ? ", left-hand" : "");
             case CYLINDER -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.04), "m") + (p.getOrDefault("fins", 0.0) > 0 ? ", finned" : "");
             case ECCENTRIC -> ", throw " + Units.formatSI(p.getOrDefault("throw", 0.015), "m");
+            case TRANSISTOR -> ", " + new String[]{"NPN", "PNP", "N-MOSFET", "P-MOSFET"}[(int) Math.max(0, Math.min(3, Math.round(p.getOrDefault("type", 0.0))))];
+            case LED -> String.format(", %.0f nm", p.getOrDefault("wavelength", 630.0));
+            case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[
+                    (int) Math.max(0, Math.min(8, Math.round(p.getOrDefault("function", 2.0))))];
             default -> "";
         };
     }

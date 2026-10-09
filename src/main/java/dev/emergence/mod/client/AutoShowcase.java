@@ -51,7 +51,7 @@ public final class AutoShowcase {
         BlockPos origin = spawn.offset(-8, 0, -(DemoBuilder.SIGN_Z + 3));
         STEPS.add(new Step(80, () -> look(server, origin.getX() + 26, origin.getY() + 16, origin.getZ() + 38, 160, 28), "showcase-0-overview"));
         for (int i = 0; i < n; i++) {
-            BlockPos plot = origin.offset(i * DemoBuilder.PLOT_SPACING, 0, 0);
+            BlockPos plot = origin.offset(DemoBuilder.plotOffset(ex, i), 0, 0);
             var e = ex.get(i);
             String id = e.id;
             Runnable view = () -> look(server, plot.getX() + e.viewX, plot.getY() + e.viewHeight, plot.getZ() + e.viewZ,
@@ -69,6 +69,19 @@ public final class AutoShowcase {
             if (id.equals("turbine")) {
                 STEPS.add(new Step(16, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "valve")),
                         "showcase-" + (i + 1) + "-" + id + "-on"));
+            }
+            if (id.equals("transistor")) {
+                STEPS.add(new Step(20, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-on"));
+            }
+            if (id.equals("nand")) {
+                STEPS.add(new Step(20, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "a")),
+                        "showcase-" + (i + 1) + "-" + id + "-a"));
+                STEPS.add(new Step(20, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "b")),
+                        "showcase-" + (i + 1) + "-" + id + "-ab"));
+            }
+            if (id.equals("counter")) {
+                STEPS.add(new Step(110, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }
             if (id.equals("stirling")) {
                 STEPS.add(new Step(100, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));

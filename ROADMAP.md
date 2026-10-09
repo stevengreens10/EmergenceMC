@@ -65,7 +65,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    equilibrium, reacting gas volumes conserving energy and elements (N₂O₄ equilibrium, methane combustion,
    Semenov thermal explosion)
 ✅ Sealed gas vessels in builds: equilibrium (brown-gas exhibit) and thermal explosion (heated can of methane–air)
-⬜ Flows of gas mixtures (burners, engines), liquids/solutions, separation processes,
+✅ Flowing gas mixtures: choked orifices, natural draft, well-stirred combustion; gas burner exhibit
+⬜ Internal-combustion engines (cylinders with intake/exhaust), liquids/solutions, separation processes,
    manufacturing
 
 ## Phase 6 — Advanced multiphysics

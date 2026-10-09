@@ -137,6 +137,24 @@ public final class AutoShowcase {
                     return t > 1500;
                 }));
             }
+            if (id.equals("burner")) {
+                // igniter on; two minutes later the fuel; a minute later the burning chamber on the logger
+                STEPS.add(new Step(2400, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-glowing"));
+                STEPS.add(new Step(1200, () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
+                    BlockPos at = DemoBuilder.partBlock(plot, e, "chamber");
+                    if (server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+                        PlacedPart ch = find(be, PartKind.TANK);
+                        if (ch != null) SimulationManager.get(server.overworld()).attachLogger(p, at, ch.id, "Combustion chamber");
+                    }
+                    SimulationManager.get(server.overworld()).showLogger(p, "fluid temperature", 3);
+                    toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "valve"));
+                    LoggerHud.showcase = true;
+                }, "showcase-" + (i + 1) + "-" + id + "-burning"));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }

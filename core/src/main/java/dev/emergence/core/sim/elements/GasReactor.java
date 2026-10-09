@@ -47,6 +47,8 @@ public final class GasReactor implements Element {
     private Node pNode;
     private AngleTracker tracker;
     private SliderCrank crank;
+    private final List<Node> filmWall = new java.util.ArrayList<>();
+    private final List<double[]> filmGeom = new java.util.ArrayList<>(); // {area, thickness}
 
     /**
      * @param species  species present (their order fixes the unknowns)
@@ -104,6 +106,20 @@ public final class GasReactor implements Element {
     public GasReactor withPiston(AngleTracker tracker, SliderCrank crank) {
         this.tracker = tracker;
         this.crank = crank;
+        return this;
+    }
+
+    /**
+     * Wall film: the gas in the thermal boundary layer against a wall (area A, thickness δ) is at the wall's
+     * temperature, not the bulk's; reactions run there at the wall temperature too, on concentrations c_i·T/T_w
+     * (same pressure, hotter gas), over the film volume A·δ. The species it converts belong to the well-mixed gas, so
+     * the heat of reaction appears in the bulk and energy stays exactly conserved. This is how a hot surface ignites
+     * a mixture that the bulk temperature alone would not (hot-surface ignition); at a wall no hotter than the gas it
+     * merely adds the film's share to the bulk rate.
+     */
+    public GasReactor withWallFilm(Node wall, double area, double thickness) {
+        filmWall.add(wall);
+        filmGeom.add(new double[]{area, thickness});
         return this;
     }
 
@@ -229,6 +245,57 @@ public final class GasReactor implements Element {
             }
         }
         if (pNode != null) loadPressure(ctx, t, volume, dV, ia);
+        for (int w = 0; w < filmWall.size(); w++) loadFilm(ctx, filmWall.get(w), filmGeom.get(w), n, t, volume);
+    }
+
+    /** Reactions in a wall film at the wall temperature (see {@link #withWallFilm}). */
+    private void loadFilm(LoadContext ctx, Node wall, double[] geom, double[] n, double t, double volume) {
+        int m = sp.length, wi = wall.index(), ti = temp.index();
+        double tw = Math.max(50, Math.min(4000, ctx.x(wi))), vf = geom[0] * geom[1], ratio = t / tw;
+        double[][] c = new double[m][];
+        for (int i = 0; i < m; i++) c[i] = pos(n[i] / volume * ratio);
+        double[] dRdn = new double[m];
+        for (int r = 0; r < rx.length; r++) {
+            java.util.Arrays.fill(dRdn, 0);
+            double kf = rx[r].kf(tw), rf = kf;
+            double[][] fac = new double[ord[r].length][];
+            for (int k = 0; k < ord[r].length; k++) {
+                fac[k] = power(c[ord[r][k]], ordVal[r][k]);
+                rf *= fac[k][0];
+            }
+            // d/dn_i through c_i = n_i·T/(V·T_w); d/dT (bulk) and d/dT_w through the same ratio and k(T_w)
+            double dlnRdRatio = 0;
+            for (int k = 0; k < ord[r].length; k++) {
+                int i = ord[r][k];
+                if (fac[k][0] > 0) {
+                    double g = rf / fac[k][0] * fac[k][1];
+                    dRdn[i] += g * ratio / volume;
+                    dlnRdRatio += g * n[i] / volume;
+                }
+            }
+            double rate = rf, dRdTw = rf * rx[r].dlnKfdT(tw) - dlnRdRatio * ratio / tw, dRdT = dlnRdRatio / tw;
+            if (rx[r].reversible()) {
+                double rr = kf / rx[r].kc(tw), dRr = 0;
+                for (int k = 0; k < prodIdx[r].length; k++) rr *= Math.pow(c[prodIdx[r][k]][0], prodNu[r][k]);
+                for (int k = 0; k < prodIdx[r].length; k++) {
+                    int i = prodIdx[r][k];
+                    double g = rr * prodNu[r][k] * c[i][1] / c[i][0];
+                    dRdn[i] -= g * ratio / volume;
+                    dRr += g * n[i] / volume;
+                }
+                rate -= rr;
+                dRdTw -= rr * (rx[r].dlnKfdT(tw) - rx[r].dlnKcdT(tw)) - dRr * ratio / tw;
+                dRdT -= dRr / tw;
+            }
+            for (int i = 0; i < m; i++) {
+                if (nu[r][i] == 0) continue;
+                double g = -vf * nu[r][i];
+                ctx.addF(nIdx[i], g * rate);
+                ctx.addJ(nIdx[i], wi, g * dRdTw);
+                ctx.addJ(nIdx[i], ti, g * dRdT);
+                for (int j = 0; j < m; j++) if (dRdn[j] != 0) ctx.addJ(nIdx[i], nIdx[j], g * dRdn[j]);
+            }
+        }
     }
 
     /** Pressure row p·V − R·T·Σn = 0 (only with a pressure node). */

@@ -186,3 +186,13 @@ then its PVC leads would have charred. It is now a silicon-carbide element (1800
 a chunk boundary cut its negative supply: a Newton iterate drove part temperatures negative and the convection
 correlation's fractional powers gave NaN. Convection and radiation now evaluate at bounded temperatures, and the
 solver names the element that produced a non-finite value.
+
+**A gas burner.** Methane from a 200 bar cylinder through a choked needle valve, air drawn in by the chimney's
+natural draft, lit on hot walls. The physics found the design: a well-stirred reactor validated against the
+adiabatic flame temperature exactly, but the first burner never lit — the gas passes through a small chamber in
+0.1 s and barely warms from the walls, so ignition needed the hot-surface film model (reaction in the thermal
+boundary layer at the wall temperature); the needle valve's bore had been applied at both of its faces, making
+its body a second, filling chamber (valves now have one seat in mixture networks); too much air put it below the
+lean flammability limit, too little left it smouldering rich; and a small flame in a cold steel box went out
+because the walls radiate more than it makes — it needed ~0.8 kW. Lit furnace-style (igniter, then gas, then
+igniter off) it burns on by itself near stoichiometric.

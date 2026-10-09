@@ -358,3 +358,8 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * In builds, every fluid part connected to a gas-charged one joins one mixture network over a shared species list
   (charged species, air, reaction products); uncharged parts hold air; open ends breathe the atmosphere at the
   hydrostatic pressure of their height; valves scale their passage.
+* **Wall film (hot-surface ignition)**: in mixture networks each gas also reacts in a 2 mm thermal boundary layer
+  at its wall's temperature (concentrations scaled by T/T_w at equal pressure, over A·δ); the converted species
+  belong to the bulk, so the heat appears there and energy stays exact. A hot wall thus ignites a mixture the bulk
+  temperature alone would not; at a wall no hotter than the gas it only adds the film's share of the rate.
+* **Valves in mixture networks** have one seat (their bore) on the +axis face; their other faces open into the body.

@@ -96,4 +96,51 @@ public final class ChemistryExhibits {
         r.route();
         return e.view(8, 3.5, 13, 18);
     }
+
+    /**
+     * A gas burner that draws its own air: methane from a 200 bar cylinder through a needle valve (a choked orifice)
+     * into a steel combustion chamber, which also opens to the air through an inlet pipe at its side and to a chimney
+     * above. Lit by a heating element, the flame keeps the chamber hot; the column of hot gas in the chimney is lighter
+     * than the air outside, so it rises and pulls fresh air in through the inlet — natural draft.
+     */
+    public static Exhibit gasBurner() {
+        Exhibit e = new Exhibit("burner", "Gas burner",
+                List.of("GAS BURNER", "1. heater switch on", "2. open fuel valve", "3. heater off"),
+                "Light it the way a gas furnace does: switch the heating element on and let the chamber glow (about two "
+                        + "minutes), then open the fuel valve — the methane lights on the hot walls — then switch the heater "
+                        + "off: the flame keeps itself hot and burns on. The methane comes from a 200 bar cylinder through "
+                        + "a needle valve so fine (40 µm) that the flow is choked: it depends only on the cylinder pressure. "
+                        + "Nothing pumps the air: the hot gas in the chimney weighs less than the cold air outside, so it "
+                        + "rises and pulls fresh air in through the side pipe (natural draft), nearly the right amount to "
+                        + "burn the fuel. Meter the chamber or the chimney for temperature and composition: CO₂ and water "
+                        + "vapour leave, nitrogen passes through. Too small a flame in a cold box goes out — the walls take "
+                        + "its heat faster than it makes it.");
+        String st = "steel_1045";
+        e.add(BLOCK, st, 3, 0, 8, Dir.UP);
+        int fuel = e.add(TANK, st, 3, 1, 8, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        e.name("fuel", fuel);
+        int valve = e.add(VALVE, "brass", 4, 1, 8, Dir.EAST, "bore", 4e-5);
+        e.name("valve", valve);
+        e.add(PIPE, st, 5, 1, 8, Dir.EAST, "bore", 0.004);
+        int chamber = e.add(TANK, st, 6, 1, 8, Dir.UP, "wall", 0.002);
+        e.name("chamber", chamber);
+        e.add(PIPE, st, 6, 1, 9, Dir.SOUTH, "bore", 0.016);                // air inlet, open at its far end
+        int chimney = e.fill(PIPE, st, 6, 2, 8, 6, 6, 8, Dir.UP, "bore", 0.04, "wall", 0.001); // chimney, open at the top
+        e.name("chimney", chimney + 4);
+        // a silicon-carbide element under the chamber to light it, on glass-fibre-insulated leads
+        e.name("heater", e.add(RESISTOR, "alumina", 6, 0, 8, Dir.EAST, "resistance", 4.0, "contact_area", 0.002,
+                "surface_area", 0.002, "mass", 0.1, "max_temperature", 1800));
+        int bank = e.add(CAPACITOR, "alumina", 8, 0, 12, Dir.EAST, "capacitance", 150);
+        e.name("battery", bank);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 96));
+        e.name("switch", e.add(SWITCH, "brass", 4, 0, 12, Dir.EAST));
+        Router r = new Router(e, 0, 0, 0, 15, 3, 15);
+        r.pin("live", 9, 0, 12).pin("live", 7, 0, 8);
+        r.pin("ret", 7, 0, 12).pin("ret", 5, 0, 12);
+        r.pin("sw", 3, 0, 12).pin("sw", 5, 0, 8);
+        r.insulation("live", 800).insulation("sw", 800);
+        r.keepClear(6, 1, 10, 6, 1, 10); // the air inlet's mouth stays open
+        r.route();
+        return e.view(6, 5, 15, 15);
+    }
 }

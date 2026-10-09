@@ -793,4 +793,42 @@ class DemoExhibitsTest {
         bad.forEach(m -> System.out.println("FRAG " + m));
         assertTrue(bad.isEmpty(), bad.size() + " fragments fail");
     }
+
+    /** The burner lights from the heater, keeps burning when it is switched off, and draws its air by natural draft. */
+    @Test
+    void gasBurnerDrawsItsOwnAir() {
+        Exhibit e = ChemistryExhibits.gasBurner();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var ch = dev.emergence.core.chem.Chemistry.standard();
+        long chamber = b.id(e, "chamber"), top = b.id(e, "chimney");
+        // as a gas furnace lights: igniter first, then the gas, then the igniter off
+        c.toggleSwitch(b.id(e, "switch"));
+        for (int i = 0; i < 7200; i++) {
+            if (i == 2400) c.toggleSwitch(b.id(e, "valve"));  // fuel on after 2 minutes
+            if (i == 4800) c.toggleSwitch(b.id(e, "switch")); // igniter off after 4
+            var broken = c.step(0.05);
+            assertTrue(broken.isEmpty(), "no part fails: " + broken);
+            if (i == 3500) {
+                for (var el : c.network().elements()) if (el instanceof dev.emergence.core.sim.elements.MixtureBranch mb)
+                    System.out.printf("burner flow %s: %.3g mol/s%n", mb.label(), mb.molarFlow(c.solverView()));
+                for (var en : java.util.List.of("chamber", "chimney", "fuel")) {
+                    var gg = c.gas(b.id(e, en));
+                    System.out.printf("burner gas %s: %.0f K, p %.1f Pa%n", en, gg.temperature(c.solverView()), gg.pressure(c.solverView()));
+                }
+            }
+            if (i % 1200 == 0 || i == 7199) {
+                var g = c.gas(chamber);
+                var s = c.solverView();
+                System.out.printf("burner t=%.0f s chamber %.0f K wall %.0f K, CH4 %.2f%% O2 %.1f%% CO2 %.1f%%; chimney top %.0f K CO2 %.1f%%, fuel %.1f bar%n",
+                        0.05 * (i + 1), g.temperature(s), c.probe(chamber).temperature(),
+                        100 * g.moleFraction(s, g.indexOf(ch.species("CH4"))), 100 * g.moleFraction(s, g.indexOf(ch.species("O2"))),
+                        100 * g.moleFraction(s, g.indexOf(ch.species("CO2"))), c.gas(top).temperature(s),
+                        100 * c.gas(top).moleFraction(s, g.indexOf(ch.species("CO2"))), c.gas(b.id(e, "fuel")).pressure(s) / 1e5);
+            }
+        }
+        var g = c.gas(chamber);
+        assertTrue(g.temperature(c.solverView()) > 1100, "still burning with the heater off: " + g.temperature(c.solverView()));
+        assertTrue(c.gas(top).moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))) > 0.02, "CO2 goes up the chimney");
+    }
 }

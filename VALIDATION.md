@@ -155,6 +155,11 @@ the isentropic mass flow (0.3 %) independent of the downstream pressure; a hot c
 In-world GameTest: the heated can ignites. Every exhibit runs without a part failing (except those built to
 fail); servo fragments split at every chunk boundary restart.
 
+## Combustion with flow (`MixtureFlowTest`, `DemoExhibitsTest`)
+A well-stirred reactor fed premixed methane–air (λ = 1.5) settles at the adiabatic flame temperature computed
+from the enthalpy balance (1782.4 K, to 0.1 K). Gas burner: lit furnace-style (igniter, then fuel, then igniter
+off) it burns on unaided — chamber > 1100 K, CO₂ > 2 % up the chimney, air drawn only by natural draft.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

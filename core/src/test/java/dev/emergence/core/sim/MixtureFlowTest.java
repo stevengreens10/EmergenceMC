@@ -147,4 +147,50 @@ class MixtureFlowTest {
         assertTrue(up > 1e-4, "hot gas rises up the chimney: " + up);
         assertEquals(up, inlet.massFlow(s), 1e-3 * up, "drawing the same mass of cold air in at the bottom");
     }
+
+    /**
+     * A well-stirred reactor fed premixed methane–air (λ = 1.5) at 293 K, adiabatic: at steady state the products
+     * leave at the adiabatic flame temperature — the T at which their enthalpy equals the feed's.
+     */
+    @Test
+    void wellStirredReactorReachesAdiabaticFlameTemperature() {
+        List<Species> sp = List.of(CH.species("N2"), CH.species("O2"), CH.species("Ar"), CH.species("CH4"),
+                CH.species("CO2"), CH.species("H2O"));
+        double lambda = 1.5, nAir = 2 * lambda / 0.2095, t0 = 293.15;
+        double[] feed = {nAir * 0.7809, nAir * 0.2095, nAir * 0.0096, 1, 0, 0};
+        double tot = 0;
+        for (double v : feed) tot += v;
+        for (int i = 0; i < feed.length; i++) feed[i] /= tot;
+        // products per mole of feed
+        double[] prod = feed.clone();
+        double ch4 = feed[3];
+        prod[3] = 0;
+        prod[1] -= 2 * ch4;
+        prod[4] += ch4;
+        prod[5] += 2 * ch4;
+        double hFeed = 0;
+        for (int i = 0; i < sp.size(); i++) hFeed += feed[i] * sp.get(i).enthalpy(t0);
+        double lo = 300, hi = 4000;
+        for (int k = 0; k < 80; k++) {
+            double mid = 0.5 * (lo + hi), h = 0;
+            for (int i = 0; i < sp.size(); i++) h += prod[i] * sp.get(i).enthalpy(mid);
+            if (h < hFeed) lo = mid;
+            else hi = mid;
+        }
+        Network n = new Network();
+        double v = 1e-4, p = 101325, tStart = 1700, nt = p * v / (R * tStart);
+        double[] n0 = new double[sp.size()];
+        for (int i = 0; i < sp.size(); i++) n0[i] = nt * prod[i];
+        Node th = n.node(Domain.THERMAL, "T", tStart), pn = n.node(Domain.FLUID, "p", p);
+        GasReactor r = n.add(new GasReactor(sp, CH.reactionsAmong(sp), v, th, n0).withPressureNode(pn));
+        n.add(new MixtureBranch(sp, MixtureBranch.End.reservoir(p + 50, t0, feed), MixtureBranch.End.of(r), 2e-5, 5e-3, 0.01, 2).withTag("in"));
+        double[] atmX = {0.7809, 0.2095, 0.0096, 0, 0, 0};
+        MixtureBranch out = n.add(new MixtureBranch(sp, MixtureBranch.End.of(r), MixtureBranch.End.reservoir(p, t0, atmX), 2e-5, 5e-3, 0.01, 2).withTag("out"));
+        TransientSolver s = new TransientSolver(n).method(IntegrationMethod.BDF2);
+        s.advance(5);
+        System.out.printf("WSR: %.1f K (adiabatic flame %.1f K), CH4 left %.2e, flow %.3g mol/s%n", r.temperature(s), lo,
+                r.moleFraction(s, 3), out.molarFlow(s));
+        assertEquals(lo, r.temperature(s), 2, "adiabatic flame temperature");
+        assertTrue(r.moleFraction(s, 3) < 1e-4, "burnt out");
+    }
 }

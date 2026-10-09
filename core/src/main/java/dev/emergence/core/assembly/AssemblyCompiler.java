@@ -1526,6 +1526,8 @@ public final class AssemblyCompiler {
                 double area = PartGeometry.wettedArea(p);
                 c.network.add(new ThermalConductance(tn, wall, 10 * area));
                 c.network.add(new Radiation(tn, wall, 0.05, area));
+                // the thermal boundary layer at the wall (δ = k/h ≈ 2 mm of gas at the wall's temperature)
+                if (!reactions.isEmpty()) r.withWallFilm(wall, area, 0.002);
             }
             Set<Long> seen = new HashSet<>();
             for (Part p : comp) {
@@ -1544,9 +1546,9 @@ public final class AssemblyCompiler {
                                     // an open end: the atmosphere at the vent's height
                                     double half = halfExtent(p, d), yv = p.center().y() + d.dy * half;
                                     double pv = pAtm - rhoAir * g * (yv - yRef);
+                                    double av = mixturePassage(p, d);
                                     var b = new MixtureBranch(list, MixtureBranch.End.of(gas.get(p.id())),
-                                            MixtureBranch.End.reservoir(pv, ambientT, xAir), PartGeometry.passageArea(p),
-                                            equivalentDiameter(PartGeometry.passageArea(p)), half, 1.0)
+                                            MixtureBranch.End.reservoir(pv, ambientT, xAir), av, equivalentDiameter(av), half, 1.0)
                                             .withRise(d.dy * half).withTag(p.kind() + "#" + p.id() + "->air");
                                     mixtureValve(p, b);
                                     c.network.add(b);
@@ -1558,7 +1560,8 @@ public final class AssemblyCompiler {
                                 }
                                 if (!ports(p, d, q) || !ports(q, d.opposite(), p)) continue;
                                 if (!seen.add(pairKey(p.id(), q.id()))) continue;
-                                double ap = PartGeometry.passageArea(p), aq = PartGeometry.passageArea(q);
+                                // a valve has one seat, on its +axis face; through its other faces gas enters its body
+                                double ap = mixturePassage(p, d), aq = mixturePassage(q, d.opposite());
                                 double amin = Math.min(ap, aq), sigma = amin / Math.max(ap, aq);
                                 double kk = 0.5 * (1 - sigma) + (1 - sigma) * (1 - sigma) + 0.5;
                                 if (!axial && p.kind() != PartKind.TANK) kk += 0.9;
@@ -1572,6 +1575,15 @@ public final class AssemblyCompiler {
                                 c.network.add(b);
                             }
             }
+        }
+
+        /** Flow area through face d of part p in a mixture network (a valve's seat only on its +axis face). */
+        double mixturePassage(Part p, Dir d) {
+            if (p.kind() == PartKind.VALVE && d != p.axis()) {
+                double ch = PartGeometry.valveChamber(p);
+                return Math.PI * ch * ch / 4;
+            }
+            return PartGeometry.passageArea(p);
         }
 
         /** A valve's seat in a mixture passage: an orifice (C_d ≈ 0.6) of the valve's bore, opened by hand. */

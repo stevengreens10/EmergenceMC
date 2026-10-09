@@ -175,6 +175,9 @@ tube; in-world counting at the expected rate.
 Spring and mass: period equal to 2π√(m/k) (2 %), oscillating about the static sag m·g/k; magnet on a spring:
 with the coils loaded the magnet loses more mechanical energy than open-circuit, and the extra is the electrical energy in the load and coils (Lenz); in-world GameTest of the bouncing slide.
 
+Hydraulic press: pushing the 1.2 cm piston 28.43 mm raises the 5 cm ram 1.638 mm = A₁/A₂ × 28.43 mm (water volume
+conserved to 0.1 %); the ram pressure carries the weight.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

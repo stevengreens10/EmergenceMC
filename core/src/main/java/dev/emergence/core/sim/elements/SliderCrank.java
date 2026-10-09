@@ -14,12 +14,13 @@ package dev.emergence.core.sim.elements;
  * @param clearance clearance length c [m] (volume left at TDC = A·c)
  * @param phase     body angle at which this piston is at TDC [rad]
  */
-public record SliderCrank(double area, double throw_, double rod, double clearance, double phase) {
+public record SliderCrank(double area, double throw_, double rod, double clearance, double phase) implements PistonKinematics {
     public SliderCrank {
         if (!(rod > throw_)) throw new IllegalArgumentException("connecting rod must be longer than the crank throw");
     }
 
     /** Crank angle from TDC for a body angle θ. */
+    @Override
     public double psi(double theta) {
         return theta - phase;
     }
@@ -45,6 +46,7 @@ public record SliderCrank(double area, double throw_, double rod, double clearan
     }
 
     /** d²V/dθ² by central difference. */
+    @Override
     public double d2Volume(double theta) {
         double h = 1e-4;
         return (dVolume(theta + h) - dVolume(theta - h)) / (2 * h);

@@ -125,7 +125,9 @@ public final class CompiledAssembly {
         if (pc == null) return null;
         var k = pc.crank();
         Vec3 v = pistonLateral.get(partId);
-        return new double[]{pc.displacement(solver), pc.crankAngle(solver), k.throw_(), k.rod(), k.clearance(), v.x(), v.y(), v.z()};
+        double r = k instanceof dev.emergence.core.sim.elements.SliderCrank sc ? sc.throw_() : 0;
+        double rod = k instanceof dev.emergence.core.sim.elements.SliderCrank sc ? sc.rod() : 0;
+        return new double[]{pc.displacement(solver), pc.crankAngle(solver), r, rod, k.clearance(), v.x(), v.y(), v.z()};
     }
 
     /** An open end of a fluid part into the surrounding air: cell, outward face and its branch. */

@@ -21,10 +21,10 @@ import dev.emergence.core.sim.StateView;
 public final class PistonCoupling implements Element {
     private final Node gasP, gasT, omega, wall;
     private final AngleTracker tracker;
-    private final SliderCrank crank;
+    private final PistonKinematics crank;
     private final double pAmb, ringForce;
 
-    public PistonCoupling(Node gasP, Node gasT, Node omega, AngleTracker tracker, SliderCrank crank, double ambientPressure,
+    public PistonCoupling(Node gasP, Node gasT, Node omega, AngleTracker tracker, PistonKinematics crank, double ambientPressure,
                           double ringFriction, Node wall) {
         this.gasP = gasP;
         this.gasT = gasT;
@@ -36,7 +36,7 @@ public final class PistonCoupling implements Element {
         this.wall = wall;
     }
 
-    public SliderCrank crank() {
+    public PistonKinematics crank() {
         return crank;
     }
 
@@ -99,6 +99,6 @@ public final class PistonCoupling implements Element {
 
     @Override
     public String label() {
-        return "PistonCoupling(A=" + crank.area() + ", r=" + crank.throw_() + ")";
+        return "PistonCoupling(A=" + crank.area() + ")";
     }
 }

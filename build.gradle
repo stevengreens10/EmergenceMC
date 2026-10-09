@@ -94,7 +94,8 @@ neoForge {
         demoWorld {
             type = 'gameTestServer'
             gameDirectory = project.file('run-demo')
-            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            // build and save the gallery only: the in-world tests have their own run (runGameTestServer)
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'none'
             systemProperty 'emergence.buildDemo', 'true'
         }
     }

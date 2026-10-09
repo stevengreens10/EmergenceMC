@@ -82,4 +82,40 @@ public final class MechanicsExhibits {
         r.route();
         return e.view(8.5, 4.5, 15, 10);
     }
+
+    /**
+     * Bramah's hydraulic press: a narrow water cylinder (1.2 cm bore) pressed by hand and a wide one (5 cm) lifting a
+     * lead weight, joined by a pipe. The pressure is the same everywhere in the water (Pascal), so the ram pushes with
+     * the hand's force times the ratio of the piston areas, ~17 — and moves 17 times less.
+     */
+    public static Exhibit hydraulicPress() {
+        Exhibit e = new Exhibit("press", "Hydraulic press",
+                List.of("HYDRAULIC PRESS", "Push the small", "piston: the big one", "lifts 17x the force"),
+                "Two water-filled cylinders joined by a pipe. Push the small piston down (use its handle): the water "
+                        + "cannot be squeezed, so its pressure rises — the same everywhere in it (Pascal's law) — and that "
+                        + "pressure on the big piston, 17 times the area, pushes up with 17 times your force, lifting the "
+                        + "lead weight. Nothing is free: the big piston rises only 1/17 as far as you pushed, so the work "
+                        + "in equals the work out (less friction). Meter the cylinders for the pressure.");
+        String st = "steel_1045";
+        // base and the water pipe joining the cylinders' heads, capped at both ends
+        e.fill(BLOCK, st, 3, 0, 8, 11, 0, 8, Dir.UP);
+        e.add(BLOCK, st, 3, 1, 8, Dir.UP);
+        e.add(BLOCK, st, 11, 1, 8, Dir.UP);
+        e.fill(PIPE, st, 4, 1, 8, 10, 1, 8, Dir.EAST, "bore", 0.01, "fluid", 1);
+        // the pump: 1.2 cm bore; its rod slides in a bearing held from a column, with a handle on top
+        e.name("pump", e.add(CYLINDER, st, 4, 2, 8, Dir.UP, "bore", 0.012, "fluid", 1));
+        int prod = e.fill(SHAFT, st, 4, 3, 8, 4, 6, 8, Dir.UP, "diameter", 0.01);
+        e.name("pumpRod", prod);
+        e.add(LINEAR_BEARING, st, 4, 5, 8, Dir.UP);
+        e.fill(BLOCK, st, 5, 1, 8, 5, 5, 8, Dir.UP);
+        e.name("handle", e.add(BLOCK, "oak", 4, 7, 8, Dir.UP, "fill", 0.3));
+        // the ram: 5 cm bore, carrying a lead weight
+        e.name("ram", e.add(CYLINDER, st, 10, 2, 8, Dir.UP, "bore", 0.05, "fluid", 1));
+        int rrod = e.fill(SHAFT, st, 10, 3, 8, 10, 6, 8, Dir.UP, "diameter", 0.02);
+        e.name("ramRod", rrod);
+        e.add(LINEAR_BEARING, st, 10, 5, 8, Dir.UP);
+        e.fill(BLOCK, st, 9, 1, 8, 9, 5, 8, Dir.UP);
+        e.name("weight", e.add(BLOCK, "lead", 10, 7, 8, Dir.UP));
+        return e.view(7, 5, 15, 12);
+    }
 }

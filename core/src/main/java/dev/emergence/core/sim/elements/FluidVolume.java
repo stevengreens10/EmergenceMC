@@ -30,7 +30,7 @@ public final class FluidVolume implements Element {
     private final double volume;
     private int slotM, slotU;
     private AngleTracker tracker;
-    private SliderCrank crank;
+    private PistonKinematics crank;
     private final WaterSteam steam;
     private double phase0 = 1;
     private int sIdx = -1;
@@ -148,7 +148,7 @@ public final class FluidVolume implements Element {
      * Makes this a piston cylinder: the volume follows the crank angle, V(θ) = A·(c + s(θ)). The work the
      * gas does on the piston is accounted by the matching {@link PistonCoupling}.
      */
-    public FluidVolume withPiston(AngleTracker tracker, SliderCrank crank) {
+    public FluidVolume withPiston(AngleTracker tracker, PistonKinematics crank) {
         this.tracker = tracker;
         this.crank = crank;
         return this;

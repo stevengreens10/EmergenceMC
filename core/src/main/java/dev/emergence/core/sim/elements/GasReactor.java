@@ -46,7 +46,7 @@ public final class GasReactor implements Element {
     private double uRef;
     private Node pNode;
     private AngleTracker tracker;
-    private SliderCrank crank;
+    private PistonKinematics crank;
     private final List<Node> filmWall = new java.util.ArrayList<>();
     private final List<double[]> filmGeom = new java.util.ArrayList<>(); // {area, thickness}
 
@@ -103,7 +103,7 @@ public final class GasReactor implements Element {
     }
 
     /** Makes the volume a piston cylinder's: V(θ) from the slider-crank (work on the piston via {@link PistonCoupling}). */
-    public GasReactor withPiston(AngleTracker tracker, SliderCrank crank) {
+    public GasReactor withPiston(AngleTracker tracker, PistonKinematics crank) {
         this.tracker = tracker;
         this.crank = crank;
         return this;

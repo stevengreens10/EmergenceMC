@@ -399,3 +399,6 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Magnetics on slides**: couplings between a slide and the frame (coil flux linkage, mutual inductance, magnet
   energy) are tabulated over the travel (plus 10 %) and represented by a natural cubic spline; force = i·dΨ/dx etc.
 * **Pushing**: a hand on a slide follows the same force–speed–power limits as on a crank (200 N at rest, 3 m/s).
+* **Rams**: a cylinder whose rod side touches a slide moving along its bore has a straight-rod piston
+  (`LinearPiston`): s = s₀ + sign·x, V = A·(c + s); the slide's travel is also stopped where the piston meets the
+  head or the rod end. `PistonCoupling` passes (p − p_atm)·A to the slide, as it passes torque to a crank.

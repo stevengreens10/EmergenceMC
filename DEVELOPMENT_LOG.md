@@ -214,3 +214,9 @@ when the current falls below the holding current, which is why they need a large
 the guide), helical springs from wire geometry, magnet–coil couplings tabulated over the travel, and a hand that
 pushes. Exhibits: a spring–mass oscillator and a magnet bouncing on a spring beside a coil — close the switch and
 the coil's current brakes it (Lenz).
+
+**Hydraulics.** Pistons generalised (crank or straight rod): a cylinder pushing a slide is a ram, and a hydraulic
+press emerges — Pascal's force multiplication with volume conserved exactly. The rod first ran past the piston's
+travel (the cylinder head was only a soft volume floor); the slide is now stopped where the piston meets the head.
+The demo-world generation no longer runs the GameTests (they have their own run): with the whole gallery sharing
+the time budget, time-dependent tests failed there.

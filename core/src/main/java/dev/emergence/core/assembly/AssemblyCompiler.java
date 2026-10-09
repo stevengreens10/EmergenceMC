@@ -1713,7 +1713,7 @@ public final class AssemblyCompiler {
                 double[] st = prev.fluids().get(p.id());
                 double t0 = st != null ? st[1] : prev.temperatures().getOrDefault(p.id(), ambientT);
                 Object[] link = pistons.get(p.id());
-                SliderCrank k = link == null ? null : (SliderCrank) link[0];
+                PistonKinematics k = link == null ? null : (PistonKinematics) link[0];
                 CompiledAssembly.Body body = link == null ? null : (CompiledAssembly.Body) link[1];
                 double v = k != null ? k.volume(body.tracker == null ? 0 : prev.bodyMotion().getOrDefault(p.id(), new double[]{0, 0})[1])
                         : Math.max(PartGeometry.fluidVolume(p), 1e-9);
@@ -1845,7 +1845,7 @@ public final class AssemblyCompiler {
                 Object[] link = pistons.get(p.id());
                 FluidVolume v;
                 if (link != null) {
-                    SliderCrank k = (SliderCrank) link[0];
+                    PistonKinematics k = (PistonKinematics) link[0];
                     CompiledAssembly.Body body = (CompiledAssembly.Body) link[1];
                     v = c.network.add(new FluidVolume(pn, tn, f, k.volume(0)).withPiston(body.tracker, k));
                     PistonCoupling pc = c.network.add(new PistonCoupling(pn, tn, body.node, body.tracker, k, pAtm,
@@ -2062,6 +2062,25 @@ public final class AssemblyCompiler {
             int[] lo = {cyl.minX(), cyl.minY(), cyl.minZ()}, hi = {cyl.maxX(), cyl.maxY(), cyl.maxZ()};
             int[] cell = {(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2};
             cell[a0] = ax.sign() > 0 ? hi[a0] : lo[a0];
+            // a piston rod that is a slide: the piston moves with the slide (a hydraulic or pneumatic ram)
+            {
+                int x = cell[0] + ax.dx, y = cell[1] + ax.dy, z = cell[2] + ax.dz;
+                for (Part q : a.at(x, y, z)) {
+                    CompiledAssembly.Body sb = c.bodyOfPart.get(q.id());
+                    if (sb == null || !sb.slider) continue;
+                    if (Math.abs(Math.abs(sb.axis.dot(ax.vec())) - 1) > 1e-6) {
+                        c.warnings.add("Cylinder #" + cyl.id() + ": its piston rod slides across the bore");
+                        return;
+                    }
+                    double length = cyl.boxSize(a0), clearance = Math.max(cyl.param("clearance", 0.05 * length), 1e-4);
+                    double s0 = cyl.param("piston", 0.5) * (length - clearance), sign = Math.signum(sb.axis.dot(ax.vec()));
+                    out.put(cyl.id(), new Object[]{new LinearPiston(PartGeometry.passageArea(cyl), clearance, s0, sign), sb, Vec3.ZERO});
+                    // the piston meets the head at s = 0 and the rod end at s = length − clearance: the slide stops there
+                    double x1 = -s0 / sign, x2 = (length - clearance - s0) / sign;
+                    c.network.add(new TravelStops(sb.node, sb.tracker, Math.min(x1, x2), Math.max(x1, x2), 2e6, 200, null));
+                    return;
+                }
+            }
             Part ecc = null;
             for (int k = 1; k <= 12 && ecc == null; k++) {
                 int x = cell[0] + ax.dx * k, y = cell[1] + ax.dy * k, z = cell[2] + ax.dz * k;

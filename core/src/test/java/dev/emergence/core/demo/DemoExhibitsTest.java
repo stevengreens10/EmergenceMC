@@ -963,4 +963,25 @@ class DemoExhibitsTest {
         assertTrue(elec < mech[1], "no more electrical energy than the motion lost");
         assertTrue(elec > 0.8 * (mech[1] - mech[0]), "the extra loss went into the circuit");
     }
+
+    /** Pascal: pushing the small piston lifts the ram; the water's volume is conserved (A₁·Δx₁ = A₂·Δx₂). */
+    @Test
+    void hydraulicPressMultipliesForce() {
+        Exhibit e = MechanicsExhibits.hydraulicPress();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pump = b.id(e, "pumpRod"), ram = b.id(e, "ramRod");
+        run(c, 0.5);
+        double p0 = c.probe(pump).angle(), r0 = c.probe(ram).angle();
+        c.setPushEffort(pump, -1);
+        for (int i = 0; i < 100; i++) c.step(0.01);
+        c.setPushEffort(pump, 0);
+        double dp = c.probe(pump).angle() - p0, dr = c.probe(ram).angle() - r0;
+        double a1 = Math.PI * 0.012 * 0.012 / 4, a2 = Math.PI * 0.05 * 0.05 / 4;
+        double press = c.fluid(b.id(e, "ram"))[0];
+        System.out.printf("hydraulic press: pump moved %.2f mm, ram %.3f mm (A1/A2 · %.3f mm), ram pressure %.0f kPa%n",
+                1000 * dp, 1000 * dr, -1000 * dp * a1 / a2, press / 1e3);
+        assertTrue(dp < -0.005, "the pump piston went down");
+        assertEquals(-dp * a1 / a2, dr, 0.15 * Math.abs(dp * a1 / a2), "the ram rose by the displaced water over its area");
+    }
 }

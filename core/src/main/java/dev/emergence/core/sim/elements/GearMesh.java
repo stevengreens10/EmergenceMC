@@ -27,13 +27,45 @@ public final class GearMesh implements Element {
 
     public GearMesh(Node a, Node b, double pitchRadiusA, double pitchRadiusB, int teethA, int teethB,
                     boolean internal, double frictionCoefficient, Node thermal) {
+        this(a, b, pitchRadiusA, pitchRadiusB, internal ? -1 : 1,
+                frictionCoefficient * Math.PI * (1.0 / teethA + 1.0 / teethB), thermal);
+    }
+
+    /**
+     * General form: constraint r_a·ω_a + s·r_b·v_b = 0 and a friction torque on a of lossFactor·r_a·|F|.
+     */
+    private GearMesh(Node a, Node b, double ra, double rb, double s, double lossFactor, Node thermal) {
         this.a = a;
         this.b = b;
-        this.ra = pitchRadiusA;
-        this.rb = pitchRadiusB;
-        this.s = internal ? -1.0 : 1.0;
-        this.lossFactor = frictionCoefficient * Math.PI * (1.0 / teethA + 1.0 / teethB);
+        this.ra = ra;
+        this.rb = rb;
+        this.s = s;
+        this.lossFactor = lossFactor;
         this.thermal = thermal;
+    }
+
+    /**
+     * Rack and pinion: a pinion of pitch radius r and z teeth (node a, angular velocity) driving a rack on a slide
+     * (node b, velocity): r·ω + s·v = 0, s = ±1 from the geometry. Tooth friction as for a gear pair with the rack's
+     * 1/z = 0.
+     */
+    public static GearMesh rackAndPinion(Node pinion, Node rack, double pitchRadius, int teeth, double s,
+                                         double frictionCoefficient, Node thermal) {
+        return new GearMesh(pinion, rack, pitchRadius, 1, s, frictionCoefficient * Math.PI / teeth, thermal);
+    }
+
+    /**
+     * Lead screw: the screw (node a, angular velocity) and its nut on a slide (node b, velocity) with
+     * (lead/2π)·ω + s·v = 0. The axial force F on the nut presses the thread flanks with N ≈ |F|/(cos λ·cos α) (lead
+     * angle λ = atan(lead/π d_m), flank half-angle α), sliding at ω·r_m/cos λ, so friction takes the torque
+     * μ·|F|·r_m/(cos α·cos²λ): efficiency η = sin λ cos λ/(sin λ cos λ + μ/cos α) (the exact η = tan λ(1 − μ' tan λ)/(tan λ
+     * + μ') to first order in μ' = μ/cos α), and the screw holds a load by itself once μ' ≳ tan λ.
+     */
+    public static GearMesh leadScrew(Node screw, Node nut, double lead, double meanDiameter, double flankHalfAngle,
+                                     double s, double frictionCoefficient, Node thermal) {
+        double rl = lead / (2 * Math.PI), rm = meanDiameter / 2, lam = Math.atan(lead / (Math.PI * meanDiameter));
+        double torquePerForce = frictionCoefficient / Math.cos(flankHalfAngle) * rm / (Math.cos(lam) * Math.cos(lam));
+        return new GearMesh(screw, nut, rl, 1, s, torquePerForce / rl, thermal);
     }
 
     @Override
@@ -73,6 +105,11 @@ public final class GearMesh implements Element {
 
     public double toothForce(StateView st) {
         return st.x(fIdx);
+    }
+
+    /** Constraint sign s (−1 internal mesh, +1 external; set by geometry for racks and screws). */
+    public double sense() {
+        return s;
     }
 
     public double ratio() {

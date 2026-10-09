@@ -29,6 +29,10 @@ behaviour; where physics is missing the effect is simply absent.
 * Gears: external spur meshes between parallel shafts only; no backlash, tooth compliance, internal/ring
   gears, racks or bevel gears.
 * No structural stress/deflection, buckling, fatigue or fracture yet.
+* Lead screws need the screw turning in bearings and the nut on a slide: a nut turning on a fixed screw (or
+  a screw turning in a fixed nut) is a helical joint, not modelled. Thread efficiency is first order in μ'.
+  A self-locked screw creeps at ~0.4 µm/s (regularised Coulomb friction).
+* A rack does not disengage: its slide is stopped where the pinion would leave its teeth.
 
 ## Thermal
 * Lumped bodies (one node per part); large parts have no internal gradients.

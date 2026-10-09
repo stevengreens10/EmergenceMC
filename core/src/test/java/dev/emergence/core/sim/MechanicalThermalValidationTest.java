@@ -118,6 +118,58 @@ class MechanicalThermalValidationTest {
         assertEquals(1 - 0.05 * Math.PI * (1.0 / 20 + 1.0 / 40), eta, 0.003);
     }
 
+    /**
+     * Lead screw raising a load: the nut moves lead/2π per radian, and thread friction takes the efficiency
+     * η = sin λ cos λ/(sin λ cos λ + μ') (μ' = μ/cos 15°) — Tr 20×4 oiled (μ = 0.13): ≈ 33 %.
+     */
+    @Test
+    void leadScrewEfficiencyFollowsThreadFriction() {
+        // 1 kN needs 1.9 N·m (0.64 to lift, 1.2 against the thread friction): driven with 4 N·m
+        double lead = 0.004, dm = 0.018, mu = 0.13, f = 1000, c = 0.05, tau = 4.0;
+        Network n = new Network();
+        Node refR = n.reference(Domain.ROTATIONAL), refT = n.reference(Domain.TRANSLATIONAL);
+        Node w = n.node(Domain.ROTATIONAL, "screw"), v = n.node(Domain.TRANSLATIONAL, "nut");
+        n.add(new Inertia(w, 1e-4));
+        n.add(new Inertia(v, 1.0));
+        n.add(new FlowSource(refR, w, tau));
+        n.add(new Damper(w, refR, c, null));
+        n.add(new FlowSource(refT, v, -f)); // the load pushes the nut back along −x
+        n.add(GearMesh.leadScrew(w, v, lead, dm, Math.toRadians(15), -1, mu, null));
+        TransientSolver s = new TransientSolver(n);
+        s.advance(3.0);
+        double om = s.x(w), vel = s.x(v);
+        assertEquals(lead / (2 * Math.PI) * om, vel, 1e-6 * Math.abs(vel), "nut advances lead/2π per radian");
+        double lam = Math.atan(lead / (Math.PI * dm)), mup = mu / Math.cos(Math.toRadians(15));
+        double eta = f * vel / ((tau - c * om) * om), expect = Math.sin(lam) * Math.cos(lam) / (Math.sin(lam) * Math.cos(lam) + mup);
+        System.out.printf("lead screw: η = %.4f (model %.4f, exact thread formula %.4f)%n", eta, expect,
+                Math.tan(lam) * (1 - mup * Math.tan(lam)) / (Math.tan(lam) + mup));
+        assertTrue(vel > 0, "it lifts the load");
+        assertEquals(expect, eta, 0.003);
+    }
+
+    /** Self-locking: a fine-lead screw holds its load with nothing turning it; a steep (multi-start) one runs back. */
+    @Test
+    void fineLeadScrewHoldsItsLoadSteepOneRunsBack() {
+        double[] leads = {0.004, 0.04};
+        double[] fell = new double[2];
+        for (int k = 0; k < 2; k++) {
+            Network n = new Network();
+            Node refR = n.reference(Domain.ROTATIONAL), refT = n.reference(Domain.TRANSLATIONAL);
+            Node w = n.node(Domain.ROTATIONAL, "screw"), v = n.node(Domain.TRANSLATIONAL, "nut");
+            n.add(new Inertia(w, 1e-4));
+            n.add(new Inertia(v, 10.0));
+            n.add(new FlowSource(refT, v, -98.1));
+            AngleTracker x = n.add(new AngleTracker(v, 0));
+            n.add(GearMesh.leadScrew(w, v, leads[k], 0.0175, Math.toRadians(15), -1, 0.13, null));
+            TransientSolver s = new TransientSolver(n);
+            s.advance(1.0);
+            fell[k] = -x.angle(s);
+        }
+        System.out.printf("self-locking: fine lead fell %.3g m in 1 s, steep lead %.3g m%n", fell[0], fell[1]);
+        assertTrue(fell[0] < 1e-3, "fine thread: friction holds it (tan λ = 0.073 < μ' = 0.135)");
+        assertTrue(fell[1] > 0.1, "steep thread: it runs back (tan λ = 0.73 > μ')");
+    }
+
     @Test
     void lumpedBodyCoolsExponentially() {
         double C = 1000, G = 2.0, T0 = 400, Ta = 300;

@@ -133,7 +133,21 @@ public enum PartKind {
      * sliders): stiffness k = G·d⁴/(8·D³·N) from its wire diameter "wire" (default 2 mm), coil diameter "coil"
      * (default 60 % of the cell) and active turns "turns" (default 10).
      */
-    SPRING(false, false);
+    SPRING(false, false),
+    /**
+     * Gear rack: a bar along its axis with straight teeth cut on one face ("face", a {@link Dir} ordinal, default UP).
+     * A spur gear whose axis crosses the bar and whose pitch circle touches that face meshes with it (same tooth
+     * module: "module", default that of a default gear of the bar's cell size), turning rotation into the bar's
+     * travel. The bar must belong to a slide moving along its length; the gear must stay over the teeth.
+     */
+    RACK(true, false),
+    /**
+     * Nut on a threaded shaft (a lead screw): the shaft and the nut screw along one another — turning one by dθ
+     * relative to the other moves the nut lead·dθ/2π along the shaft. "lead" [m per turn] (default 1/5 of the
+     * shaft diameter, like Tr 20×4), "left" = 1 for a left-hand thread, "lubricated" (default 1). Trapezoidal
+     * thread (30°); friction between the flanks makes it lose work and, with a fine lead, hold a load by itself.
+     */
+    NUT(true, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

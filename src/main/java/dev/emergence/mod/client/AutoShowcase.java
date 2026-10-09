@@ -179,6 +179,24 @@ public final class AutoShowcase {
                 STEPS.add(new Step(10, () -> pushPart(server.overworld(), rodAt, PartKind.SHAFT, 0),
                         "showcase-" + (i + 1) + "-" + id + "-pumped"));
             }
+            if (id.equals("rack")) {
+                // crank the rack up, then let go: the weight runs it back down
+                BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank");
+                STEPS.add(new Step(30, () -> crank(server.overworld(), crankAt, 1), "showcase-" + (i + 1) + "-" + id + "-lifted"));
+                STEPS.add(new Step(30, () -> crank(server.overworld(), crankAt, 0), "showcase-" + (i + 1) + "-" + id + "-released"));
+            }
+            if (id.equals("screws")) {
+                // crank both screws up (clockwise from above), then let go: the fine one holds, the steep one runs back
+                BlockPos fineAt = DemoBuilder.partBlock(plot, e, "fineCrank"), steepAt = DemoBuilder.partBlock(plot, e, "steepCrank");
+                STEPS.add(new Step(40, () -> {
+                    crank(server.overworld(), fineAt, -1);
+                    crank(server.overworld(), steepAt, -1);
+                }, "showcase-" + (i + 1) + "-" + id + "-lifted"));
+                STEPS.add(new Step(30, () -> {
+                    crank(server.overworld(), fineAt, 0);
+                    crank(server.overworld(), steepAt, 0);
+                }, "showcase-" + (i + 1) + "-" + id + "-released"));
+            }
             if (id.equals("pressure")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }

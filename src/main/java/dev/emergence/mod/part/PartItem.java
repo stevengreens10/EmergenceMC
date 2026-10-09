@@ -81,6 +81,8 @@ public final class PartItem extends Item {
             case GM_TUBE -> PartSpec.of("stainless_304", 1, 1);
             case LINEAR_BEARING -> PartSpec.of("steel_1045", 1, 1);
             case SPRING -> PartSpec.of("steel_1045", 1, 1, "wire", 0.002);
+            case RACK -> PartSpec.of("steel_1045", 4, 1, "face", 1);
+            case NUT -> PartSpec.of("bronze", 1, 1, "lead", 0.004);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -128,6 +130,8 @@ public final class PartItem extends Item {
                     + ", " + Units.formatSI(p.getOrDefault("activity", 3.7e5), "Bq");
             case GM_TUBE -> String.format(", %.0f V start", p.getOrDefault("start", 350.0));
             case SPRING -> String.format(", %.1f mm wire, %.0f turns", 1000 * p.getOrDefault("wire", 0.002), p.getOrDefault("turns", 10.0));
+            case RACK -> ", teeth " + dev.emergence.core.assembly.Dir.values()[(int) Math.max(0, Math.min(5, Math.round(p.getOrDefault("face", 1.0))))].name().toLowerCase();
+            case NUT -> String.format(", %.0f mm lead%s", 1000 * p.getOrDefault("lead", 0.004), p.getOrDefault("left", 0.0) > 0 ? ", left-hand" : "");
             case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
                     + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[

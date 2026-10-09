@@ -106,6 +106,7 @@ public final class PartShapes {
             case SOURCE -> model(out, be, p, -0.3f, 0.3f, -0.5f, -0.3f, -0.3f, 0.3f);
             case GM_TUBE -> model(out, be, p, -0.16f, 0.16f, -0.16f, 0.16f, -0.5f, 0.5f);
             case POTENTIOMETER -> model(out, be, p, -0.36f, 0.36f, -0.36f, 0.36f, -0.5f * ez, 0.5f * ez);
+            case NUT -> model(out, be, p, -0.45f * m, 0.45f * m, -0.45f * m, 0.45f * m, -0.42f * ez, 0.42f * ez);
             case MAGNET -> {
                 String[] key = {"sx", "sy", "sz"};
                 float[] h = new float[3];

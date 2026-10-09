@@ -27,7 +27,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Slides on linear bearings, helical springs, end stops, gravity along the guide, magnetics on slides
 ✅ Rams: cylinders driving slides (hydraulic press)
 ✅ Check-valve pumps (hydraulic jack); cavitation in liquids
-⬜ Linkages, free rigid bodies, rotor–slide couplings (rack and pinion, lead screws)
+✅ Rotor–slide couplings: rack and pinion, lead screws (thread friction, self-locking)
+⬜ Linkages, free rigid bodies, helical joints (a nut turning on a fixed screw)
 
 ## Phase 3 — Thermal and fluid physics
 🟡 Heat transfer: conduction, natural convection, radiation, thermal masses ✅; forced convection ⬜

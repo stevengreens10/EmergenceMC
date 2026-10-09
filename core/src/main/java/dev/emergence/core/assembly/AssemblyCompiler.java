@@ -148,6 +148,10 @@ public final class AssemblyCompiler {
                     if (isBearingShaftNoJoint(p, q)) continue;
                     if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
                     if (p.kind() == PartKind.GEAR && q.kind() == PartKind.GEAR) continue; // mesh, not weld
+                    if ((p.kind() == PartKind.GEAR && q.kind() == PartKind.RACK) || (p.kind() == PartKind.RACK && q.kind() == PartKind.GEAR)) continue;
+                    // a nut screws along its shaft: it turns on the thread instead of being fixed to it (nor to the
+                    // shaft's neighbouring segments, end-on against it)
+                    if ((p.kind() == PartKind.NUT && onAxisLine(q, p)) || (q.kind() == PartKind.NUT && onAxisLine(p, q))) continue;
                     if (isGland(p, q) || isGland(q, p)) continue; // shaft through a pipe's seal
                     // a bladed rotor spins inside its housing without touching it
                     if ((p.kind() == PartKind.ROTOR && (q.kind().holdsFluid() || q.kind() == PartKind.ROTOR))
@@ -184,6 +188,18 @@ public final class AssemblyCompiler {
             Part s = b == p ? q : p;
             if (b == null || s.kind() != PartKind.SHAFT) return false;
             return b.overlaps(s) && b.axis().axis() == s.axis().axis();
+        }
+
+        /** True if s is a shaft whose axis line runs through nut n's cell, along n's axis. */
+        static boolean onAxisLine(Part s, Part n) {
+            if (s.kind() != PartKind.SHAFT || s.axis().axis() != n.axis().axis()) return false;
+            int a = n.axis().axis();
+            for (int k = 0; k < 3; k++) {
+                if (k == a) continue;
+                int sl = k == 0 ? s.minX() : k == 1 ? s.minY() : s.minZ(), nl = k == 0 ? n.minX() : k == 1 ? n.minY() : n.minZ();
+                if (sl != nl) return false;
+            }
+            return true;
         }
 
         /**
@@ -647,6 +663,11 @@ public final class AssemblyCompiler {
                     tryMesh(gears.get(i), gears.get(k));
                 }
             }
+            for (Part r : parts) {
+                if (r.kind() != PartKind.RACK) continue;
+                for (Part g : gears) tryRack(g, r);
+            }
+            for (Part n : parts) if (n.kind() == PartKind.NUT) buildLeadScrew(n);
             // thermal contact between structurally joined parts
             for (Part p : parts) {
                 for (Part q : a.neighbors(p)) {
@@ -720,6 +741,119 @@ public final class AssemblyCompiler {
 
         boolean isBearingJointPair(Part p, Part q) {
             return isBearingJoint(p, q);
+        }
+
+        /**
+         * A spur gear meshing with a rack: the gear's axis crosses the bar, the bar's toothed face looks at the gear,
+         * the gear's face width overlaps the bar and its pitch circle touches the toothed face. The rack's slide is
+         * stopped before the gear would run off its teeth.
+         */
+        void tryRack(Part g, Part r) {
+            CompiledAssembly.Body bg = c.bodyOfPart.get(g.id()), br = c.bodyOfPart.get(r.id());
+            if (bg == null || br == null || bg == br || bg.slider) return;
+            Vec3 u = r.axis().vec(), n = Vec3.axis(g.axis().axis()), w = PartGeometry.rackFace(r).vec();
+            if (Math.abs(u.dot(n)) > 1e-9 || Math.abs(w.dot(u)) > 1e-9 || Math.abs(w.dot(n)) > 1e-9) return;
+            int ax = g.axis().axis();
+            int lo1 = ax == 0 ? g.minX() : ax == 1 ? g.minY() : g.minZ(), hi1 = ax == 0 ? g.maxX() : ax == 1 ? g.maxY() : g.maxZ();
+            int lo2 = ax == 0 ? r.minX() : ax == 1 ? r.minY() : r.minZ(), hi2 = ax == 0 ? r.maxX() : ax == 1 ? r.maxY() : r.maxZ();
+            if (hi1 < lo2 || hi2 < lo1) return; // not in the same plane
+            double rp = PartGeometry.gearPitchRadius(g), m = 2 * rp / PartGeometry.gearTeeth(g), mr = PartGeometry.rackModule(r);
+            Vec3 d = g.center().sub(r.center());
+            int wa = PartGeometry.rackFace(r).axis(), ua = r.axis().axis();
+            double off = d.dot(w) - 0.5 * r.boxSize(wa), along = d.dot(u), half = 0.5 * r.boxSize(ua);
+            if (Math.abs(off - rp) > 0.3 * m || Math.abs(along) > half) return;
+            // the whole bar: the run of rack segments in line with this one, teeth on the same face
+            double[] run = rackRun(r);
+            along = g.center().dot(u) - 0.5 * (run[0] + run[1]);
+            half = 0.5 * (run[1] - run[0]);
+            if (Math.abs(m - mr) > 0.1 * Math.max(m, mr)) {
+                c.warnings.add("Gear #" + g.id() + " and rack #" + r.id() + " have different tooth modules and cannot mesh");
+                return;
+            }
+            if (!br.slider || Math.abs(Math.abs(br.axis.dot(u)) - 1) > 1e-9) {
+                c.warnings.add("Rack #" + r.id() + " must ride on a slide running along its length");
+                return;
+            }
+            // the gear's tooth at the contact point (−w·r_p from its centre) moves at −ω·r_p·(A × w); the rack at v·S
+            Vec3 axisA = bg.isStatic ? n : bg.axis;
+            double k = axisA.cross(w).dot(u), q = br.axis.dot(u);
+            Node ng = bg.isStatic ? refR : bg.node;
+            boolean lub = g.param("lubricated", 1) > 0 || r.param("lubricated", 1) > 0;
+            double mu = lub ? 0.05 : Math.max(g.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4),
+                    r.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4));
+            c.network.add(GearMesh.rackAndPinion(ng, br.node, rp, PartGeometry.gearTeeth(g), Math.signum(k * q), mu,
+                    c.thermalOfPart.get(g.id())));
+            thermalLink(g, r);
+            // keep a tooth's width of rack under the gear: the contact sits at along − x·q along the bar
+            double h = Math.max(half - m * Math.PI / 2, 0);
+            double x1 = q > 0 ? along - h : -along - h, x2 = q > 0 ? along + h : -along + h;
+            c.network.add(new TravelStops(br.node, br.tracker, x1, x2, 2e6, 200, null));
+        }
+
+        /** Extent {lo, hi} along the bar's (positive) axis [m] of the run of rack segments in line with r. */
+        double[] rackRun(Part r) {
+            Dir ax = r.axis();
+            Vec3 u = ax.vec();
+            double lo = r.center().dot(u) - 0.5 * r.boxSize(ax.axis()), hi = lo + r.boxSize(ax.axis());
+            for (int dir : new int[]{-1, 1}) {
+                Part cur = r;
+                for (int n = 0; n < 4096; n++) {
+                    int x = (dir > 0 ? cur.maxX() : cur.minX()) + ax.dx * dir, y = (dir > 0 ? cur.maxY() : cur.minY()) + ax.dy * dir,
+                            z = (dir > 0 ? cur.maxZ() : cur.minZ()) + ax.dz * dir;
+                    Part next = null;
+                    for (Part q : a.at(x, y, z)) {
+                        if (q.kind() == PartKind.RACK && q.axis().axis() == ax.axis() && PartGeometry.rackFace(q) == PartGeometry.rackFace(r)) next = q;
+                    }
+                    if (next == null) break;
+                    cur = next;
+                    double c0 = cur.center().dot(u), h0 = 0.5 * cur.boxSize(ax.axis());
+                    lo = Math.min(lo, c0 - h0);
+                    hi = Math.max(hi, c0 + h0);
+                }
+            }
+            return new double[]{lo, hi};
+        }
+
+        /**
+         * A nut on a shaft: the screw turning in bearings and the nut on a slide along it. Turning the screw by +ω
+         * about +u (right-hand thread) screws it forward along +u through the nut, so the nut moves at
+         * −(lead/2π)·ω·(A·u) along u relative to it.
+         */
+        void buildLeadScrew(Part nut) {
+            Part screw = null;
+            for (Part q : a.neighbors(nut)) {
+                if (q.kind() == PartKind.SHAFT && q.overlaps(nut) && q.axis().axis() == nut.axis().axis()) screw = q;
+            }
+            if (screw == null) {
+                for (Part q : parts) {
+                    if (q.kind() == PartKind.SHAFT && q.overlaps(nut) && q.axis().axis() == nut.axis().axis()) screw = q;
+                }
+            }
+            if (screw == null) {
+                c.warnings.add("Nut #" + nut.id() + " is not on a shaft running along its axis");
+                return;
+            }
+            CompiledAssembly.Body bs = c.bodyOfPart.get(screw.id()), bn = c.bodyOfPart.get(nut.id());
+            if (bs == null || bn == null || bs == bn) return;
+            Vec3 u = nut.axis().vec();
+            boolean screwTurns = !bs.isStatic && !bs.slider && Math.abs(Math.abs(bs.axis.dot(u)) - 1) < 1e-9;
+            boolean nutSlides = bn.slider && Math.abs(Math.abs(bn.axis.dot(u)) - 1) < 1e-9;
+            if (!nutSlides || !(screwTurns || bs.isStatic)) {
+                c.warnings.add("Nut #" + nut.id() + ": a lead screw needs the screw turning in bearings and the nut on a slide along it");
+                return;
+            }
+            double d = PartGeometry.shaftDiameter(screw), lead = PartGeometry.nutLead(nut, d);
+            double dm = d - 0.5 * Math.min(lead, 0.25 * d); // trapezoidal thread, depth half the pitch (multi-start: capped)
+            double hand = nut.param("left", 0) > 0 ? -1 : 1;
+            double aDotU = bs.isStatic ? 1 : bs.axis.dot(u), q = bn.axis.dot(u);
+            // (lead/2π)·ω·hand·(A·u) + v·(S·u) = 0
+            double sense = Math.signum(hand * aDotU * q);
+            boolean lub = nut.param("lubricated", 1) > 0;
+            // threaded pairs, steel screw (Shigley Table 8-5): bronze nut 0.10–0.16 oiled; dry, the nut's own friction
+            double mu = lub ? 0.13 : nut.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.19);
+            c.network.add(GearMesh.leadScrew(bs.isStatic ? refR : bs.node, bn.node, lead, dm, Math.toRadians(15),
+                    sense, mu, c.thermalOfPart.get(nut.id())));
+            thermalLink(screw, nut);
         }
 
         void tryMesh(Part g1, Part g2) {

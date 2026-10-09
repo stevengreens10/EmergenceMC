@@ -239,3 +239,10 @@ wire that meets one of its terminals, using the compiler's own terminal rule. Sp
 between what their ends are fixed to (end positions synced); thin plates (the jack's handle) sit on what they are
 fixed to instead of floating mid-cell; hitboxes follow the drawn geometry. The core suite runs in parallel and the
 servo fragment sweep is deduplicated: ~11 min → ~2.5 min.
+
+**Rotary to linear.** Racks (a toothed bar on a slide, meshing with any spur gear whose pitch circle touches its toothed
+face) and lead-screw nuts (on a shaft turning in bearings, fixed to a slide) reuse the gear mesh's Lagrange constraint
+between a rotor and a slide. The screw's thread friction follows the inclined-plane analysis, so self-locking emerges:
+the exhibit's 4 mm-lead screw holds its weight when let go, the four-start 40 mm one runs back and spins its crank. Shafts
+are rows of one-cell segments: the segments either side of a nut first welded it to the screw (locking the machine), and
+the rack's travel was first limited to the one segment under the pinion.

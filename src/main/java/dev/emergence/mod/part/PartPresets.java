@@ -134,6 +134,10 @@ public final class PartPresets {
         l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1)));
         l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.002)));
         l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.003)));
+        // rotary to linear: racks with their teeth on each side, fine and steep lead-screw nuts
+        for (int face = 0; face < 6; face++) l.add(stack(PartKind.RACK, PartSpec.of("steel_1045", 4, 1, "face", face)));
+        l.add(stack(PartKind.NUT, PartSpec.of("bronze", 1, 1, "lead", 0.004)));
+        l.add(stack(PartKind.NUT, PartSpec.of("bronze", 1, 1, "lead", 0.04)));
         // radioactivity: school check sources (sealed), a Ba-137m sample, a Geiger–Müller tube, lead shielding
         l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5)));
         l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 2, "activity", 3.7e4)));

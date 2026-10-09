@@ -209,6 +209,13 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                     Math.min(ex, ey), Math.min(ex, ey), ez, false);
             case LINEAR_BEARING -> drawModel(c, "bearing", p, Math.min(ex, ey), Math.min(ex, ey), ez * 1.2f, false);
             case SPRING -> drawSpring(c, be, p, ez);
+            case RACK -> drawRack(c, p, f, ex, ey, ez);
+            case NUT -> {
+                // a hexagon-ish bronze block round the screw, chamfered at its ends
+                TextureAtlasSprite s = PartModels.sprite("metal_cast");
+                box(c, s, tintOf(c, c.materialRgb), -0.45f * ex, -0.4f * ey, -0.38f * ez, 0.45f * ex, 0.4f * ey, 0.38f * ez);
+                box(c, s, tintOf(c, darken(c.materialRgb, 0.85f)), -0.4f * ex, -0.45f * ey, -0.42f * ez, 0.4f * ex, 0.45f * ey, 0.42f * ez);
+            }
             case COIL -> drawModel(c, "coil", p, ex, ey, ez, false);
             case SWITCH -> drawModel(c, "switch", p, 1, 1, ez, false);
             case CRANK -> drawModel(c, "crank", p, 1, 1, 1, false);
@@ -302,6 +309,38 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         lo[rem] = r0;
         hi[rem] = r1;
         box(c, s, rgb, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
+    }
+
+    /** A gear rack: a bar along its axis with straight teeth (module from "module") cut on its "face" side. */
+    private void drawRack(Ctx c, PlacedPart p, Frame f, float ex, float ey, float ez) {
+        var prm = p.spec.params();
+        Dir face = Dir.values()[(int) Math.max(0, Math.min(5, Math.round(prm.getOrDefault("face", 1.0))))];
+        org.joml.Vector3f loc = new Matrix3f(f.m3).transpose().transform(new org.joml.Vector3f(face.dx, face.dy, face.dz));
+        boolean onX = Math.abs(loc.x) > 0.5f;
+        if (!onX && Math.abs(loc.y) < 0.5f) {
+            box(c, PartModels.sprite("metal_cast"), tintOf(c, c.materialRgb), -ex / 2, -ey / 2, -ez / 2, ex / 2, ey / 2, ez / 2);
+            return; // teeth on an end face: nothing meshes there
+        }
+        float sg = Math.signum(onX ? loc.x : loc.y), half = (onX ? ex : ey) / 2, side = 0.8f * (onX ? ey : ex) / 2;
+        float m = (float) (prm.getOrDefault("module", Math.min(ex, ey) / 16.0 / 24) * 16.0); // [cells]
+        float root = half - 1.25f * m, tip = half + m, pitch = (float) Math.PI * m;
+        int tint = tintOf(c, c.materialRgb), dark = tintOf(c, darken(c.materialRgb, 0.82f));
+        TextureAtlasSprite brushed = PartModels.sprite("metal_brushed"), cast = PartModels.sprite("metal_cast");
+        // the bar up to the tooth roots, then a tooth every pitch along it
+        rackBox(c, brushed, tint, onX, sg, -half, root, -(onX ? ey : ex) / 2, (onX ? ey : ex) / 2, -ez / 2, ez / 2);
+        int n = (int) Math.min(400, Math.floor(ez / pitch));
+        float z0 = -n * pitch / 2;
+        for (int k = 0; k < n; k++) {
+            float za = z0 + k * pitch + 0.25f * pitch;
+            rackBox(c, cast, dark, onX, sg, root, tip, -side, side, za, za + 0.5f * pitch);
+        }
+    }
+
+    /** A box spanning [a0, a1] along the rack's toothed axis (mirrored by sg), [b0, b1] across it and [z0, z1] along it. */
+    private void rackBox(Ctx c, TextureAtlasSprite s, int rgb, boolean onX, float sg, float a0, float a1, float b0, float b1, float z0, float z1) {
+        float lo = sg > 0 ? a0 : -a1, hi = sg > 0 ? a1 : -a0;
+        if (onX) box(c, s, rgb, lo, b0, z0, hi, b1, z1);
+        else box(c, s, rgb, b0, lo, z0, b1, hi, z1);
     }
 
     /**

@@ -1006,4 +1006,59 @@ class DemoExhibitsTest {
         run(c, 3);
         assertTrue(c.probe(ram).angle() < held - 0.5 * rise, "opening the release valve lets it down");
     }
+
+    /** Rack and pinion: the rack travels r_p per radian of the crank; let go, the weight runs it back. */
+    @Test
+    void rackAndPinionLiftsAndRunsBack() {
+        Exhibit e = MechanicsExhibits.rackAndPinion();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertTrue(c.warnings().stream().noneMatch(w -> w.contains("ack")), c.warnings().toString());
+        long crank = b.id(e, "crank"), rack = b.id(e, "rack");
+        assertTrue(c.bodyOf(rack) != null && c.bodyOf(rack).slider(), "the rack is on a slide");
+        run(c, 0.5);
+        double th0 = c.probe(crank).angle(), x0 = c.probe(rack).angle();
+        c.setCrankEffort(crank, 1, false);
+        for (int i = 0; i < 100; i++) c.step(0.01);
+        double th1 = c.probe(crank).angle(), x1 = c.probe(rack).angle();
+        double rp = 0.5 * dev.emergence.core.assembly.Part.CELL;
+        System.out.printf("rack and pinion: crank %.3f rad, rack %.2f mm (r_p·Δθ = %.2f mm)%n", th1 - th0, 1000 * (x1 - x0), 1000 * rp * (th1 - th0));
+        assertTrue(x1 - x0 > 0.01, "cranking lifts the rack: " + (x1 - x0));
+        assertEquals(rp * Math.abs(th1 - th0), Math.abs(x1 - x0), 1e-4, "it travels the pitch radius per radian");
+        c.setCrankEffort(crank, 0, false);
+        run(c, 1.0);
+        assertTrue(c.probe(rack).angle() < x1 - 0.01, "let go: the weight runs it back down");
+    }
+
+    /** Lead screws: the nut moves a lead per turn; the fine thread holds its load, the steep one runs back. */
+    @Test
+    void fineScrewHoldsSteepScrewRunsBack() {
+        Exhibit e = MechanicsExhibits.screwJacks();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertTrue(c.warnings().stream().noneMatch(w -> w.contains("Nut")), c.warnings().toString());
+        run(c, 0.5);
+        String[] names = {"fine", "steep"};
+        double[] leads = {0.004, 0.04};
+        for (int k = 0; k < 2; k++) {
+            long crank = b.id(e, names[k] + "Crank"), rod = b.id(e, names[k] + "Rod");
+            double th0 = c.probe(crank).angle(), x0 = c.probe(rod).angle();
+            // right-hand threads: clockwise seen from above (negative about +y) screws the nut up
+            c.setCrankEffort(crank, -1, false);
+            for (int i = 0; i < 100; i++) c.step(0.01);
+            double th1 = c.probe(crank).angle(), x1 = c.probe(rod).angle();
+            c.setCrankEffort(crank, 0, false);
+            System.out.printf("%s screw: crank %.2f turns, carriage %.2f mm (lead × turns = %.2f mm)%n", names[k],
+                    (th1 - th0) / (2 * Math.PI), 1000 * (x1 - x0), 1000 * leads[k] * Math.abs(th1 - th0) / (2 * Math.PI));
+            assertTrue(x1 - x0 > 0.002, names[k] + ": cranking lifts the carriage");
+            assertEquals(leads[k] * Math.abs(th1 - th0) / (2 * Math.PI), x1 - x0, 1e-3 * leads[k] + 1e-5, "one lead per turn");
+            run(c, 0.5); // the spinning screw coasts to a stop
+            double settled = c.probe(rod).angle();
+            run(c, 1.0);
+            double fell = settled - c.probe(rod).angle();
+            System.out.printf("  let go: coasted %.3g mm, then fell %.3g mm in 1 s%n", 1000 * (settled - x1), 1000 * fell);
+            if (k == 0) assertTrue(fell < 2e-4, "the fine thread holds the load");
+            else assertTrue(fell > 0.005, "the steep thread runs back");
+        }
+    }
 }

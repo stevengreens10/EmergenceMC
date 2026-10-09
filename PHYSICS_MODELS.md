@@ -406,3 +406,13 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Rams**: a cylinder whose rod side touches a slide moving along its bore has a straight-rod piston
   (`LinearPiston`): s = s₀ + sign·x, V = A·(c + s); the slide's travel is also stopped where the piston meets the
   head or the rod end. `PistonCoupling` passes (p − p_atm)·A to the slide, as it passes torque to a crank.
+* **Rack and pinion** (`GearMesh.rackAndPinion`, part RACK): a spur gear whose pitch circle touches a rack's toothed
+  face (same module) constrains r_p·ω + s·v = 0 (Lagrange multiplier = tooth force; s = ±1 from the geometry), lossless
+  but for tooth sliding friction f ≈ μπ/z (Buckingham, the rack's 1/z = 0). The rack's slide is stopped before the
+  pinion would leave the run of rack segments.
+* **Lead screw** (`GearMesh.leadScrew`, part NUT on a SHAFT): (l/2π)·ω + s·v = 0 for lead l (right- or left-hand). The
+  axial force F presses the trapezoidal (30°) flanks with N ≈ |F|/(cos α cos λ) at sliding speed ω·r_m/cos λ, so the
+  friction torque is μ'|F| r_m/cos²λ (μ' = μ/cos α; mean diameter d_m = d − ½·min(l, d/4)); efficiency
+  η = sin λ cos λ/(sin λ cos λ + μ'), within 1 % of the exact tan λ(1 − μ' tan λ)/(tan λ + μ') for μ' ≲ 0.2. Back-driven,
+  the Coulomb friction (tanh-regularised) holds the load when μ' > tan λ: self-locking emerges for fine leads. μ: 0.13
+  oiled steel on bronze (Shigley Table 8-5), dry the nut material's coefficient.

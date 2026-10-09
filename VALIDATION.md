@@ -187,6 +187,12 @@ Cavitation (`FluidValidationTest`): water drained from a closed 0.1 L vessel tow
 (p_v = 3.16 kPa by Antoine at 25 °C, CRC 3.17 kPa) while 7 % of it leaves, mass conserved; ∂ρ/∂p and ∂ρ/∂T match
 finite differences across the onset.
 
+Lead screw (`MechanicalThermalValidationTest`): the nut advances lead/2π per radian (to 10⁻⁶); Tr 20×4 oiled
+lifting 1 kN: η = 0.3434 = model, exact thread formula 0.3412. Self-locking: a 4 mm lead (tan λ = 0.073 <
+μ' = 0.135) holds 10 kg (0.4 µm in 1 s); a 40 mm lead (tan λ = 0.73) runs back 3.6 m in 1 s. Exhibits: the rack
+rises r_p·Δθ exactly (145.00 mm) and runs back when let go; the screws lift one lead per turn (15.78 mm for 3.94
+turns of 4 mm; 154.47 mm for 3.86 turns of 40 mm), the fine one holds (0.4 µm in 1 s), the steep one runs back.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

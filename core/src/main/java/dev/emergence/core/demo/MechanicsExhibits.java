@@ -168,4 +168,76 @@ public final class MechanicsExhibits {
         e.add(PIPE, st, 2, 1, 9, Dir.SOUTH, "bore", 0.01, "fluid", 1);
         return e.view(6, 5, 16, 15);
     }
+
+    /**
+     * Rack and pinion: a crank turns a pinion that meshes with a toothed bar on a vertical slide carrying a lead
+     * weight. Every turn lifts the rack one pitch circumference; let go and the weight runs it back down.
+     */
+    public static Exhibit rackAndPinion() {
+        Exhibit e = new Exhibit("rack", "Rack and pinion",
+                List.of("RACK AND PINION", "Turn the crank:", "rotation becomes", "straight-line travel"),
+                "The pinion's teeth mesh with the teeth cut along the bar (the rack), so turning the crank drives the "
+                        + "bar straight up — one pitch circumference per turn, here about 10 cm. The weight on top pulls "
+                        + "back on the teeth, and through them on the crank: let go and the rack runs down and spins the "
+                        + "crank backwards, because nothing in the mesh stops it (compare the screw jacks next door).");
+        String st = "steel_1045";
+        e.fill(BLOCK, st, 3, 0, 4, 11, 0, 11, Dir.UP);
+        // the pinion's shaft along z in two bearings on columns, running on past the front one to a crank
+        e.fill(BLOCK, st, 6, 1, 5, 6, 5, 5, Dir.UP);
+        e.fill(BLOCK, st, 6, 1, 10, 6, 5, 10, Dir.UP);
+        e.fill(SHAFT, st, 6, 6, 5, 6, 6, 11, Dir.SOUTH, "diameter", 0.02);
+        e.add(BEARING, st, 6, 6, 5, Dir.SOUTH);
+        e.add(BEARING, st, 6, 6, 10, Dir.SOUTH);
+        e.name("pinion", e.add(GEAR, st, 6, 6, 8, Dir.SOUTH));
+        e.name("crank", e.add(CRANK, st, 6, 6, 12, Dir.SOUTH, "radius", 0.12));
+        // the rack, teeth facing the pinion, on a guide rod sliding in a bushing; the weight on top
+        e.name("rack", e.fill(RACK, st, 7, 3, 8, 7, 9, 8, Dir.UP, "face", Dir.WEST.ordinal()));
+        e.name("rod", e.fill(SHAFT, st, 7, 10, 8, 7, 13, 8, Dir.UP, "diameter", 0.012));
+        e.add(LINEAR_BEARING, st, 7, 12, 8, Dir.UP);
+        e.add(BLOCK, st, 8, 12, 8, Dir.UP);
+        e.fill(BLOCK, st, 9, 1, 8, 9, 12, 8, Dir.UP);
+        e.name("weight", e.add(BLOCK, "lead", 7, 14, 8, Dir.UP));
+        return e.view(1, 9, 15, 20, -135); // from the south-west: the pinion's face and the rack's teeth
+    }
+
+    /**
+     * Two screw jacks: a crank turns a vertical lead screw in bearings; its nut is fixed to a weighted carriage on a
+     * guide rod. The fine thread (4 mm lead) lifts slowly and holds the weight when let go; the steep four-start
+     * thread (40 mm lead) lifts ten times faster but runs back down.
+     */
+    public static Exhibit screwJacks() {
+        Exhibit e = new Exhibit("screws", "Lead screws",
+                List.of("LEAD SCREWS", "Fine thread holds,", "steep thread", "runs back"),
+                "Turning a screw in its nut moves the nut along it by one lead per turn. The left screw's lead is 4 mm: "
+                        + "a light hand on the crank lifts the heavy carriage, slowly — and when you let go it stays "
+                        + "put, because the friction between the thread flanks is greater than the push of the load "
+                        + "along the gentle slope of the thread (a self-locking screw, like a car jack or a vice). The "
+                        + "right screw has four threads side by side, a 40 mm lead: it lifts ten times faster for ten "
+                        + "times the effort, and when you let go the weight screws itself back down, spinning the crank.");
+        String st = "steel_1045";
+        e.fill(BLOCK, st, 0, 0, 8, 14, 0, 8, Dir.UP);
+        String[] names = {"fine", "steep"};
+        double[] leads = {0.004, 0.04};
+        for (int k = 0; k < 2; k++) {
+            int o = 8 * k;
+            // the screw in two bearings on arms from a column (its foot clear of the base), a crank on top
+            e.name(names[k] + "Screw", e.fill(SHAFT, st, o + 2, 2, 8, o + 2, 8, 8, Dir.UP, "diameter", 0.02));
+            e.add(BEARING, "bronze", o + 2, 2, 8, Dir.UP);
+            e.add(BEARING, "bronze", o + 2, 7, 8, Dir.UP);
+            e.add(BLOCK, st, o + 1, 2, 8, Dir.UP);
+            e.add(BLOCK, st, o + 1, 7, 8, Dir.UP);
+            e.fill(BLOCK, st, o, 1, 8, o, 7, 8, Dir.UP);
+            e.name(names[k] + "Crank", e.add(CRANK, st, o + 2, 9, 8, Dir.UP, "radius", 0.12));
+            // the nut on the screw, fixed to the carriage: two blocks and a guide rod sliding in a bushing
+            e.name(names[k] + "Nut", e.add(NUT, "bronze", o + 2, 4, 8, Dir.UP, "lead", leads[k]));
+            e.add(BLOCK, st, o + 3, 4, 8, Dir.UP);
+            e.add(BLOCK, st, o + 4, 4, 8, Dir.UP);
+            e.name(names[k] + "Rod", e.fill(SHAFT, st, o + 4, 5, 8, o + 4, 9, 8, Dir.UP, "diameter", 0.012));
+            e.add(LINEAR_BEARING, st, o + 4, 7, 8, Dir.UP);
+            e.add(BLOCK, st, o + 5, 7, 8, Dir.UP);
+            e.fill(BLOCK, st, o + 6, 1, 8, o + 6, 7, 8, Dir.UP);
+            e.add(BLOCK, "lead", o + 4, 10, 8, Dir.UP);
+        }
+        return e.view(7.5, 7, 19, 15);
+    }
 }

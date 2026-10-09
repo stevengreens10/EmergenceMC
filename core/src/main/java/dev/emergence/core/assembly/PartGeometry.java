@@ -116,6 +116,22 @@ public final class PartGeometry {
         return (int) Math.round(p.param("teeth", DEFAULT_GEAR_TEETH));
     }
 
+    /** Tooth module of a rack [m]: default that of a default gear filling the bar's cells across. */
+    public static double rackModule(Part p) {
+        return p.param("module", transverseSize(p) / DEFAULT_GEAR_TEETH);
+    }
+
+    /** The rack face its teeth are cut on. */
+    public static Dir rackFace(Part p) {
+        int f = (int) Math.round(p.param("face", Dir.UP.ordinal()));
+        return Dir.values()[Math.max(0, Math.min(5, f))];
+    }
+
+    /** Lead of a nut's thread [m per turn], for the shaft it runs on (diameter d): default d/5. */
+    public static double nutLead(Part nut, double shaftDiameter) {
+        return nut.param("lead", 0.2 * shaftDiameter);
+    }
+
     // ----- fluid parts
 
     public static final double DEFAULT_PIPE_BORE = 0.025, DEFAULT_WALL = 0.002;
@@ -251,6 +267,8 @@ public final class PartGeometry {
                 yield Math.PI * d * d / 4 * axialLength(p);
             }
             case BEARING -> 0.4 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
+            case RACK -> 0.7 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // bar, half its tooth depth empty
+            case NUT -> 0.5 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // hexagon less the threaded bore
             case GEAR -> {
                 double r = gearPitchRadius(p) * 1.05;
                 yield Math.PI * r * r * gearThickness(p);

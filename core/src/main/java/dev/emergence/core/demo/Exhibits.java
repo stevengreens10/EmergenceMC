@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(),
                 miniatureGenerator());
     }
 

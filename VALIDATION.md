@@ -85,6 +85,9 @@ transistor NAND (±50 mV levels), output sag under load, D flip-flop edge behavi
 (8 %). Exhibits: transistor switch currents; NAND truth table; the counter's value equals its clock
 edges.
 
+Thermostat exhibit: the plate temperature cycles inside a band set by the Schmitt hysteresis (≥ 4
+switchings, band > 5 K, inside 22–62 °C). Wiring check: insulated wires of different nets never touch.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

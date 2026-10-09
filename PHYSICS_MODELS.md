@@ -182,3 +182,8 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
 * **Validated** against the transistor-level NAND (logic levels), the matched CMOS inverter (mid-rail
   threshold) and the analytic Schmitt RC period. Fidelity note: thresholds are those of ratioed 74HC parts;
   a transistor NAND with equal devices switches near 0.65 V_DD.
+
+## NTC thermistor (`Thermistor`)
+β-model R(T) = R₂₅·exp(β(1/T − 1/298.15 K)), ±1 % over 0–100 °C for β ≈ 3950 K. Its temperature is its own
+thermal node (the part and whatever it is clamped to), and its Joule heat is deposited there — so
+self-heating error appears naturally. A RESISTOR part with an `ntc_beta` parameter compiles to this element.

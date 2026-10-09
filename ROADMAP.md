@@ -40,7 +40,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED; ⬜ photodiodes, phototransistors
 ✅ Logic from transistors (CMOS NAND exhibit) and a validated chip-level model (gates, D flip-flop,
    Schmitt trigger): oscillator + 4-bit counter exhibit
-⬜ Memory arrays, CPU, sensors and actuators; event-driven simulation for thousands of gates
+✅ NTC thermistor sensor; closed-loop thermostat exhibit (thermistor → Schmitt trigger → MOSFET → heater)
+⬜ Memory arrays, CPU, more sensors and actuators; event-driven simulation for thousands of gates
 ⬜ Milestone: programmable computer controlling a machine
 
 ## Phase 5 — Chemistry and manufacturing

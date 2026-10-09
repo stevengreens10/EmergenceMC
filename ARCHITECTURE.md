@@ -58,7 +58,10 @@ One implicit, adaptive DAE solver for all domains (`TransientSolver`):
 * trapezoidal rule (energy-conserving for linear oscillators) with backward-Euler restarts after
   discontinuities, automatic ringing suppression, optional BDF2;
 * Newton–Raphson with sparse LU (Markowitz ordering, pattern-reusing refactorisation) or dense LU (n ≤ 48);
-* local-truncation-error step control per stored quantity, with signal-scaled tolerances.
+* local-truncation-error step control per stored quantity, with signal-scaled tolerances; when repeated
+  rejections drive h below 1e-4 of the attempted step the history is discarded and the step restarts
+  with backward Euler (stale error history after ringing otherwise collapses the step);
+* element-specific Newton limiting via `SetupContext.limitNewton` (e.g. SPICE `pnjlim` for junctions).
 
 ### From parts to physics
 

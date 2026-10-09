@@ -80,6 +80,9 @@ public final class AutoShowcase {
                 STEPS.add(new Step(20, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "b")),
                         "showcase-" + (i + 1) + "-" + id + "-ab"));
             }
+            if (id.equals("thermostat")) {
+                STEPS.add(new Step(60, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
+            }
             if (id.equals("counter")) {
                 STEPS.add(new Step(110, () -> { }, "showcase-" + (i + 1) + "-" + id + "-later"));
             }

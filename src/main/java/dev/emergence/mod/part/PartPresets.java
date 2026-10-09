@@ -95,6 +95,8 @@ public final class PartPresets {
         l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10)));
         l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10e-6)));
         for (double r : new double[]{470, 10_000, 100_000}) l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", r)));
+        l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 10_000, "ntc_beta", 3950)));
+        l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 6)));
         for (int fn = 0; fn <= 8; fn++) l.add(stack(PartKind.LOGIC, PartSpec.of("silicon", 1, 1, "function", fn)));
         return l;
     }

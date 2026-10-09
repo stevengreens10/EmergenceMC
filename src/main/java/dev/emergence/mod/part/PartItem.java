@@ -89,7 +89,8 @@ public final class PartItem extends Item {
         var p = s.params();
         return switch (kind) {
             case COIL -> ", " + p.getOrDefault("turns", 200.0).intValue() + " turns";
-            case RESISTOR -> ", " + Units.formatSI(p.getOrDefault("resistance", 10.0), "Ω");
+            case RESISTOR -> ", " + Units.formatSI(p.getOrDefault("resistance", 10.0), "Ω")
+                    + (p.getOrDefault("ntc_beta", 0.0) > 0 ? String.format(" NTC thermistor, β %.0f K", p.get("ntc_beta")) : "");
             case CAPACITOR -> ", " + Units.formatSI(p.getOrDefault("capacitance", 1e-4), "F");
             case GEAR -> ", " + p.getOrDefault("teeth", 24.0).intValue() + " teeth";
             case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m");

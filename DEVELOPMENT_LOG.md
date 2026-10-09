@@ -91,3 +91,9 @@ flip-flop) as the next fidelity level: getting a ripple counter to count exposed
 (fixed by latch regeneration), race-through on slow clock edges (non-overlapping master/slave windows), and
 LED Newton divergence (internal junction unknown with SPICE pnjlim limiting via a new solver hook). The
 4-bit counter now counts exactly with its clock.
+
+**Closed-loop control.** NTC thermistor element and a thermostat exhibit built from a thermistor, a Schmitt
+trigger chip, a power MOSFET and a heater on an aluminium plate. Getting it to run exposed (1) heater-to-plate
+thermal isolation — clamped component bodies now conduct heat through their contact area — and (2) step-size
+underflow after ringing from stale truncation-error history, fixed by a restart rule in the solver. A net
+labelling check now catches accidental shorts between touching insulated wires in exhibit layouts.

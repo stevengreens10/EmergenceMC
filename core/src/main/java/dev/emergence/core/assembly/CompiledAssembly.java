@@ -443,17 +443,75 @@ public final class CompiledAssembly {
         return new double[]{tq, pw};
     }
 
+    /** Part id → index in {@link #absorbedLight}. */
+    final Map<Long, Integer> lightIndex = new HashMap<>();
+    dev.emergence.core.sim.elements.AbsorbedLight absorbedLight;
+    private dev.emergence.core.optics.OpticalScene sunScene;
+    private final Map<Body, Integer> sunFrames = new HashMap<>();
+    private Vec3 sunTracedFor;
+    private double[] sunPoses;
+    private dev.emergence.core.optics.TubeTracer.Result sun;
+    private long sunTraces, sunNanos;
+
     /**
      * Daylight: sunlight of the given irradiance [W/m²] travelling along {@code sunDirection} (unit, pointing from the
-     * sun) falls on every photodiode whose face turns towards it and that {@code exposed} reports as seeing the sky.
+     * sun), traced as a parallel beam through the assembly ({@link dev.emergence.core.optics.TubeTracer#parallel}):
+     * mirrors and lenses turn it, parts shade one another, and what each part's surface absorbs heats it; photodiodes
+     * receive what lands on their junction. Parts {@code exposed} does not report as seeing the sky get none. The
+     * beam is traced again when the sun has moved half a degree or a body carrying a mirror, lens or glass has.
      */
     public void setDaylight(Vec3 sunDirection, double irradiance, java.util.function.LongPredicate exposed) {
+        if (!(irradiance > 0)) {
+            if (absorbedLight != null) absorbedLight.clear();
+            for (Object d : deviceOfPart.values()) if (d instanceof dev.emergence.core.sim.elements.Photodiode ph) ph.setAmbientPower(0);
+            return;
+        }
+        var r = sunlight(sunDirection.normalize());
+        if (absorbedLight != null) {
+            for (var e : lightIndex.entrySet()) absorbedLight.set(e.getValue(), exposed.test(e.getKey()) ? irradiance * r.heat(e.getKey()) : 0);
+        }
         for (var e : deviceOfPart.entrySet()) {
             if (!(e.getValue() instanceof dev.emergence.core.sim.elements.Photodiode ph)) continue;
-            Part p = assembly.get(e.getKey());
-            double cos = p == null ? 0 : -PartGeometry.facing(p).dot(sunDirection);
-            ph.setAmbientPower(cos > 0 && exposed.test(e.getKey()) ? irradiance * cos * ph.area() : 0);
+            ph.setAmbientPower(exposed.test(e.getKey()) ? irradiance * r.light(e.getKey()) : 0);
         }
+    }
+
+    /** Sunlight absorbed in a part [W] (as last set by {@link #setDaylight}). */
+    public double sunlightAbsorbed(long partId) {
+        Integer i = lightIndex.get(partId);
+        return i == null || absorbedLight == null ? 0 : absorbedLight.power(i);
+    }
+
+    /** Sun traces so far and their total time [ms]. */
+    public double[] sunTraceCost() {
+        return new double[]{sunTraces, sunNanos / 1e6};
+    }
+
+    private dev.emergence.core.optics.TubeTracer.Result sunlight(Vec3 dir) {
+        if (sunScene == null) {
+            sunScene = AssemblyOptics.scene(assembly, this, AssemblyOptics.SUN_NM, this::angle, sunFrames);
+        }
+        boolean moved = sunTracedFor == null || sunTracedFor.dot(dir) < Math.cos(Math.toRadians(0.5));
+        double[] poses = new double[sunScene.frameCount()];
+        for (var e : sunFrames.entrySet()) {
+            poses[e.getValue()] = angle(e.getKey());
+            if (sunPoses != null && !moved) {
+                boolean optical = false;
+                for (long id : e.getKey().parts) optical |= AssemblyOptics.redirects(assembly.get(id));
+                double tol = e.getKey().slider ? 0.002 : Math.toRadians(0.5);
+                if (optical && Math.abs(poses[e.getValue()] - sunPoses[e.getValue()]) > tol) moved = true;
+            }
+        }
+        if (moved) {
+            long t0 = System.nanoTime();
+            for (var e : sunFrames.entrySet()) sunScene.setPose(e.getValue(), poses[e.getValue()]);
+            sun = dev.emergence.core.optics.TubeTracer.parallel(sunScene, dir, AssemblyOptics.SUN_NM, 0.5 * Part.CELL, 3, true);
+            sunTracedFor = dir;
+            sunPoses = poses;
+            sunTraces++;
+            sunNanos += System.nanoTime() - t0;
+        }
+        return sun;
     }
 
     /** Light arriving at a photodiode [W], or 0. */

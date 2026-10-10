@@ -34,6 +34,7 @@ mod jar.
 | `sim.elements` | Physical elements (electrical, mechanical, thermal) — see PHYSICS_MODELS.md. |
 | `fluids` | Working-fluid database (`fluids.json`): thermally perfect ideal gases and compressible liquids. |
 | `em` | Magnetostatics (cuboid magnets, current loops), coil geometry, `MagneticSystem` coupling. |
+| `optics` | Geometric optics: Snell/Fresnel/Cauchy (`Optics`), surfaces of an assembly on a cell grid per moving frame (`OpticalScene`), ray-tube light transport (`TubeTracer`). |
 | `assembly` | Grid parts → physics: `Part`, `Assembly`, `AssemblyCompiler`, `CompiledAssembly`, probes, state. |
 | `demo` | Platform-independent exhibit definitions shared by tests and the demo-world builder. |
 

@@ -214,6 +214,21 @@ burns its methane to CO₂ (up to 9.5 %), and its power strokes take the crank f
 a Prony brake; unbraked, its fixed fuel flow governs it near 200 rad/s as the mixture leans out. Cam-worked gas
 valve (`MixtureFlowTest`): open, a tank fills from 2 bar; shut, 1.3 Pa leaks in 2 s.
 
+Ray optics (`OpticsTest`): Fresnel 4 % at normal incidence, R_p = 0 at Brewster's angle, total reflection past
+the critical angle; Snell; Cauchy n_F − n_C = (n_d − 1)/V_d exactly, BK7 n_F within 3·10⁻⁴ of Schott's. A thick
+equiconvex lens (R 250 mm, 20 mm, BK7) focuses a paraxial ray at the back focal distance f(1 − (n − 1)t/(nR₁))
+to 10⁻⁵ of f; a marginal ray 45 mm out focuses 13.5 mm short (spherical aberration); F and C light focus
+3.73 mm apart (f/V = 3.82 mm). A concave mirror focuses at R/2 to 10⁻⁶ m; a 45° mirror turns a beam 90°. A glass
+plate transmits 0.9231 (2n/(n² + 1) = 0.9231, all internal reflections included). A glass rod guides 81 % of a
+Lambertian source's light to its far end (TIR) against 0.2 % without it. A lens images a point source where
+1/s + 1/s' = 1/f puts it (to the 1 cm sampling, the brightest plane 1 cm short: aberration). A point source seen in
+a 45° mirror delivers I·A/d² to a 1 cm² window within 0.2 % for m = 1, 6, 30; every watt is accounted for.
+`OpticsValidationTest`: a 6.25 mm glass plate in an LED beam passes 2n/(n² + 1) with the source brought nearer by
+t(1 − 1/n), within 0.03 %. Exhibits: the periscope's photodiode gets 3.918 µW (analytic on-axis 3.923 µW through
+two aluminium mirrors), none without the second; the lens gathers 383× the light of the bare photodiode (whose
+direct value matches the analytic one exactly); the solar furnace's 169 canted facets put 230 W on the plate
+(1 − R of steel ≈ 40 % of the dish's focused 600 W), which settles near 880 K, and a sun 20° off axis misses it.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

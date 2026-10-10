@@ -56,6 +56,14 @@ public enum MaterialProperty {
     REMANENCE_TEMP_COEFF("remanence_temperature_coefficient", Dimension.INVERSE_TEMPERATURE),
     /** Total hemispherical emissivity of a typical (oxidised / as-received) surface. */
     EMISSIVITY("emissivity", Dimension.DIMENSIONLESS),
+    /** Refractive index n_d at the helium d line (587.6 nm), for transparent materials. */
+    REFRACTIVE_INDEX("refractive_index", Dimension.DIMENSIONLESS),
+    /** Abbe number V_d = (n_d − 1)/(n_F − n_C): the lower, the more the material disperses colours. */
+    ABBE_NUMBER("abbe_number", Dimension.DIMENSIONLESS),
+    /** Normal-incidence reflectance of a polished surface at 550 nm (green light). */
+    REFLECTANCE("reflectance", Dimension.DIMENSIONLESS),
+    /** Normal-incidence reflectance of a polished surface at 1000 nm (near infrared). */
+    REFLECTANCE_IR("reflectance_ir", Dimension.DIMENSIONLESS),
     /** Seebeck coefficient relative to platinum, V/K. */
     SEEBECK_COEFFICIENT("seebeck_coefficient", Dimension.VOLTAGE.div(Dimension.TEMPERATURE)),
     /** Semiconductor band gap at 300 K. */

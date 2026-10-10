@@ -83,6 +83,8 @@ public final class PartItem extends Item {
             case SPRING -> PartSpec.of("steel_1045", 1, 1, "wire", 0.002);
             case RACK -> PartSpec.of("steel_1045", 4, 1, "face", 1);
             case NUT -> PartSpec.of("bronze", 1, 1, "lead", 0.004);
+            case MIRROR -> PartSpec.of("aluminium", 1, 1);
+            case LENS -> PartSpec.of("glass_bk7", 1, 1);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -94,6 +96,16 @@ public final class PartItem extends Item {
         String size = s.cross() > 1 || (s.length() > 1 && kind != PartKind.SHAFT) ? " " + s.cross() + "×" + s.cross() + "×" + s.length() : "";
         return Component.translatable("item.emergence." + kind.name().toLowerCase())
                 .append(Component.literal(" (" + m.name().split(" \\(")[0] + size + detail(s) + ")"));
+    }
+
+    /** A lens's focal length from the lensmaker's equation, for a lens one cell across. */
+    private static String lensDetail(PartSpec s) {
+        var core = new PlacedPart(0, PartKind.LENS, s, 0, 0, 0, 0, 0, 0, dev.emergence.core.assembly.Dir.UP, false)
+                .toCore(net.minecraft.core.BlockPos.ZERO, 16);
+        double n = s.resolveMaterial().get(dev.emergence.core.materials.MaterialProperty.REFRACTIVE_INDEX, 1.5);
+        double f = dev.emergence.core.optics.Optics.focalLength(n, dev.emergence.core.assembly.PartGeometry.lensRadius1(core),
+                dev.emergence.core.assembly.PartGeometry.lensRadius2(core), dev.emergence.core.assembly.PartGeometry.lensThickness(core));
+        return String.format(", n %.3f, f %.0f mm", n, 1000 * f);
     }
 
     private String detail(PartSpec s) {
@@ -132,6 +144,11 @@ public final class PartItem extends Item {
             case SPRING -> String.format(", %.1f mm wire, %.0f turns", 1000 * p.getOrDefault("wire", 0.002), p.getOrDefault("turns", 10.0));
             case RACK -> ", teeth " + dev.emergence.core.assembly.Dir.values()[(int) Math.max(0, Math.min(5, Math.round(p.getOrDefault("face", 1.0))))].name().toLowerCase();
             case NUT -> String.format(", %.0f mm lead%s", 1000 * p.getOrDefault("lead", 0.004), p.getOrDefault("left", 0.0) > 0 ? ", left-hand" : "");
+            case MIRROR -> (p.getOrDefault("radius", 0.0) > 0 ? String.format(", concave, focus %.0f mm", 500 * p.get("radius"))
+                    : p.getOrDefault("radius", 0.0) < 0 ? ", convex" : ", flat")
+                    + (p.getOrDefault("tilt", 0.0) != 0 ? String.format(", leaning %.0f° %s", p.get("tilt"),
+                    dev.emergence.core.assembly.Dir.values()[(int) Math.max(0, Math.min(5, Math.round(p.getOrDefault("tilt_toward", 0.0))))].name().toLowerCase()) : "");
+            case LENS -> lensDetail(s);
             case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
                     + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[

@@ -63,6 +63,11 @@ out of sight. In-world tests and demo generation lift both budgets (they test ti
   chosen: the gas engine went from ~12× slower than real time to real time over its first seconds (≈ 2.5–4× at
   1100–2000 rpm, ten combustion events a second).
 
+* Sunlight tracing (`DemoExhibitsTest.sunlightTracingCostPerExhibit`): 1–70 ms per exhibit, 158 ms for the solar
+  furnace's 169 facets, 0.75 s for the whole gallery; repeated only when the sun moves half a degree (3 s of a
+  Minecraft day) or a body carrying optics moves — never in the noon-fixed demo world. LED ray tubes at compile:
+  ~20–50 k tubes (tens of ms) for an LED looking at mirrors or lenses.
+
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC
    states) and each step refactorises. Plan: (a) per-island accuracy level / relaxed tolerances for

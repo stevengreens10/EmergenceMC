@@ -115,6 +115,7 @@ public final class AssemblyCompiler {
             buildBrakes();
             buildFluids();
             buildElectrical();
+            buildAbsorbedLight();
             c.network.compile();
             applyPreviousElectricalState();
             c.solver = new TransientSolver(c.network);
@@ -130,6 +131,18 @@ public final class AssemblyCompiler {
             }
             String m = System.getProperty("emergence.method");
             if (m != null) c.solver.method(dev.emergence.core.sim.IntegrationMethod.valueOf(m));
+        }
+
+        /** Every part with a thermal node can absorb light (sunlight set by {@link CompiledAssembly#setDaylight}). */
+        void buildAbsorbedLight() {
+            List<Node> nodes = new ArrayList<>();
+            for (Part p : parts) {
+                Node n = c.thermalOfPart.get(p.id());
+                if (n == null) continue;
+                c.lightIndex.put(p.id(), nodes.size());
+                nodes.add(n);
+            }
+            if (!nodes.isEmpty()) c.absorbedLight = c.network.add(new dev.emergence.core.sim.elements.AbsorbedLight(nodes));
         }
 
         // ------------------------------------------------------------ 1. rigid groups
@@ -1565,25 +1578,19 @@ public final class AssemblyCompiler {
         }
 
         // ------------------------------------------------------------ optics
-        /** True if light passes through the cell point q held by part o (glass, liquids, wires and thin shafts pass). */
+        /**
+         * True if the straight path is stopped at cell point q of part o. Thin wires and shafts, liquids and transparent
+         * vessels pass light; a plate stops it only within its thickness. Mirrors and glass blocks and lenses stop the
+         * straight path: what they pass on is traced as ray tubes ({@link #buildRayOptics}).
+         */
         boolean blocks(Part o, Vec3 q) {
-            switch (o.kind()) {
-                case WIRE, INSULATED_WIRE, ELECTROLYTE -> {
-                    return false;
-                }
-                case SHAFT -> {
-                    if (PartGeometry.shaftDiameter(o) < 0.4 * CELL) return false;
-                }
-                case BLOCK -> {
-                    int ax = o.axis().axis();
-                    double half = 0.5 * o.boxSize(ax) * Math.max(0.01, Math.min(1, o.param("fill", 1.0)));
-                    double rel = StructuralAnalysis.component(q.sub(o.center()), ax);
-                    if (Math.abs(rel) > half) return false;
-                }
-                default -> {
-                }
+            if (AssemblyOptics.passes(o)) return false;
+            if (o.kind() == PartKind.BLOCK) {
+                int ax = o.axis().axis();
+                double half = 0.5 * o.boxSize(ax) * Math.max(0.01, Math.min(1, o.param("fill", 1.0)));
+                return Math.abs(StructuralAnalysis.component(q.sub(o.center()), ax)) <= half;
             }
-            return !o.material().id().contains("glass");
+            return true;
         }
 
         /**
@@ -1677,7 +1684,8 @@ public final class AssemblyCompiler {
          * (generalised Lambertian, (m+1)/2π·cos^m θ, m = "beam", default 6: ±27° half power) times the receiver's
          * projected solid angle A·cos θ_r/d², times the visibility of the path. Visibility is sampled on five rays
          * through the assembly's cells; parts on a turning body are tested in that body's frame, giving a visibility
-         * table over its angle (a slotted disk chopping the beam).
+         * table over its angle (a slotted disk chopping the beam). Light turned by mirrors, lenses and glass is added
+         * by {@link #buildRayOptics}.
          */
         void buildOptics() {
             List<Part> leds = new ArrayList<>(), pds = new ArrayList<>();
@@ -1686,9 +1694,13 @@ public final class AssemblyCompiler {
                 if (p.kind() == PartKind.PHOTODIODE) pds.add(p);
             }
             if (leds.isEmpty() || pds.isEmpty()) return;
+            buildRayOptics(leds, pds);
             for (Part rx : pds) {
                 if (!(c.deviceOfPart.get(rx.id()) instanceof Photodiode pd)) continue;
-                Vec3 fr = PartGeometry.facing(rx), r0 = rx.center().add(fr.mul(0.3 * CELL));
+                // the junction's window lies on the sensitive face (as the ray tubes see it)
+                Vec3 fr = PartGeometry.facing(rx);
+                int fa = Math.abs(fr.x()) > 0.5 ? 0 : Math.abs(fr.y()) > 0.5 ? 1 : 2;
+                Vec3 r0 = rx.center().add(fr.mul(0.5 * rx.boxSize(fa)));
                 for (Part tx : leds) {
                     if (!(c.deviceOfPart.get(tx.id()) instanceof Led led)) continue;
                     Vec3 ft = PartGeometry.facing(tx), s0 = tx.center().add(ft.mul(0.3 * CELL));
@@ -1759,6 +1771,30 @@ public final class AssemblyCompiler {
                         double f = x - Math.floor(x);
                         return table[i0] * (1 - f) + table[i1] * f;
                     }, mover.tracker);
+                }
+            }
+        }
+
+        /**
+         * Light from each LED that reaches photodiodes by way of mirrors, lenses or glass: ray tubes traced through the
+         * assembly ({@link dev.emergence.core.optics.TubeTracer}), at the LED's wavelength, with moving bodies in their
+         * poses as compiled. Paths straight from LED to photodiode are left to the direct calculation.
+         */
+        void buildRayOptics(List<Part> leds, List<Part> pds) {
+            if (parts.stream().noneMatch(AssemblyOptics::redirects)) return;
+            Map<Double, dev.emergence.core.optics.OpticalScene> scenes = new HashMap<>();
+            for (Part tx : leds) {
+                if (!(c.deviceOfPart.get(tx.id()) instanceof Led led)) continue;
+                double nm = tx.param("wavelength", 630);
+                var scene = scenes.computeIfAbsent(nm, k -> AssemblyOptics.scene(a, c, k, b -> {
+                    double[] m = b.parts.isEmpty() ? null : prev.bodyMotion().get(b.parts.get(0));
+                    return m == null ? 0 : m[1];
+                }));
+                Vec3 ft = PartGeometry.facing(tx), s0 = tx.center().add(ft.mul(0.3 * CELL));
+                var res = dev.emergence.core.optics.TubeTracer.point(scene, s0, ft, tx.param("beam", 6), nm, tx.id(), 16, 7);
+                for (Part rx : pds) {
+                    double f = res.light(rx.id());
+                    if (f > 1e-12 && c.deviceOfPart.get(rx.id()) instanceof Photodiode pd) pd.addSource(led, th -> f, null);
                 }
             }
         }

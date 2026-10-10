@@ -62,6 +62,26 @@ public final class Material {
 
     public double density() { return get(MaterialProperty.DENSITY); }
 
+    /** True for materials light passes through (those with a refractive index). */
+    public boolean transparent() {
+        return props.containsKey(MaterialProperty.REFRACTIVE_INDEX);
+    }
+
+    /**
+     * Normal-incidence reflectance of the polished material at a wavelength [nm]: interpolated between its values at
+     * 550 and 1000 nm (held beyond them); for a transparent material Fresnel's ((n − 1)/(n + 1))²; NaN if unknown.
+     */
+    public double reflectance(double nm) {
+        Double r = props.get(MaterialProperty.REFLECTANCE);
+        if (r == null) {
+            Double n = props.get(MaterialProperty.REFRACTIVE_INDEX);
+            return n == null ? Double.NaN : ((n - 1) / (n + 1)) * ((n - 1) / (n + 1));
+        }
+        double ir = props.getOrDefault(MaterialProperty.REFLECTANCE_IR, r);
+        double f = Math.max(0, Math.min(1, (nm - 550) / 450));
+        return r + f * (ir - r);
+    }
+
     public boolean isConductor() {
         return props.containsKey(MaterialProperty.ELECTRICAL_RESISTIVITY)
                 && props.get(MaterialProperty.ELECTRICAL_RESISTIVITY) < 1e-3;

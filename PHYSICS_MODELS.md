@@ -450,3 +450,33 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   equation's slope), below which Newton is not asked to converge; its flow column is a central difference. The sparse
   LU keeps its pivot order while no pivot collapses below 10⁻⁸ of its value when the order was chosen (it was a row
   test, which rejected sound pivots in rows mixing units and forced a full refactorisation at nearly every iteration).
+
+## Ray optics: mirrors, lenses, glass, sunlight (`optics.OpticalScene`, `optics.TubeTracer`, `AssemblyOptics`)
+* **Surfaces**: mirrors (flat, leant by "tilt", canted by "aim", or spherical of signed radius, clipped to their part's
+  box; polished-metal reflectance from the material at 550 and 1000 nm, interpolated in wavelength, the rest
+  absorbed), blocks and lenses of transparent material (lenses: two spherical faces on a disc, a blackened rim;
+  thickness on the axis from "thickness" or just enough for a 1 mm rim), photodiodes (an absorber with a square
+  window of the junction's area on its sensitive face), and every other opaque part as an absorber of its
+  absorptance (emissivity as a grey body, at least 1 − R of the polished material; the rest is scattered diffusely
+  and not followed). Thin wires and shafts, liquids and transparent vessels let light by. Parts on moving bodies sit
+  in their body's frame; rays walk each frame's cell grid (Amanatides–Woo).
+* **At a surface**: the law of reflection; Snell's law n₁ sin θ₁ = n₂ sin θ₂; unpolarised Fresnel reflectance
+  (R_s + R_p)/2 (4 % at normal incidence on glass), total internal reflection past the critical angle; dispersion
+  by Cauchy's n(λ) = A + B/λ² fitted to n_d and the Abbe number. Every glass surface splits a ray into reflected and
+  transmitted branches (so multiple reflections in a plate, ghost images and light pipes follow); branches below
+  10⁻⁴ of the tube's power are cut and accounted as such.
+* **Ray tubes**: a source's light is cut into triangular tubes; the three corner rays are traced through every
+  branch, and a tube whose corners follow the same sequence of surfaces is carried whole — its power lands on a
+  window in proportion to the window's share of its footprint (clipped by Sutherland–Hodgman), so focusing
+  concentrates it. A point source (an LED: radiant intensity (m + 1)/2π · cos^m θ) is sampled through Shirley and
+  Chiu's concentric map; each tube carries the intensity (edge-midpoint average) times its solid angle (Van
+  Oosterom–Strackee), so a straight or mirror-folded path delivers exactly I·A/d². A parallel beam (sunlight) is
+  sampled on a square grid across the scene, each tube carrying irradiance × cross-section. Tubes split in four
+  where their corners part company (only where one reaches a window, for LEDs), where a mirror or lens they look at
+  is less than three times their width, or where the intensity across them varies threefold; up to a set depth.
+* **Coupling**: each LED's light that reaches a photodiode by way of at least one mirror or glass surface is traced
+  at compile time (the LED's wavelength, bodies in their compiled poses) and added to the direct, analytic
+  coupling (which now treats mirrors and glass as stopping the straight path and receives on the junction's face).
+  Sunlight (`CompiledAssembly.setDaylight`) is traced at 700 nm whenever the sun moves half a degree or a body with
+  a mirror, lens or glass moves: what each part absorbs heats it (`AbsorbedLight`, external power), what reaches a
+  junction is the photodiode's daylight. Parts whose block does not see the sky get none.

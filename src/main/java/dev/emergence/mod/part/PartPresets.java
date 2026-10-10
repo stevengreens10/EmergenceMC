@@ -142,6 +142,21 @@ public final class PartPresets {
         for (int face = 0; face < 6; face++) l.add(stack(PartKind.RACK, PartSpec.of("steel_1045", 4, 1, "face", face)));
         l.add(stack(PartKind.NUT, PartSpec.of("bronze", 1, 1, "lead", 0.004)));
         l.add(stack(PartKind.NUT, PartSpec.of("bronze", 1, 1, "lead", 0.04)));
+        // optics: flat mirrors (aluminium, silver), 45° mirrors leaning each way, concave mirrors, lenses, glass
+        l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1)));
+        l.add(stack(PartKind.MIRROR, PartSpec.of("silver", 1, 1)));
+        for (int to = 0; to < 6; to++) l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1, "tilt", 45, "tilt_toward", to)));
+        l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1, "radius", 0.5)));
+        l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1, "radius", 2.0)));
+        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1)));
+        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1, "radius", 0.25)));
+        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1, "radius", 0.06, "radius2", 0)));
+        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1, "radius", -0.12, "radius2", 0.12)));
+        l.add(stack(PartKind.LENS, PartSpec.of("glass_sf11", 1, 1)));
+        l.add(stack(PartKind.LENS, PartSpec.of("acrylic", 1, 1)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("glass_bk7", 1, 1)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("glass_sf11", 1, 1)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("fused_silica", 1, 1)));
         // radioactivity: school check sources (sealed), a Ba-137m sample, a Geiger–Müller tube, lead shielding
         l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5)));
         l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 2, "activity", 3.7e4)));

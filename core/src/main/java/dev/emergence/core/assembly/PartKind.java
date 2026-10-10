@@ -147,7 +147,21 @@ public enum PartKind {
      * shaft diameter, like Tr 20×4), "left" = 1 for a left-hand thread, "lubricated" (default 1). Trapezoidal
      * thread (30°); friction between the flanks makes it lose work and, with a fine lead, hold a load by itself.
      */
-    NUT(true, false);
+    NUT(true, false),
+    /**
+     * Mirror: a polished plate whose front faces along its axis — flat, or a spherical dish of radius "radius" [m]
+     * (positive: concave, focusing at radius/2; negative: convex), its back at the rear face of its box. "tilt" [°]
+     * leans the front over towards direction "tilt_toward" (a {@link Dir} ordinal), the flat face then a diagonal of the
+     * box (45°: a periscope's mirror). Reflects as its material does polished (silver ~96 %, aluminium ~92 %).
+     */
+    MIRROR(true, false),
+    /**
+     * Lens: a disc of transparent material across its axis with spherical faces of radius "radius" (first face,
+     * positive convex) and "radius2" (second face, default −radius: equiconvex; 0 flat), "thickness" on the axis
+     * (default: just enough for a thin rim), filling its box's cross-section. Focal length from the lensmaker's
+     * equation and its material's index (dispersion by its Abbe number).
+     */
+    LENS(true, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

@@ -96,4 +96,122 @@ public final class OpticsExhibits {
         r.route();
         return e.view(6, 6, 16, 35);
     }
+
+    /**
+     * A receiver: the photodiode (anode and cathode pin cells given) feeds a load resistor whose voltage a Schmitt
+     * trigger squares up; the trigger's output sinks a green LED's current, so the LED lights while light arrives.
+     * Laid out from (x, 1, z): load at x, trigger at x + 4, LED at (x + 4, z + 3), its resistor at (x + 7, z + 3).
+     */
+    static void receiver(Exhibit e, Router r, int x, int z, double load, int[] anode, int[] cathode) {
+        e.add(RESISTOR, "alumina", x, 1, z, Dir.EAST, "resistance", load);
+        e.name("schmitt", e.add(LOGIC, "silicon", x + 4, 1, z, Dir.EAST, "function", 7));
+        e.name("lit", e.add(LED, "silicon", x + 4, 1, z + 3, Dir.EAST, "wavelength", 565, "face", 3, "beam", 20));
+        e.add(RESISTOR, "alumina", x + 7, 1, z + 3, Dir.EAST, "resistance", 470);
+        r.pin("vdd", cathode[0], cathode[1], cathode[2]).pin("vdd", x + 4, 1, z + 1).pin("vdd", x + 8, 1, z + 3);
+        r.pin("gnd", x - 1, 1, z).pin("gnd", x + 4, 1, z - 1);
+        r.pin("sense", anode[0], anode[1], anode[2]).pin("sense", x + 1, 1, z).pin("sense", x + 3, 1, z);
+        r.pin("out", x + 5, 1, z).pin("out", x + 5, 1, z + 3);
+        r.pin("litA", x + 3, 1, z + 3).pin("litA", x + 6, 1, z + 3);
+    }
+
+    /**
+     * A periscope: a red LED shines straight up; a mirror leaning 45° over it turns the beam east, over a wall, onto a
+     * second 45° mirror that turns it down onto a photodiode. The receiver lights its green LED while the beam arrives.
+     */
+    public static Exhibit periscope() {
+        Exhibit e = new Exhibit("periscope", "Periscope",
+                List.of("PERISCOPE", "Two 45° mirrors", "carry the light", "over the wall"),
+                "Light leaves a mirror at the angle it arrived (the law of reflection): a mirror leaning at 45° turns a "
+                        + "beam through a right angle. The red LED shines straight up; the first mirror sends its light "
+                        + "east, over the wall; the second sends it down onto the photodiode, which lights the green LED "
+                        + "through a Schmitt trigger. Polished aluminium reflects about 92 % of red light and warms with "
+                        + "the rest. Take a mirror away and the light goes on up into the sky: the green LED goes out.");
+        String st = "steel_1045";
+        e.fill(BLOCK, "oak", 5, 0, 7, 6, 4, 9, Dir.UP);                               // the wall
+        e.fill(BLOCK, st, 2, 0, 7, 2, 6, 7, Dir.UP);                                  // columns holding the mirrors
+        e.fill(BLOCK, st, 9, 0, 7, 9, 6, 7, Dir.UP);
+        e.name("led", e.add(LED, "silicon", 2, 1, 8, Dir.EAST, "wavelength", 630, "efficiency", 0.25, "beam", 30, "face", 1));
+        e.name("mirrorA", e.add(MIRROR, "aluminium", 2, 6, 8, Dir.DOWN, "tilt", 45, "tilt_toward", Dir.EAST.ordinal()));
+        e.name("mirrorB", e.add(MIRROR, "aluminium", 9, 6, 8, Dir.DOWN, "tilt", 45, "tilt_toward", Dir.WEST.ordinal()));
+        e.name("pd", e.add(PHOTODIODE, "silicon", 9, 1, 8, Dir.EAST, "face", 1, "area", 1e-4));
+        int bat = e.add(CAPACITOR, "alumina", 14, 1, 12, Dir.EAST, "capacitance", 10);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        e.add(RESISTOR, "alumina", 14, 1, 10, Dir.EAST, "resistance", 150);         // the red LED's current
+        Router r = new Router(e, 0, 0, 7, 17, 7, 15);
+        r.keepClear(2, 2, 8, 2, 5, 8).keepClear(3, 6, 8, 8, 6, 8).keepClear(9, 2, 8, 9, 5, 8);
+        r.pin("vdd", 15, 1, 12).pin("vdd", 15, 1, 10);
+        r.pin("gnd", 13, 1, 12).pin("gnd", 3, 1, 8);
+        r.pin("ledA", 13, 1, 10).pin("ledA", 1, 1, 8);
+        receiver(e, r, 3, 11, 2.2e6, new int[]{8, 1, 8}, new int[]{10, 1, 8});
+        r.route();
+        return e.view(6, 6, 22, 15);
+    }
+
+    /**
+     * A lens: a red LED shines across the plot at a lens half a metre away, which gathers a cone of its light and
+     * focuses it onto a photodiode at the image point, 156 mm behind. Without the lens the same photodiode catches
+     * only the light that happens to head its way: the receiver's LED goes out.
+     */
+    public static Exhibit lens() {
+        Exhibit e = new Exhibit("lens", "Lens",
+                List.of("LENS", "Focusing light", "1/s + 1/s' = 1/f", "(take the lens away)"),
+                "A lens bends light at each of its curved faces (Snell's law: n1 sin a1 = n2 sin a2). Light spreading "
+                        + "from the LED is bent back together and meets again at an image point: for a lens of focal "
+                        + "length f (here 118 mm: crown glass, faces of 120 mm radius, from the lensmaker's equation) "
+                        + "an object s away images s' behind it where 1/s + 1/s' = 1/f. The LED is 481 mm away, so the "
+                        + "image is 156 mm behind the lens, on the photodiode: it gathers a hundred times the light that "
+                        + "would reach it otherwise, enough to light the green LED. Take the lens away and it goes dark.");
+        String st = "steel_1045";
+        e.name("led", e.add(LED, "silicon", 1, 1, 6, Dir.SOUTH, "wavelength", 630, "efficiency", 0.25, "beam", 30, "face", 5));
+        e.add(BLOCK, st, 9, 0, 6, Dir.UP);
+        e.name("lens", e.add(LENS, "glass_bk7", 9, 1, 6, Dir.EAST));
+        e.name("pd", e.add(PHOTODIODE, "silicon", 12, 1, 6, Dir.SOUTH, "face", 4));
+        int bat = e.add(CAPACITOR, "alumina", 4, 1, 3, Dir.EAST, "capacitance", 10);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        e.add(RESISTOR, "alumina", 1, 1, 3, Dir.SOUTH, "resistance", 150);
+        Router r = new Router(e, 0, 0, 0, 17, 5, 15);
+        r.keepClear(2, 1, 6, 11, 1, 6);
+        r.pin("vdd", 5, 1, 3).pin("vdd", 1, 1, 2);
+        r.pin("ledA", 1, 1, 4).pin("ledA", 1, 1, 5);
+        r.pin("gnd", 3, 1, 3).pin("gnd", 1, 1, 7);
+        receiver(e, r, 6, 10, 2.2e6, new int[]{12, 1, 5}, new int[]{12, 1, 7});
+        r.route();
+        return e.view(7, 6, 20, 15);
+    }
+
+    /**
+     * A solar furnace: a dish of 169 canted concave aluminium facets, thirteen cells (0.81 m) across, faces the noon
+     * sun; it gathers 0.66 m² of sunlight into a spot at its focus 0.75 m above, where a thin steel plate on a slender arm is
+     * heated red-hot.
+     */
+    public static Exhibit solarFurnace() {
+        Exhibit e = new Exhibit("furnace", "Solar furnace",
+                List.of("SOLAR FURNACE", "A concave mirror", "focuses the sun", "on a steel plate"),
+                "A concave mirror sends light arriving parallel to its axis through one point, its focus. This dish is "
+                        + "169 small concave facets, each canted on its mount to send the sunlight striking it through the "
+                        + "same focus 0.75 m above (as large solar concentrators are built). It catches 0.66 m² of noon "
+                        + "sunlight (about 660 W) and its polished aluminium reflects 92 % of it into a spot "
+                        + "a few centimetres across, on a thin steel plate held out on a slender rod. The plate heats "
+                        + "until it radiates and convects away what it absorbs: red-hot. A spherical mirror's focus is "
+                        + "sharp only for light along its axis: when the sun is off to one side the spot moves off the "
+                        + "plate, which is why solar furnaces track the sun.");
+        String st = "steel_1045";
+        // the dish: 81 square facets, each a small concave mirror canted so that sunlight from straight above
+        // striking its centre reflects through the focus 12 cells (0.75 m) above the middle facet, its radius of
+        // curvature twice its distance to the focus (as real segmented concentrators are set up)
+        e.fill(BLOCK, st, 0, 0, 0, 12, 0, 12, Dir.UP, "fill", 0.25);
+        double fx = 6.5, fy = 13.5, fz = 6.5;
+        for (int x = 0; x <= 12; x++)
+            for (int z = 0; z <= 12; z++) {
+                double dx = fx - (x + 0.5), dy = fy - 1.5, dz = fz - (z + 0.5), d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                double ax = dx / d, ay = 1 + dy / d, az = dz / d; // bisecting the sun's direction and the focus's
+                int k = e.add(MIRROR, "aluminium", x, 1, z, Dir.UP, "aim_x", ax, "aim_y", ay, "aim_z", az, "radius", 2 * d / 16);
+                if (x == 6 && z == 6) e.name("dish", k);
+            }
+        // the focus at y = 13.5 cells: the plate there, on a slender arm
+        e.fill(SHAFT, st, 14, 0, 6, 14, 13, 6, Dir.UP, "diameter", 0.012);
+        e.fill(SHAFT, st, 7, 13, 6, 13, 13, 6, Dir.EAST, "diameter", 0.008);
+        e.name("target", e.add(BLOCK, st, 6, 13, 6, Dir.UP, "fill", 0.02));
+        return e.view(6.5, 9, 22, 20);
+    }
 }

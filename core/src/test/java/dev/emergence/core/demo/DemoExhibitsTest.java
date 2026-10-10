@@ -1203,4 +1203,99 @@ class DemoExhibitsTest {
         assertTrue(co2 > 0.02, "methane burns to CO2");
         assertTrue(w > 2 * w0, "the power strokes accelerate it against its load: " + w);
     }
+
+    /** Periscope: two 45° mirrors carry the LED's beam over the wall to the photodiode; without one, nothing arrives. */
+    @Test
+    void periscopeCarriesTheBeamOverTheWall() {
+        Exhibit e = OpticsExhibits.periscope();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pd = b.id(e, "pd"), led = b.id(e, "led"), lit = b.id(e, "lit");
+        run(c, 0.3);
+        double out = c.lightOutput(led), in = c.lightInput(pd);
+        // a 30-beam LED's axial intensity (m + 1)/2π, over the 16.2 cells of folded path, on 1 cm², two 92 % mirrors
+        double path = 16.2 / 16, expect = out * 31 / (2 * Math.PI) * 1e-4 / (path * path) * 0.92 * 0.92;
+        System.out.printf("periscope: LED %.2f mW, photodiode %.3f µW (on-axis estimate %.3f µW), green LED %.2f mA%n",
+                1e3 * out, 1e6 * in, 1e6 * expect, 1e3 * c.probe(lit).current());
+        assertEquals(expect, in, 0.03 * expect, "the folded beam's irradiance");
+        assertTrue(c.probe(lit).current() > 2e-3, "the green LED lights");
+        b.assembly().remove(b.id(e, "mirrorB"));
+        CompiledAssembly c2 = AssemblyCompiler.compile(b.assembly(), b.state());
+        run(c2, 0.3);
+        System.out.printf("  without the second mirror: %.3g µW, green LED %.3g mA%n", 1e6 * c2.lightInput(pd), 1e3 * c2.probe(lit).current());
+        assertTrue(c2.lightInput(pd) < 0.01 * in, "the beam goes on into the sky");
+        assertTrue(c2.probe(lit).current() < 1e-4, "dark");
+    }
+
+    /** Lens: the LED's image falls on the photodiode, which gathers far more light than without the lens. */
+    @Test
+    void lensFocusesTheLedOntoThePhotodiode() {
+        Exhibit e = OpticsExhibits.lens();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pd = b.id(e, "pd"), led = b.id(e, "led"), lit = b.id(e, "lit");
+        run(c, 0.3);
+        double out = c.lightOutput(led), in = c.lightInput(pd);
+        System.out.printf("lens: LED %.2f mW, photodiode %.3f µW (%.3g of the LED's light), green LED %.2f mA%n",
+                1e3 * out, 1e6 * in, in / out, 1e3 * c.probe(lit).current());
+        assertTrue(c.probe(lit).current() > 2e-3, "the green LED lights");
+        b.assembly().remove(b.id(e, "lens"));
+        CompiledAssembly c2 = AssemblyCompiler.compile(b.assembly(), b.state());
+        run(c2, 0.3);
+        double bare = c2.lightInput(pd);
+        // without the lens: the axial intensity on the 7.5 mm² junction 0.638 m from the LED
+        double d = (12 - 1.8) / 16, direct = out * 31 / (2 * Math.PI) * 7.5e-6 / (d * d);
+        System.out.printf("  without the lens: %.4f µW (direct estimate %.4f µW): the lens gathers %.0f times as much; green LED %.3g mA%n",
+                1e6 * bare, 1e6 * direct, in / bare, 1e3 * c2.probe(lit).current());
+        assertEquals(direct, bare, 0.1 * direct);
+        assertTrue(in > 30 * bare, "the lens gathers much more light");
+        assertTrue(c2.probe(lit).current() < 1e-4, "dark without the lens");
+    }
+
+    /** Solar furnace: the dish focuses noon sunlight onto the plate, which heats red-hot; the plate is cool in the shade. */
+    @Test
+    void solarFurnaceHeatsThePlateRedHot() {
+        Exhibit e = OpticsExhibits.solarFurnace();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long target = b.id(e, "target"), dish = b.id(e, "dish");
+        c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
+        double onPlate = c.sunlightAbsorbed(target), dishHeat = c.sunlightAbsorbed(dish);
+        double area = Math.pow(13.0 / 16, 2), dishHeatAll = 0;
+        for (var p : b.assembly().parts()) if (p.kind() == dev.emergence.core.assembly.PartKind.MIRROR) dishHeatAll += c.sunlightAbsorbed(p.id());
+        dishHeat = dishHeatAll;
+        System.out.printf("solar furnace: plate absorbs %.1f W, dish %.1f W, of %.1f W on the dish; traced in %.1f ms%n",
+                onPlate, dishHeat, 1000 * area, c.sunTraceCost()[1]);
+        // aluminium reflects ~92 % at 700 nm; steel absorbs 1 − R ≈ 40 %; the plate's shadow and the dish's rim lose a little
+        assertTrue(onPlate > 0.3 * 0.92 * 1000 * area && onPlate < 0.45 * 1000 * area, "the plate gets the dish's focused light");
+        assertEquals((1 - 0.924) * 1000 * area, dishHeat, 0.25 * (1 - 0.924) * 1000 * area, "the dish absorbs what it does not reflect");
+        for (int k = 1; k <= 6; k++) {
+            run(c, 30);
+            System.out.printf("  plate after %d s: %.0f K%n", 30 * k, c.temperature(target));
+        }
+        double hot = c.temperature(target);
+        assertTrue(hot > 798, "red-hot (past Draper's 798 K)");
+        // a low sun misses the plate
+        c.setDaylight(new dev.emergence.core.math.Vec3(Math.sin(Math.toRadians(20)), -Math.cos(Math.toRadians(20)), 0), 1000, id -> true);
+        System.out.printf("  sun 20 degrees off the axis: plate absorbs %.1f W%n", c.sunlightAbsorbed(target));
+        assertTrue(c.sunlightAbsorbed(target) < 0.1 * onPlate, "the spot moves off the plate");
+    }
+
+    /** Cost of tracing noon sunlight through every exhibit (done in-world when the sun moves half a degree). */
+    @Test
+    void sunlightTracingCostPerExhibit() {
+        double worst = 0, total = 0;
+        StringBuilder log = new StringBuilder();
+        for (Exhibit e : Exhibits.all()) {
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+            c.setDaylight(new dev.emergence.core.math.Vec3(0.3, -0.95, 0.1), 1000, id -> true);
+            double ms = c.sunTraceCost()[1];
+            worst = Math.max(worst, ms);
+            total += ms;
+            log.append(String.format(" %s %.0f", e.id, ms));
+        }
+        System.out.printf("sun tracing [ms]:%s; total %.0f, worst %.0f%n", log, total, worst);
+        assertTrue(worst < 1000, "a trace stays under a second: " + worst);
+    }
 }

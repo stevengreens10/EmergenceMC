@@ -11,8 +11,10 @@
    two-joint arm (needs joints on moving bodies); the EM-4 closing a loop through a light-barrier encoder;
    data logger/oscilloscope instrument to plot the step response.
 
-0. **Light**: lenses and mirrors (ray optics), incandescent sources, phototransistors and optocouplers; use the
-   light barrier as an encoder for closed-loop motor control by the EM-4.
+0. **Light**: an in-game tool to aim mirrors (click a target: cant the facet), prisms (a spectrometer from a
+   flint prism and photodiodes), incandescent sources (hot parts emit Planck spectra), phototransistors and
+   optocouplers; a sun-tracking heliostat (mirror on a clock-driven shaft — moving optics are already traced for
+   sunlight); use the light barrier as an encoder for closed-loop motor control by the EM-4.
 
 0. **Structures**: Euler buckling of slender columns (linear buckling eigenproblem with geometric
    stiffness), pressure-vessel bursting (hoop stress p·r/t vs strength — a boiler that over-pressures

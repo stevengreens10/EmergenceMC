@@ -98,7 +98,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 c.glass = buffers.getBuffer(Sheets.translucentCullBlockSheet());
             }
             for (PlacedPart p : be.parts()) {
-                boolean glassy = p.kind == PartKind.ELECTROLYTE || p.kind == PartKind.LED || isFlask(p);
+                boolean glassy = p.kind == PartKind.ELECTROLYTE || p.kind == PartKind.LED || isFlask(p) || isClear(p);
                 if (pass == 1 && !glassy) continue;
                 if (glassy) glassPending = true;
                 ps.pushPose();
@@ -146,6 +146,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                     if (p.kind.leaded && !isWire(p)) drawLeads(c, be, p, f);
                 }
                 else if (isFlask(p)) drawFlask(c, p);
+                else if (p.kind == PartKind.LENS) drawLens(c, p);
+                else if (isClear(p)) drawClearBlock(c, be, p, ex, ey, ez);
                 else drawModel(c, p.kind == PartKind.LED ? "led" : "electrolyte", p, ex, ey, ez, true);
                 ps.popPose();
             }
@@ -181,6 +183,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         var prm = p.spec.params();
         switch (p.kind) {
             case BLOCK -> {
+                if (isClear(p)) return; // drawn see-through in the translucent pass
                 float fill = (float) (double) prm.getOrDefault("fill", 1.0);
                 // a plate thinner than its cells lies against the side it is fixed to (the side more of its face
                 // touches: a handle on its rod, a disc on its magnets), not floating in the middle
@@ -210,6 +213,10 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case LINEAR_BEARING -> drawModel(c, "bearing", p, Math.min(ex, ey), Math.min(ex, ey), ez * 1.2f, false);
             case SPRING -> drawSpring(c, be, p, ez);
             case RACK -> drawRack(c, p, f, ex, ey, ez);
+            case MIRROR -> drawMirror(c, p, f, ex, ey, ez);
+            case LENS -> {
+                // the glass is drawn in the translucent pass
+            }
             case NUT -> {
                 // a hexagon-ish bronze block round the screw, chamfered at its ends
                 TextureAtlasSprite s = PartModels.sprite("metal_cast");
@@ -406,6 +413,96 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         box(c, PartModels.sprite("plastic"), tintOf(c, 0x5A4A30), -0.12f, -0.12f, 0.42f, 0.12f, 0.12f, 0.45f);
         box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), -0.02f, -0.02f, 0.45f, 0.02f, 0.02f, 0.5f);
         box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), -0.02f, -0.02f, -0.5f, 0.02f, 0.02f, -0.42f);
+    }
+
+    /** A block of transparent material (glass, fused silica, acrylic): drawn see-through. */
+    private static boolean isClear(PlacedPart p) {
+        return p.kind == PartKind.BLOCK && p.spec.resolveMaterial().transparent();
+    }
+
+    /** A clear block: a see-through box tinted with its material, its thickness its fill (as a plate). */
+    private void drawClearBlock(Ctx c, AssemblyBlockEntity be, PlacedPart p, float ex, float ey, float ez) {
+        float fill = (float) (double) p.spec.params().getOrDefault("fill", 1.0);
+        c.quadTarget = c.glass;
+        c.quadAlpha = 90;
+        box(c, PartModels.sprite("glass"), tintOf(c, c.materialRgb), -ex / 2 + 0.01f, -ey / 2 + 0.01f, -ez * fill / 2 + 0.01f,
+                ex / 2 - 0.01f, ey / 2 - 0.01f, ez * fill / 2 - 0.01f);
+        c.quadTarget = null;
+        c.quadAlpha = 255;
+    }
+
+    /**
+     * A lens: its profile drawn as nested see-through discs, each as thick as the lens is at its radius — the faces
+     * are the spherical caps the optics uses (radii, thickness, rim from the part).
+     */
+    private void drawLens(Ctx c, PlacedPart p) {
+        var cp = p.toCore(BlockPos.ZERO, 16);
+        double rim = dev.emergence.core.assembly.PartGeometry.lensRim(cp), half = dev.emergence.core.assembly.PartGeometry.lensThickness(cp) / 2;
+        double r1 = dev.emergence.core.assembly.PartGeometry.lensRadius1(cp), r2 = dev.emergence.core.assembly.PartGeometry.lensRadius2(cp);
+        c.quadTarget = c.glass;
+        c.quadAlpha = 55;
+        TextureAtlasSprite gl = PartModels.sprite("glass");
+        int tint = tintOf(c, c.materialRgb);
+        int steps = 6;
+        for (int i = 0; i < steps; i++) {
+            double rr = rim * (steps - i) / steps;
+            double s1 = r1 == 0 ? 0 : dev.emergence.core.optics.Optics.sag(r1, Math.min(rr, 0.999 * Math.abs(r1)));
+            double s2 = r2 == 0 ? 0 : dev.emergence.core.optics.Optics.sag(r2, Math.min(rr, 0.999 * Math.abs(r2)));
+            float z1 = (float) ((-half + s1) * 16), z2 = (float) ((half + s2) * 16);
+            if (z2 - z1 < 0.01f) continue;
+            cylinder(c, gl, tint, (float) (rr * 16), z1, z2, 28, true);
+        }
+        c.quadTarget = null;
+        c.quadAlpha = 255;
+    }
+
+    /**
+     * A mirror: a polished plate across its front normal (leaning by its tilt: a 45° mirror spans the box's diagonal),
+     * or a dish whose surface follows the sphere the optics uses, its vertex at the back of the box.
+     */
+    private void drawMirror(Ctx c, PlacedPart p, Frame f, float ex, float ey, float ez) {
+        var cp = p.toCore(BlockPos.ZERO, 16);
+        var n = dev.emergence.core.assembly.PartGeometry.mirrorNormal(cp);
+        double radius = p.spec.params().getOrDefault("radius", 0.0);
+        TextureAtlasSprite chrome = PartModels.sprite("chrome"), back = PartModels.sprite("metal_cast");
+        int face = tintOf(c, lighten(c.materialRgb, 0.35f)), rear = tintOf(c, darken(c.materialRgb, 0.55f));
+        // a canted facet is drawn as a plate turned to its normal (its sag across one cell is under a millimetre)
+        if (radius == 0 || dev.emergence.core.assembly.PartGeometry.mirrorCanted(cp)) {
+            float th = (float) Math.max(dev.emergence.core.assembly.PartGeometry.mirrorThickness(cp) * 16, 0.04);
+            org.joml.Vector3f nm = new Matrix3f(f.m3).transpose().transform(new org.joml.Vector3f((float) n.x(), (float) n.y(), (float) n.z()));
+            c.ps.pushPose();
+            c.ps.mulPose(new Quaternionf().rotationTo(new org.joml.Vector3f(0, 0, 1), nm));
+            float tilt = (float) Math.toRadians(p.spec.params().getOrDefault("tilt", 0.0));
+            float sx = ex, sy = ey;
+            if (Math.abs(tilt) > 1e-4) {
+                float span = Math.min(1 / (float) Math.cos(tilt), 1 / Math.max(1e-3f, (float) Math.sin(Math.abs(tilt))));
+                if (Math.abs(nm.x) >= Math.abs(nm.y)) sx = Math.min(ex, ez) * span;
+                else sy = Math.min(ey, ez) * span;
+            }
+            box(c, chrome, face, -sx / 2, -sy / 2, -th / 2, sx / 2, sy / 2, th / 2 - 0.01f);
+            box(c, back, rear, -sx / 2 + 0.005f, -sy / 2 + 0.005f, -th / 2 - 0.005f, sx / 2 - 0.005f, sy / 2 - 0.005f, -th / 2 + 0.01f);
+            c.ps.popPose();
+            return;
+        }
+        // a dish: a height field over the box's cross-section, its vertex where the optics puts it
+        int nx = Math.max(8, Math.min(48, Math.round(8 * ex))), ny = Math.max(8, Math.min(48, Math.round(8 * ey)));
+        float zb = (float) (-dev.emergence.core.assembly.PartGeometry.mirrorVertexOffset(cp) * 16 * Math.signum(radius));
+        float[][] z = new float[nx + 1][ny + 1];
+        for (int i = 0; i <= nx; i++)
+            for (int j = 0; j <= ny; j++) {
+                double x = (-ex / 2 + ex * i / nx) / 16.0, y = (-ey / 2 + ey * j / ny) / 16.0;
+                double s = dev.emergence.core.optics.Optics.sag(radius, Math.min(Math.hypot(x, y), 0.999 * Math.abs(radius)));
+                z[i][j] = (float) Math.min(ez / 2, zb + 16 * s);
+            }
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++) {
+                float x0 = -ex / 2 + ex * i / nx, x1 = -ex / 2 + ex * (i + 1) / nx, y0 = -ey / 2 + ey * j / ny, y1 = -ey / 2 + ey * (j + 1) / ny;
+                float gx = (z[i + 1][j] - z[i][j] + z[i + 1][j + 1] - z[i][j + 1]) / (2 * (x1 - x0));
+                float gy = (z[i][j + 1] - z[i][j] + z[i + 1][j + 1] - z[i + 1][j]) / (2 * (y1 - y0));
+                float nl = (float) Math.sqrt(gx * gx + gy * gy + 1);
+                quad(c, chrome, face, x0, y0, z[i][j], x1, y0, z[i + 1][j], x1, y1, z[i + 1][j + 1], x0, y1, z[i][j + 1], -gx / nl, -gy / nl, 1 / nl);
+                quad(c, back, rear, x0, y0, z[i][j] - 0.03f, x0, y1, z[i][j + 1] - 0.03f, x1, y1, z[i + 1][j + 1] - 0.03f, x1, y0, z[i + 1][j] - 0.03f, gx / nl, gy / nl, -1 / nl);
+            }
     }
 
     /** A glass tank: drawn see-through in the translucent pass, with its gas in the colour chemistry gives it. */
@@ -915,15 +1012,16 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     /** Cylinder along +Z from z0 to z1. */
     private void cylinder(Ctx c, TextureAtlasSprite s, int rgb, float r, float z0, float z1, int seg, boolean caps) {
         float len = z1 - z0;
+        VertexConsumer vc = c.quadTarget != null ? c.quadTarget : c.solid;
         for (int i = 0; i < seg; i++) {
             double a0 = 2 * Math.PI * i / seg, a1 = 2 * Math.PI * (i + 1) / seg;
             float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0), c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
             float u0 = (float) i / seg, u1 = (float) (i + 1) / seg;
             float vmax = Math.min(1, len);
-            vertex(c, c.solid, s, rgb, r * c0, r * s0, z0, u0, 0, c0, s0, 0);
-            vertex(c, c.solid, s, rgb, r * c1, r * s1, z0, u1, 0, c1, s1, 0);
-            vertex(c, c.solid, s, rgb, r * c1, r * s1, z1, u1, vmax, c1, s1, 0);
-            vertex(c, c.solid, s, rgb, r * c0, r * s0, z1, u0, vmax, c0, s0, 0);
+            vertex(c, vc, s, rgb, r * c0, r * s0, z0, u0, 0, c0, s0, 0);
+            vertex(c, vc, s, rgb, r * c1, r * s1, z0, u1, 0, c1, s1, 0);
+            vertex(c, vc, s, rgb, r * c1, r * s1, z1, u1, vmax, c1, s1, 0);
+            vertex(c, vc, s, rgb, r * c0, r * s0, z1, u0, vmax, c0, s0, 0);
             if (caps) {
                 quad(c, s, rgb, 0, 0, z1, r * c0, r * s0, z1, r * c1, r * s1, z1, 0, 0, z1, 0, 0, 1);
                 quad(c, s, rgb, 0, 0, z0, r * c1, r * s1, z0, r * c0, r * s0, z0, 0, 0, z0, 0, 0, -1);
@@ -994,6 +1092,12 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         if (c.glowRgb < 0) return rgb;
         // incandescent surfaces emit rather than reflect: towards the (unshaded) black-body colour
         return mix(rgb, c.glowRgb, Math.min(1f, c.glowMix * 1.4f));
+    }
+
+    /** Mixes a colour a fraction f of the way to white. */
+    private static int lighten(int rgb, float f) {
+        int r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
+        return ((int) (r + (255 - r) * f) << 16) | ((int) (g + (255 - g) * f) << 8) | (int) (b + (255 - b) * f);
     }
 
     private static int darken(int rgb, float f) {

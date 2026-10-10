@@ -42,6 +42,19 @@ public final class Assembly {
         return this;
     }
 
+    /** Takes a part away (a broken or removed part). */
+    public Assembly remove(long id) {
+        Part p = parts.remove(id);
+        if (p == null) return this;
+        for (int x = p.minX(); x <= p.maxX(); x++)
+            for (int y = p.minY(); y <= p.maxY(); y++)
+                for (int z = p.minZ(); z <= p.maxZ(); z++) {
+                    List<Part> l = cellIndex.get(cellKey(x, y, z));
+                    if (l != null) l.remove(p);
+                }
+        return this;
+    }
+
     public Collection<Part> parts() {
         return parts.values();
     }

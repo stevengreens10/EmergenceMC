@@ -197,6 +197,17 @@ public final class AutoShowcase {
                 STEPS.add(new Step(40, () -> { }, null));
                 STEPS.add(new Step(2, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-break"));
             }
+            if (id.equals("periscope") || id.equals("lens")) {
+                // the green LED is lit by the light the mirrors (or the lens) bring; take one away and it goes out
+                BlockPos part = DemoBuilder.partBlock(plot, e, id.equals("lens") ? "lens" : "mirrorB");
+                STEPS.add(new Step(40, () -> { }, "showcase-" + (i + 1) + "-" + id + "-lit"));
+                STEPS.add(new Step(60, () -> server.overworld().removeBlock(part, false), "showcase-" + (i + 1) + "-" + id + "-dark"));
+            }
+            if (id.equals("furnace")) {
+                // the plate heats in the dish's focus until it glows
+                BlockPos plate = DemoBuilder.partBlock(plot, e, "target");
+                STEPS.add(new Step(6000, () -> { }, "showcase-" + (i + 1) + "-" + id + "-hot", () -> hottest(plate) > 830));
+            }
             if (id.equals("engine")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
             }

@@ -87,10 +87,14 @@ class OpticsValidationTest {
             c.step(0.01);
             seen[k] = c.lightInput(b.id(e, "pd")) / c.lightOutput(b.id(e, "led"));
         }
-        double d = (4 - 0.6) * Part.CELL, m = 20;
+        double d = (4 - 0.8) * Part.CELL, m = 20; // from 0.3 cell before the LED to the photodiode's face
         double geo = (m + 1) / (2 * Math.PI) * 7.5e-6 / (d * d);
         assertEquals(geo, seen[0], 1e-6 * geo, "intensity (m+1)/2π · A/d² on the axis");
         assertEquals(0, seen[1], 1e-15, "a steel plate blocks the beam");
-        assertEquals(geo, seen[2], 1e-6 * geo, "glass lets it through");
+        // a glass plate (6.25 mm) passes 2n/(n² + 1) at normal incidence and brings the source nearer by t(1 − 1/n)
+        double n = dev.emergence.core.optics.Optics.cauchy(1.523, 58.6, 630), t = 0.1 * Part.CELL, shift = t * (1 - 1 / n);
+        double glass = geo * 2 * n / (n * n + 1) * (d * d) / ((d - shift) * (d - shift));
+        System.out.printf("beam through glass: %.4g (open %.4g, expected %.4g)%n", seen[2], geo, glass);
+        assertEquals(glass, seen[2], 0.01 * glass, "glass lets it through, refracted");
     }
 }

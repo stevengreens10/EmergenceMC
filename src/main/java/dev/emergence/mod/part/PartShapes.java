@@ -106,6 +106,19 @@ public final class PartShapes {
             case SOURCE -> model(out, be, p, -0.3f, 0.3f, -0.5f, -0.3f, -0.3f, 0.3f);
             case GM_TUBE -> model(out, be, p, -0.16f, 0.16f, -0.16f, 0.16f, -0.5f, 0.5f);
             case POTENTIOMETER -> model(out, be, p, -0.36f, 0.36f, -0.36f, 0.36f, -0.5f * ez, 0.5f * ez);
+            case MIRROR -> {
+                if (prm.getOrDefault("tilt", 0.0) == 0 && prm.getOrDefault("radius", 0.0) == 0 && !prm.containsKey("aim_x")
+                        && !prm.containsKey("aim_y") && !prm.containsKey("aim_z")) {
+                    float t = (float) Math.max(prm.getOrDefault("thickness", 0.003) * 8, 0.04);
+                    model(out, be, p, -ext[l] / 2, ext[l] / 2, -ext[3 - a - l] / 2, ext[3 - a - l] / 2, -t, t);
+                } else grid(out, be, p, -ext[0] / 2, ext[0] / 2, -ext[1] / 2, ext[1] / 2, -ext[2] / 2, ext[2] / 2);
+            }
+            case LENS -> {
+                var cp = p.toCore(net.minecraft.core.BlockPos.ZERO, 16);
+                float rim = (float) (dev.emergence.core.assembly.PartGeometry.lensRim(cp) * 16);
+                float h = (float) Math.min(ez / 2, Math.max(dev.emergence.core.assembly.PartGeometry.lensThickness(cp) * 8, 0.06));
+                model(out, be, p, -rim, rim, -rim, rim, -h, h);
+            }
             case NUT -> model(out, be, p, -0.45f * m, 0.45f * m, -0.45f * m, 0.45f * m, -0.42f * ez, 0.42f * ez);
             case MAGNET -> {
                 String[] key = {"sx", "sy", "sz"};

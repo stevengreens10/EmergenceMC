@@ -10,9 +10,62 @@
         "thermal_conductivity": "1.0 W/(m*K)", "specific_heat": "840 J/(kg*K)", "thermal_expansion": "9.0e-6 1/K",
         "melting_point": "993 K",
         "electrical_resistivity": "1e12 ohm*m", "relative_permittivity": 7.2, "dielectric_strength": "10 MV/m",
-        "relative_permeability": 1.0, "emissivity": 0.92, "friction_coefficient": 0.5
+        "relative_permeability": 1.0, "emissivity": 0.92, "friction_coefficient": 0.5,
+        "refractive_index": 1.523, "abbe_number": 58.6
       },
-      "sources": ["CRC", "MW"]
+      "sources": ["CRC", "MW", "Rubin (1985), Optical properties of soda lime silica glasses"]
+    },
+    {
+      "id": "glass_bk7", "name": "Borosilicate crown glass (N-BK7)", "category": "glass", "color": "#E4F2F4",
+      "properties": {
+        "density": "2.51 g/cm^3", "youngs_modulus": "82 GPa", "shear_modulus": "34 GPa", "poisson_ratio": 0.206,
+        "ultimate_tensile_strength": "50 MPa", "hardness": "6.1 GPa", "fracture_toughness_pa_sqrt_m": "0.85 MPa",
+        "thermal_conductivity": "1.114 W/(m*K)", "specific_heat": "858 J/(kg*K)", "thermal_expansion": "7.1e-6 1/K",
+        "melting_point": "830 K",
+        "electrical_resistivity": "1e13 ohm*m", "relative_permittivity": 6.7, "dielectric_strength": "10 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.5,
+        "refractive_index": 1.5168, "abbe_number": 64.17
+      },
+      "sources": ["Schott N-BK7 data sheet (melting point: transformation temperature)"]
+    },
+    {
+      "id": "glass_sf11", "name": "Dense flint glass (N-SF11)", "category": "glass", "color": "#E8EEDD",
+      "properties": {
+        "density": "3.22 g/cm^3", "youngs_modulus": "90 GPa", "shear_modulus": "36 GPa", "poisson_ratio": 0.235,
+        "ultimate_tensile_strength": "40 MPa", "hardness": "5.5 GPa", "fracture_toughness_pa_sqrt_m": "0.8 MPa",
+        "thermal_conductivity": "0.95 W/(m*K)", "specific_heat": "760 J/(kg*K)", "thermal_expansion": "6.1e-6 1/K",
+        "melting_point": "851 K",
+        "electrical_resistivity": "1e13 ohm*m", "relative_permittivity": 8.0, "dielectric_strength": "10 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.5,
+        "refractive_index": 1.78472, "abbe_number": 25.68
+      },
+      "sources": ["Schott N-SF11 data sheet (melting point: transformation temperature)"]
+    },
+    {
+      "id": "fused_silica", "name": "Fused silica (synthetic, optical grade)", "category": "glass", "color": "#F2F8FA",
+      "properties": {
+        "density": "2.20 g/cm^3", "youngs_modulus": "72.7 GPa", "shear_modulus": "31 GPa", "poisson_ratio": 0.16,
+        "ultimate_tensile_strength": "50 MPa", "hardness": "8.6 GPa", "fracture_toughness_pa_sqrt_m": "0.8 MPa",
+        "thermal_conductivity": "1.38 W/(m*K)", "specific_heat": "740 J/(kg*K)", "thermal_expansion": "0.55e-6 1/K",
+        "melting_point": "1938 K",
+        "electrical_resistivity": "1e16 ohm*m", "relative_permittivity": 3.8, "dielectric_strength": "30 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.85, "friction_coefficient": 0.5,
+        "refractive_index": 1.4585, "abbe_number": 67.82
+      },
+      "sources": ["Heraeus Suprasil / Corning 7980 data sheets (melting point: softening point)", "Malitson (1965)"]
+    },
+    {
+      "id": "acrylic", "name": "Acrylic (PMMA, cast)", "category": "polymer", "color": "#EEF6F8",
+      "properties": {
+        "density": "1.18 g/cm^3", "youngs_modulus": "3.2 GPa", "poisson_ratio": 0.37,
+        "yield_strength": "60 MPa", "ultimate_tensile_strength": "72 MPa",
+        "thermal_conductivity": "0.19 W/(m*K)", "specific_heat": "1466 J/(kg*K)", "thermal_expansion": "70e-6 1/K",
+        "melting_point": "378 K",
+        "electrical_resistivity": "1e13 ohm*m", "relative_permittivity": 3.0, "dielectric_strength": "20 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.5,
+        "refractive_index": 1.4917, "abbe_number": 57.4
+      },
+      "sources": ["MW (melting point: glass transition)", "Sultanova et al. (2009), refractive index of polymers"]
     },
     {
       "id": "alumina", "name": "Alumina ceramic (99.5% Al2O3)", "category": "ceramic", "color": "#F1EEE6",

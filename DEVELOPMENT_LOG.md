@@ -296,3 +296,14 @@ could reconcile (Newton two-cycled between thread-friction directions under a 40
 after a load now falls back, after restarting coil currents, to starting the bodies from rest where they stand
 (`CompiledAssembly.motionReset`). `IslandDumpReplayTest` replays any dump the game writes with
 `-Demergence.dumpFailures=true` (`-Ddiag.dump=<file>`).
+
+**Ray optics.** Mirrors and lenses as parts, refraction by real surfaces. A new `optics` package traces ray tubes
+through the assembly: reflection, Snell, Fresnel (both branches at every glass surface), total internal reflection,
+Cauchy dispersion. The first version was off by exactly half on small windows (a polar parametrisation of the
+emission pattern collapsed one triangle in two at the axis), then 11 % high (chords standing for arcs around the
+axis): tubes now carry intensity × their exact solid angle, which makes mirror-folded paths deliver I·A/d² to
+0.2 %. Another 13 % disagreement came from the direct LED–photodiode calculation receiving 0.3 cell inside the
+photodiode; it now receives on its face, like the tubes, and a glass plate in a beam matches 2n/(n² + 1) with the
+source's apparent shift. Sunlight is traced too and heats every part it lands on. A big dish cannot be one part at
+block scale, so mirrors can be canted ("aim"): the solar furnace is 169 concave facets each aimed at one focus,
+as real segmented concentrators are. Exhibits: periscope, lens, solar furnace.

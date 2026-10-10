@@ -256,6 +256,71 @@ public final class PartGeometry {
         return p.param("radius", 0.15);
     }
 
+    // ----- optics
+
+    /**
+     * A mirror's front normal: "aim_x", "aim_y", "aim_z" if given (a direction, any length: a facet canted on its
+     * mount); otherwise its axis, leant "tilt" degrees over towards "tilt_toward" (a {@link Dir} across it).
+     */
+    public static dev.emergence.core.math.Vec3 mirrorNormal(Part p) {
+        dev.emergence.core.math.Vec3 aim = new dev.emergence.core.math.Vec3(p.param("aim_x", 0), p.param("aim_y", 0), p.param("aim_z", 0));
+        if (aim.length() > 1e-9) return aim.normalize();
+        dev.emergence.core.math.Vec3 a = p.axis().vec();
+        double t = Math.toRadians(p.param("tilt", 0));
+        if (t == 0) return a;
+        Dir to = Dir.values()[(int) Math.max(0, Math.min(5, Math.round(p.param("tilt_toward", 0))))];
+        if (to.axis() == p.axis().axis()) return a;
+        return a.mul(Math.cos(t)).add(to.vec().mul(Math.sin(t))).normalize();
+    }
+
+    /** True if the mirror is canted ("aim") or leant ("tilt") off its axis. */
+    public static boolean mirrorCanted(Part p) {
+        return p.param("tilt", 0) != 0 || p.params().containsKey("aim_x") || p.params().containsKey("aim_y") || p.params().containsKey("aim_z");
+    }
+
+    /**
+     * How far behind the centre of its box a curved mirror's vertex lies [m]: half its sag at the box's corner, so the
+     * cap sits in the middle of the box (as far back as the box allows); 0 for a flat mirror.
+     */
+    public static double mirrorVertexOffset(Part p) {
+        double r = p.param("radius", 0);
+        if (r == 0) return 0;
+        int ax = p.axis().axis();
+        double corner = 0.5 * Math.hypot(p.boxSize((ax + 1) % 3), p.boxSize((ax + 2) % 3));
+        double s = dev.emergence.core.optics.Optics.sag(Math.abs(r), Math.min(corner, Math.abs(r)));
+        return Math.min(0.5 * p.boxSize(ax) - 1e-4, 0.5 * s);
+    }
+
+    /** Thickness of a mirror's plate [m] (default 3 mm). */
+    public static double mirrorThickness(Part p) {
+        return p.param("thickness", 0.003);
+    }
+
+    /** Radius of a lens's rim [m]: it fills its box's cross-section. */
+    public static double lensRim(Part p) {
+        return 0.48 * transverseSize(p);
+    }
+
+    /** Signed radius of a lens's first face [m] (default four times its rim radius: about f/2). */
+    public static double lensRadius1(Part p) {
+        return p.param("radius", 4 * lensRim(p));
+    }
+
+    /** Signed radius of a lens's second face [m] (default the mirror image of the first: equiconvex; 0 flat). */
+    public static double lensRadius2(Part p) {
+        return p.param("radius2", -lensRadius1(p));
+    }
+
+    /** Thickness of a lens on its axis [m]: "thickness", or enough to leave a 1 mm rim. */
+    public static double lensThickness(Part p) {
+        double rim = lensRim(p);
+        double s1 = dev.emergence.core.optics.Optics.sag(lensRadius1(p), Math.min(rim, 0.999 * Math.abs(lensRadius1(p)))),
+                s2 = dev.emergence.core.optics.Optics.sag(lensRadius2(p), Math.min(rim, 0.999 * Math.abs(lensRadius2(p))));
+        if (lensRadius1(p) == 0) s1 = 0;
+        if (lensRadius2(p) == 0) s2 = 0;
+        return p.param("thickness", Math.max(0.0015, s1 - s2 + 0.001));
+    }
+
     // ----- mass and inertia
 
     /** Volume of material actually present [m³]. */
@@ -269,6 +334,16 @@ public final class PartGeometry {
             case BEARING -> 0.4 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
             case RACK -> 0.7 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // bar, half its tooth depth empty
             case NUT -> 0.5 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // hexagon less the threaded bore
+            case MIRROR -> {
+                int ax = p.axis().axis();
+                double tilt = Math.toRadians(p.param("tilt", 0));
+                yield p.boxSize((ax + 1) % 3) * p.boxSize((ax + 2) % 3) * mirrorThickness(p) / Math.max(0.2, Math.cos(tilt));
+            }
+            case LENS -> {
+                double rim = lensRim(p), t = lensThickness(p);
+                double edge = t - dev.emergence.core.optics.Optics.sag(lensRadius1(p), rim) + dev.emergence.core.optics.Optics.sag(lensRadius2(p), rim);
+                yield Math.PI * rim * rim * 0.5 * (t + Math.max(edge, 0)); // spherical caps on a disc: about the mean
+            }
             case GEAR -> {
                 double r = gearPitchRadius(p) * 1.05;
                 yield Math.PI * r * r * gearThickness(p);

@@ -7,6 +7,8 @@
   //  [ASM] ASM Handbook Vol. 2 (non-ferrous) and Vol. 1 (irons/steels), ASM International
   //  [MW]  MatWeb material datasheets (aggregated manufacturer data)
   //  [IC]  Incropera, DeWitt et al., Fundamentals of Heat and Mass Transfer, 7th ed., Table A.1
+  //  Reflectance of polished surfaces at normal incidence, 550 and 1000 nm: Bennett & Ashley in Handbook of Optics
+  //  vol. IV ch. 12 (OSA, 3rd ed.), and Palik, Handbook of Optical Constants of Solids (alloys from their base metal)
   "materials": [
     {
       "id": "copper", "name": "Copper (C11000 ETP, annealed)", "category": "metal", "color": "#B87333",
@@ -18,7 +20,7 @@
         "thermal_conductivity": "391 W/(m*K)", "specific_heat": "385 J/(kg*K)", "thermal_expansion": "17.0e-6 1/K",
         "melting_point": "1357.77 K", "boiling_point": "2835 K", "latent_heat_fusion": "208.7 kJ/kg",
         "electrical_resistivity": "1.71e-8 ohm*m", "resistivity_temperature_coefficient": "0.00393 1/K",
-        "relative_permeability": 0.999994, "emissivity": 0.15,
+        "relative_permeability": 0.999994, "emissivity": 0.15, "reflectance": 0.63, "reflectance_ir": 0.97,
         "seebeck_coefficient": "1.83e-6 V/K", "friction_coefficient": 0.36,
         "standard_electrode_potential": "0.337 V", "molar_mass": "63.546 g/mol"
       },
@@ -34,7 +36,7 @@
         "thermal_conductivity": "234 W/(m*K)", "specific_heat": "900 J/(kg*K)", "thermal_expansion": "23.8e-6 1/K",
         "melting_point": "933.47 K", "boiling_point": "2743 K", "latent_heat_fusion": "397 kJ/kg",
         "electrical_resistivity": "2.82e-8 ohm*m", "resistivity_temperature_coefficient": "0.00403 1/K",
-        "relative_permeability": 1.000022, "emissivity": 0.09,
+        "relative_permeability": 1.000022, "emissivity": 0.09, "reflectance": 0.916, "reflectance_ir": 0.94,
         "seebeck_coefficient": "-1.66e-6 V/K", "friction_coefficient": 0.47,
         "standard_electrode_potential": "-1.662 V", "molar_mass": "26.982 g/mol"
       },
@@ -51,7 +53,7 @@
         "thermal_conductivity": "167 W/(m*K)", "specific_heat": "896 J/(kg*K)", "thermal_expansion": "23.6e-6 1/K",
         "melting_point": "855 K", "latent_heat_fusion": "390 kJ/kg",
         "electrical_resistivity": "3.99e-8 ohm*m", "resistivity_temperature_coefficient": "0.0035 1/K",
-        "relative_permeability": 1.00002, "emissivity": 0.09, "friction_coefficient": 0.47,
+        "relative_permeability": 1.00002, "emissivity": 0.09, "reflectance": 0.9, "reflectance_ir": 0.93, "friction_coefficient": 0.47,
         "standard_electrode_potential": "-1.662 V", "molar_mass": "26.982 g/mol"
       },
       "sources": ["ASM Vol.2 6061-T6", "MW"]
@@ -67,7 +69,7 @@
         "melting_point": "1811 K", "boiling_point": "3134 K", "latent_heat_fusion": "247 kJ/kg",
         "electrical_resistivity": "9.71e-8 ohm*m", "resistivity_temperature_coefficient": "0.00651 1/K",
         "relative_permeability": 2000, "saturation_flux_density": "2.15 T", "curie_temperature": "1043 K",
-        "emissivity": 0.3, "seebeck_coefficient": "12.8e-6 V/K", "friction_coefficient": 0.4,
+        "emissivity": 0.3, "reflectance": 0.57, "reflectance_ir": 0.65, "seebeck_coefficient": "12.8e-6 V/K", "friction_coefficient": 0.4,
         "standard_electrode_potential": "-0.44 V", "molar_mass": "55.845 g/mol"
       },
       "sources": ["CRC", "ASM Vol.1", "IC Table A.1"]
@@ -84,7 +86,7 @@
         "melting_point": "1700 K", "latent_heat_fusion": "250 kJ/kg",
         "electrical_resistivity": "1.62e-7 ohm*m", "resistivity_temperature_coefficient": "0.0030 1/K",
         "relative_permeability": 100, "saturation_flux_density": "1.8 T", "curie_temperature": "1043 K",
-        "emissivity": 0.35, "friction_coefficient": 0.42,
+        "emissivity": 0.35, "reflectance": 0.57, "reflectance_ir": 0.65, "friction_coefficient": 0.42,
         "standard_electrode_potential": "-0.44 V", "molar_mass": "55.845 g/mol"
       },
       "sources": ["ASM Vol.1 1045 CD", "MW"]
@@ -100,7 +102,7 @@
         "thermal_conductivity": "16.2 W/(m*K)", "specific_heat": "500 J/(kg*K)", "thermal_expansion": "17.3e-6 1/K",
         "melting_point": "1673 K", "latent_heat_fusion": "270 kJ/kg",
         "electrical_resistivity": "7.2e-7 ohm*m", "resistivity_temperature_coefficient": "0.00094 1/K",
-        "relative_permeability": 1.008, "emissivity": 0.35, "friction_coefficient": 0.5,
+        "relative_permeability": 1.008, "emissivity": 0.35, "reflectance": 0.6, "reflectance_ir": 0.67, "friction_coefficient": 0.5,
         "molar_mass": "55.845 g/mol"
       },
       "sources": ["ASM Vol.1 304", "MW"]
@@ -116,7 +118,7 @@
         "melting_point": "3695 K", "boiling_point": "5828 K", "latent_heat_fusion": "284.5 kJ/kg",
         "electrical_resistivity": "5.28e-8 ohm*m", "resistivity_temperature_coefficient": "0.0045 1/K",
         "resistivity_exponent": 1.215,
-        "relative_permeability": 1.000068, "emissivity": 0.30,
+        "relative_permeability": 1.000068, "emissivity": 0.30, "reflectance": 0.5, "reflectance_ir": 0.62,
         "seebeck_coefficient": "1.1e-6 V/K", "molar_mass": "183.84 g/mol"
       },
       "sources": ["CRC", "Forsythe & Worthing, Astrophys. J. 61 (1925) 146", "IC Table A.1"]
@@ -157,7 +159,7 @@
         "thermal_conductivity": "429 W/(m*K)", "specific_heat": "235 J/(kg*K)", "thermal_expansion": "18.9e-6 1/K",
         "melting_point": "1234.93 K", "boiling_point": "2435 K", "latent_heat_fusion": "104.6 kJ/kg",
         "electrical_resistivity": "1.59e-8 ohm*m", "resistivity_temperature_coefficient": "0.0038 1/K",
-        "relative_permeability": 0.99998, "emissivity": 0.03, "seebeck_coefficient": "1.51e-6 V/K",
+        "relative_permeability": 0.99998, "emissivity": 0.03, "reflectance": 0.963, "reflectance_ir": 0.985, "seebeck_coefficient": "1.51e-6 V/K",
         "standard_electrode_potential": "0.7996 V", "molar_mass": "107.868 g/mol"
       },
       "sources": ["CRC"]
@@ -170,7 +172,7 @@
         "thermal_conductivity": "318 W/(m*K)", "specific_heat": "129 J/(kg*K)", "thermal_expansion": "14.2e-6 1/K",
         "melting_point": "1337.33 K", "boiling_point": "3129 K", "latent_heat_fusion": "63.7 kJ/kg",
         "electrical_resistivity": "2.44e-8 ohm*m", "resistivity_temperature_coefficient": "0.0034 1/K",
-        "relative_permeability": 0.99996, "emissivity": 0.02, "seebeck_coefficient": "1.94e-6 V/K",
+        "relative_permeability": 0.99996, "emissivity": 0.02, "reflectance": 0.8, "reflectance_ir": 0.98, "seebeck_coefficient": "1.94e-6 V/K",
         "standard_electrode_potential": "1.50 V", "molar_mass": "196.967 g/mol"
       },
       "sources": ["CRC"]
@@ -184,7 +186,7 @@
         "melting_point": "1728 K", "boiling_point": "3186 K", "latent_heat_fusion": "297.9 kJ/kg",
         "electrical_resistivity": "6.99e-8 ohm*m", "resistivity_temperature_coefficient": "0.006 1/K",
         "relative_permeability": 300, "saturation_flux_density": "0.61 T", "curie_temperature": "627 K",
-        "emissivity": 0.1, "seebeck_coefficient": "-19.5e-6 V/K",
+        "emissivity": 0.1, "reflectance": 0.64, "reflectance_ir": 0.73, "seebeck_coefficient": "-19.5e-6 V/K",
         "standard_electrode_potential": "-0.257 V", "molar_mass": "58.693 g/mol"
       },
       "sources": ["CRC", "Special Metals Nickel 200 datasheet"]
@@ -198,7 +200,7 @@
         "thermal_conductivity": "116 W/(m*K)", "specific_heat": "388 J/(kg*K)", "thermal_expansion": "30.2e-6 1/K",
         "melting_point": "692.68 K", "boiling_point": "1180 K", "latent_heat_fusion": "112 kJ/kg",
         "electrical_resistivity": "5.90e-8 ohm*m", "resistivity_temperature_coefficient": "0.0037 1/K",
-        "emissivity": 0.05, "standard_electrode_potential": "-0.762 V", "molar_mass": "65.38 g/mol"
+        "emissivity": 0.05, "reflectance": 0.8, "reflectance_ir": 0.85, "standard_electrode_potential": "-0.762 V", "molar_mass": "65.38 g/mol"
       },
       "sources": ["CRC"]
     },
@@ -224,7 +226,7 @@
         "thermal_conductivity": "66.8 W/(m*K)", "specific_heat": "228 J/(kg*K)", "thermal_expansion": "22.0e-6 1/K",
         "melting_point": "505.08 K", "boiling_point": "2875 K", "latent_heat_fusion": "59.2 kJ/kg",
         "electrical_resistivity": "1.09e-7 ohm*m", "resistivity_temperature_coefficient": "0.0045 1/K",
-        "emissivity": 0.06, "standard_electrode_potential": "-0.138 V", "molar_mass": "118.71 g/mol"
+        "emissivity": 0.06, "reflectance": 0.72, "reflectance_ir": 0.8, "standard_electrode_potential": "-0.138 V", "molar_mass": "118.71 g/mol"
       },
       "sources": ["CRC"]
     },
@@ -249,7 +251,7 @@
         "thermal_conductivity": "120 W/(m*K)", "specific_heat": "375 J/(kg*K)", "thermal_expansion": "20.0e-6 1/K",
         "melting_point": "1188 K", "latent_heat_fusion": "168 kJ/kg",
         "electrical_resistivity": "6.2e-8 ohm*m", "resistivity_temperature_coefficient": "0.0015 1/K",
-        "relative_permeability": 1.0, "emissivity": 0.2, "friction_coefficient": 0.35
+        "relative_permeability": 1.0, "emissivity": 0.2, "reflectance": 0.7, "reflectance_ir": 0.93, "friction_coefficient": 0.35
       },
       "sources": ["ASM Vol.2 C26000"]
     },
@@ -274,7 +276,7 @@
         "thermal_conductivity": "6.7 W/(m*K)", "specific_heat": "526 J/(kg*K)", "thermal_expansion": "8.6e-6 1/K",
         "melting_point": "1878 K", "latent_heat_fusion": "365 kJ/kg",
         "electrical_resistivity": "1.78e-6 ohm*m", "resistivity_temperature_coefficient": "0.0004 1/K",
-        "relative_permeability": 1.00005, "emissivity": 0.3, "friction_coefficient": 0.36
+        "relative_permeability": 1.00005, "emissivity": 0.3, "reflectance": 0.55, "reflectance_ir": 0.6, "friction_coefficient": 0.36
       },
       "sources": ["ASM Vol.2 Ti-6Al-4V", "MW"]
     }

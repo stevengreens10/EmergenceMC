@@ -91,9 +91,15 @@ behaviour; where physics is missing the effect is simply absent.
 * Transistors: no breakdown, high-injection or short-channel effects; MOSFET body tied to source.
 * Logic chips are a reduced-order model (thresholds of ratioed 74HC parts, fixed 10 ns delay, no input
   leakage or ESD diodes); large digital systems still run in the analog solver (no event-driven engine).
-* Light: only LEDs (and daylight) illuminate photodiodes — incandescent parts and torches do not; no lenses,
-  mirrors, refraction or diffuse reflection; one turning body per optical path can chop the beam; spectra are
-  monochromatic (LEDs) or a fixed sunlight responsivity. Daylight exposure is whole-block sky visibility.
+* Light: only LEDs (and daylight) illuminate photodiodes — incandescent parts and torches do not. Diffuse
+  reflection is absorbed or lost (only polished mirrors and glass redirect light); glass is lossless (no bulk
+  absorption); metal reflectance is unpolarised and independent of angle; sunlight is one wavelength (700 nm) and a
+  point at infinity (no 0.53° solar disc: a perfect focus is sharper than a real one). LED light by way of mirrors
+  and lenses is traced once per compile with moving bodies frozen in their compiled pose (a spinning mirror does
+  not sweep it; the direct path's chopping by one turning body is modelled). A small object lying wholly inside a
+  coarse tube seen only after a reflection can be missed. Sky exposure is the receiving part's block, not the path.
+  Shapes: no prisms (only boxes, plates and spherical lenses); a canted mirror's square plate overhangs its cell
+  slightly in the drawing. Mirrors' aim and tilt are set by presets or exhibits (no in-game aiming tool yet).
   The LED model is drawn dome-up whatever its "face" direction.
 * MSI chips are behavioural (multilinear logic, single propagation delay, no setup/hold violation model
   beyond the master–slave windows). A ROM's contents are set when it is made (item parameters/presets);

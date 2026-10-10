@@ -86,7 +86,10 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ## Phase 7–8 — Broad scientific expansion, continuous expansion
 ✅ Data logger / oscilloscope: 1 kHz sampling of any part, on-screen trace, CSV export
 ✅ Radioactivity (non-actionable, sealed check sources): decay chains, gamma attenuation, Geiger–Müller counter
-⬜ Optics (ray), acoustics, geology, environmental, biology; spectrum analyser,
+✅ Ray optics: mirrors (flat, tilted, canted, concave), spherical lenses, glass blocks; Snell, Fresnel, total internal
+   reflection, dispersion; ray-tube transport for LEDs and sunlight; sunlight heats every part (periscope, lens, solar
+   furnace exhibits)
+⬜ Acoustics, geology, environmental, biology; prisms and diffuse reflection; spectrum analyser,
    logic analyser, multi-channel loggers
 
 ## Demo world

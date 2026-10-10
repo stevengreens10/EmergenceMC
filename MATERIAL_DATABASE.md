@@ -5,13 +5,15 @@ value is a string with explicit units (`"8.94 g/cm^3"`, `"391 W/(m*K)"`) that is
 property's SI dimension at load time (`MaterialProperty`). Unknown properties or wrong dimensions abort
 loading with a message naming the material and file.
 
-## Contents (37 materials)
+## Contents (41 materials)
 * **Metals**: copper (C11000), aluminium (1350 EC), iron (commercially pure), tungsten, silver, gold, nickel,
   zinc, lead, tin.
 * **Alloys**: aluminium 6061-T6, steel AISI 1045, stainless 304, nichrome 80/20, constantan, Sn63/Pb37 solder,
   brass C26000, phosphor bronze C51000, Ti-6Al-4V.
 * **Magnetic**: NdFeB N42, hard ferrite C8, Alnico 5, Sm2Co17, M19 electrical steel.
-* **Non-metals**: soda-lime glass, alumina 99.5 %, PTFE, nylon 6/6, PVC, natural rubber, muscovite mica,
+* **Glasses and clear plastic**: soda-lime glass, N-BK7 borosilicate crown, N-SF11 dense flint, fused silica,
+  acrylic (PMMA) — with refractive index n_d and Abbe number (Schott data sheets, Malitson 1965).
+* **Non-metals**: alumina 99.5 %, PTFE, nylon 6/6, PVC, natural rubber, muscovite mica,
   electrographite, silicon, germanium, oak, granite, quasi-isotropic CFRP.
 
 ## Properties
@@ -20,7 +22,9 @@ density, Young's/shear modulus, Poisson ratio, yield/ultimate/fatigue strength, 
 latent heat of fusion, electrical resistivity (20 °C) with linear coefficient or power-law exponent,
 relative permittivity, dielectric strength, relative permeability, saturation flux density, remanence,
 coercivity, recoil permeability, Curie temperature, remanence temperature coefficient, emissivity, Seebeck
-coefficient, band gap, friction coefficient (vs steel, dry), standard electrode potential, molar mass.
+coefficient, band gap, friction coefficient (vs steel, dry), standard electrode potential, molar mass;
+optics: refractive index n_d, Abbe number V_d, polished normal-incidence reflectance at 550 and 1000 nm (metals:
+Bennett & Ashley, Handbook of Optics vol. IV; alloys from their base metal).
 
 ## Sources
 CRC Handbook of Chemistry and Physics (97th ed.); ASM Handbooks Vol. 1 and 2; Incropera et al.,

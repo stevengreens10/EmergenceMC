@@ -250,6 +250,6 @@ public final class OpticsExhibits {
         r.pin("vdd", 14, 1, 12).pin("gnd", 12, 1, 12);
         receiver(e, r, 2, 12, 470e3, new int[]{6, 3, 10}, new int[]{8, 3, 10});
         r.route();
-        return e.view(7, 5, 20, 15);
+        return e.view(7, 4.5, 12.5, 12);
     }
 }

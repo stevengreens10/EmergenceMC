@@ -354,3 +354,8 @@ open, a cluster of micro-ohm copper and steel conductances (10⁷ S) hung on a 1
 its roundoff — a volt of noise on the LED's junction capacitance; such solid contacts now share one node, which also
 shrinks every island's network. And slides' end stops were soft (a millimetre of give): they now scale with the slide's
 mass and stroke.
+
+**Trembler.** The relay's coil wired through its own normally-closed contacts, with a flyback diode: an electric
+bell's interrupter. It needed no new physics — the same moving-iron inductance, travel contacts and stops oscillate at
+7.9 Hz, set by the coil's L/R, the pull-in current and the armature's flight. Fed through the contacts and a brush the
+coil drew just under the relay's pull-in current at 24 V, so the trembler runs on 36 V.

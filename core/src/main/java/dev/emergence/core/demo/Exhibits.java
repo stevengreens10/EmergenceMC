@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.relay(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(),
                 miniatureGenerator());
     }
 
@@ -471,6 +471,57 @@ public final class Exhibits {
         r.pin("lk", 11, 1, 15).pin("lk", 12, 1, 15);
         r.pin("lr", 14, 1, 15).pin("lr", 14, 1, 13).pin("lr", 9, 5, 8);
         r.pin("fx", 7, 7, 8).pin("fx", 1, 1, 15);
+        r.route();
+        return e.view(7, 6, 15, 15, 160);
+    }
+
+    /**
+     * A trembler (an electric bell's interrupter): the relay's coil is fed through its own contacts, which the armature
+     * opens as it is pulled up. With the circuit broken the coil's current decays through a flyback diode; the pull
+     * fails, the armature drops, the contacts close and it all starts again — an oscillator from a magnet, a spring of
+     * gravity and a switch. An LED across the coil blinks with each closing.
+     */
+    public static Exhibit trembler() {
+        Exhibit e = new Exhibit("trembler", "Trembler",
+                List.of("TREMBLER", "The relay switches", "itself off and on:", "a bell's buzzer"),
+                "This relay's coil gets its current through its own contacts, which are closed while the armature rests "
+                        + "and open when it is pulled up. Close the switch: the coil pulls the armature, which breaks the "
+                        + "coil's own circuit. The coil's current cannot stop at once (its field holds energy, ½LI²); the "
+                        + "diode across it lets the current run on, dying away over a tenth of a second as the winding's "
+                        + "resistance turns it to heat. The pull fails, the armature drops, the contacts close and the "
+                        + "cycle repeats, a few times a second: the interrupter of an electric bell or buzzer. The LED "
+                        + "across the coil lights while the contacts feed it. Without the diode the contacts would arc.");
+        String st = "steel_1045";
+        e.fill(BLOCK, st, 3, 0, 8, 3, 7, 8, Dir.UP);
+        e.fill(BLOCK, st, 4, 7, 8, 5, 7, 8, Dir.UP);
+        e.name("coil", e.add(COIL, "copper", 5, 6, 8, Dir.DOWN, "turns", 2000, "wire_diameter", 0.5e-3, "core", 1,
+                "bore_fraction", 0.6, "lead_axis", 2));
+        e.name("armature", e.add(BLOCK, st, 5, 5, 8, Dir.UP, "fill", 0.4));
+        e.name("slide", e.fill(SHAFT, st, 5, 1, 8, 5, 4, 8, Dir.UP, "diameter", 0.012));
+        e.add(LINEAR_BEARING, st, 5, 2, 8, Dir.UP, "travel", 0.0015);
+        e.fill(BLOCK, st, 4, 0, 8, 4, 2, 8, Dir.UP);
+        // contacts: the copper arm's end rests on a fixed wire below it (normally closed); a brush on the arm
+        e.add(BLOCK, "copper", 6, 5, 8, Dir.UP, "fill", 0.2);
+        e.name("moving", e.add(BLOCK, "copper", 7, 5, 8, Dir.UP, "fill", 0.2));
+        e.name("fixed", e.add(WIRE, "copper", 7, 4, 8, Dir.UP, "diameter", 0.002));
+        e.add(BRUSH, "graphite", 8, 5, 8, Dir.WEST);
+        e.add(BLOCK, "nylon_66", 8, 6, 8, Dir.UP);
+        e.add(BLOCK, "nylon_66", 8, 6, 9, Dir.UP);
+        e.fill(BLOCK, "nylon_66", 8, 0, 9, 8, 5, 9, Dir.UP);
+        // supply, switch, flyback diode across the coil, an indicator LED (with its resistor) across it too
+        int bc = e.add(CAPACITOR, "alumina", 2, 1, 12, Dir.EAST, "capacitance", 50);
+        e.init(bc, new Exhibit.Initial(Double.NaN, 0, 36));
+        e.name("switch", e.add(SWITCH, "brass", 6, 1, 12, Dir.EAST));
+        e.name("diode", e.add(DIODE, "silicon", 11, 1, 12, Dir.EAST));
+        e.name("lamp", e.add(LED, "silicon", 11, 1, 15, Dir.EAST, "wavelength", 590, "face", 3, "beam", 20));
+        e.add(RESISTOR, "alumina", 14, 1, 15, Dir.EAST, "resistance", 2200);
+        Router r = new Router(e, 0, 0, 0, 16, 8, 16);
+        r.keepClear(6, 6, 8, 7, 6, 8); // nothing over the moving arm (it would make a second contact)
+        r.pin("c+", 3, 1, 12).pin("c+", 5, 1, 12);
+        r.pin("sw", 7, 1, 12).pin("sw", 5, 6, 9).pin("sw", 12, 1, 12).pin("sw", 10, 1, 15);   // coil +, diode K, LED A
+        r.pin("cb", 5, 6, 7).pin("cb", 9, 5, 8).pin("cb", 10, 1, 12).pin("cb", 15, 1, 15);   // coil −, brush, diode A, LED R
+        r.pin("lr", 12, 1, 15).pin("lr", 13, 1, 15);
+        r.pin("fx", 7, 3, 8).pin("fx", 1, 1, 12);
         r.route();
         return e.view(7, 6, 15, 15, 160);
     }

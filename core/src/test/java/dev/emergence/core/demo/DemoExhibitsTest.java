@@ -1503,4 +1503,33 @@ class DemoExhibitsTest {
         assertEquals(-0.0015, c.probe(slide).angle(), 1e-4, "it drops back");
         assertTrue(c.probe(lamp).current() < 1e-5, "the light goes out");
     }
+
+    /** Trembler: a relay feeding its coil through its own normally-closed contacts oscillates. */
+    @Test
+    void tremblerOscillates() {
+        Exhibit e = Exhibits.trembler();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long slide = b.id(e, "slide"), coil = b.id(e, "coil");
+        run(c, 0.3);
+        assertEquals(-0.0015, c.probe(slide).angle(), 1e-4, "rests on the closed contacts");
+        c.toggleSwitch(b.id(e, "switch"));
+        int ups = 0;
+        boolean up = false;
+        double peak = 0;
+        StringBuilder log = new StringBuilder();
+        for (int k = 0; k < 400; k++) {
+            c.step(0.01);
+            double x = c.probe(slide).angle();
+            peak = Math.max(peak, Math.abs(c.probe(coil).current()));
+            if (!up && x > 0.001) {
+                up = true;
+                ups++;
+                log.append(String.format(" %.2f", c.time()));
+            } else if (up && x < -0.001) up = false;
+        }
+        System.out.printf("trembler: pulled up %d times in 4 s, at%s s; peak coil current %.2f A; energy error %.3g J%n", ups, log, peak, c.energyError());
+        assertTrue(ups >= 4, "it keeps cycling: " + ups);
+        assertTrue(c.probe(b.id(e, "diode")).temperature() < 400, "the flyback diode copes");
+    }
 }

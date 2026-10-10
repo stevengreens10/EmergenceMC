@@ -261,6 +261,11 @@ the armature closed) on 24 V pulls a 1.9 kg armature across its 3 mm gap once it
 the current dipping as the gap closes (back EMF); the contacts close and the LED carries 12 mA; the energy error over
 the pull-in is 3 mJ. Released, the armature drops to its stop and the circuit opens.
 
+Trembler (`DemoExhibitsTest.tremblerOscillates`): the same relay feeding its coil through its own normally-closed
+contacts, a flyback diode across the coil, on 36 V: it pulls up and drops back 31 times in 4 s (7.9 Hz) with the coil
+current peaking at 0.84 A; no oscillator was programmed — the period is the coil's L/R rise to the pull-in current,
+the armature's flight, and the current's decay through the diode. Energy error over 4 s: 3 mJ.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

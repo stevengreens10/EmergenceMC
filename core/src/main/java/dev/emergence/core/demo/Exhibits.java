@@ -435,7 +435,7 @@ public final class Exhibits {
         e.name("short", e.fill(BLOCK, st, 4, 1, 8, 4, 4, 8, Dir.SOUTH, "fill", 0.02));
         e.name("shortLoad", e.add(BLOCK, "lead", 4, 5, 8, Dir.UP));
         e.name("tall", e.fill(BLOCK, st, 10, 1, 8, 10, 8, 8, Dir.SOUTH, "fill", 0.02));
-        return e.view(7, 5, 17, 15);
+        return e.view(7, 6, 23, 8);
     }
 
     /** Two identical sealed vessels; one sits against a red-hot copper block. Gay-Lussac's law on a gauge. */

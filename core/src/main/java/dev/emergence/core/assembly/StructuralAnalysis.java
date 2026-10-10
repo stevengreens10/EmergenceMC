@@ -175,19 +175,17 @@ public final class StructuralAnalysis {
         double[] mode = new double[6 * nodes.size()];
         double buckling = f.bucklingFactor(u, mode);
         if (buckling >= 1 && failed.isEmpty()) {
-            // it kinks where the buckled shape deflects most sideways (relative to its neighbours' mean)
-            Part worst = null;
+            // it collapses along its buckled length: every part the buckled shape moves sideways by at least 30 % of
+            // its largest deflection goes (for a column on a fixed foot, the upper part folds over)
             double most = 0;
+            double[] d = new double[nodes.size()];
             for (Part p : nodes) {
                 if (a.isAnchored(p)) continue;
                 int i = idx.get(p.id());
-                double d = Math.sqrt(mode[6 * i] * mode[6 * i] + mode[6 * i + 1] * mode[6 * i + 1] + mode[6 * i + 2] * mode[6 * i + 2]);
-                if (d > most) {
-                    most = d;
-                    worst = p;
-                }
+                d[i] = Math.sqrt(mode[6 * i] * mode[6 * i] + mode[6 * i + 1] * mode[6 * i + 1] + mode[6 * i + 2] * mode[6 * i + 2]);
+                most = Math.max(most, d[i]);
             }
-            if (worst != null) failed.add(worst.id());
+            for (Part p : nodes) if (!a.isAnchored(p) && most > 0 && d[idx.get(p.id())] >= 0.3 * most) failed.add(p.id());
         }
         if (!failed.isEmpty()) {
             // whatever no longer has a load path to the ground once the failed parts are gone collapses with them

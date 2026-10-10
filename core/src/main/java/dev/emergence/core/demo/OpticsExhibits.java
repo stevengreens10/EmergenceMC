@@ -286,6 +286,6 @@ public final class OpticsExhibits {
         r.pin("gb", 1, 2, 9).pin("gb", 1, 3, 7);
         r.pin("ret", 1, 3, 9).pin("ret", 1, 1, 3);
         r.route();
-        return e.view(8, 9, 17, 40);
+        return e.view(7.5, 6.5, 13.5, 38);
     }
 }

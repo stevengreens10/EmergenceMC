@@ -177,10 +177,10 @@ public final class SimulationManager {
                 }
                 continue;
             }
-            if (isl.compiled.coilCurrentsReset() && !isl.resetLogged) {
+            if ((isl.compiled.coilCurrentsReset() || isl.compiled.motionReset()) && !isl.resetLogged) {
                 isl.resetLogged = true;
-                EmergenceMod.LOG.info("Island at {}: restored coil currents could not flow in the circuit as loaded; they started from rest",
-                        isl.blocks.iterator().next());
+                EmergenceMod.LOG.info("Island at {}: restored {} inconsistent with the build as loaded; started from rest",
+                        isl.blocks.iterator().next(), isl.compiled.motionReset() ? "motion was" : "coil currents were");
             }
             long cost = System.nanoTime() - t0;
             if (isl.near) nearTotal += cost / 1e6;

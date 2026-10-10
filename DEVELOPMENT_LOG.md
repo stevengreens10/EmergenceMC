@@ -289,3 +289,10 @@ the flow through a wide passage at 160 bar could not be resolved below its press
 noise, and its tolerance unattainable); and the sparse LU's row-based pivot test failed sound pivots at nearly every
 iteration — fixing that made the engine about 12× faster, and helps every island. It runs at 1100–2000 rpm, governed by
 its fuel flow.
+
+**Reloading an island whose saved motion no longer fits.** The demo world's screw jacks failed to load: the saved
+state had the fine-screw carriage falling while its self-locking screw stood still, which only an impulse at t = 0
+could reconcile (Newton two-cycled between thread-friction directions under a 40 MN constraint force). The first step
+after a load now falls back, after restarting coil currents, to starting the bodies from rest where they stand
+(`CompiledAssembly.motionReset`). `IslandDumpReplayTest` replays any dump the game writes with
+`-Demergence.dumpFailures=true` (`-Ddiag.dump=<file>`).

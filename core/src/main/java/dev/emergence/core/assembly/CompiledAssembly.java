@@ -283,11 +283,16 @@ public final class CompiledAssembly {
         return Math.max(0, pressure(partId) - assembly.ambientPressure()) * v[0] / v[1];
     }
 
-    private boolean started, coilCurrentsReset;
+    private boolean started, coilCurrentsReset, motionReset;
 
     /** True if the first step found the restored coil currents inconsistent with the circuit and started them at 0. */
     public boolean coilCurrentsReset() {
         return coilCurrentsReset;
+    }
+
+    /** True if the first step found the restored motion inconsistent with the build and started the bodies from rest. */
+    public boolean motionReset() {
+        return motionReset;
     }
 
     public List<Long> step(double dt) {
@@ -296,13 +301,26 @@ public final class CompiledAssembly {
             try {
                 return stepOnce(dt);
             } catch (dev.emergence.core.sim.SimulationException e) {
-                if (magnetics == null || magnetics.coils().isEmpty()) throw e;
-                // The currents restored into the coils cannot flow in the circuit as built (its loop was broken: a
-                // chunk loaded without the rest of the circuit, a wire removed): an inductor's current then collapses.
-                // Start them from rest and keep everything else.
-                for (MagneticSystem.Coil coil : magnetics.coils()) network.setInitial(coil.currentIndex(), 0);
+                if (magnetics != null && !magnetics.coils().isEmpty()) {
+                    // The currents restored into the coils cannot flow in the circuit as built (its loop was broken: a
+                    // chunk loaded without the rest of the circuit, a wire removed): an inductor's current then
+                    // collapses. Start them from rest and keep everything else.
+                    for (MagneticSystem.Coil coil : magnetics.coils()) network.setInitial(coil.currentIndex(), 0);
+                    solver.reinitialize();
+                    coilCurrentsReset = true;
+                    try {
+                        return stepOnce(dt);
+                    } catch (dev.emergence.core.sim.SimulationException e2) {
+                        e = e2;
+                    }
+                }
+                // The restored motion breaks a constraint between bodies as built now (a nut saved running free of a
+                // screw it now grips, gears that were out of mesh): only an impulse at t = 0 could reconcile them.
+                // Start the bodies from rest where they stand.
+                if (bodies.stream().allMatch(b -> b.isStatic)) throw e;
+                for (Body b : bodies) if (!b.isStatic) network.setInitial(b.node.index(), 0);
                 solver.reinitialize();
-                coilCurrentsReset = true;
+                motionReset = true;
                 return stepOnce(dt);
             }
         }

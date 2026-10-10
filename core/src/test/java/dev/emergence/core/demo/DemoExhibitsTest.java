@@ -1063,6 +1063,25 @@ class DemoExhibitsTest {
     }
 
     /**
+     * Motion restored that the build no longer allows (here a fine-screw carriage saved falling while its
+     * self-locking screw stands still) cannot be reconciled without an impulse: the first step starts the bodies from
+     * rest where they stand instead of failing.
+     */
+    @Test
+    void inconsistentRestoredMotionStartsFromRest() {
+        Exhibit e = MechanicsExhibits.screwJacks();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        long rod = b.id(e, "fineRod");
+        CompiledAssembly c0 = compile(e, b);
+        var st = c0.exportState();
+        for (long id : c0.bodyOf(rod).parts()) st.bodyMotion().put(id, new double[]{0.5, -0.1});
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), st);
+        run(c, 0.5);
+        assertTrue(c.motionReset(), "started from rest");
+        assertEquals(-0.1, c.probe(rod).angle(), 1e-3, "where it stood");
+    }
+
+    /**
      * Burst test: the thin copper box bursts when its wall stress — flat walls bending under the steam pressure,
      * Roark's fixed-edge plate — reaches copper's strength, at the saturation pressure of its water; the steel box holds.
      */

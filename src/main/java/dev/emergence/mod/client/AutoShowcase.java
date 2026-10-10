@@ -105,6 +105,11 @@ public final class AutoShowcase {
                             dev.emergence.core.assembly.Dir.UP);
                 }, "showcase-" + (i + 1) + "-" + id + "-overloaded"));
             }
+            if (id.equals("buckling")) {
+                // the short strip's load on the tall one: it buckles within a simulated second
+                STEPS.add(new Step(60, () -> DemoBuilder.addPart(server.overworld(), plot, 10, 9, 8, dev.emergence.core.assembly.PartKind.BLOCK,
+                        "lead", dev.emergence.core.assembly.Dir.UP), "showcase-" + (i + 1) + "-" + id + "-loaded"));
+            }
             if (id.equals("computer")) {
                 STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
                 STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "sense")),

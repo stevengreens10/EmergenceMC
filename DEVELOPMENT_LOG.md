@@ -274,3 +274,8 @@ them shorted the windings together (cored coils now have none); a 0.5 F bank fad
 to light an LED steadily (true — Faraday's battery held its current); and the servo fragment that cuts a coil's loop
 failed on its first step. That last one is the intermittent world-load failure: a coil restored with current into a
 broken circuit. The first step now starts such currents from rest instead of failing.
+
+**Buckling.** The frame analysis now checks elastic stability: geometric stiffness from each member's axial force and
+the critical load factor by inverse iteration (Euler's cantilever load to four digits). Buckling exhibit: two strips
+of 1.25 mm steel on end; the short one carries a lead block, the same block on the twice-as-tall one buckles it at a
+load its steel could take many times over in plain compression.

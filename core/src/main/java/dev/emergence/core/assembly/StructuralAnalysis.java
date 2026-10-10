@@ -26,8 +26,13 @@ import java.util.*;
  * faces fully bonded.
  */
 public final class StructuralAnalysis {
-    public record Result(Map<Long, Double> utilisation, Map<Long, Vec3> displacement, List<Long> failed, double maxUtilisation) {
-        static final Result EMPTY = new Result(Map.of(), Map.of(), List.of(), 0);
+    /**
+     * @param buckling the loads' fraction of the elastic buckling load (≥ 1: the structure buckles), 0 if nothing is
+     *                 in significant compression
+     */
+    public record Result(Map<Long, Double> utilisation, Map<Long, Vec3> displacement, List<Long> failed, double maxUtilisation,
+                         double buckling) {
+        static final Result EMPTY = new Result(Map.of(), Map.of(), List.of(), 0, 0);
     }
 
     private StructuralAnalysis() {
@@ -166,6 +171,24 @@ public final class StructuralAnalysis {
         }
         List<Long> failed = new ArrayList<>();
         for (var en : util.entrySet()) if (en.getValue() > 1) failed.add(en.getKey());
+        // elastic stability: a slender column under load buckles far below its material strength
+        double[] mode = new double[6 * nodes.size()];
+        double buckling = f.bucklingFactor(u, mode);
+        if (buckling >= 1 && failed.isEmpty()) {
+            // it kinks where the buckled shape deflects most sideways (relative to its neighbours' mean)
+            Part worst = null;
+            double most = 0;
+            for (Part p : nodes) {
+                if (a.isAnchored(p)) continue;
+                int i = idx.get(p.id());
+                double d = Math.sqrt(mode[6 * i] * mode[6 * i] + mode[6 * i + 1] * mode[6 * i + 1] + mode[6 * i + 2] * mode[6 * i + 2]);
+                if (d > most) {
+                    most = d;
+                    worst = p;
+                }
+            }
+            if (worst != null) failed.add(worst.id());
+        }
         if (!failed.isEmpty()) {
             // whatever no longer has a load path to the ground once the failed parts are gone collapses with them
             Set<Long> gone = new HashSet<>(failed);
@@ -179,7 +202,7 @@ public final class StructuralAnalysis {
             for (Part p : nodes) if (!held.contains(p.id()) && !gone.contains(p.id())) failed.add(p.id());
         }
         Collections.sort(failed);
-        return new Result(util, disp, failed, max);
+        return new Result(util, disp, failed, max, buckling);
     }
 
     static double component(Vec3 v, int k) {

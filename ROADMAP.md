@@ -50,7 +50,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ## Structural mechanics (Phase 6, started early)
 ✅ Static frame analysis of every anchored structure: beam members from contact faces, gravity, held
    fluid and rotor weights; yield (ductile) and fracture (brittle) failure with progressive collapse
-⬜ Buckling, dynamic loads (impacts, vibration, resonance), fatigue, creep, plasticity, soil
+✅ Euler buckling (linear stability of the frame; buckling exhibit)
+⬜ Dynamic loads (impacts, vibration, resonance), fatigue, creep, plasticity, soil
 
 ## Phase 4 — Electronics and computation
 ✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED, photodiode / solar cell; ⬜ phototransistors

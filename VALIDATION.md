@@ -204,6 +204,11 @@ leaks across the ring's window). Faraday ring exhibit: k = 0.958, open-circuit E
 N2/N1 = 5; closing the switch flashes one LED (18 mW), opening it the other (0.18 W); nothing while the current
 is steady.
 
+Buckling (`FrameSolverTest`): a 12-member cantilever strip under end loads of ½ and 2 × π²EI/4L² gives
+P/P_cr = 0.5000 and 2.0000 (Euler exactly), its top swaying most; a hanging (tension) column gives 0. Buckling
+exhibit: the short strip at 0.568 of its critical load (Euler 0.53, plus self-weight and the base joint), the
+tall strip with the same 27 N block at 1.743 (Euler 1.72): it fails, the short one stands.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

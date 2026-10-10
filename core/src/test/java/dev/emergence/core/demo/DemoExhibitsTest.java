@@ -1136,4 +1136,26 @@ class DemoExhibitsTest {
         System.out.printf("break: the other LED peaks at %.3g W%n", peakOther);
         assertTrue(peakOther > 1e-4, "the other LED flashes on break");
     }
+
+    /** Buckling: the loaded short strip stands below its Euler load; the same lead block on the tall strip buckles it. */
+    @Test
+    void tallStripBucklesUnderTheBlockTheShortOneCarries() {
+        Exhibit e = Exhibits.buckling();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        var r = compile(e, b).structure();
+        System.out.printf("buckling: as built %.3f of the critical load (Euler, fixed-free, 5 cells: 27.2/51.3 = 0.53)%n", r.buckling());
+        assertTrue(r.failed().isEmpty(), "everything stands as built");
+        assertEquals(27.2 / 51.3, r.buckling(), 0.05, "the short strip at about half its Euler load");
+        assertTrue(r.maxUtilisation() < 0.1, "far below its strength: " + r.maxUtilisation());
+        e.add(dev.emergence.core.assembly.PartKind.BLOCK, "lead", 10, 9, 8, Dir.UP);
+        Exhibits.Built b2 = Exhibits.build(e, AMBIENT);
+        var r2 = compile(e, b2).structure();
+        System.out.printf("buckling: with a block on the tall strip %.3f (27.2/15.8 = 1.72), failed %s%n", r2.buckling(), r2.failed());
+        assertEquals(27.2 / 15.8, r2.buckling(), 0.1, "the tall strip at 1.7 times its Euler load");
+        assertFalse(r2.failed().isEmpty(), "it buckles");
+        for (long id : r2.failed()) {
+            var p = b2.assembly().get(id);
+            assertEquals(10, p.minX(), "the tall strip (and its load) fail, not the short one");
+        }
+    }
 }

@@ -95,4 +95,42 @@ class FrameSolverTest {
         double d = hl * h * h * h / (24 * E * I_STRONG);
         assertEquals(d, u[6 * nc], 0.01 * d, "portal sway");
     }
+
+    /**
+     * Euler buckling of a cantilever column (clamped foot, free top) under an end load: P_cr = π²EI/(4L²). Twelve
+     * members of a slender steel strip; the computed factor μ = P/P_cr for loads below and above it.
+     */
+    @Test
+    void cantileverColumnBucklesAtEulerLoad() {
+        int n = 12;
+        double h = 1.0 / 16, b = 0.0625, t = 0.00125, e = 200e9;
+        double i1 = b * t * t * t / 12, i2 = t * b * b * b / 12;
+        double pcr = Math.PI * Math.PI * e * Math.min(i1, i2) / (4 * Math.pow(n * h, 2));
+        for (double p : new double[]{0.5 * pcr, 2 * pcr}) {
+            FrameSolver f = new FrameSolver(n + 1);
+            f.fix(0);
+            for (int k = 0; k < n; k++) f.addMember(new FrameSolver.Member(k, k + 1, 1, h, e, e / 2.6, b * t, i1, i2, b * t * t * t / 3));
+            f.force(n, 1, -p);
+            double[] u = f.solve();
+            double[] mode = new double[6 * (n + 1)];
+            double mu = f.bucklingFactor(u, mode);
+            System.out.printf("cantilever column: P = %.2f N, P_cr(Euler) = %.2f N, computed P/P_cr = %.4f (expected %.4f)%n", p, pcr, mu, p / pcr);
+            assertEquals(p / pcr, mu, 0.01 * p / pcr, "the Euler critical load");
+            // the top sways most: the first mode of a cantilever
+            double top = Math.hypot(mode[6 * n], mode[6 * n + 2]), mid = Math.hypot(mode[6 * (n / 2)], mode[6 * (n / 2) + 2]);
+            assertTrue(top > mid, "the free top deflects most");
+        }
+    }
+
+    /** A column in tension, or stocky and lightly loaded, has nothing to buckle. */
+    @Test
+    void tensionDoesNotBuckle() {
+        int n = 6;
+        double h = 1.0 / 16, e = 200e9, a = h * h, ii = h * h * h * h / 12;
+        FrameSolver f = new FrameSolver(n + 1);
+        f.fix(n);
+        for (int k = 0; k < n; k++) f.addMember(new FrameSolver.Member(k, k + 1, 1, h, e, e / 2.6, a, ii, ii, 0.14 * h * h * h * h));
+        f.force(0, 1, -100); // hanging from the top
+        assertEquals(0, f.bucklingFactor(f.solve(), null), 1e-9);
+    }
 }

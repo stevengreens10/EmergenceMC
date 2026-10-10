@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(),
                 miniatureGenerator());
     }
 
@@ -414,6 +414,28 @@ public final class Exhibits {
         r.pin("s3", 12, 0, 13).pin("s3", 10, 0, 8);
         r.route();
         return e.view(7.5, 7, 17, 35);
+    }
+
+    /**
+     * Euler buckling: two strips of thin steel (62.5 mm wide, 1.25 mm thick) standing on end, one twice as tall. A lead
+     * block on the short one stands; the same block on the tall one buckles it — at a load its steel could carry
+     * many times over in plain compression.
+     */
+    public static Exhibit buckling() {
+        Exhibit e = new Exhibit("buckling", "Buckling",
+                List.of("BUCKLING", "Same strip, same load:", "the tall one buckles", "(place a lead block)"),
+                "Two strips of the same thin steel stand on end. The short one carries a lead block (27 N). Put the same "
+                        + "block on top of the tall one and it buckles: a slender column fails not by crushing (the load is "
+                        + "a small fraction of what the steel could take) but by bowing sideways. Euler found the critical "
+                        + "load P = π²EI/(2L)² for a column fixed at the foot and free at the top: double the length and "
+                        + "it drops to a quarter. The short strip could take 51 N, the tall one only 16 N.");
+        String st = "steel_1045";
+        e.add(BLOCK, st, 4, 0, 8, Dir.UP);
+        e.add(BLOCK, st, 10, 0, 8, Dir.UP);
+        e.name("short", e.fill(BLOCK, st, 4, 1, 8, 4, 4, 8, Dir.SOUTH, "fill", 0.02));
+        e.name("shortLoad", e.add(BLOCK, "lead", 4, 5, 8, Dir.UP));
+        e.name("tall", e.fill(BLOCK, st, 10, 1, 8, 10, 8, 8, Dir.SOUTH, "fill", 0.02));
+        return e.view(7, 5, 17, 15);
     }
 
     /** Two identical sealed vessels; one sits against a red-hot copper block. Gay-Lussac's law on a gauge. */

@@ -435,3 +435,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Inconsistent coil currents on restart**: if the first step of a newly compiled assembly fails, the restored coil
   currents could not flow in the circuit as built (its loop was broken — a chunk loaded without the rest of the
   circuit); they start from rest, everything else kept, as an inductor's current collapses when its circuit opens.
+* **Buckling** (`FrameSolver.bucklingFactor`): linear elastic stability of the loaded static frame,
+  (K + K_G/μ)·φ = 0, with each member's consistent geometric stiffness from its axial force (Przemieniecki's cubic
+  beam element: 6P/5L, P/10, 2PL/15, −PL/30). μ is the loads' fraction of the critical load; at μ ≥ 1 the structure
+  buckles and fails where the buckled shape deflects most. Inverse power iteration on K⁻¹(−K_G), shifted past tension
+  modes; skipped when every compressed member is far from even a 20-member column's Euler load. Elastic (no
+  imperfections or plasticity interaction: stocky members fail by the strength check first).

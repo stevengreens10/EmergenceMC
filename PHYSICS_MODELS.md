@@ -519,3 +519,20 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   conductor's temperature; the dissipated c·Δω² heats it.
 * Low-speed regime (magnetic Reynolds number μ0σvt ≪ 1): the induced currents' own field, and the drag's peak and
   fall at high speed, are not modelled; two independently moving bodies (not coaxial) are not coupled.
+
+## Moving iron, relay contacts (`MagneticSystem.addArmatures`, `TravelContact`)
+* **Armatures**: iron on a slide moving along a fixed coil's axis. The reluctance lattice gives the coil's inductance
+  with the armature against its pole (L_closed) and without it (L_open); the slide's travel sets the air gap g — zero
+  at the end of its travel towards the coil — whose reluctance g/(μ0A) (A the coil's bore) adds in series to the iron
+  path: ΔL(g) = N²/(N²/(L_closed − L_open) + g/(μ0A)), a pose-dependent self-inductance. Flux linkage L(x)·i gives the
+  back EMF i·dL/dx·v and the pull ½i²·dL/dx from one co-energy (energy conserved to 0.3 % over a pull-in).
+* **Travel contacts**: conductors on a slide and on another body touching across the slide's direction of travel
+  meet only at the end of its travel towards one another: their conductance rises smoothly (smoothstep) from 1 nS to
+  1/R_contact (0.02 Ω) over the last 0.2 mm — a relay's or limit switch's contacts; I²R heats the moving contact.
+* **Stops**: a slide's travel ends at its shaft's ends, or at stop collars ("travel" on a linear bearing, either way
+  from where it was placed); the stop is a firm contact (150 Hz on the slide's mass, damping ratio 0.7, a quadratic
+  onset over 2 % of the stroke up to 1 mm).
+* **Circuit numerics**: solid metal pieces in contact whose resistance is below 10⁻⁴ Ω, of metals whose Seebeck
+  coefficients differ by under 20 µV/K, share one electrical node (otherwise 10⁷ S conductances left a circuit's
+  floating potential known only to its roundoff, where a nearly open element held it). Components mount on one
+  structure (a coil touching both its bracket and an armature does not weld them together).

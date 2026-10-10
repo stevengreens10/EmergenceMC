@@ -256,6 +256,11 @@ Prism (`DemoExhibitsTest.prismSpreadsTheColours`): beams parallel to the base of
 50.769° (red, n 1.7787), 53.551° (green, 1.7964) and 56.628° (blue, 1.8124), each equal to i + e − A from Snell's law
 at both faces to 10⁻⁶ rad.
 
+Relay (`DemoExhibitsTest.relayCoilPullsTheArmatureAndClosesTheContacts`): a 2000-turn cored coil (L 1.63 H, 2.55 H with
+the armature closed) on 24 V pulls a 1.9 kg armature across its 3 mm gap once its current reaches ~0.79 A (0.15 s),
+the current dipping as the gap closes (back EMF); the contacts close and the LED carries 12 mA; the energy error over
+the pull-in is 3 mJ. Released, the armature drops to its stop and the circuit opens.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

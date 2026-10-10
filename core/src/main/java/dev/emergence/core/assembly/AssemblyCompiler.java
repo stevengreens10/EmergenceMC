@@ -41,6 +41,8 @@ public final class AssemblyCompiler {
     static final double CONTACT_H = 5000;          // W/(m²K), dry metal–metal contact conductance
     static final double BRUSH_RESISTANCE = 0.02;   // Ω, graphite brush contact (≈ 0.2–1 V drop at rated current)
     static final double SWITCH_R_ON = 2e-3, SWITCH_R_OFF = 1e9;
+    /** Solid conductors in contact below this resistance [Ω] share one electrical node. */
+    static final double BULK_MERGE_OHMS = 1e-4;
 
     public static CompiledAssembly compile(Assembly a) {
         return compile(a, AssemblyState.empty());
@@ -120,12 +122,14 @@ public final class AssemblyCompiler {
             c.network.compile();
             applyPreviousElectricalState();
             c.solver = new TransientSolver(c.network);
-            // Switching electronics have sub-nanosecond modes (gate input capacitance against output resistance) that
-            // a millisecond step cannot resolve: the trapezoidal rule rings on them (its amplification → −1), so such
-            // islands integrate with L-stable BDF2, which damps them. Other islands keep the trapezoidal rule, which
-            // conserves the energy of mechanical and electromagnetic oscillations.
+            // Switching electronics have sub-nanosecond modes (gate input capacitance against output resistance; an
+            // LED's 20 pF junction against its series resistor) that a millisecond step cannot resolve: the
+            // trapezoidal rule rings on them (its amplification → −1), so such islands integrate with L-stable BDF2,
+            // which damps them. Other islands keep the trapezoidal rule, which conserves the energy of mechanical and
+            // electromagnetic oscillations.
             for (Part p : parts) {
-                if (p.kind() == PartKind.CHIP || p.kind() == PartKind.LOGIC || p.kind() == PartKind.TRANSISTOR || p.kind() == PartKind.OPAMP) {
+                if (p.kind() == PartKind.CHIP || p.kind() == PartKind.LOGIC || p.kind() == PartKind.TRANSISTOR || p.kind() == PartKind.OPAMP
+                        || p.kind() == PartKind.LED) {
                     c.solver.method(dev.emergence.core.sim.IntegrationMethod.BDF2);
                     break;
                 }
@@ -179,11 +183,31 @@ public final class AssemblyCompiler {
                     if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) continue;
                     if (p.kind() == PartKind.BRAKE || q.kind() == PartKind.BRAKE) continue; // a pad presses, it does not weld
                     if (p.kind() == PartKind.SPRING || q.kind() == PartKind.SPRING) continue; // a spring yields, it does not weld
-                    union(idx.get(p.id()), idx.get(q.id()));
                     joinedPairs.add(pairKey(p.id(), q.id()));
+                    if (p.kind().structural && q.kind().structural) union(idx.get(p.id()), idx.get(q.id()));
+                    else mounts.computeIfAbsent(p.kind().structural ? q : p, k -> new ArrayList<>()).add(p.kind().structural ? p : q);
+                }
+            }
+            // a component (coil, magnet, chip …) is mounted on one structure: it joins the one it touches that is fixed to the
+            // ground if there is one, else the first — it never bridges two (a coil over a relay's armature does not weld the
+            // armature to the coil's bracket)
+            Set<Integer> grounded = new HashSet<>();
+            for (Part p : parts) if (a.isAnchored(p) && !isWire(p)) grounded.add(find(idx.get(p.id())));
+            for (var m : mounts.entrySet()) {
+                int pick = -1;
+                for (Part q : m.getValue()) {
+                    int r = find(idx.get(q.id()));
+                    if (pick < 0 || (grounded.contains(r) && !grounded.contains(pick))) pick = r;
+                }
+                if (pick >= 0) {
+                    union(idx.get(m.getKey().id()), pick);
+                    if (grounded.contains(pick)) grounded.add(find(pick));
                 }
             }
         }
+
+        /** Non-structural parts and the structural parts they touch (their candidate mounts). */
+        final Map<Part, List<Part>> mounts = new LinkedHashMap<>();
 
         /**
          * A shaft passing through a pipe, valve or tank runs in a gland seal, and a shaft end abutting one is
@@ -377,6 +401,12 @@ public final class AssemblyCompiler {
                 if (sMin > sMax) continue;
                 hi = Math.min(hi, (bMin - sMin) * CELL);
                 lo = Math.max(lo, (bMax - sMax) * CELL);
+                // a stop collar on the shaft: "travel" [m] either way from where it was placed
+                if (b.params().containsKey("travel")) {
+                    double t = Math.max(0, b.param("travel", 0));
+                    hi = Math.min(hi, t);
+                    lo = Math.max(lo, -t);
+                }
             }
             s.strokeLo = lo == -Double.MAX_VALUE ? 0 : lo;
             s.strokeHi = hi == Double.MAX_VALUE ? 0 : hi;
@@ -595,7 +625,11 @@ public final class AssemblyCompiler {
                     b.drive = c.network.add(new FlowSource(refT, b.node, 0.0));
                     double fg = -m * PartGeometry.gravity() * b.axis.y();
                     if (fg != 0) c.network.add(new FlowSource(refT, b.node, fg));
-                    c.network.add(new TravelStops(b.node, b.tracker, b.strokeLo, b.strokeHi, 2e5, 50, null));
+                    // the stops: a firm, well-damped contact (150 Hz on the slide's mass, damping ratio 0.7): it
+                    // settles within a few hundredths of a millimetre of the end, without bouncing
+                    double wStop = 2 * Math.PI * 150, kStop = Math.max(m, 1e-3) * wStop * wStop;
+                    c.network.add(new TravelStops(b.node, b.tracker, b.strokeLo, b.strokeHi, kStop,
+                            2 * 0.7 * Math.sqrt(kStop * Math.max(m, 1e-3)), null));
                     c.pushers.put(b, c.network.add(new HumanCrank(b.node, refT, 1.0)));
                     continue;
                 }
@@ -1079,7 +1113,12 @@ public final class AssemblyCompiler {
 
         void buildElectrical() {
             // ---- discover contacts
-            record Contact(Part p, String pk, Part q, String qk, boolean sliding) {}
+            // slide: contacts across a slide's direction of travel, closing at its end towards one another (end, sense)
+            record Contact(Part p, String pk, Part q, String qk, boolean sliding, CompiledAssembly.Body slide, double end, double sense) {
+                Contact(Part p, String pk, Part q, String qk, boolean sliding) {
+                    this(p, pk, q, qk, sliding, null, 0, 0);
+                }
+            }
             List<Contact> contacts = new ArrayList<>();
             Set<String> seen = new HashSet<>();
             for (Part p : parts) {
@@ -1096,39 +1135,83 @@ public final class AssemblyCompiler {
                                     if (q == p) continue;
                                     String qk = port(q, nx, ny, nz, d.opposite());
                                     boolean sliding = false;
+                                    CompiledAssembly.Body slide = null;
+                                    double end = 0, sense = 0;
                                     if (qk == null) continue;
                                     if (!compatible(p, q)) continue;
                                     // a thin shaft physically touches neighbours only at its ends (or hubs on it)
                                     if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
                                     CompiledAssembly.Body bp = c.bodyOfPart.get(p.id()), bq = c.bodyOfPart.get(q.id());
                                     if (bp != bq) {
-                                        // only a brush may conduct across a moving joint, through its contact face
+                                        // only a brush may conduct across a moving joint, through its contact face —
+                                        // or contacts a slide brings together across its direction of travel
                                         Part brush = p.kind() == PartKind.BRUSH ? p : q.kind() == PartKind.BRUSH ? q : null;
-                                        if (brush == null) continue;
-                                        Part other = brush == p ? q : p;
-                                        if (!isBulk(other) || !inFrontOf(brush, other)) continue;
-                                        sliding = true;
+                                        CompiledAssembly.Body sp = bp != null && bp.slider && (bq == null || bq.isStatic) ? bp
+                                                : bq != null && bq.slider && (bp == null || bp.isStatic) ? bq : null;
+                                        if (brush == null && sp != null && Math.abs(Math.abs(sp.axis.dot(d.vec())) - 1) < 1e-9
+                                                && !isJournal(p) && !isJournal(q)) {
+                                            // the slide's part moves towards the other along +sense·axis
+                                            Vec3 toward = sp == bp ? d.vec() : d.vec().mul(-1);
+                                            sense = Math.signum(toward.dot(sp.axis));
+                                            end = sense > 0 ? sp.strokeHi : sp.strokeLo;
+                                            slide = sp;
+                                        } else {
+                                            if (brush == null) continue;
+                                            Part other = brush == p ? q : p;
+                                            if (!isBulk(other) || !inFrontOf(brush, other)) continue;
+                                            sliding = true;
+                                        }
                                     }
                                     String key = pk.compareTo(qk) < 0 ? pk + "|" + qk : qk + "|" + pk;
                                     if (!seen.add(key)) continue;
-                                    contacts.add(new Contact(p, pk, q, qk, sliding));
+                                    contacts.add(new Contact(p, pk, q, qk, sliding, slide, end, sense));
                                 }
                             }
             }
-            // ---- zero-resistance joins (lead to lead)
+            // ---- zero-resistance joins (lead to lead), and solid metal pieces in contact whose resistance is a few
+            // micro-ohms: one node, not a 10⁷ S conductance — which would leave a circuit's potential determined only
+            // to its roundoff where a nearly open element (an open contact) is all that holds it. Their Joule heat is
+            // negligible; their junction's thermoelectric EMF is kept only where the Seebeck coefficients differ
+            // (a thermoelement against its copper strap), not between ordinary metals.
             for (Contact k : contacts) {
-                if (!k.sliding && isLeadKey(k.pk) && isLeadKey(k.qk)) emerge(k.pk, k.qk);
+                if (k.sliding || k.slide != null) continue;
+                if (isLeadKey(k.pk) && isLeadKey(k.qk)) {
+                    emerge(k.pk, k.qk);
+                    continue;
+                }
+                if (!isBulk(k.p) || !isBulk(k.q) || isWire(k.p) || isWire(k.q)) continue;
+                Material mp = conductorMaterial(k.p), mq = conductorMaterial(k.q);
+                double r = mp.resistivity(ambientT) * nodeToFace(k.p) / conductorArea(k.p)
+                        + mq.resistivity(ambientT) * nodeToFace(k.q) / conductorArea(k.q);
+                double ds = Math.abs(mp.get(MaterialProperty.SEEBECK_COEFFICIENT, 0) - mq.get(MaterialProperty.SEEBECK_COEFFICIENT, 0));
+                if (r < BULK_MERGE_OHMS && ds < 2e-5) emerge(k.pk, k.qk);
             }
             // a wire run is one node
             for (Part p : parts) {
                 WireRun run = runOf.get(p.id());
                 if (run != null && run.parts.get(0) != p) emerge("p" + p.id(), "p" + run.parts.get(0).id());
             }
+            if (Boolean.getBoolean("diag.contacts")) {
+                for (Contact k : contacts) {
+                    CompiledAssembly.Body b1 = c.bodyOfPart.get(k.p.id()), b2 = c.bodyOfPart.get(k.q.id());
+                    if ((b1 != null && b1.slider) || (b2 != null && b2.slider))
+                        System.out.println("contact " + k.p.kind() + "@" + k.p.minX() + "," + k.p.minY() + "," + k.p.minZ() + " [" + k.pk + "] — "
+                                + k.q.kind() + "@" + k.q.minX() + "," + k.q.minY() + "," + k.q.minZ() + " [" + k.qk + "] sliding " + k.sliding + " slide " + (k.slide != null));
+                }
+            }
             // ---- conductors between contacts
             for (Contact k : contacts) {
                 Part p = k.p, q = k.q;
                 Node np = enode(k.pk), nq = enode(k.qk);
                 if (np == nq) continue;
+                if (k.slide != null) {
+                    Part moving = c.bodyOfPart.get(p.id()) == k.slide ? p : q;
+                    if (Boolean.getBoolean("diag.contacts")) System.out.println("travel contact " + p.kind() + "@" + p.minX() + "," + p.minY() + "," + p.minZ()
+                            + " " + q.kind() + "@" + q.minX() + "," + q.minY() + "," + q.minZ() + " end " + k.end + " sense " + k.sense);
+                    c.network.add(new dev.emergence.core.sim.elements.TravelContact(np, nq, k.slide.tracker, k.end, k.sense, 2e-4,
+                            moving.param("contact_resistance", 0.02), c.thermalOfPart.get(moving.id())));
+                    continue;
+                }
                 if (k.sliding) {
                     Part brush = p.kind() == PartKind.BRUSH ? p : q;
                     c.network.add(new Resistor(np, nq, brush.param("contact_resistance", BRUSH_RESISTANCE), c.thermalOfPart.get(brush.id())));

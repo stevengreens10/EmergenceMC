@@ -170,3 +170,6 @@ multimeter, oscilloscope/data logging.
 * Eddy currents: low-speed (no self-field, no high-speed fall-off), plates and pipe walls only (not shafts or solid
   blocks' volume currents), a fixed shape factor for plates; not between two independently moving bodies. Eddy
   losses in coil cores and iron (core loss) are not modelled.
+* Moving iron: only an armature on a slide moving along a fixed coil's axis (not hinged clapper armatures, not
+  plungers entering a bore, not permanent magnets pulling iron); the gap is the slide's travel, not resolved by the
+  lattice (cell-sized); no saturation (the pull grows as i² without limit).

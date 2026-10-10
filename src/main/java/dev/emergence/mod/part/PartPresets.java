@@ -136,6 +136,7 @@ public final class PartPresets {
         l.add(stack(PartKind.BLOCK, PartSpec.of("electrical_steel", 1, 1)));
         // slides: linear bearings and springs
         l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1)));
+        l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1, "travel", 0.0015))); // stop collars: ±1.5 mm
         l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.002)));
         l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.003)));
         // rotary to linear: racks with their teeth on each side, fine and steep lead-screw nuts

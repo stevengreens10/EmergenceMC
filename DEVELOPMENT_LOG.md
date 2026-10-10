@@ -345,3 +345,12 @@ rim, on arms from behind.
 **Prism.** Glass cut by planes (a convex polyhedron in the ray tracer) as a PRISM part. Exhibit: red, green and blue
 LEDs into a 45° dense-flint prism, their drawn beams fanning out at 51°, 54° and 57° — Snell's law at both faces with
 Cauchy's dispersion, to 10⁻⁶ rad. LEDs now show their beams through optics whether or not a photodiode is near.
+
+**Relay.** Moving iron: an armature on a short slide under a cored coil, its inductance from the lattice closed and
+open and the gap's reluctance in series; contacts that a slide's travel closes; stop collars on linear bearings. Getting
+there exposed three general problems. A component touching two structures welded them (the coil glued the armature to
+its bracket): components now mount on one. The relay's LED circuit stalled the solver at 10⁻⁷ s steps: with the contact
+open, a cluster of micro-ohm copper and steel conductances (10⁷ S) hung on a 1 nS leak, its potential known only to
+its roundoff — a volt of noise on the LED's junction capacitance; such solid contacts now share one node, which also
+shrinks every island's network. And slides' end stops were soft (a millimetre of give): they now scale with the slide's
+mass and stroke.

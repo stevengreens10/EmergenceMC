@@ -205,6 +205,11 @@ public final class AutoShowcase {
                 STEPS.add(new Step(400, () -> server.overworld().removeBlock(part, false), null, () -> gone(part, kind)));
                 STEPS.add(new Step(60, () -> { }, "showcase-" + (i + 1) + "-" + id + "-dark"));
             }
+            if (id.equals("relay")) {
+                // close the coil's switch: the armature snaps up and the contacts light the LED
+                BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");
+                STEPS.add(new Step(60, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-energised"));
+            }
             if (id.equals("eddy")) {
                 STEPS.add(new Step(60, () -> { }, "showcase-" + (i + 1) + "-" + id + "-braked"));
             }

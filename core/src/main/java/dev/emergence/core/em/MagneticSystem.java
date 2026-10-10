@@ -86,7 +86,7 @@ public final class MagneticSystem implements Element {
 
     public record Magnet(CuboidMagnet magnet, EmBody body) {}
 
-    private enum Kind { FLUX, MUTUAL, MAGNET }
+    private enum Kind { FLUX, MUTUAL, MAGNET, SELF }
 
     private static final class Term {
         Kind kind;
@@ -112,6 +112,7 @@ public final class MagneticSystem implements Element {
     public void addIronCell(EmBody body, int x, int y, int z, double muR, double cellSize) {
         iron.add(new Object[]{body, new int[]{x, y, z}, muR});
         cell = cellSize;
+        if (!body.isStatic()) registerBody(body); // moving iron (an armature) is pulled
     }
     private int samples = 256;
 
@@ -196,6 +197,67 @@ public final class MagneticSystem implements Element {
         }
     }
 
+    /**
+     * Armatures: iron on a slide moving along a fixed coil's axis. The lattice gives the coil's inductance with the
+     * armature against it (L_closed) and without it (L_open); the slide's travel sets the air gap g between them —
+     * zero at the end of its travel towards the coil — which adds the reluctance g/(μ0A) of a gap as wide as the coil's
+     * bore in series with the iron path: ΔL(g) = N²/(N²/(L_closed − L_open) + g/(μ0A)). The pull on the armature,
+     * ½i²·dΔL/dx, and the back EMF i·dΔL/dx·v follow from that one co-energy.
+     */
+    private void addArmatures() {
+        for (int j = 0; j < coils.size(); j++) {
+            Coil cj = coils.get(j);
+            if (!cj.body.isStatic()) continue;
+            Vec3 ax = cj.geom.axis();
+            ReluctanceLattice.Cut w = cut(cj.geom);
+            int[] o = {w.x(), w.y(), w.z()};
+            List<ReluctanceLattice.Cut> cuts = List.of(new ReluctanceLattice.Cut(0, 0, 0, w.axis(), w.sign(), w.turns()));
+            for (EmBody s : bodies) {
+                if (s == cj.body || !s.slider || Math.abs(Math.abs(s.axis.dot(ax)) - 1) > 1e-6) continue;
+                java.util.Map<Long, Double> fixed = ReluctanceLattice.cells(), withArm = ReluctanceLattice.cells();
+                double side = 0;
+                int count = 0;
+                for (Object[] f : iron) {
+                    int[] q = (int[]) f[1], c = {q[0] - o[0], q[1] - o[1], q[2] - o[2]};
+                    if (Math.abs(c[0]) > IRON_REACH || Math.abs(c[1]) > IRON_REACH || Math.abs(c[2]) > IRON_REACH) continue;
+                    long key = ReluctanceLattice.key(c[0], c[1], c[2]);
+                    if (f[0] == cj.body) {
+                        fixed.merge(key, (Double) f[2], Math::max);
+                        withArm.merge(key, (Double) f[2], Math::max);
+                    } else if (f[0] == s) {
+                        withArm.merge(key, (Double) f[2], Math::max);
+                        Vec3 p = new Vec3((q[0] + 0.5) * cell, (q[1] + 0.5) * cell, (q[2] + 0.5) * cell);
+                        side += p.sub(cj.geom.center()).dot(s.axis);
+                        count++;
+                    }
+                }
+                if (count == 0) continue;
+                double lClosed = new ReluctanceLattice(withArm, cuts, cell, AIR_MARGIN).inductances(cuts, false)[0][0];
+                double lOpen = fixed.isEmpty() ? new ReluctanceLattice(withArm, cuts, cell, AIR_MARGIN).inductances(cuts, true)[0][0]
+                        : new ReluctanceLattice(fixed, cuts, cell, AIR_MARGIN).inductances(cuts, false)[0][0];
+                double dl = lClosed - lOpen;
+                if (Boolean.getBoolean("diag.armature")) System.out.println("armature on coil " + j + ": L closed " + lClosed + " open " + lOpen
+                        + " iron cells " + count + " side " + side + " travel " + s.lo + ".." + s.hi);
+                if (!(dl > 1e-12)) continue;
+                double n2 = (double) cj.geom.turns * cj.geom.turns, rPrime = n2 / dl;
+                double rIn = Math.max(cj.geom.meanRadius() - 0.5 * cj.geom.thickness(), 1e-4);
+                double area = Math.PI * rIn * rIn, mu0 = dev.emergence.core.units.PhysicalConstants.MU0;
+                // the armature on the +axis side of the coil closes by moving −axis: its gap is the travel left that way
+                boolean plusSide = side > 0;
+                double lo = s.lo, hi = s.hi;
+                Term t = relativeTerm(cj.body, s);
+                if (t == null) continue;
+                t.kind = Kind.SELF;
+                t.j = j;
+                t.spline = table(cj.body, s, phi -> {
+                    double gap = Math.max(0, plusSide ? phi - lo : hi - phi);
+                    return n2 / (rPrime + gap / (mu0 * area));
+                });
+                terms.add(t);
+            }
+        }
+    }
+
     /** A coil's cut face: across its winding, through the face nearest its centre along its axis. */
     private ReluctanceLattice.Cut cut(CoilGeometry g) {
         Vec3 c = g.center(), ax = g.axis();
@@ -252,7 +314,10 @@ public final class MagneticSystem implements Element {
                 }
             }
         }
-        if (!iron.isEmpty()) addIronInductance();
+        if (!iron.isEmpty()) {
+            addIronInductance();
+            addArmatures();
+        }
         // coil ↔ magnet flux linkage (only bodies different from the coil's: same-body flux is constant)
         for (int j = 0; j < nc; j++) {
             Coil cj = coils.get(j);
@@ -491,6 +556,23 @@ public final class MagneticSystem implements Element {
                         dTdI[bx][k] += ij * d1 * cs[x];
                         for (int y = 0; y < 2; y++) {
                             if (cs[y] != 0) dTdTh[bx][bs[y]] += ij * ik * d2 * cs[x] * cs[y];
+                        }
+                    }
+                }
+                case SELF -> {
+                    int j = t.j;
+                    double i = cur[j];
+                    lambda[j] += v * i;
+                    dLdI[j][j] += v;
+                    energy += 0.5 * v * i * i;
+                    for (int x = 0; x < 2; x++) {
+                        if (cs[x] == 0) continue;
+                        int bx = bs[x];
+                        dLdTh[j][bx] += d1 * cs[x] * i;
+                        tau[bx] += 0.5 * i * i * d1 * cs[x];
+                        dTdI[bx][j] += i * d1 * cs[x];
+                        for (int y = 0; y < 2; y++) {
+                            if (cs[y] != 0) dTdTh[bx][bs[y]] += 0.5 * i * i * d2 * cs[x] * cs[y];
                         }
                     }
                 }

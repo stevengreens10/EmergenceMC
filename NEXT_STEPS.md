@@ -19,9 +19,8 @@ regenerate the demo world → screenshot tour → docs → commit.
    tanks; multi-stage turbines and nozzles (a working Brayton cycle); the steam engine's cost (≈ 1.5× real time).
 7. **Chemical engineering**: liquid mixtures and vapour–liquid equilibrium (Raoult's law) → distillation; solutions,
    crystallisation; a voltaic pile driving the DC motor.
-8. **Magnetics**: iron saturation and hysteresis in the magnetic equivalent circuit, moving iron (reluctance
-   motors, solenoids pulling a plunger), magnet–iron attraction, core losses (eddy currents in iron); a drag-cup
-   speedometer and an induction motor from eddy currents.
+8. **Magnetics**: iron saturation and hysteresis; hinged armatures and plungers, magnet–iron attraction; relay
+   logic and a buzzer (a relay interrupting its own coil); core losses; a drag-cup speedometer.
 9. **Performance**: async island compilation, multirate thermal stepping, factorisation reuse for linear islands;
    the steam engine and gas engine run slower than real time at speed.
 10. **Broader science**: geology (ores, strata), environmental processes, biology — each connected to the existing

@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.relay(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(),
                 miniatureGenerator());
     }
 
@@ -414,6 +414,65 @@ public final class Exhibits {
         r.pin("s3", 12, 0, 13).pin("s3", 10, 0, 8);
         r.route();
         return e.view(7.5, 7, 17, 35);
+    }
+
+    /**
+     * A relay from parts: an iron-cored coil on a bracket over a steel armature that rides on a short vertical slide. A
+     * copper contact on the armature sits just under a fixed contact wire; a brush picks the current off it. Close the
+     * switch: the coil's field pulls the armature up across its 3 mm gap, the contacts meet and the lamp circuit's LED
+     * lights. Open it: the armature drops and the light goes out.
+     */
+    public static Exhibit relay() {
+        Exhibit e = new Exhibit("relay", "Relay",
+                List.of("RELAY", "A coil pulls its", "armature up: the", "contacts close"),
+                "An electromagnet switching another circuit. Close the switch and current in the coil magnetises its iron "
+                        + "core; the field reaches across the 3 mm air gap to the steel armature below and pulls it up "
+                        + "(the force grows steeply as the gap closes: the gap's magnetic reluctance g/μ0A falls). The "
+                        + "armature carries a copper contact up against a fixed one, closing the second circuit: the green "
+                        + "LED lights. Open the switch: the field collapses and gravity drops the armature, parting the "
+                        + "contacts. A small current switches a separate, larger one — the telegraph's repeater, the "
+                        + "first logic gates, and every car's starter relay.");
+        String st = "steel_1045";
+        // frame: a post with a bracket carrying the coil; a mount for the slide's bearing
+        e.fill(BLOCK, st, 3, 0, 8, 3, 7, 8, Dir.UP);
+        e.fill(BLOCK, st, 4, 7, 8, 5, 7, 8, Dir.UP);
+        e.name("coil", e.add(COIL, "copper", 5, 6, 8, Dir.DOWN, "turns", 2000, "wire_diameter", 0.5e-3, "core", 1,
+                "bore_fraction", 0.6, "lead_axis", 2));
+        // the armature on a vertical slide with 1.5 mm of travel either way (stop collars)
+        e.name("armature", e.add(BLOCK, st, 5, 5, 8, Dir.UP, "fill", 0.4));
+        e.name("slide", e.fill(SHAFT, st, 5, 1, 8, 5, 4, 8, Dir.UP, "diameter", 0.012));
+        e.add(LINEAR_BEARING, st, 5, 2, 8, Dir.UP, "travel", 0.0015);
+        e.fill(BLOCK, st, 4, 0, 8, 4, 2, 8, Dir.UP);
+        // contacts: a copper arm from the armature, its end just under a fixed bare wire (clear of the coil); a brush
+        // takes the current off the moving one
+        e.add(BLOCK, "copper", 6, 5, 8, Dir.UP, "fill", 0.2);
+        e.name("moving", e.add(BLOCK, "copper", 7, 5, 8, Dir.UP, "fill", 0.2));
+        e.name("fixed", e.add(WIRE, "copper", 7, 6, 8, Dir.UP, "diameter", 0.002));
+        e.add(BRUSH, "graphite", 8, 5, 8, Dir.WEST);
+        e.add(BLOCK, "nylon_66", 8, 6, 8, Dir.UP);
+        e.add(BLOCK, "nylon_66", 8, 6, 9, Dir.UP);
+        e.fill(BLOCK, "nylon_66", 8, 0, 9, 8, 5, 9, Dir.UP);
+        // the coil's circuit: 12 V and a switch; the lamp circuit: 5 V, 220 Ω and a green LED through the contacts
+        int bc = e.add(CAPACITOR, "alumina", 2, 1, 12, Dir.EAST, "capacitance", 50);
+        e.init(bc, new Exhibit.Initial(Double.NaN, 0, 24));
+        e.name("switch", e.add(SWITCH, "brass", 6, 1, 12, Dir.EAST));
+        int bl = e.add(CAPACITOR, "alumina", 2, 1, 15, Dir.EAST, "capacitance", 10);
+        e.init(bl, new Exhibit.Initial(Double.NaN, 0, 5));
+        e.name("lamp", e.add(LED, "silicon", 10, 1, 15, Dir.EAST, "wavelength", 525, "face", 3, "beam", 20));
+        e.add(RESISTOR, "alumina", 13, 1, 15, Dir.EAST, "resistance", 220); // between the LED and the brush
+        // a pull-up: with the contacts open it holds the brush side at the supply, so the LED sees no voltage
+        e.add(RESISTOR, "alumina", 13, 1, 13, Dir.EAST, "resistance", 10_000);
+        Router r = new Router(e, 0, 0, 0, 15, 8, 16);
+        r.keepClear(6, 4, 8, 7, 4, 8); // nothing under the moving arm (it would make a second, lower contact)
+        r.pin("c+", 3, 1, 12).pin("c+", 5, 1, 12);
+        r.pin("sw", 7, 1, 12).pin("sw", 5, 6, 9);
+        r.pin("c-", 5, 6, 7).pin("c-", 1, 1, 12);
+        r.pin("l+", 3, 1, 15).pin("l+", 9, 1, 15).pin("l+", 12, 1, 13);
+        r.pin("lk", 11, 1, 15).pin("lk", 12, 1, 15);
+        r.pin("lr", 14, 1, 15).pin("lr", 14, 1, 13).pin("lr", 9, 5, 8);
+        r.pin("fx", 7, 7, 8).pin("fx", 1, 1, 15);
+        r.route();
+        return e.view(7, 6, 15, 15, 160);
     }
 
     /**

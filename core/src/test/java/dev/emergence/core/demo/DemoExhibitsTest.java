@@ -1473,4 +1473,34 @@ class DemoExhibitsTest {
         assertTrue(turn[2] > turn[1] && turn[1] > turn[0], "blue turned most, red least");
         assertTrue(Math.toDegrees(turn[2] - turn[0]) > 3, "a fan several degrees wide");
     }
+
+    /** Relay: the energised coil pulls the armature across its gap, closing the lamp circuit; released, it drops open. */
+    @Test
+    void relayCoilPullsTheArmatureAndClosesTheContacts() {
+        Exhibit e = Exhibits.relay();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long slide = b.id(e, "slide"), lamp = b.id(e, "lamp"), coil = b.id(e, "coil");
+        run(c, 0.5);
+        double rest = c.probe(slide).angle();
+        System.out.printf("relay: at rest the armature at %.2f mm, LED %.3g mA%n", 1e3 * rest, 1e3 * c.probe(lamp).current());
+        assertEquals(-0.0015, rest, 1e-4, "it rests on its lower stop");
+        assertTrue(c.probe(lamp).current() < 1e-5, "the contacts are open");
+        c.toggleSwitch(b.id(e, "switch"));
+        double e0 = c.energyError();
+        for (int k = 0; k < 10; k++) {
+            run(c, 0.05);
+            System.out.printf("  t+%.2f s: coil %.3f A, armature %.2f mm, LED %.2f mA%n", 0.05 * (k + 1), c.probe(coil).current(),
+                    1e3 * c.probe(slide).angle(), 1e3 * c.probe(lamp).current());
+        }
+        run(c, 0.5);
+        assertEquals(0.0015, c.probe(slide).angle(), 1e-4, "pulled up against the core");
+        assertTrue(c.probe(lamp).current() > 5e-3, "the LED lights: " + c.probe(lamp).current());
+        System.out.printf("  energy error over the pull-in %.3g J%n", c.energyError() - e0);
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 0.5);
+        System.out.printf("  released: armature %.2f mm, LED %.3g mA%n", 1e3 * c.probe(slide).angle(), 1e3 * c.probe(lamp).current());
+        assertEquals(-0.0015, c.probe(slide).angle(), 1e-4, "it drops back");
+        assertTrue(c.probe(lamp).current() < 1e-5, "the light goes out");
+    }
 }

@@ -144,6 +144,7 @@ public final class PartItem extends Item {
             case GM_TUBE -> String.format(", %.0f V start", p.getOrDefault("start", 350.0));
             case SPRING -> String.format(", %.1f mm wire, %.0f turns", 1000 * p.getOrDefault("wire", 0.002), p.getOrDefault("turns", 10.0));
             case RACK -> ", teeth " + dev.emergence.core.assembly.Dir.values()[(int) Math.max(0, Math.min(5, Math.round(p.getOrDefault("face", 1.0))))].name().toLowerCase();
+            case LINEAR_BEARING -> p.containsKey("travel") ? String.format(", stops ±%.1f mm", 1000 * p.get("travel")) : "";
             case NUT -> String.format(", %.0f mm lead%s", 1000 * p.getOrDefault("lead", 0.004), p.getOrDefault("left", 0.0) > 0 ? ", left-hand" : "");
             case MIRROR -> (p.getOrDefault("radius", 0.0) > 0 ? String.format(", concave, focus %.0f mm", 500 * p.get("radius"))
                     : p.getOrDefault("radius", 0.0) < 0 ? ", convex" : ", flat")

@@ -6,14 +6,15 @@ import dev.emergence.core.sim.Node;
 import dev.emergence.core.sim.StateView;
 
 /**
- * The ends of a slide's travel: past lo or hi a stiff spring (C¹: quadratic over the first millimetre, then linear)
+ * The ends of a slide's travel: past lo or hi a stiff spring (C¹: quadratic over the first millimetre — or 2 % of a
+ * shorter stroke — then linear)
  * pushes the slider back, with contact damping that dissipates the impact into a thermal node — a slider hitting the
  * end of its guide stops instead of passing through.
  */
 public final class TravelStops implements Element {
     private final Node node, thermal;
     private final AngleTracker tracker;
-    private final double lo, hi, k, c, knee = 1e-3;
+    private final double lo, hi, k, c, knee;
 
     public TravelStops(Node node, AngleTracker tracker, double lo, double hi, double stiffness, double damping, Node thermal) {
         this.node = node;
@@ -22,6 +23,7 @@ public final class TravelStops implements Element {
         this.hi = hi;
         this.k = stiffness;
         this.c = damping;
+        this.knee = Math.min(1e-3, Math.max(1e-5, 0.02 * (hi - lo)));
         this.thermal = thermal;
     }
 

@@ -92,7 +92,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    reflection, dispersion; ray-tube transport for LEDs and sunlight; sunlight heats every part (periscope, lens, solar
    furnace exhibits)
 ✅ Incandescence: hot parts light photodiodes with Planck's spectrum weighted by silicon's response (lamp exhibit)
-⬜ Acoustics, geology, environmental, biology; prisms and diffuse reflection; spectrum analyser,
+✅ Prisms (dispersion exhibit)
+⬜ Acoustics, geology, environmental, biology; diffuse reflection; spectrum analyser,
    logic analyser, multi-channel loggers
 
 ## Demo world

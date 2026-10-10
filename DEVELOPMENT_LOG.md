@@ -341,3 +341,7 @@ tube problem's closed form (to 10⁻⁴ — once the formula quoted from memory,
 disc exhibit: an aluminium disc stops in seconds between magnets, a nylon one coasts, and the energy balances to
 0.4 %. Magnets weld to whatever structural part they touch, so the exhibit's magnets sit diagonally off the disc's
 rim, on arms from behind.
+
+**Prism.** Glass cut by planes (a convex polyhedron in the ray tracer) as a PRISM part. Exhibit: red, green and blue
+LEDs into a 45° dense-flint prism, their drawn beams fanning out at 51°, 54° and 57° — Snell's law at both faces with
+Cauchy's dispersion, to 10⁻⁶ rad. LEDs now show their beams through optics whether or not a photodiode is near.

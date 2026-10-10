@@ -154,6 +154,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 }
                 else if (isFlask(p)) drawFlask(c, p);
                 else if (p.kind == PartKind.LENS) drawLens(c, p);
+                else if (p.kind == PartKind.PRISM) drawPrism(c, p, f);
                 else if (isClear(p)) drawClearBlock(c, be, p, ex, ey, ez);
                 else drawModel(c, p.kind == PartKind.LED ? "led" : "electrolyte", p, ex, ey, ez, true);
                 ps.popPose();
@@ -465,7 +466,57 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
 
     /** A block of transparent material (glass, fused silica, acrylic): drawn see-through. */
     private static boolean isClear(PlacedPart p) {
-        return p.kind == PartKind.BLOCK && p.spec.resolveMaterial().transparent();
+        return (p.kind == PartKind.BLOCK || p.kind == PartKind.PRISM) && p.spec.resolveMaterial().transparent();
+    }
+
+    /** A prism: its triangle (truncated by the box if steep) across its axis, see-through. */
+    private void drawPrism(Ctx c, PlacedPart p, Frame f) {
+        var cp = p.toCore(BlockPos.ZERO, 16);
+        var ax = cp.axis().vec();
+        var apexDir = dev.emergence.core.assembly.PartGeometry.prismApex(cp);
+        var d = apexDir.vec();
+        var b = ax.cross(d).normalize();
+        int bAxis = Math.abs(b.x()) > 0.5 ? 0 : Math.abs(b.y()) > 0.5 ? 1 : 2;
+        float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
+        float hBox = ext[apexDir.axis()], w = ext[bAxis], half = ext[cp.axis().axis()] / 2;
+        double alpha = Math.toRadians(Math.max(5, Math.min(170, p.spec.params().getOrDefault("apex", 60.0))));
+        float h = (float) (w / 2 / Math.tan(alpha / 2));
+        java.util.List<float[]> poly = new java.util.ArrayList<>(); // (along b, along d) from the centre [cells]
+        poly.add(new float[]{-w / 2, -hBox / 2});
+        poly.add(new float[]{w / 2, -hBox / 2});
+        if (h <= hBox) poly.add(new float[]{0, -hBox / 2 + h});
+        else {
+            float top = w / 2 * (1 - hBox / h);
+            poly.add(new float[]{top, hBox / 2});
+            poly.add(new float[]{-top, hBox / 2});
+        }
+        Matrix3f toModel = new Matrix3f(f.m3).transpose();
+        java.util.function.BiFunction<float[], Float, org.joml.Vector3f> vtx = (q, z) -> toModel.transform(new org.joml.Vector3f(
+                (float) (b.x() * q[0] + d.x() * q[1] + ax.x() * z), (float) (b.y() * q[0] + d.y() * q[1] + ax.y() * z),
+                (float) (b.z() * q[0] + d.z() * q[1] + ax.z() * z)));
+        c.quadTarget = c.glass;
+        c.quadAlpha = 110;
+        TextureAtlasSprite gl = PartModels.sprite("glass");
+        int tint = tintOf(c, c.materialRgb);
+        int n = poly.size();
+        for (int i = 0; i < n; i++) {
+            float[] q0 = poly.get(i), q1 = poly.get((i + 1) % n);
+            org.joml.Vector3f a0 = vtx.apply(q0, -half), a1 = vtx.apply(q1, -half), b1 = vtx.apply(q1, half), b0 = vtx.apply(q0, half);
+            org.joml.Vector3f nrm = new org.joml.Vector3f(a1).sub(a0).cross(new org.joml.Vector3f(b0).sub(a0)).normalize();
+            quad(c, gl, tint, a0.x, a0.y, a0.z, a1.x, a1.y, a1.z, b1.x, b1.y, b1.z, b0.x, b0.y, b0.z, nrm.x, nrm.y, nrm.z);
+            quad(c, gl, tint, b0.x, b0.y, b0.z, b1.x, b1.y, b1.z, a1.x, a1.y, a1.z, a0.x, a0.y, a0.z, -nrm.x, -nrm.y, -nrm.z);
+        }
+        // the end faces (a fan from the first corner)
+        for (float z : new float[]{-half, half}) {
+            for (int i = 1; i + 1 < n; i++) {
+                org.joml.Vector3f p0 = vtx.apply(poly.get(0), z), p1 = vtx.apply(poly.get(i), z), p2 = vtx.apply(poly.get(i + 1), z);
+                org.joml.Vector3f nrm = new org.joml.Vector3f(p1).sub(p0).cross(new org.joml.Vector3f(p2).sub(p0)).normalize();
+                quad(c, gl, tint, p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p2.x, p2.y, p2.z, nrm.x, nrm.y, nrm.z);
+                quad(c, gl, tint, p2.x, p2.y, p2.z, p1.x, p1.y, p1.z, p0.x, p0.y, p0.z, p0.x, p0.y, p0.z, -nrm.x, -nrm.y, -nrm.z);
+            }
+        }
+        c.quadTarget = null;
+        c.quadAlpha = 255;
     }
 
     /** A clear block: a see-through box tinted with its material, its thickness its fill (as a plate). */

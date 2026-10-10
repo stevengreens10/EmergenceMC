@@ -252,4 +252,40 @@ public final class OpticsExhibits {
         r.route();
         return e.view(1.5, 6.5, 13.5, 28, -140);
     }
+
+    /**
+     * A prism: red, green and blue LEDs one above another shine east into a column of dense flint glass cut to a 45°
+     * prism. Each beam bends towards the prism's base by an angle set by the glass's index at its colour — blue most,
+     * red least — so the three leave in a fan.
+     */
+    public static Exhibit prism() {
+        Exhibit e = new Exhibit("prism", "Prism",
+                List.of("PRISM", "Glass bends blue", "more than red", "(dispersion)"),
+                "Light slows in glass, by a factor n, its refractive index, and bends where it crosses a surface "
+                        + "at a slant (Snell's law). A prism bends a beam twice, both times towards its base. But n "
+                        + "depends on colour: in dense flint glass it is 1.779 for red, 1.796 for green and 1.812 for "
+                        + "blue (dispersion), so blue light is turned furthest: 51°, 54° and 57°. The three beams, one "
+                        + "above the other, come out in a fan. Newton split sunlight into its spectrum this way; a "
+                        + "spectrometer measures where each colour lands.");
+        String st = "steel_1045";
+        int[] nm = {630, 525, 465};
+        String[] col = {"red", "green", "blue"};
+        for (int k = 0; k < 3; k++) {
+            e.name(col[k], e.add(LED, "silicon", 1, 1 + k, 8, Dir.SOUTH, "wavelength", nm[k], "efficiency", 0.25, "beam", 30, "face", 5));
+        }
+        e.add(BLOCK, st, 6, 0, 8, Dir.UP);
+        e.name("prism", e.fill(PRISM, "glass_sf11", 6, 1, 8, 6, 3, 8, Dir.UP, "apex", 45, "face", Dir.NORTH.ordinal()));
+        int bat = e.add(CAPACITOR, "alumina", 2, 1, 3, Dir.EAST, "capacitance", 10);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 9));
+        e.add(RESISTOR, "alumina", 5, 1, 3, Dir.EAST, "resistance", 68);
+        Router r = new Router(e, 0, 0, 0, 15, 5, 15);
+        r.keepClear(2, 1, 8, 5, 3, 8).keepClear(7, 1, 8, 15, 3, 15);
+        r.pin("bat", 3, 1, 3).pin("bat", 4, 1, 3);
+        r.pin("r", 6, 1, 3).pin("r", 1, 1, 7);
+        r.pin("rg", 1, 1, 9).pin("rg", 1, 2, 7);
+        r.pin("gb", 1, 2, 9).pin("gb", 1, 3, 7);
+        r.pin("ret", 1, 3, 9).pin("ret", 1, 1, 3);
+        r.route();
+        return e.view(8, 9, 17, 40);
+    }
 }

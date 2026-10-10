@@ -252,6 +252,10 @@ integrated over the dipole's field); motion along the field induces nothing; dra
 the aluminium disc (between two N42 magnets at its rim) falls from 60 to 4.5 rad/s in 2 s while the nylon one coasts
 at 59.9; the kinetic energy lost, 50.5 J, is found as heat in the disc, 50.3 J.
 
+Prism (`DemoExhibitsTest.prismSpreadsTheColours`): beams parallel to the base of a 45° N-SF11 prism are turned by
+50.769° (red, n 1.7787), 53.551° (green, 1.7964) and 56.628° (blue, 1.8124), each equal to i + e − A from Snell's law
+at both faces to 10⁻⁶ rad.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

@@ -1695,10 +1695,10 @@ public final class AssemblyCompiler {
                 if (p.kind() == PartKind.LED) leds.add(p);
                 if (p.kind() == PartKind.PHOTODIODE) pds.add(p);
             }
-            if (pds.isEmpty()) return;
-            buildIncandescence(pds);
+            if (!pds.isEmpty()) buildIncandescence(pds);
             if (leds.isEmpty()) return;
             buildRayOptics(leds, pds);
+            if (pds.isEmpty()) return;
             for (Part rx : pds) {
                 if (!(c.deviceOfPart.get(rx.id()) instanceof Photodiode pd)) continue;
                 // the junction's window lies on the sensitive face (as the ray tubes see it)
@@ -1795,12 +1795,13 @@ public final class AssemblyCompiler {
                     return m == null ? 0 : m[1];
                 }));
                 Vec3 ft = PartGeometry.facing(tx), s0 = tx.center().add(ft.mul(0.3 * CELL));
-                var res = dev.emergence.core.optics.TubeTracer.point(scene, s0, ft, tx.param("beam", 6), nm, tx.id(), 16, 7);
+                var res = pds.isEmpty() ? null : dev.emergence.core.optics.TubeTracer.point(scene, s0, ft, tx.param("beam", 6), nm, tx.id(), 16, 7);
                 // rays to show the beam by, if mirrors or lenses turn it (and it is visible)
                 if (nm >= 380 && nm <= 750) {
                     var rays = dev.emergence.core.optics.TubeTracer.beams(scene, s0, ft, tx.param("beam", 6), nm, tx.id(), 0.25);
                     if (!rays.isEmpty()) c.beams.put(tx.id(), rays);
                 }
+                if (res == null) continue;
                 for (Part rx : pds) {
                     double f = res.light(rx.id());
                     if (f > 1e-12 && c.deviceOfPart.get(rx.id()) instanceof Photodiode pd) pd.addSource(led, th -> f, null);

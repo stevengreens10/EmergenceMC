@@ -154,6 +154,8 @@ public final class PartPresets {
         l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1, "radius", -0.12, "radius2", 0.12)));
         l.add(stack(PartKind.LENS, PartSpec.of("glass_sf11", 1, 1)));
         l.add(stack(PartKind.LENS, PartSpec.of("acrylic", 1, 1)));
+        for (int to = 2; to < 6; to++) l.add(stack(PartKind.PRISM, PartSpec.of("glass_sf11", 1, 1, "apex", 45, "face", to)));
+        l.add(stack(PartKind.PRISM, PartSpec.of("glass_bk7", 1, 1, "apex", 60)));
         l.add(stack(PartKind.BLOCK, PartSpec.of("glass_bk7", 1, 1)));
         l.add(stack(PartKind.BLOCK, PartSpec.of("glass_sf11", 1, 1)));
         l.add(stack(PartKind.BLOCK, PartSpec.of("fused_silica", 1, 1)));

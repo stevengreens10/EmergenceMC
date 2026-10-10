@@ -1443,4 +1443,34 @@ class DemoExhibitsTest {
         assertTrue(wNy > 0.9 * w0, "the nylon disc coasts: " + wNy);
         assertEquals(lost, heat, 0.1 * lost, "the kinetic energy becomes heat in the disc");
     }
+
+    /** Prism: each colour's beam is turned by δ = i + e − A, Snell at both faces with the glass's index at its colour. */
+    @Test
+    void prismSpreadsTheColours() {
+        Exhibit e = OpticsExhibits.prism();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        String[] col = {"red", "green", "blue"};
+        int[] nm = {630, 525, 465};
+        double a = Math.toRadians(45), i = Math.toRadians(22.5); // a beam parallel to the base meets the face at A/2
+        double[] turn = new double[3];
+        StringBuilder log = new StringBuilder();
+        for (int k = 0; k < 3; k++) {
+            var rays = c.beams(b.id(e, col[k]));
+            assertNotNull(rays, col[k] + " beam");
+            var chief = rays.get(0);
+            assertEquals(4, chief.size(), "LED, into the prism, out of it, onward");
+            var out = chief.get(3).sub(chief.get(2)).normalize();
+            turn[k] = Math.acos(out.x());
+            double n = dev.emergence.core.optics.Optics.cauchy(1.78472, 25.68, nm[k]);
+            double r1 = Math.asin(Math.sin(i) / n), ex = Math.asin(n * Math.sin(a - r1));
+            double expect = i + ex - a;
+            log.append(String.format(" %s n %.4f: %.3f° (δ = i + e − A: %.3f°);", col[k], n, Math.toDegrees(turn[k]), Math.toDegrees(expect)));
+            assertEquals(expect, turn[k], 1e-6, col[k]);
+            assertTrue(out.z() > 0, "bent towards the base (south)");
+        }
+        System.out.println("prism:" + log);
+        assertTrue(turn[2] > turn[1] && turn[1] > turn[0], "blue turned most, red least");
+        assertTrue(Math.toDegrees(turn[2] - turn[0]) > 3, "a fan several degrees wide");
+    }
 }

@@ -52,6 +52,8 @@ public final class OpticalScene {
         double nd = 1.5, vd;
         Vec3 centre;
         double r1, r2, rim, halfThickness;
+        /** Glass cut by extra planes (a prism): each {n_x, n_y, n_z, c}, inside where n·x ≤ c; faces 6, 7, … */
+        double[][] planes = new double[0][];
 
         Obj(int index, long part, Kind kind, int frame, double[] lo, double[] hi) {
             this.index = index;
@@ -213,6 +215,20 @@ public final class OpticalScene {
         o.radius = radius;
         o.reflectance = reflectance;
         o.absorptance = backAbsorptance;
+        return o;
+    }
+
+    /**
+     * A block of glass cut by planes through it (a prism): the box intersected with the half-spaces n·x ≤ n·point for
+     * each {outward normal, point on the plane}.
+     */
+    public Obj prism(long part, int frame, double[] lo, double[] hi, double nd, double vd, Vec3[][] cuts) {
+        Obj o = glass(part, frame, lo, hi, nd, vd);
+        o.planes = new double[cuts.length][];
+        for (int k = 0; k < cuts.length; k++) {
+            Vec3 n = cuts[k][0].normalize();
+            o.planes[k] = new double[]{n.x(), n.y(), n.z(), n.dot(cuts[k][1])};
+        }
         return o;
     }
 
@@ -419,6 +435,25 @@ public final class OpticalScene {
                 fFar = f2;
             }
         }
+        for (int k = 0; k < ob.planes.length; k++) {
+            double[] pl = ob.planes[k];
+            double den = pl[0] * d.x() + pl[1] * d.y() + pl[2] * d.z();
+            double dist = pl[3] - (pl[0] * o.x() + pl[1] * o.y() + pl[2] * o.z());
+            if (Math.abs(den) < 1e-300) {
+                if (dist < 0) return null;
+                continue;
+            }
+            double t = dist / den;
+            if (den < 0) {
+                if (t > tNear) {
+                    tNear = t;
+                    fNear = 6 + k;
+                }
+            } else if (t < tFar) {
+                tFar = t;
+                fFar = 6 + k;
+            }
+        }
         if (tNear > tFar) return null;
         double t;
         int face;
@@ -435,7 +470,12 @@ public final class OpticalScene {
         h.obj = ob;
         h.surface = face;
         h.local = o.add(d.mul(t));
-        h.normal = Vec3.axis(face / 2).mul(face % 2 == 0 ? -1 : 1);
+        if (face >= 6) {
+            double[] pl = ob.planes[face - 6];
+            h.normal = new Vec3(pl[0], pl[1], pl[2]);
+        } else {
+            h.normal = Vec3.axis(face / 2).mul(face % 2 == 0 ? -1 : 1);
+        }
         return h;
     }
 

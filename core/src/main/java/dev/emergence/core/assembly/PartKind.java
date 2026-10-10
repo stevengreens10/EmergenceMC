@@ -161,7 +161,13 @@ public enum PartKind {
      * (default: just enough for a thin rim), filling its box's cross-section. Focal length from the lensmaker's
      * equation and its material's index (dispersion by its Abbe number).
      */
-    LENS(true, false);
+    LENS(true, false),
+    /**
+     * Prism: a block of transparent material cut to a triangle across its axis — its base on one face of the box,
+     * its apex (angle "apex" [°], default 60) pointing along "face" (a {@link Dir} ordinal across the axis); a steep
+     * apex is truncated by the box. Light crossing it is bent towards the base, blue more than red (dispersion).
+     */
+    PRISM(true, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

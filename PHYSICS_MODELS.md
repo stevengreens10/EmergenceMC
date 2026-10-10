@@ -464,7 +464,8 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Surfaces**: mirrors (flat, leant by "tilt", canted by "aim", or spherical of signed radius, clipped to their part's
   box; polished-metal reflectance from the material at 550 and 1000 nm, interpolated in wavelength, the rest
   absorbed), blocks and lenses of transparent material (lenses: two spherical faces on a disc, a blackened rim;
-  thickness on the axis from "thickness" or just enough for a 1 mm rim), photodiodes (an absorber with a square
+  thickness on the axis from "thickness" or just enough for a 1 mm rim), prisms (a box of glass cut by two planes
+  through its base's corners and its apex — a convex polyhedron), photodiodes (an absorber with a square
   window of the junction's area on its sensitive face), and every other opaque part as an absorber of its
   absorptance (emissivity as a grey body, at least 1 − R of the polished material; the rest is scattered diffusely
   and not followed). Thin wires and shafts, liquids and transparent vessels let light by. Parts on moving bodies sit

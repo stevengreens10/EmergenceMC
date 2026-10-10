@@ -296,6 +296,45 @@ public final class PartGeometry {
         return p.param("thickness", 0.003);
     }
 
+    /** The direction a prism's apex points: "face" if it lies across the axis, else the first direction that does. */
+    public static Dir prismApex(Part p) {
+        Dir d = Dir.values()[(int) Math.max(0, Math.min(5, Math.round(p.param("face", -1))))];
+        if (p.param("face", -1) >= 0 && d.axis() != p.axis().axis()) return d;
+        for (Dir q : new Dir[]{Dir.NORTH, Dir.EAST, Dir.UP}) if (q.axis() != p.axis().axis()) return q;
+        return Dir.NORTH;
+    }
+
+    /**
+     * A prism's two slanted faces as {outward normal, a point on it}: through the base's corners (the base on the box
+     * face opposite the apex, as wide as the box) and the apex, which lies (w/2)/tan(α/2) above the base.
+     */
+    public static dev.emergence.core.math.Vec3[][] prismCuts(Part p) {
+        dev.emergence.core.math.Vec3 ax = p.axis().vec(), d = prismApex(p).vec(), b = ax.cross(d).normalize();
+        int bAxis = Math.abs(b.x()) > 0.5 ? 0 : Math.abs(b.y()) > 0.5 ? 1 : 2;
+        double h = p.boxSize(prismApex(p).axis()), w = p.boxSize(bAxis);
+        double alpha = Math.toRadians(Math.max(5, Math.min(170, p.param("apex", 60))));
+        dev.emergence.core.math.Vec3 c = p.center(), base = c.sub(d.mul(h / 2));
+        dev.emergence.core.math.Vec3 apex = base.add(d.mul(w / 2 / Math.tan(alpha / 2)));
+        dev.emergence.core.math.Vec3[][] cuts = new dev.emergence.core.math.Vec3[2][];
+        for (int k = 0; k < 2; k++) {
+            dev.emergence.core.math.Vec3 corner = base.add(b.mul((k == 0 ? -0.5 : 0.5) * w));
+            dev.emergence.core.math.Vec3 n = apex.sub(corner).cross(ax).normalize();
+            if (n.dot(c.sub(corner)) > 0) n = n.mul(-1);
+            cuts[k] = new dev.emergence.core.math.Vec3[]{n, corner};
+        }
+        return cuts;
+    }
+
+    /** Fraction of the box a prism fills: its triangle's area (truncated by the box) over the box's cross-section. */
+    public static double prismFill(Part p) {
+        dev.emergence.core.math.Vec3 ax = p.axis().vec(), d = prismApex(p).vec(), b = ax.cross(d).normalize();
+        int bAxis = Math.abs(b.x()) > 0.5 ? 0 : Math.abs(b.y()) > 0.5 ? 1 : 2;
+        double hBox = p.boxSize(prismApex(p).axis()), w = p.boxSize(bAxis);
+        double alpha = Math.toRadians(Math.max(5, Math.min(170, p.param("apex", 60))));
+        double h = w / 2 / Math.tan(alpha / 2), hh = Math.min(h, hBox);
+        return w * (hh - hh * hh / (2 * h)) / (w * hBox);
+    }
+
     /** Radius of a lens's rim [m]: it fills its box's cross-section. */
     public static double lensRim(Part p) {
         return 0.48 * transverseSize(p);
@@ -339,6 +378,7 @@ public final class PartGeometry {
                 double tilt = Math.toRadians(p.param("tilt", 0));
                 yield p.boxSize((ax + 1) % 3) * p.boxSize((ax + 2) % 3) * mirrorThickness(p) / Math.max(0.2, Math.cos(tilt));
             }
+            case PRISM -> p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * prismFill(p);
             case LENS -> {
                 double rim = lensRim(p), t = lensThickness(p);
                 double edge = t - dev.emergence.core.optics.Optics.sag(lensRadius1(p), rim) + dev.emergence.core.optics.Optics.sag(lensRadius2(p), rim);

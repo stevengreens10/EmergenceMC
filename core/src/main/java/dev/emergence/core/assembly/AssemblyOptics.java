@@ -25,7 +25,7 @@ final class AssemblyOptics {
     /** True for parts that turn light: mirrors, and blocks and lenses of transparent material. */
     static boolean redirects(Part p) {
         return p.kind() == PartKind.MIRROR
-                || (p.kind() == PartKind.LENS || p.kind() == PartKind.BLOCK) && p.material().transparent();
+                || (p.kind() == PartKind.LENS || p.kind() == PartKind.BLOCK || p.kind() == PartKind.PRISM) && p.material().transparent();
     }
 
     /** True for parts light passes by untouched. */
@@ -33,7 +33,7 @@ final class AssemblyOptics {
         return switch (p.kind()) {
             case WIRE, INSULATED_WIRE, ELECTROLYTE -> true;
             case SHAFT -> PartGeometry.shaftDiameter(p) < 0.4 * CELL || p.material().transparent();
-            case BLOCK, LENS, MIRROR -> false;
+            case BLOCK, LENS, MIRROR, PRISM -> false;
             default -> p.material().transparent();
         };
     }
@@ -84,6 +84,10 @@ final class AssemblyOptics {
                     if (Double.isNaN(nd)) s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
                     else s.lens(p.id(), frame, lo, hi, p.center(), p.axis().vec(), PartGeometry.lensRadius1(p),
                             PartGeometry.lensRadius2(p), PartGeometry.lensThickness(p), PartGeometry.lensRim(p), nd, vd);
+                }
+                case PRISM -> {
+                    if (Double.isNaN(nd)) s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
+                    else s.prism(p.id(), frame, lo, hi, nd, vd, PartGeometry.prismCuts(p));
                 }
                 case BLOCK -> {
                     // a plate thinner than its cells fills only its thickness about the middle

@@ -102,7 +102,7 @@ behaviour; where physics is missing the effect is simply absent.
   coarse tube seen only after a reflection can be missed. Sky exposure is the receiving part's block, not the path.
   Light couples only parts in one simulation island: islands join along optical parts' lines of sight (a 60° cone,
   15 blocks for mirrors, 8 for lenses, LEDs and photodiodes), so a mirror aimed at something further, or outside
-  the cone, does not light it. Shapes: no prisms (only boxes, plates and spherical lenses); a canted mirror's square plate overhangs its cell
+  the cone, does not light it. Shapes: boxes, plates, spherical lenses and prisms (no aspheres); a canted mirror's square plate overhangs its cell
   slightly in the drawing. Mirrors' aim and tilt are set by presets or exhibits (no in-game aiming tool yet).
   The LED model is drawn dome-up whatever its "face" direction.
 * MSI chips are behavioural (multilinear logic, single propagation delay, no setup/hold violation model

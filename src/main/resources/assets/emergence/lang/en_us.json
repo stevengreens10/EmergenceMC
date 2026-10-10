@@ -65,6 +65,8 @@
   "tooltip.emergence.rack": "A toothed bar: a gear whose pitch circle touches its toothed face drives it along its length (rotation to straight-line travel). Put it on a slide.",
   "item.emergence.mirror": "Mirror",
   "tooltip.emergence.mirror": "A polished plate facing along its axis: light leaves at the angle it arrived. Concave mirrors bring parallel light to a focus at half their radius; 45° mirrors turn a beam through a right angle. Metal mirrors absorb what they do not reflect.",
+  "item.emergence.prism": "Prism",
+  "tooltip.emergence.prism": "A triangle of glass: light crossing it bends towards its base, by an angle that depends on the glass's index, which depends on colour — blue bends more than red. Dense flint spreads colours most.",
   "item.emergence.lens": "Lens",
   "tooltip.emergence.lens": "A disc of glass with spherical faces: refraction at each face (Snell's law) brings light to a focus, f from the lensmaker's equation. Blue focuses nearer than red; each face reflects about 4 %.",
   "item.emergence.nut": "Lead Screw Nut",

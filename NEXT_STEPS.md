@@ -8,8 +8,8 @@ regenerate the demo world → screenshot tour → docs → commit.
 2. **Dynamics of structures**: vibration and resonance — an unbalanced rotor on a sprung platform (needs a turning
    body carried by a sliding one), vibration isolation; fatigue of the static frame under cyclic loads (rainflow
    counting); gear-mesh and belt forces in the shaft fatigue model.
-3. **Light**: a prism (convex-polyhedron glass) and a spectrometer exhibit; hot parts' light through mirrors and
-   lenses (a lamp in a reflector); an in-game tool to aim mirrors; a clock-driven heliostat (moving optics are
+3. **Light**: a spectrometer that sorts colours onto photodiodes (the prism is in); hot parts' light through mirrors
+   and lenses (a lamp in a reflector); an in-game tool to aim mirrors; a clock-driven heliostat (moving optics are
    already traced for sunlight); phototransistors and optocouplers.
 4. **Acoustics**: sound from vibrating parts (radiation from a piston or cone, ρcS·v²), propagation to listening
    parts, a loudspeaker and microphone built from coil, magnet and membrane; audible playback in the world.

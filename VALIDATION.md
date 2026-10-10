@@ -197,6 +197,13 @@ Burst test: the 1 mm copper box (Roark plate, β = 0.3078, b/t = 60.5) bursts 47
 1.944 bar gauge (predicted 1.953 bar, the step between), its water at 406.2 K = T_sat(p); the 3 mm steel box reaches
 1.4 % of its strength. The 200 bar methane cylinder (6 mm wall) holds at 70 % of steel's.
 
+Magnetic circuit (`MagneticCircuitTest`): a coil on a closed electrical-steel ring (7 cells a side) has
+L = 0.168 H against N²/ℛ = 0.164 H from the cells' reluctances in series (3 %); L ∝ N² (16.005 for 4× the
+turns); air 0.52 mH → open rod 5.1 mH → closed ring 168 mH; two coils on the ring couple with k = 0.965 (the rest
+leaks across the ring's window). Faraday ring exhibit: k = 0.958, open-circuit EMF ratio M/L1 = 4.79 for
+N2/N1 = 5; closing the switch flashes one LED (18 mW), opening it the other (0.18 W); nothing while the current
+is steady.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

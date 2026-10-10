@@ -99,7 +99,7 @@ public final class PartItem extends Item {
     private String detail(PartSpec s) {
         var p = s.params();
         return switch (kind) {
-            case COIL -> ", " + p.getOrDefault("turns", 200.0).intValue() + " turns";
+            case COIL -> ", " + p.getOrDefault("turns", 200.0).intValue() + " turns" + (p.getOrDefault("core", 0.0) > 0 ? ", iron core" : "");
             case RESISTOR -> ", " + Units.formatSI(p.getOrDefault("resistance", 10.0), "Ω")
                     + (p.getOrDefault("ntc_beta", 0.0) > 0 ? String.format(" NTC thermistor, β %.0f K", p.get("ntc_beta")) : "");
             case CAPACITOR -> ", " + Units.formatSI(p.getOrDefault("capacitance", 1e-4), "F");

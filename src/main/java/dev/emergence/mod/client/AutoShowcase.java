@@ -185,6 +185,13 @@ public final class AutoShowcase {
                 STEPS.add(new Step(6000, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
                         "showcase-" + (i + 1) + "-" + id + "-burst", () -> gone(DemoBuilder.partBlock(plot, e, "thin"), PartKind.TANK)));
             }
+            if (id.equals("faraday")) {
+                // make, then break: one LED flashes as the flux grows, the other as it collapses
+                BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");
+                STEPS.add(new Step(2, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-make"));
+                STEPS.add(new Step(40, () -> { }, null));
+                STEPS.add(new Step(2, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-break"));
+            }
             if (id.equals("rack")) {
                 // crank the rack up, then let go: the weight runs it back down
                 BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank");

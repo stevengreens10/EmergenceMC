@@ -264,3 +264,13 @@ budget equally: the exhibit being watched ran in slow motion for machines out of
 islands within 48 blocks of a player; the rest share what is left and slow first (down to 1 %). Measured on a tour: the
 gear train in view at 100 % (it was at ~4–30 % with the whole gallery running). The steam engine remains costly (77 ms
 per tick at 13 % speed while the machine was also running a game) — next to profile.
+
+**Iron.** Ferromagnetic parts now shape the coils' magnetic circuits: a reluctance lattice over their cells, solved with
+and without the iron, adds what the iron contributes to the analytic air inductances. A closed electrical-steel ring
+gives the textbook N²/ℛ within 3 %. Coils can be wound on a core (`core` = 1, leads out the sides). Faraday's 1831
+ring is an exhibit: two coils on an iron ring, a switch on one, back-to-back LEDs on the other, flashing on make and
+on break. Three things found on the way: a single-cell coil's end faces were terminals, so a conductive core touching
+them shorted the windings together (cored coils now have none); a 0.5 F bank fading through the primary induced enough
+to light an LED steadily (true — Faraday's battery held its current); and the servo fragment that cuts a coil's loop
+failed on its first step. That last one is the intermittent world-load failure: a coil restored with current into a
+broken circuit. The first step now starts such currents from rest instead of failing.

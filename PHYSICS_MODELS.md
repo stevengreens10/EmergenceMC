@@ -422,3 +422,16 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   fixed edges under uniform pressure, σ = β(a/b)·Δp·(b/t)² at the middle of the long edge (Roark Table 11.4 case 8,
   β = 0.3078 square … 0.5 long). A part whose stress reaches its material's ultimate tensile strength bursts (it is
   removed; its contents escape through the opening).
+* **Ferromagnetic cores** (`em.ReluctanceLattice`): a magnetic equivalent circuit on the cell lattice. Each cell is a
+  node of magnetic scalar potential; neighbours are joined by the permeance of the two half-cells in series,
+  μ0·h·2μa·μb/(μa + μb); a coil drives N·i across a face inside its winding and links N times the flux through it;
+  flux is conserved at every node and no flux leaves the box (iron within 6 cells of a coil, 3 cells of air round it).
+  Unit currents give the inductance matrix; solved with the iron and with air, the difference is added to the coils'
+  analytic air inductances (so air-cored behaviour is unchanged and the coarse lattice only supplies what the iron
+  adds). Parts with μr ≥ 2 count (electrical steel 5000, iron 2000, nickel 300, structural steel 100; a plate by its
+  fill, a shaft by its share of the cell); a coil with `core` = 1 has electrical steel in its bore (μ weighted by
+  the bore's share of the cell) and its leads leave at the sides. Linear (no saturation or hysteresis); coils and
+  iron on the same rigid body only.
+* **Inconsistent coil currents on restart**: if the first step of a newly compiled assembly fails, the restored coil
+  currents could not flow in the circuit as built (its loop was broken — a chunk loaded without the rest of the
+  circuit); they start from rest, everything else kept, as an inductor's current collapses when its circuit opens.

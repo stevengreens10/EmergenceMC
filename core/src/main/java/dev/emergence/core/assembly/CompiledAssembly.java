@@ -283,7 +283,33 @@ public final class CompiledAssembly {
         return Math.max(0, pressure(partId) - assembly.ambientPressure()) * v[0] / v[1];
     }
 
+    private boolean started, coilCurrentsReset;
+
+    /** True if the first step found the restored coil currents inconsistent with the circuit and started them at 0. */
+    public boolean coilCurrentsReset() {
+        return coilCurrentsReset;
+    }
+
     public List<Long> step(double dt) {
+        if (!started) {
+            started = true;
+            try {
+                return stepOnce(dt);
+            } catch (dev.emergence.core.sim.SimulationException e) {
+                if (magnetics == null || magnetics.coils().isEmpty()) throw e;
+                // The currents restored into the coils cannot flow in the circuit as built (its loop was broken: a
+                // chunk loaded without the rest of the circuit, a wire removed): an inductor's current then collapses.
+                // Start them from rest and keep everything else.
+                for (MagneticSystem.Coil coil : magnetics.coils()) network.setInitial(coil.currentIndex(), 0);
+                solver.reinitialize();
+                coilCurrentsReset = true;
+                return stepOnce(dt);
+            }
+        }
+        return stepOnce(dt);
+    }
+
+    private List<Long> stepOnce(double dt) {
         double done = solver.advance(dt, maxStepsPerAdvance);
         lag += dt - done;
         List<Long> failed = new ArrayList<>();

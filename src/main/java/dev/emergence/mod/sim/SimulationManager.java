@@ -89,7 +89,7 @@ public final class SimulationManager {
         /** The state the island was last compiled from (for diagnosing a failure right after a restart). */
         AssemblyState startState;
         /** Whether a player was near it this tick, and its bounding box grown by the near distance (lazily). */
-        boolean near;
+        boolean near, resetLogged;
         net.minecraft.world.phys.AABB box;
 
         public double timeScale() {
@@ -176,6 +176,11 @@ public final class SimulationManager {
                     isl.compiled = compile(isl, AssemblyState.empty());
                 }
                 continue;
+            }
+            if (isl.compiled.coilCurrentsReset() && !isl.resetLogged) {
+                isl.resetLogged = true;
+                EmergenceMod.LOG.info("Island at {}: restored coil currents could not flow in the circuit as loaded; they started from rest",
+                        isl.blocks.iterator().next());
             }
             long cost = System.nanoTime() - t0;
             if (isl.near) nearTotal += cost / 1e6;

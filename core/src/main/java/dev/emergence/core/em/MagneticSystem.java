@@ -40,8 +40,10 @@ import java.util.stream.IntStream;
  * periodic cubic splines, giving C² values and analytic derivatives for the Newton Jacobian.
  *
  * <h2>Validity</h2>
- * Magnetostatic (quasi-static) fields, rigid magnetisation, no ferromagnetic cores yet, no eddy currents
- * in structural conductors yet. Non-coaxial pairs of moving bodies are not coupled (reported in
+ * Magnetostatic (quasi-static) fields, rigid magnetisation. Ferromagnetic parts add to the inductances of the
+ * coils fixed relative to them (a {@link ReluctanceLattice} over their cells, linear, unsaturated); iron moving
+ * relative to coils (reluctance torque), iron's pull on magnets and eddy currents in structural conductors are not
+ * modelled yet. Non-coaxial pairs of moving bodies are not coupled (reported in
  * {@link #warnings()}). See PHYSICS_MODELS.md §Electromagnetism.
  */
 public final class MagneticSystem implements Element {
@@ -102,6 +104,15 @@ public final class MagneticSystem implements Element {
     private final List<String> warnings = new ArrayList<>();
     private double[][] lConst;
     private boolean built;
+    /** Ferromagnetic cells: {body, int[]{x, y, z}, relative permeability}; and the cell size [m]. */
+    private final List<Object[]> iron = new ArrayList<>();
+    private double cell = Double.NaN;
+
+    /** A ferromagnetic cell (relative permeability μr) of a part on {@code body}, at integer cell (x, y, z). */
+    public void addIronCell(EmBody body, int x, int y, int z, double muR, double cellSize) {
+        iron.add(new Object[]{body, new int[]{x, y, z}, muR});
+        cell = cellSize;
+    }
     private int samples = 256;
 
     // work arrays
@@ -144,6 +155,68 @@ public final class MagneticSystem implements Element {
         return warnings;
     }
 
+    /** Iron within this many cells of a coil is taken into its magnetic circuit; air margin around it. */
+    static final int IRON_REACH = 6, AIR_MARGIN = 3;
+
+    /**
+     * For each rigid body, the inductance its iron adds to the coils on it (and between them): solved on the cell
+     * lattice with the iron and with air, the difference added to the analytic air inductances.
+     */
+    private void addIronInductance() {
+        for (EmBody body : bodies) {
+            List<Integer> idx = new ArrayList<>();
+            List<ReluctanceLattice.Cut> cuts = new ArrayList<>();
+            int[] o = null; // the lattice works relative to its first coil (world cell coordinates run to millions)
+            for (int j = 0; j < coils.size(); j++) {
+                if (coils.get(j).body != body) continue;
+                idx.add(j);
+                ReluctanceLattice.Cut w = cut(coils.get(j).geom);
+                if (o == null) o = new int[]{w.x(), w.y(), w.z()};
+                cuts.add(new ReluctanceLattice.Cut(w.x() - o[0], w.y() - o[1], w.z() - o[2], w.axis(), w.sign(), w.turns()));
+            }
+            if (cuts.isEmpty()) continue;
+            java.util.Map<Long, Double> mu = ReluctanceLattice.cells();
+            for (Object[] f : iron) {
+                if (f[0] != body) continue;
+                int[] w = (int[]) f[1], c = {w[0] - o[0], w[1] - o[1], w[2] - o[2]};
+                for (ReluctanceLattice.Cut k : cuts) {
+                    if (Math.abs(c[0] - k.x()) <= IRON_REACH && Math.abs(c[1] - k.y()) <= IRON_REACH && Math.abs(c[2] - k.z()) <= IRON_REACH) {
+                        mu.merge(ReluctanceLattice.key(c[0], c[1], c[2]), (Double) f[2], Math::max);
+                        break;
+                    }
+                }
+            }
+            if (mu.isEmpty()) continue;
+            ReluctanceLattice lattice = new ReluctanceLattice(mu, cuts, cell, AIR_MARGIN);
+            double[][] withIron = lattice.inductances(cuts, false), air = lattice.inductances(cuts, true);
+            for (int a = 0; a < idx.size(); a++)
+                for (int b = 0; b < idx.size(); b++) {
+                    lConst[idx.get(a)][idx.get(b)] += withIron[a][b] - air[a][b];
+                }
+        }
+    }
+
+    /** A coil's cut face: across its winding, through the face nearest its centre along its axis. */
+    private ReluctanceLattice.Cut cut(CoilGeometry g) {
+        Vec3 c = g.center(), ax = g.axis();
+        int axis = Math.abs(ax.x()) > 0.5 ? 0 : Math.abs(ax.y()) > 0.5 ? 1 : 2;
+        double[] u = {c.x() / cell, c.y() / cell, c.z() / cell};
+        int[] i = {(int) Math.floor(u[0]), (int) Math.floor(u[1]), (int) Math.floor(u[2])};
+        double frac = u[axis] - Math.floor(u[axis]);
+        // centre on a cell boundary (an even number of cells long): the face there; else the cell's +axis face
+        if (frac < 0.25 || frac > 0.75) i[axis] = (int) Math.round(u[axis]) - 1;
+        double sign = (axis == 0 ? ax.x() : axis == 1 ? ax.y() : ax.z()) > 0 ? 1 : -1;
+        return new ReluctanceLattice.Cut(i[0], i[1], i[2], axis, sign, g.turns());
+    }
+
+    /** The inductance matrix of the coils with no relative motion [H] (a copy), in the order of {@link #coils()}. */
+    public double[][] constantInductances() {
+        build();
+        double[][] l = new double[lConst.length][];
+        for (int i = 0; i < l.length; i++) l[i] = lConst[i].clone();
+        return l;
+    }
+
     public double selfInductance(Coil c) {
         build();
         return lConst[coils.indexOf(c)][coils.indexOf(c)];
@@ -179,6 +252,7 @@ public final class MagneticSystem implements Element {
                 }
             }
         }
+        if (!iron.isEmpty()) addIronInductance();
         // coil ↔ magnet flux linkage (only bodies different from the coil's: same-body flux is constant)
         for (int j = 0; j < nc; j++) {
             Coil cj = coils.get(j);

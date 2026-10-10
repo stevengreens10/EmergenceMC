@@ -23,7 +23,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ **Milestone: player-built generator** (demo exhibit, tests) — motor action demonstrated in core
    (synchronous motor driven by a rotating current pattern)
 ✅ Player-built brushed DC motor: angle-dependent brush/segment contacts → commutation emerges (exhibit)
-⬜ Ferromagnetic cores (magnetic equivalent circuits / induced magnetisation), eddy currents
+🟡 Ferromagnetic cores: linear magnetic equivalent circuit for iron fixed relative to coils ✅ (Faraday ring);
+   saturation, hysteresis, moving iron (reluctance torque), iron attracting magnets, eddy currents ⬜
 ✅ Slides on linear bearings, helical springs, end stops, gravity along the guide, magnetics on slides
 ✅ Rams: cylinders driving slides (hydraulic press)
 ✅ Check-valve pumps (hydraulic jack); cavitation in liquids

@@ -1,5 +1,6 @@
 package dev.emergence.core.assembly;
 
+import dev.emergence.core.em.CoilGeometry;
 import dev.emergence.core.em.EmBody;
 import dev.emergence.core.em.MagneticSystem;
 import dev.emergence.core.materials.Material;
@@ -973,6 +974,8 @@ public final class AssemblyCompiler {
                     int hi = a0 == 0 ? p.maxX() : a0 == 1 ? p.maxY() : p.maxZ();
                     boolean posAxis = ax.sign() > 0;
                     if (p.kind() == PartKind.BRUSH && d == ax) return null; // the brush face slides: see buildBrushContacts
+                    // a coil wound on a core: the core runs on through its end faces; its leads leave at the sides
+                    if (p.kind() == PartKind.COIL && p.param("core", 0) > 0 && d.axis() == a0) return null;
                     if (d.axis() == a0) {
                         // end faces: lead exits at the transverse centre of the end face
                         if (!isLeadCell(p, cell)) return null;
@@ -1492,6 +1495,39 @@ public final class AssemblyCompiler {
                 c.deviceOfPart.put(p.id(), coil);
             }
             for (Part p : magnets) ms.addMagnet(PartGeometry.magnet(p), em.get(c.bodyOfPart.get(p.id())));
+            // ferromagnetic parts (μr ≥ 2: soft iron, electrical steel, structural steel, nickel) and coils wound on a
+            // core ("core" = 1: electrical steel filling the bore) shape the coils' magnetic circuits
+            if (!coils.isEmpty()) {
+                double steel = MaterialDatabase.standard().get("electrical_steel").get(MaterialProperty.RELATIVE_PERMEABILITY, 5000);
+                for (Part p : parts) {
+                    double muR;
+                    if (p.kind() == PartKind.COIL) {
+                        if (p.param("core", 0) <= 0) continue;
+                        CoilGeometry g = PartGeometry.coil(p);
+                        double rIn = g.meanRadius() - 0.5 * g.thickness();
+                        double f = Math.min(1, Math.PI * rIn * rIn / (CELL * CELL));
+                        muR = 1 + f * (steel - 1);
+                    } else if (p.kind() == PartKind.MAGNET || isWire(p)) {
+                        continue;
+                    } else {
+                        muR = p.material().get(MaterialProperty.RELATIVE_PERMEABILITY, 1);
+                        if (p.kind() == PartKind.SHAFT) {
+                            double d = PartGeometry.shaftDiameter(p);
+                            muR = 1 + Math.PI * d * d / 4 / (CELL * CELL) * (muR - 1);
+                        } else if (p.kind() == PartKind.BLOCK) {
+                            muR = 1 + Math.max(0.01, Math.min(1, p.param("fill", 1.0))) * (muR - 1);
+                        } else if (!p.kind().structural) {
+                            continue;
+                        }
+                    }
+                    if (muR < 2) continue;
+                    EmBody body = em.get(c.bodyOfPart.get(p.id()));
+                    if (body == null) continue;
+                    for (int x = p.minX(); x <= p.maxX(); x++)
+                        for (int y = p.minY(); y <= p.maxY(); y++)
+                            for (int z = p.minZ(); z <= p.maxZ(); z++) ms.addIronCell(body, x, y, z, muR, CELL);
+                }
+            }
             c.magnetics = c.network.add(ms);
             c.warnings.addAll(ms.warnings());
         }

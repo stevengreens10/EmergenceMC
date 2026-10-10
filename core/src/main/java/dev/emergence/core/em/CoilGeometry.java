@@ -57,6 +57,8 @@ public final class CoilGeometry implements FieldSource {
     public Vec3 center() { return center; }
     public Vec3 axis() { return axis; }
     public double meanRadius() { return meanRadius; }
+    /** Radial build of the winding [m] (outer minus inner radius). */
+    public double thickness() { return build; }
     public double length() { return length; }
     public int turns() { return turns; }
 

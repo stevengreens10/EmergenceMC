@@ -130,6 +130,10 @@ public final class PartPresets {
         l.add(stack(PartKind.OPAMP, PartSpec.of("silicon", 1, 1)));
         l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 0, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
         l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 1, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
+        // magnetic circuits: coils wound on an electrical-steel core (leads out the sides), and the core material
+        l.add(stack(PartKind.COIL, PartSpec.of("copper", 1, 1, "turns", 200, "wire_diameter", 0.8e-3, "core", 1, "bore_fraction", 0.6, "lead_axis", 1)));
+        l.add(stack(PartKind.COIL, PartSpec.of("copper", 1, 1, "turns", 1000, "wire_diameter", 0.3e-3, "core", 1, "bore_fraction", 0.6, "lead_axis", 1)));
+        l.add(stack(PartKind.BLOCK, PartSpec.of("electrical_steel", 1, 1)));
         // slides: linear bearings and springs
         l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1)));
         l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.002)));

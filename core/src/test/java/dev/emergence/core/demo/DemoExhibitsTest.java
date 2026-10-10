@@ -1095,4 +1095,45 @@ class DemoExhibitsTest {
         assertEquals(tSat, tBefore, 3, "the water is boiling: on the saturation curve");
         assertTrue(c.burstUtilisation(thick) < 0.2, "the steel box is far from bursting");
     }
+
+    /**
+     * Faraday's ring: closing the switch induces a pulse in the secondary of about N2/N1 times the primary coil's
+     * voltage (the iron couples them, k close to 1) that lights one LED; opening it, a reverse pulse lights the other.
+     */
+    @Test
+    void faradayRingInducesPulsesOnMakeAndBreak() {
+        Exhibit e = Exhibits.faradayRing();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pri = b.id(e, "primary"), sec = b.id(e, "secondary"), green = b.id(e, "green"), red = b.id(e, "red");
+        var ms = c.magnetics();
+        double[][] l = ms.constantInductances();
+        double k = l[0][1] / Math.sqrt(l[0][0] * l[1][1]);
+        System.out.printf("Faraday ring: L1 %.3g H, L2 %.3g H, M %.3g H, k = %.3f; open-circuit EMF ratio M/L1 = %.2f (N2/N1 = 5)%n",
+                l[0][0], l[1][1], l[0][1], k, Math.abs(l[0][1] / l[0][0]));
+        assertEquals(5, Math.abs(l[0][1] / l[0][0]), 0.5, "secondary EMF per primary volt: the turns ratio, less leakage");
+        assertTrue(Math.abs(k) > 0.9, "the iron couples the coils: " + k);
+        run(c, 1);
+        assertTrue(c.lightOutput(green) < 1e-6 && c.lightOutput(red) < 1e-6, "dark at rest");
+        c.toggleSwitch(b.id(e, "switch"));
+        double peakGreen = 0, peakRed = 0;
+        for (int i = 0; i < 500; i++) { // 1 s: several L1/R time constants
+            c.step(0.002);
+            peakGreen = Math.max(peakGreen, c.lightOutput(green));
+            peakRed = Math.max(peakRed, c.lightOutput(red));
+        }
+        System.out.printf("make: peak light green %.3g W, red %.3g W; after 1 s %.3g W%n", peakGreen, peakRed, c.lightOutput(green));
+        assertTrue(peakGreen > 1e-4 || peakRed > 1e-4, "one LED flashes on make");
+        boolean makeIsGreen = peakGreen > peakRed;
+        assertTrue(Math.max(c.lightOutput(green), c.lightOutput(red)) < 1e-6, "dark once the current is steady");
+        System.out.printf("before break: primary %.3f A, secondary %.4f A%n", c.probe(pri).current(), c.probe(sec).current());
+        c.toggleSwitch(b.id(e, "switch"));
+        double peakOther = 0;
+        for (int i = 0; i < 200; i++) {
+            c.step(0.002);
+            peakOther = Math.max(peakOther, c.lightOutput(makeIsGreen ? red : green));
+        }
+        System.out.printf("break: the other LED peaks at %.3g W%n", peakOther);
+        assertTrue(peakOther > 1e-4, "the other LED flashes on break");
+    }
 }

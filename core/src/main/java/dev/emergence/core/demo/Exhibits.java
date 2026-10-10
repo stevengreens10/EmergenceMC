@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(),
                 miniatureGenerator());
     }
 
@@ -361,6 +361,59 @@ public final class Exhibits {
         e.init(midShaft, new Exhibit.Initial(Double.NaN, -80, 0));
         e.init(fanShaft, new Exhibit.Initial(Double.NaN, 400, 0));
         return e.view(6.5, 8, 21, 25);
+    }
+
+    /**
+     * Faraday's induction ring (1831): an electrical-steel ring with a coil on each side. Closing the switch on the
+     * primary starts a current whose flux, carried round the ring, threads the secondary: while it grows, the
+     * secondary's EMF lights one LED; opening the switch collapses it and the other LED flashes.
+     */
+    public static Exhibit faradayRing() {
+        Exhibit e = new Exhibit("faraday", "Faraday's ring",
+                List.of("FARADAY'S RING", "Close the switch,", "then open it: watch", "the two LEDs"),
+                "Two coils on one iron ring, as Michael Faraday wound them in 1831. Close the switch: current from the "
+                        + "battery bank starts to flow in the 200-turn coil on the left, and its magnetic flux, guided "
+                        + "round the ring by the iron (5000 times more permeable than air), passes through the 1000-turn "
+                        + "coil on the right. Only while that flux is changing does it induce a voltage there (Faraday's "
+                        + "law): the green LED flashes, about five times the battery's voltage for five times the turns. "
+                        + "With the current steady, nothing. Open the switch: the flux collapses, the voltage reverses, and "
+                        + "the red LED flashes. Without the iron, the coils would barely notice each other.");
+        String core = "electrical_steel";
+        // the ring, flat at y = 1 on oak corner blocks (non-magnetic, so they do not short the ring)
+        for (int i = 4; i <= 10; i++) {
+            e.add(BLOCK, core, i, 1, 5, Dir.UP);
+            e.add(BLOCK, core, i, 1, 11, Dir.UP);
+        }
+        for (int z = 6; z <= 10; z++) {
+            if (z == 8) continue;
+            e.add(BLOCK, core, 4, 1, z, Dir.UP);
+            e.add(BLOCK, core, 10, 1, z, Dir.UP);
+        }
+        for (int[] c : new int[][]{{4, 5}, {10, 5}, {4, 11}, {10, 11}}) e.add(BLOCK, "oak", c[0], 0, c[1], Dir.UP);
+        // the coils, wound on the ring's sides (iron cores), leads up and down
+        e.name("primary", e.add(COIL, "copper", 4, 1, 8, Dir.SOUTH, "turns", 200, "wire_diameter", 0.8e-3, "core", 1,
+                "bore_fraction", 0.6, "lead_axis", 1));
+        e.name("secondary", e.add(COIL, "copper", 10, 1, 8, Dir.SOUTH, "turns", 1000, "wire_diameter", 0.3e-3, "core", 1,
+                "bore_fraction", 0.6, "lead_axis", 1));
+        // primary circuit: a 5 F, 12 V bank, a 4 ohm resistor and the switch
+        int bank = e.add(CAPACITOR, "alumina", 1, 0, 4, Dir.EAST, "capacitance", 5.0); // big: its slow fade induces too little to light an LED
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        e.add(RESISTOR, "alumina", 1, 0, 8, Dir.EAST, "resistance", 4.0);
+        e.name("switch", e.add(SWITCH, "brass", 1, 0, 13, Dir.EAST));
+        // secondary: two LEDs back to back through 1 kilohm
+        e.name("green", e.add(LED, "silicon", 13, 0, 6, Dir.EAST, "wavelength", 530));
+        e.name("red", e.add(LED, "silicon", 13, 0, 10, Dir.WEST, "wavelength", 630));
+        e.add(RESISTOR, "alumina", 13, 0, 13, Dir.EAST, "resistance", 1000);
+        Router r = new Router(e, 0, 0, 0, 15, 3, 15);
+        r.pin("p1", 2, 0, 4).pin("p1", 4, 2, 8);
+        r.pin("p2", 4, 0, 8).pin("p2", 2, 0, 8);
+        r.pin("p3", 0, 0, 8).pin("p3", 2, 0, 13);
+        r.pin("p4", 0, 0, 13).pin("p4", 0, 0, 4);
+        r.pin("s1", 10, 2, 8).pin("s1", 12, 0, 6).pin("s1", 12, 0, 10);
+        r.pin("s2", 14, 0, 6).pin("s2", 14, 0, 10).pin("s2", 14, 0, 13);
+        r.pin("s3", 12, 0, 13).pin("s3", 10, 0, 8);
+        r.route();
+        return e.view(7.5, 7, 17, 35);
     }
 
     /** Two identical sealed vessels; one sits against a red-hot copper block. Gay-Lussac's law on a gauge. */

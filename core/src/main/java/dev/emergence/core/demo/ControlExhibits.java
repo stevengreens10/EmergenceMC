@@ -20,15 +20,18 @@ public final class ControlExhibits {
      */
     public static Exhibit servo() {
         Exhibit e = new Exhibit("servo", "Servo arm",
-                List.of("SERVO ARM", "Turn the knob: the", "arm follows it.", "PD control, op-amp"),
+                List.of("SERVO ARM", "Turn the knob: the", "arm follows it.", "PID control, op-amp"),
                 "Closed-loop position control from parts. Turning the knob moves the wiper of its potentiometer; a "
                         + "second potentiometer on the arm's shaft reports where the arm is. The op-amp amplifies the "
                         + "difference ten times and two transistors (NPN up, PNP down) pass that voltage, with amps of "
                         + "current, to two coils above and below a magnet on the shaft: torque i·dΨ/dθ turns the arm "
-                        + "until the two wipers agree. Holding the arm up against gravity needs a steady current, so a "
-                        + "steady error remains (proportional droop); the capacitor across the feedback resistor "
-                        + "makes the drive respond to the arm's speed too, damping the swing. Powered by two 12 V "
-                        + "supercapacitor banks.");
+                        + "until the two wipers agree. Holding the arm up against gravity needs a steady current; "
+                        + "with only proportional gain that would leave a steady error (droop), but the capacitor in "
+                        + "series with the feedback resistor integrates the error, building up whatever current the arm "
+                        + "needs until the error is gone (integral action; its twin keeps the input network balanced). "
+                        + "The capacitor across the position resistor makes the drive respond to the arm's speed too, "
+                        + "damping the swing (derivative action): a PID controller. Powered by two 12 V supercapacitor "
+                        + "banks.");
         e.plots = 2;
         String st = "steel_1045", ny = "nylon_66", cu = "copper";
         int y = 4, z = 5;
@@ -80,10 +83,15 @@ public final class ControlExhibits {
         e.init(bn, new Exhibit.Initial(Double.NaN, 0, 12));
         e.name("opamp", e.add(OPAMP, "silicon", 18, f, 8, Dir.EAST));
         e.add(RESISTOR, "alumina", 14, f, 8, Dir.EAST, "resistance", 10_000);     // set → in+
-        e.add(RESISTOR, "alumina", 14, f, 11, Dir.EAST, "resistance", 100_000);   // in+ → 0 V
+        e.add(RESISTOR, "alumina", 14, f, 11, Dir.EAST, "resistance", 100_000);   // in+ → 0 V, through
+        e.init(e.add(CAPACITOR, "alumina", 17, f, 11, Dir.EAST, "capacitance", 10e-6), // its twin (the network stays balanced)
+                new Exhibit.Initial(Double.NaN, 0, -8));
         e.add(RESISTOR, "alumina", 14, f, 4, Dir.EAST, "resistance", 10_000);     // position → in−
         e.name("cd", e.add(CAPACITOR, "alumina", 14, f, 2, Dir.EAST, "capacitance", 4.7e-6)); // derivative
-        e.add(RESISTOR, "alumina", 22, f, 5, Dir.EAST, "resistance", 100_000);    // drive → in−
+        e.add(RESISTOR, "alumina", 22, f, 5, Dir.EAST, "resistance", 100_000);    // drive → in−, through
+        e.name("ci", e.add(CAPACITOR, "alumina", 25, f, 5, Dir.EAST, "capacitance", 10e-6)); // the integrator (PI)
+        // at rest the integrator holds the set-point's 8 V (the arm hanging, the drive at 0 V)
+        e.init(e.named.get("ci"), new Exhibit.Initial(Double.NaN, 0, -8));
         e.name("npn", e.add(TRANSISTOR, "silicon", 22, f, 10, Dir.EAST, "type", 0, "beta", 60, "saturation_current", 1e-12,
                 "surface_area", 0.03));
         e.name("pnp", e.add(TRANSISTOR, "silicon", 22, f, 13, Dir.EAST, "type", 1, "beta", 60, "saturation_current", 1e-12,
@@ -96,14 +104,16 @@ public final class ControlExhibits {
                 .pin("vn", 7, y - 1, z).pin("vn", 11, 1, 11);                         // arm pot A, knob divider
         r.pin("kB", 11, 1, 7).pin("kB", 11, ky + 1, kz);
         r.pin("kA", 11, 1, 9).pin("kA", 11, ky - 1, kz);
-        r.pin("gnd", 23, f, 2).pin("gnd", 29, f, 2).pin("gnd", 15, f, 11)           // banks' 0 V, in+ divider
+        r.pin("gnd", 23, f, 2).pin("gnd", 29, f, 2).pin("gnd", 18, f, 11)           // banks' 0 V, in+ divider
+                .pin("gI", 15, f, 11).pin("gI", 16, f, 11)
                 .pin("gnd", 2, y + 1, z);                                            // motor return
         r.pin("set", 11, ky, kz - 1).pin("set", 13, f, 8);
         r.pin("pos", 7, y, z - 1).pin("pos", 13, f, 4).pin("pos", 13, f, 2);
         r.pin("inP", 15, f, 8).pin("inP", 13, f, 11).pin("inP", 17, f, 8);
         r.pin("inN", 15, f, 4).pin("inN", 15, f, 2).pin("inN", 21, f, 5).pin("inN", 18, 0, 8);
         r.pin("out", 19, f, 8).pin("out", 22, f, 9).pin("out", 22, f, 12);
-        r.pin("drive", 21, f, 10).pin("drive", 21, f, 13).pin("drive", 23, f, 5).pin("drive", 4, y, z + 1);
+        r.pin("drive", 21, f, 10).pin("drive", 21, f, 13).pin("drive", 26, f, 5).pin("drive", 4, y, z + 1);
+        r.pin("fbI", 23, f, 5).pin("fbI", 24, f, 5);
         // coils in series, the drive entering each at its + lead: south, north, down, up
         r.pin("c1", 4, y + 1, z).pin("c1", 2, y - 1, z);
         r.pin("c2", 4, y - 1, z).pin("c2", 2, y, z - 1);

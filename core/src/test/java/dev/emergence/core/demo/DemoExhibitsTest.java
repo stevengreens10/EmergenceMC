@@ -614,7 +614,7 @@ class DemoExhibitsTest {
                 k, a, servoDemand(k), c.probe(coil).current(), worst, c.probe(b.id(e, "pnp")).temperature(), c.probe(coil).temperature());
         assertEquals(-0.75 * Math.PI - Math.toRadians(15), k, 0.03, "the knob rests against its end stop (300° of rotation)");
         assertTrue(a < 0.05, "the arm is raised to horizontal and beyond: " + a);
-        assertEquals(servoDemand(k), a, 0.15, "proportional droop holding the arm up");
+        assertEquals(servoDemand(k), a, 0.01, "integral action: no droop, though holding the arm up takes 1.8 A");
         assertTrue(worst < 0.25, "the arm keeps up with the knob: " + worst);
         // and back down part way
         for (int i = 0; i < 60; i++) {
@@ -623,7 +623,7 @@ class DemoExhibitsTest {
         }
         c.setCrankEffort(crank, 0, false);
         run(c, 3.0);
-        assertEquals(servoDemand(c.probe(knob).angle()), c.probe(arm).angle(), 0.1, "follows the knob back");
+        assertEquals(servoDemand(c.probe(knob).angle()), c.probe(arm).angle(), 0.02, "follows the knob back");
         assertTrue(Math.abs(c.probe(arm).angularVelocity()) < 0.01, "settled without oscillating");
         assertTrue(c.probe(b.id(e, "pnp")).temperature() < 360, "the power transistor stays cool enough");
         assertTrue(Math.abs(c.probe(b.id(e, "batteryN")).voltage() - vBank0) < 0.2, "the banks barely discharge");

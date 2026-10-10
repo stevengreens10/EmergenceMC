@@ -328,3 +328,9 @@ radiation is now net of what the photodiode sends back.
 stress, Basquin's S–N line from the materials' ultimate and fatigue strengths the life, Miner's rule the damage, which
 persists with the world. Wöhler's axles exhibit: the same load on aluminium and steel shafts of 8.4 mm; aluminium
 cracks after 2101 turns (its predicted life 2099) and drops its disc, steel runs on below its endurance limit.
+
+**PID servo.** The servo arm's controller gained integral action: a capacitor in series with the op-amp's feedback
+resistor. At first the arm drifted 0.19 rad off target: in a differential amplifier the inverting input's network had
+lost its DC path while the non-inverting divider kept its, so the loop balanced at 91 % of the set-point; a twin
+capacitor in the divider's ground leg keeps the two networks matched at every frequency. The droop (up to 0.15 rad
+holding the arm up) is gone: 1 mrad.

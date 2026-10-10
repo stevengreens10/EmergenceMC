@@ -241,6 +241,11 @@ ever, aluminium below its fatigue strength does not. Fatigue exhibit: the overhu
 (15.3 N·m) gives 262.8 MPa analysed against 32M/(πd³) = 262.8 MPa; the aluminium shaft cracks after 2101 turns
 against its Basquin life of 2099 and drops its disc; the steel shaft runs on with no damage.
 
+PID servo: with a 10 µF capacitor in series with the 100 kΩ feedback resistor (integral time 1 s) and its twin in the
+non-inverting divider, the arm holds the knob's end-stop demand to 1 mrad (−0.195 rad for −0.196) while drawing 1.84 A
+against gravity — where proportional control drooped up to 0.15 rad — with tracking lag ≤ 0.045 rad, and settles
+without oscillating. Without the twin the network is unbalanced at DC and the loop holds 91 % of the set-point.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

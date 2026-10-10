@@ -224,18 +224,32 @@ public final class MixtureBranch implements Element {
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = ctx.x(col[j]);
         double[] f0 = residual(v);
         for (int r = 0; r < col.length; r++) if (col[r] >= 0 && f0[r] != 0) ctx.addF(rowOf(col, r), f0[r]);
-        // Jacobian by forward differences over the few unknowns this passage touches
+        // Jacobian by finite differences over the few unknowns this passage touches. The flow column is central, with a
+        // relative step of 10⁻⁴: the residual is smooth (quadratic) in the flow, and at high pressure a step of 10⁻⁷
+        // changes it by no more than the rounding of its ~10⁷ Pa terms (a noisy column made Newton cycle).
         for (int j = 0; j < col.length; j++) {
             if (col[j] < 0) continue;
             double x0 = v[j];
-            double hj = 1e-7 * Math.max(Math.abs(x0), scale(j));
+            boolean central = j == 0;
+            double hj = (central ? 1e-4 : 1e-7) * Math.max(Math.abs(x0), scale(j));
             v[j] = x0 + hj;
             double[] f1 = residual(v);
+            double[] fm = null;
+            if (central) {
+                v[j] = x0 - hj;
+                fm = residual(v);
+            }
             v[j] = x0;
             for (int r = 0; r < col.length; r++) {
                 if (col[r] < 0) continue;
-                double d = (f1[r] - f0[r]) / hj;
+                double d = central ? (f1[r] - fm[r]) / (2 * hj) : (f1[r] - f0[r]) / hj;
                 if (d != 0) ctx.addJ(rowOf(col, r), col[j], d);
+                // the flow equation is a pressure balance of terms as large as the pressures themselves: their
+                // rounding (a few ulps) moves the flow by that over the equation's slope — a floor on its resolution
+                if (central && r == 0 && d != 0) {
+                    double p = Math.max(Math.abs(endState(v, 0)[0]), Math.abs(endState(v, 1)[0]));
+                    ctx.noiseFloor(qIdx, 8 * Math.ulp(p) / Math.abs(d));
+                }
             }
         }
     }

@@ -197,6 +197,9 @@ public final class AutoShowcase {
                 STEPS.add(new Step(40, () -> { }, null));
                 STEPS.add(new Step(2, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-break"));
             }
+            if (id.equals("engine")) {
+                STEPS.add(new Step(200, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
+            }
             if (id.equals("rack")) {
                 // crank the rack up, then let go: the weight runs it back down
                 BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank");

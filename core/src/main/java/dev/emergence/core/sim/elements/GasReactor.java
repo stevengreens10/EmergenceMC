@@ -145,6 +145,11 @@ public final class GasReactor implements Element {
         for (int i = 0; i < sp.length; i++) {
             nIdx[i] = ctx.allocUnknown("n:" + sp[i].id(), tol);
             ctx.setInitial(nIdx[i], n0[i]);
+            // positivity near depletion: an update that would take the last of a species just below zero (by less
+            // than there is) takes it to a tenth of what is left instead — overshooting below zero, where the softened
+            // rate law stops, made the next update throw it back up (a two-cycle at the end of every fast burn).
+            // Gross excursions (the first iterates of a violent transient) are left to Newton.
+            ctx.limitNewton(nIdx[i], (old, proposed) -> old > 0 && proposed < 0 && proposed > -old ? 0.1 * old : proposed);
             nSlot[i] = ctx.allocState(tol);
         }
         // the energy slot holds U minus the formation energy of the initial charge, so its truncation-error
@@ -162,17 +167,19 @@ public final class GasReactor implements Element {
     }
 
     /**
-     * Concentration factor c^p of a rate law and d/dc. A fractional order p &lt; 1 (a global, empirical rate law)
-     * has an infinite slope at c = 0 and would keep consuming a species that is all but gone, driving it negative;
-     * there the factor is multiplied by c/(c + c_cut) with c_cut = 10⁻⁴ mol/m³ (≈ 10 ppm in air), which leaves the
-     * law unchanged at measurable concentrations and shuts it off smoothly at trace level.
+     * Concentration factor c^p of a rate law and d/dc. An order p &lt; 1 (a global, empirical rate law — fractional,
+     * or negative as methane's −0.3 in Westbrook–Dryer) has an infinite slope at c = 0 and would keep consuming a
+     * species that is all but gone, driving it negative; there the factor is multiplied by (c/(c + c_cut))^(1 − p)
+     * with c_cut = 10⁻⁴ mol/m³ (≈ 10 ppm in air): unchanged at measurable concentrations, and at trace level the
+     * factor falls linearly to zero (c/c_cut^(1−p)) with a finite slope, so the last traces burn out cleanly.
      */
     private static double[] power(double[] c, double p) {
         double f = Math.pow(c[0], p), df = p * f / c[0];
         if (p < 1) {
-            double w = c[0] / (c[0] + CUT), dw = CUT / ((c[0] + CUT) * (c[0] + CUT));
-            df = df * w + f * dw;
-            f *= w;
+            double q = 1 - p, w = c[0] / (c[0] + CUT), dw = CUT / ((c[0] + CUT) * (c[0] + CUT));
+            double wq = Math.pow(w, q);
+            df = df * wq + f * q * wq / w * dw;
+            f *= wq;
         }
         return new double[]{f, df * c[1]};
     }

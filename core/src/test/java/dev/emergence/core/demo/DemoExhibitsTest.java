@@ -1158,4 +1158,30 @@ class DemoExhibitsTest {
             assertEquals(10, p.minX(), "the tall strip (and its load) fail, not the short one");
         }
     }
+
+    /**
+     * The gas engine runs: cam-timed valves draw in methane and air on the first stroke, it fires near the top of the
+     * second (the glow plug lights the squeezed charge), and the power strokes accelerate the crank against the brake.
+     */
+    @Test
+    void gasEngineFiresAndRunsOnItsOwn() {
+        Exhibit e = EngineExhibits.gasEngine();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var ch = dev.emergence.core.chem.Chemistry.standard();
+        long crank = b.id(e, "crankshaft"), cyl = b.id(e, "cylinder");
+        double w0 = c.probe(crank).angularVelocity(), pPeak = 0, co2 = 0;
+        for (int i = 0; i < 2000; i++) {
+            c.step(0.005);
+            var g = c.gas(cyl);
+            pPeak = Math.max(pPeak, g.pressure(c.solverView()));
+            co2 = Math.max(co2, g.moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))));
+        }
+        double w = c.probe(crank).angularVelocity();
+        System.out.printf("gas engine: crank %.0f → %.0f rad/s in 10 s against the brake, peak cylinder pressure %.1f MPa, CO2 up to %.1f %%%n",
+                w0, w, pPeak / 1e6, 100 * co2);
+        assertTrue(pPeak > 2e6, "it fires: combustion pressure well above compression alone");
+        assertTrue(co2 > 0.02, "methane burns to CO2");
+        assertTrue(w > 2 * w0, "the power strokes accelerate it against its load: " + w);
+    }
 }

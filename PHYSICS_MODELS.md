@@ -441,3 +441,12 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   buckles and fails where the buckled shape deflects most. Inverse power iteration on K⁻¹(−K_G), shifted past tension
   modes; skipped when every compressed member is far from even a 20-member column's Euler load. Elastic (no
   imperfections or plasticity interaction: stocky members fail by the strength check first).
+* **Glow plugs** (`exposed` = 1 on a heating element): an element set into a vessel meets its gas directly — a
+  reacting film at the element's temperature (as a wall film) and convection to the bulk. Rates rise with pressure,
+  so a small hot surface lights a charge as it is squeezed rather than as it is drawn in.
+* **Numerics for fast burns**: a rate order p < 1 (methane's −0.3) is cut off at trace level by (c/(c + c_cut))^(1−p),
+  linear in c with a finite slope; a Newton update that would take the last of a species just below zero takes it to a
+  tenth of what is left; a gas passage reports the noise floor of its flow (a few ulps of its pressure over the flow
+  equation's slope), below which Newton is not asked to converge; its flow column is a central difference. The sparse
+  LU keeps its pivot order while no pivot collapses below 10⁻⁸ of its value when the order was chosen (it was a row
+  test, which rejected sound pivots in rows mixing units and forced a full refactorisation at nearly every iteration).

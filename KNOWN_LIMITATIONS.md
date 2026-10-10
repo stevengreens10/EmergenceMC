@@ -62,6 +62,9 @@ behaviour; where physics is missing the effect is simply absent.
   is not modelled (T clamped at the triple point). Slightly superheated (≲ 10 K) and very slightly
   compressed states pass through smoothing joins with a few per cent pressure error. One fluid per
   connected network; open vessels hold no free surface to the air.
+* Combustion in a cylinder is well mixed (one zone): no flame propagation, no lean or rich flammability limits (a hot
+  surface burns any proportion), no knock. A glow plug's temperature creeps up slowly while the engine runs (about
+  2 K/s at 1300 K): over a long run it nears its 1800 K limit.
 * Two-phase flow through branches is homogeneous (no slip, no flashing choke); film boiling beyond the
   critical heat flux is not modelled (flux is capped instead).
 * Rotors: one blade row at the mean radius; swirl is not passed to a downstream rotor; no tip leakage or

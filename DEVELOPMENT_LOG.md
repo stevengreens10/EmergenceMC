@@ -279,3 +279,13 @@ broken circuit. The first step now starts such currents from rest instead of fai
 the critical load factor by inverse iteration (Euler's cantilever load to four digits). Buckling exhibit: two strips
 of 1.25 mm steel on end; the short one carries a lead block, the same block on the twice-as-tall one buckles it at a
 load its steel could take many times over in plain compression.
+
+**A gas engine.** Otto's four strokes from parts: a cylinder over a crank, an overhead camshaft driven at half speed by a
+16:32 gear pair, cam-worked gas valves (new: mixture valves follow cams), a mixing box fed from a methane bottle through
+a needle valve, a glow plug (new: a heating element `exposed` to a vessel's gas lights it as a hot film). The valve
+timing was worked out from the geometry (phases 225° and 135°). Getting it to run meant fixing four numerical problems:
+a fuel order of −0.3 left an infinite slope at the end of each burn; Newton two-cycled a trace of methane through zero;
+the flow through a wide passage at 160 bar could not be resolved below its pressure's rounding (its Jacobian column was
+noise, and its tolerance unattainable); and the sparse LU's row-based pivot test failed sound pivots at nearly every
+iteration — fixing that made the engine about 12× faster, and helps every island. It runs at 1100–2000 rpm, governed by
+its fuel flow.

@@ -57,6 +57,12 @@ out of sight. In-world tests and demo generation lift both budgets (they test ti
   steps rejected — set by a 1.85 mL valve volume; relaxing that only moved the work into more Newton iterations).
   Profile with `./gradlew coreTest --tests … -Demergence.jfr=<file>.jfr`.
 
+* Sparse LU pivot test (all islands): the refactorisation rejected a pivot that was small against its row's largest
+  entry — rows mix units, so sound pivots failed and every Newton iteration fell back to a full Markowitz
+  factorisation (boxed hash maps). Now a pivot fails only if it collapses relative to its value when the order was
+  chosen: the gas engine went from ~12× slower than real time to real time over its first seconds (≈ 2.5–4× at
+  1100–2000 rpm, ten combustion events a second).
+
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC
    states) and each step refactorises. Plan: (a) per-island accuracy level / relaxed tolerances for

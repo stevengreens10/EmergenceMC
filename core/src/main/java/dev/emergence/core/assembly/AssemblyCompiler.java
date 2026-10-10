@@ -1927,6 +1927,22 @@ public final class AssemblyCompiler {
                 // the thermal boundary layer at the wall (δ = k/h ≈ 2 mm of gas at the wall's temperature)
                 if (!reactions.isEmpty()) r.withWallFilm(wall, area, 0.002);
             }
+            // a heating element set into a vessel ("exposed" = 1, a glow plug): its hot surface meets the gas directly —
+            // a film of gas at the element's temperature (hot-surface ignition) and convection to the bulk
+            for (Part h : parts) {
+                if (h.kind() != PartKind.RESISTOR || h.param("exposed", 0) <= 0) continue;
+                Node hn = c.thermalOfPart.get(h.id());
+                if (hn == null) continue;
+                double area = h.param("surface_area", 1e-4);
+                for (Dir d : Dir.values()) {
+                    for (Part q : a.at(h.minX() + d.dx, h.minY() + d.dy, h.minZ() + d.dz)) {
+                        GasReactor r = gas.get(q.id());
+                        if (r == null) continue;
+                        if (!reactions.isEmpty()) r.withWallFilm(hn, area, 0.002);
+                        c.network.add(new ThermalConductance(hn, r.temperatureNode(), 50 * area));
+                    }
+                }
+            }
             Set<Long> seen = new HashSet<>();
             for (Part p : comp) {
                 for (int x = p.minX(); x <= p.maxX(); x++)

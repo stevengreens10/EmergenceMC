@@ -74,7 +74,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    Semenov thermal explosion)
 ✅ Sealed gas vessels in builds: equilibrium (brown-gas exhibit) and thermal explosion (heated can of methane–air)
 ✅ Flowing gas mixtures: choked orifices, natural draft, well-stirred combustion; gas burner exhibit
-⬜ Internal-combustion engines (cylinders with intake/exhaust), liquids/solutions, separation processes,
+✅ Internal-combustion engine (four-stroke gas engine: cam-timed valves, half-speed camshaft, glow-plug ignition)
+⬜ Liquids/solutions, separation processes,
    manufacturing
 
 ## Phase 6 — Advanced multiphysics

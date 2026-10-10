@@ -209,6 +209,11 @@ P/P_cr = 0.5000 and 2.0000 (Euler exactly), its top swaying most; a hanging (ten
 exhibit: the short strip at 0.568 of its critical load (Euler 0.53, plus self-weight and the base joint), the
 tall strip with the same 27 N block at 1.743 (Euler 1.72): it fails, the short one stands.
 
+Gas engine: the four-stroke engine fires every cycle near top dead centre (peak 7.7 MPa, compression ratio 9),
+burns its methane to CO₂ (up to 9.5 %), and its power strokes take the crank from 30 to 115 rad/s in 10 s against
+a Prony brake; unbraked, its fixed fuel flow governs it near 200 rad/s as the mixture leans out. Cam-worked gas
+valve (`MixtureFlowTest`): open, a tank fills from 2 bar; shut, 1.3 Pa leaks in 2 s.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

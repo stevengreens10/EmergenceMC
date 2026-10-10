@@ -19,10 +19,22 @@ public final class LoadContext implements StateView {
     double alpha;
     // integration history (owned by the solver)
     double[] q0, q1, qd0, qNew, qdNew;
+    /** Per unknown: the smallest Newton update that is resolvable at all (see {@link #noiseFloor}). */
+    double[] floor;
 
     @Override
     public double x(int index) {
         return index < 0 ? 0.0 : x[index];
+    }
+
+    /**
+     * Declares that unknown {@code index} cannot be resolved more finely than {@code v} in this state: the rounding
+     * of the terms of its own equation moves it by that much (a flow through a wide passage between two volumes at
+     * high pressure, whose few-ulp pressure noise means a sizeable flow). The solver does not demand Newton updates
+     * below it.
+     */
+    public void noiseFloor(int index, double v) {
+        if (index >= 0 && floor != null && v > floor[index]) floor[index] = v;
     }
 
     /** Adds v to residual row {@code row}; reference rows (index &lt; 0) are ignored. */

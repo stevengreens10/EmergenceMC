@@ -18,7 +18,9 @@ import java.util.Map;
  */
 public final class SparseLinearSystem implements LinearSystem {
     private static final double PIVOT_THRESHOLD = 0.1;
-    private static final double REFACTOR_PIVOT_TOL = 1e-10;
+    private static final double REFACTOR_PIVOT_TOL = 1e-14, PIVOT_COLLAPSE = 1e-8;
+    /** Each pivot's value when the pivot order was last chosen (see refactor). */
+    private double[] pivotAtFactor;
 
     private final int n;
     // Assembled matrix entries
@@ -370,6 +372,7 @@ public final class SparseLinearSystem implements LinearSystem {
             uPat[s] = up;
             uVal[s] = uv;
         }
+        pivotAtFactor = uDiag.clone();
         factored = true;
     }
 
@@ -404,7 +407,12 @@ public final class SparseLinearSystem implements LinearSystem {
                 rowMax = Math.max(rowMax, Math.abs(uv[t]));
                 w[up[t]] = 0;
             }
-            if (!(Math.abs(d) > REFACTOR_PIVOT_TOL * Math.max(rowMax, Math.abs(d))) || !Double.isFinite(d) || d == 0) {
+            // The pivot order stays good while no pivot collapses relative to what it was when the order was chosen
+            // (threshold pivoting chose it as large within its column). Rows mix units — a species balance carries a
+            // reaction rate's temperature slope many orders above its own diagonal — so the row's largest entry is
+            // only a far looser backstop.
+            if (!Double.isFinite(d) || d == 0 || Math.abs(d) < PIVOT_COLLAPSE * Math.abs(pivotAtFactor[s])
+                    || !(Math.abs(d) > REFACTOR_PIVOT_TOL * Math.max(rowMax, Math.abs(d)))) {
                 Arrays.fill(w, 0.0);
                 return false;
             }

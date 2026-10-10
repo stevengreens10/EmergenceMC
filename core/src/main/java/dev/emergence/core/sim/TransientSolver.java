@@ -120,6 +120,8 @@ public final class TransientSolver implements StateView {
 
     /** Every element stamps the Jacobian and residual, each in a segment of its own (see SparseLinearSystem). */
     private void loadAll() {
+        if (ctx.floor == null || ctx.floor.length != n) ctx.floor = new double[n];
+        else Arrays.fill(ctx.floor, 0.0);
         for (int k = 0; k < elements.size(); k++) {
             jac.beginSegment(k);
             elements.get(k).load(ctx);
@@ -448,7 +450,7 @@ public final class TransientSolver implements StateView {
                     dx[i] = (lim - xTrial[i]) / scale;
                 }
                 xTrial[i] += scale * dx[i];
-                double tol = (relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i]) * tolScale;
+                double tol = Math.max((relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i]) * tolScale, ctx.floor[i]);
                 if (Math.abs(dx[i]) > tol) {
                     small = false;
                     lastBadUnknown = net.unknownName(i) + " = " + xTrial[i] + " (step " + dx[i] + ")";

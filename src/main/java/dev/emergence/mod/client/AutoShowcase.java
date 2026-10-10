@@ -205,6 +205,9 @@ public final class AutoShowcase {
                 STEPS.add(new Step(400, () -> server.overworld().removeBlock(part, false), null, () -> gone(part, kind)));
                 STEPS.add(new Step(60, () -> { }, "showcase-" + (i + 1) + "-" + id + "-dark"));
             }
+            if (id.equals("eddy")) {
+                STEPS.add(new Step(60, () -> { }, "showcase-" + (i + 1) + "-" + id + "-braked"));
+            }
             if (id.equals("fatigue")) {
                 // both shafts spin; the aluminium one cracks after some two thousand turns and drops its disc
                 BlockPos root = DemoBuilder.partBlock(plot, e, "aluminiumRoot");

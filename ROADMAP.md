@@ -52,6 +52,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    fluid and rotor weights; yield (ductile) and fracture (brittle) failure with progressive collapse
 ✅ Euler buckling (linear stability of the frame; buckling exhibit)
 ✅ Fatigue of turning shafts: rotating bending on a beam model, Basquin S–N lines, endurance limits, Miner's rule
+✅ Eddy-current drag: moving conductors and magnets (Arago's disc, brakes, magnets in tubes), heat in the conductor
 ⬜ Dynamic loads (impacts, vibration, resonance), fatigue of the static frame, creep, plasticity, soil
 
 ## Phase 4 — Electronics and computation

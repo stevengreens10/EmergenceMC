@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(),
                 miniatureGenerator());
     }
 
@@ -414,6 +414,53 @@ public final class Exhibits {
         r.pin("s3", 12, 0, 13).pin("s3", 10, 0, 8);
         r.route();
         return e.view(7.5, 7, 17, 35);
+    }
+
+    /**
+     * Arago's disc: two discs on shafts, spun up, each passing between two strong magnets at its rim. The aluminium
+     * one is braked by the eddy currents its motion through the field induces, and warms; the nylon one, which cannot
+     * carry a current, coasts on.
+     */
+    public static Exhibit eddyBrake() {
+        Exhibit e = new Exhibit("eddy", "Eddy-current brake",
+                List.of("EDDY CURRENTS", "Magnets brake the", "aluminium disc,", "not the nylon one"),
+                "Each disc spins past two magnets at its rim. Where the aluminium passes through their field it is "
+                        + "cutting magnetic flux, and like a dynamo's wire it gets an EMF, v × B; aluminium conducts, so "
+                        + "currents swirl in it (eddy currents), and a current crossing a magnetic field feels a force: "
+                        + "against the motion. The disc slows, its kinetic energy turning to heat in the metal, and the "
+                        + "faster it turns the harder the brake pulls (F = σ·t·B²·v per unit of disc in the field). "
+                        + "Nothing touches it. The nylon disc, an insulator, carries no current and coasts on. Trains, "
+                        + "roller coasters and exercise bikes brake like this; Arago saw it in 1824.");
+        String st = "steel_1045";
+        String[] disc = {"aluminium_6061", "nylon_66"};
+        String[] name = {"aluminium", "nylon"};
+        for (int k = 0; k < 2; k++) {
+            int z = 3 + 8 * k;
+            e.fill(BLOCK, st, 2, 0, z, 2, 2, z, Dir.UP);
+            e.fill(BLOCK, st, 4, 0, z, 4, 2, z, Dir.UP);
+            e.add(BEARING, st, 2, 3, z, Dir.EAST);
+            e.add(BEARING, st, 4, 3, z, Dir.EAST);
+            int s = e.fill(SHAFT, st, 1, 3, z, 6, 3, z, Dir.EAST, "diameter", 0.012);
+            e.name(name[k] + "Shaft", s);
+            e.init(s, new Exhibit.Initial(Double.NaN, 60, 0));
+            e.add(CRANK, st, 0, 3, z, Dir.EAST, "radius", 0.1);
+            // the disc: a 5 × 5 plate, 6 mm thick, on the shaft's end
+            int d = -1;
+            for (int y = 1; y <= 5; y++)
+                for (int dz = -2; dz <= 2; dz++) {
+                    int q = e.add(BLOCK, disc[k], 6, y, z + dz, Dir.EAST, "fill", 0.1);
+                    if (d < 0) d = q;
+                    if (y == 5 && dz == 0) e.name(name[k] + "Rim", q);
+                }
+            e.name(name[k] + "Disc", d);
+            // two magnets just off the rim, either side of it, magnetised through it; each on an arm from behind
+            for (int x : new int[]{5, 7}) {
+                e.add(MAGNET, "ndfeb_n42", x, 6, z, Dir.EAST);
+                e.fill(BLOCK, st, x, 6, z - 1, x, 6, z - 3, Dir.UP);
+                e.fill(BLOCK, st, x, 0, z - 3, x, 5, z - 3, Dir.UP);
+            }
+        }
+        return e.view(9, 6, 17, 14, 150);
     }
 
     /**

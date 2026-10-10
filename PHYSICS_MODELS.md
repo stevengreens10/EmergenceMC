@@ -505,3 +505,16 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Damage**: Miner's rule, D += n/N_f per step with n the revolutions turned (from the body's angle); D persists with
   the world. At D = 1 the section cracks through and the part breaks; whatever of the body lies beyond it with no
   bearing left to hold it falls.
+
+## Eddy currents (`em.EddyCurrents`, `EddyCurrentDrag`, `AssemblyCompiler.buildEddyCurrents`)
+* A conducting sheet (thickness t, conductivity σ) moving with velocity v through a field whose component normal to it
+  is B_n carries J = σ v × B and is dragged with σ·t·B_n²·v_⊥ per unit area (v_⊥ its velocity in its own plane). Where
+  the currents close on themselves (round a tube moving along its axis) this is exact; under a pole in a plate their
+  return paths through the plate leave about half (shape factor 0.5).
+* Every conducting plate (sampled 4 × 4 across its face, thickness its fill) or pipe wall (12 × 8, normals radial)
+  near a magnet, the two on different bodies at least one of which moves, couples them with a viscous drag
+  τ = c(x)·(ω_a − ω_b), c tabulated over the moving body's angle (180 steps) or travel (64) as Σ η σ t A B_n² |v_⊥|²
+  per unit speed; two bodies on one axis (a drag cup) use its average over their relative angle. σ follows the
+  conductor's temperature; the dissipated c·Δω² heats it.
+* Low-speed regime (magnetic Reynolds number μ0σvt ≪ 1): the induced currents' own field, and the drag's peak and
+  fall at high speed, are not modelled; two independently moving bodies (not coaxial) are not coupled.

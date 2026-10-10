@@ -1291,6 +1291,7 @@ public final class AssemblyCompiler {
             buildRadiation();
             buildElectrochemistry();
             buildMagnetics();
+            buildEddyCurrents();
         }
 
         /**
@@ -1852,6 +1853,87 @@ public final class AssemblyCompiler {
                     if (open > 0) pd.addHotSource(tn, g0 * open / 5.0, ambientT);
                 }
             }
+        }
+
+        /**
+         * Eddy-current drag: every conducting plate or pipe wall near a magnet, the two on different bodies at least one
+         * of which moves, gets an {@link dev.emergence.core.sim.elements.EddyCurrentDrag} between those bodies. The plate
+         * (4×4 points across its face, its normal along its axis, its thickness its fill) or the pipe wall (12 × 8 points,
+         * normals radial) is sampled ({@link dev.emergence.core.em.EddyCurrents}): at each point the field's normal
+         * component from the magnet, the point's speed across the field per unit speed of the moving body, and
+         * η·σ·t·A·B_n²·|v_⊥|² — tabulated over the moving body's angle (180 steps) or travel (64). Two bodies turning about one axis (a drag
+         * cup) couple through the coefficient averaged over their relative angle.
+         */
+        void buildEddyCurrents() {
+            List<Part> magnets = new ArrayList<>(), conductors = new ArrayList<>();
+            for (Part p : parts) {
+                if (p.kind() == PartKind.MAGNET && p.material().has(MaterialProperty.REMANENCE)) magnets.add(p);
+                boolean sheet = p.kind() == PartKind.BLOCK || p.kind() == PartKind.PIPE;
+                if (sheet && p.material().get(MaterialProperty.ELECTRICAL_RESISTIVITY, 1) < 1e-5) conductors.add(p);
+            }
+            if (magnets.isEmpty() || conductors.isEmpty()) return;
+            for (Part mp : magnets) {
+                CompiledAssembly.Body bm = c.bodyOfPart.get(mp.id());
+                if (bm == null) continue;
+                for (Part cp : conductors) {
+                    CompiledAssembly.Body bc = c.bodyOfPart.get(cp.id());
+                    if (bc == null || bc == bm || (bm.isStatic && bc.isStatic)) continue;
+                    eddyPair(mp, bm, cp, bc);
+                }
+            }
+        }
+
+        void eddyPair(Part mp, CompiledAssembly.Body bm, Part cp, CompiledAssembly.Body bc) {
+            dev.emergence.core.em.CuboidMagnet mag = PartGeometry.magnet(mp);
+            List<dev.emergence.core.em.EddyCurrents.Sample> samples;
+            if (cp.kind() == PartKind.BLOCK) {
+                int ax = cp.axis().axis();
+                double t = cp.boxSize(ax) * Math.max(0.01, Math.min(1, cp.param("fill", 1.0)));
+                samples = dev.emergence.core.em.EddyCurrents.plate(cp.center(), ax, cp.boxSize((ax + 1) % 3), cp.boxSize((ax + 2) % 3), t, 4);
+            } else {
+                double w = PartGeometry.wallThickness(cp);
+                samples = dev.emergence.core.em.EddyCurrents.tube(cp.center(), cp.axis().vec(), PartGeometry.pipeBore(cp) / 2 + w / 2, w,
+                        PartGeometry.axialLength(cp), 12, 8);
+            }
+            double rho = cp.material().resistivity(ambientT), sigma = 1 / rho;
+            boolean coaxial = !bm.isStatic && !bc.isStatic && !bm.slider && !bc.slider
+                    && bm.axis.dot(bc.axis) > 1 - 1e-9 && bm.pivot.sub(bc.pivot).cross(bc.axis).length() < 1e-9;
+            if (!bm.isStatic && !bc.isStatic && !coaxial) return; // two independently moving bodies: not modelled
+            CompiledAssembly.Body mover = bc.isStatic ? bm : bc;
+            boolean slider = mover.slider;
+            int n = slider ? 64 : 180;
+            double lo = slider ? mover.strokeLo : 0, hi = slider ? mover.strokeHi : 2 * Math.PI;
+            if (slider && !(hi > lo)) return;
+            // the samples' (or the field pattern's) velocity per unit speed of the moving body
+            java.util.function.Function<Vec3, Vec3> velocity = slider ? q -> mover.axis : q -> mover.axis.cross(q.sub(mover.pivot));
+            boolean conductorMoves = mover == bc;
+            double[] table = new double[n];
+            double peak = 0;
+            for (int k = 0; k < n; k++) {
+                double x = slider ? lo + (hi - lo) * k / (n - 1) : (hi - lo) * k / n;
+                List<dev.emergence.core.em.EddyCurrents.Sample> at = samples;
+                dev.emergence.core.em.CuboidMagnet m = mag;
+                if (conductorMoves) {
+                    at = new ArrayList<>();
+                    for (var smp : samples) at.add(slider ? smp.moved(mover.pivot, mover.axis, 0, mover.axis.mul(x))
+                            : smp.moved(mover.pivot, mover.axis, x, Vec3.ZERO));
+                } else {
+                    m = slider ? mag.translated(mover.axis.mul(x)) : mag.rotated(mover.pivot, mover.axis, x);
+                }
+                table[k] = sigma * dev.emergence.core.em.EddyCurrents.coefficient(at, m, velocity);
+                peak = Math.max(peak, table[k]);
+            }
+            if (peak < 1e-9) return;
+            if (coaxial) {
+                double avg = 0;
+                for (double v : table) avg += v / n;
+                table = new double[]{avg};
+            }
+            Node ref = mover.slider ? refT : refR;
+            Node na = bc.isStatic ? ref : bc.node, nb = bm.isStatic ? ref : bm.node;
+            AngleTracker pose = coaxial ? null : mover.tracker;
+            c.network.add(new dev.emergence.core.sim.elements.EddyCurrentDrag(na, nb, c.thermalOfPart.get(cp.id()), pose, table, lo, hi,
+                    !slider, cp.material(), rho));
         }
 
         /** True if some part of body b, turned to some angle, lands on one of the sample points. */

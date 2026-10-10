@@ -1414,4 +1414,33 @@ class DemoExhibitsTest {
         }
         System.out.println("rotating-bending amplitudes:" + log);
     }
+
+    /** Eddy-current brake: the aluminium disc slows and warms by the kinetic energy it loses; the nylon one coasts. */
+    @Test
+    void eddyCurrentsBrakeTheAluminiumDisc() {
+        Exhibit e = Exhibits.eddyBrake();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long al = b.id(e, "aluminiumShaft"), ny = b.id(e, "nylonShaft");
+        double j = c.bodyOf(al).inertia(), w0 = c.probe(al).angularVelocity();
+        StringBuilder log = new StringBuilder();
+        for (int s = 0; s < 6; s++) {
+            run(c, 2);
+            log.append(String.format(" %.0f s: %.1f / %.1f rad/s;", c.time(), c.probe(al).angularVelocity(), c.probe(ny).angularVelocity()));
+        }
+        double wAl = c.probe(al).angularVelocity(), wNy = c.probe(ny).angularVelocity();
+        // the heat in the aluminium disc against the kinetic energy it lost (its bearings take a little)
+        double heat = 0;
+        for (long id : c.bodyOf(al).parts()) {
+            var p = b.assembly().get(id);
+            if (!p.material().id().equals("aluminium_6061")) continue;
+            heat += (c.temperature(id) - AMBIENT) * dev.emergence.core.assembly.PartGeometry.mass(p)
+                    * p.material().get(dev.emergence.core.materials.MaterialProperty.SPECIFIC_HEAT, 0);
+        }
+        double lost = 0.5 * j * (w0 * w0 - wAl * wAl);
+        System.out.printf("eddy brake:%s kinetic energy lost %.1f J, heat in the disc %.1f J%n", log, lost, heat);
+        assertTrue(wAl < 0.3 * w0, "the aluminium disc is braked: " + wAl);
+        assertTrue(wNy > 0.9 * w0, "the nylon disc coasts: " + wNy);
+        assertEquals(lost, heat, 0.1 * lost, "the kinetic energy becomes heat in the disc");
+    }
 }

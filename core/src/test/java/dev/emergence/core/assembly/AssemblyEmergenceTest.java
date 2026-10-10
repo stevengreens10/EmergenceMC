@@ -136,7 +136,10 @@ class AssemblyEmergenceTest {
         double heat = 0;
         for (long id : loaded.partIds()) {
             Part p = loaded.assembly().get(id);
-            if (loaded.bodyOf(id).isStatic() && p.kind() != PartKind.BEARING) {
+            // the circuit's parts (the frame's steel also warms, from eddy currents the passing magnets induce in it)
+            boolean circuit = p.kind() == PartKind.COIL || p.kind() == PartKind.WIRE || p.kind() == PartKind.INSULATED_WIRE
+                    || p.kind() == PartKind.RESISTOR;
+            if (loaded.bodyOf(id).isStatic() && circuit) {
                 heat += (loaded.temperature(id) - loaded.assembly().ambientTemperature()) * PartGeometry.mass(p)
                         * p.material().get(dev.emergence.core.materials.MaterialProperty.SPECIFIC_HEAT, 0);
             }

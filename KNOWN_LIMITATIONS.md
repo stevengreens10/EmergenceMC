@@ -167,3 +167,6 @@ multimeter, oscilloscope/data logging.
 * Fatigue: only turning shafts in rotating bending under the weight they carry (not gear-mesh, belt or unbalance
   forces, not the static frame under vibration); no mean-stress (torque), size or surface-finish corrections; linear
   (Miner) damage; the crack is all-or-nothing (no crack growth, no stiffness loss before it parts).
+* Eddy currents: low-speed (no self-field, no high-speed fall-off), plates and pipe walls only (not shafts or solid
+  blocks' volume currents), a fixed shape factor for plates; not between two independently moving bodies. Eddy
+  losses in coil cores and iron (core loss) are not modelled.

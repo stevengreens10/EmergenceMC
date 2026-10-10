@@ -334,3 +334,10 @@ resistor. At first the arm drifted 0.19 rad off target: in a differential amplif
 lost its DC path while the non-inverting divider kept its, so the loop balanced at 91 % of the set-point; a twin
 capacitor in the divider's ground leg keeps the two networks matched at every frequency. The droop (up to 0.15 rad
 holding the arm up) is gone: 1 mrad.
+
+**Eddy currents.** Conductors moving through magnetic fields are braked: σ·t·B_n²·v per unit of sheet, tabulated over
+the moving body's pose from the cuboid-magnet field, heat to the conductor. Validated against the falling-magnet
+tube problem's closed form (to 10⁻⁴ — once the formula quoted from memory, with a spurious π, was rederived). Arago's
+disc exhibit: an aluminium disc stops in seconds between magnets, a nylon one coasts, and the energy balances to
+0.4 %. Magnets weld to whatever structural part they touch, so the exhibit's magnets sit diagonally off the disc's
+rim, on arms from behind.

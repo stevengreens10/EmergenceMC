@@ -246,6 +246,12 @@ non-inverting divider, the arm holds the knob's end-stop demand to 1 mrad (−0.
 against gravity — where proportional control drooped up to 0.15 rad — with tracking lag ≤ 0.045 rad, and settles
 without oscillating. Without the twin the network is unbalanced at DC and the loop holds 91 % of the set-point.
 
+Eddy currents (`EddyCurrentsTest`): a 4 mm magnet moving along a thin tube (radius 20 mm, wall 1 mm) is dragged by
+1.9011·10⁻¹² N·s/m per S/m against the closed form 45 μ0² p² w/(1024 a⁴) = 1.9013·10⁻¹² (σ v B_r round the tube,
+integrated over the dipole's field); motion along the field induces nothing; drag ∝ B². Eddy-current brake exhibit:
+the aluminium disc (between two N42 magnets at its rim) falls from 60 to 4.5 rad/s in 2 s while the nylon one coasts
+at 59.9; the kinetic energy lost, 50.5 J, is found as heat in the disc, 50.3 J.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

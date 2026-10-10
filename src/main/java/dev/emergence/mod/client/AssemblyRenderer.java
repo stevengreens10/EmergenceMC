@@ -54,6 +54,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     /** Rotating parts (gears, crank arms) may sweep well outside their own block. */
     @Override
     public AABB getRenderBoundingBox(AssemblyBlockEntity be) {
+        // an LED's beam reaches across the build
+        for (PlacedPart p : be.parts()) if (p.kind == PartKind.LED && ClientSimState.beams(p.id) != null) return new AABB(be.getBlockPos()).inflate(16);
         return new AABB(be.getBlockPos()).inflate(be.resolution() == AssemblyBlockEntity.BLOCK_SCALE ? 4 : 1);
     }
 
@@ -91,6 +93,11 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         int res = be.resolution();
         float C = 1f / res; // one grid cell in blocks
         boolean glassPending = false;
+        for (PlacedPart p : be.parts()) {
+            if (p.kind != PartKind.LED || ClientSimState.beams(p.id) == null || ClientSimState.gauge(p.id) < 1e-5f) continue;
+            if (c.glass == null) c.glass = buffers.getBuffer(Sheets.translucentCullBlockSheet());
+            drawBeams(c, p);
+        }
         for (int pass = 0; pass < 2; pass++) {
             // pass 0: opaque geometry; pass 1: translucent (jars) — keeps the buffer switches minimal
             if (pass == 1) {
@@ -214,9 +221,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case SPRING -> drawSpring(c, be, p, ez);
             case RACK -> drawRack(c, p, f, ex, ey, ez);
             case MIRROR -> drawMirror(c, p, f, ex, ey, ez);
-            case LENS -> {
-                // the glass is drawn in the translucent pass
-            }
+            case LENS -> drawLensCell(c, p);
             case NUT -> {
                 // a hexagon-ish bronze block round the screw, chamfered at its ends
                 TextureAtlasSprite s = PartModels.sprite("metal_cast");
@@ -415,6 +420,49 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         box(c, PartModels.sprite("tinned"), tintOf(c, 0xC8CCD0), -0.02f, -0.02f, -0.5f, 0.02f, 0.02f, -0.42f);
     }
 
+    /**
+     * An LED's beam through mirrors and lenses: its axis and six rays round it as faint ribbons of its colour,
+     * brighter with its output (a visual aid: light in clean air is invisible from the side).
+     */
+    private void drawBeams(Ctx c, PlacedPart p) {
+        float[] b = ClientSimState.beams(p.id);
+        float watts = ClientSimState.gauge(p.id);
+        int rgb = mix(wavelengthRgb(p.spec.params().getOrDefault("wavelength", 630.0)), 0xFFFFFF, 0.25f);
+        int light = c.light;
+        c.light = LightTexture.FULL_BRIGHT;
+        c.quadTarget = c.glass;
+        TextureAtlasSprite s = PartModels.sprite("glass");
+        int k = 0, rays = (int) b[k++];
+        for (int r = 0; r < rays; r++) {
+            int n = (int) b[k++];
+            float w = r == 0 ? 0.07f : 0.04f;
+            c.quadAlpha = (int) Math.min(200, (r == 0 ? 120 : 80) * (1 + 0.5 * Math.log10(Math.max(1, watts / 1e-4))));
+            for (int i = 0; i + 1 < n; i++) {
+                int a = k + 3 * i, e = a + 3;
+                ribbon(c, s, rgb, b[a], b[a + 1], b[a + 2], b[e], b[e + 1], b[e + 2], w);
+            }
+            k += 3 * n;
+        }
+        c.quadTarget = null;
+        c.quadAlpha = 255;
+        c.light = light;
+    }
+
+    /** Two crossed strips of width w from a to b, seen from both sides. */
+    private void ribbon(Ctx c, TextureAtlasSprite s, int rgb, float ax, float ay, float az, float bx, float by, float bz, float w) {
+        org.joml.Vector3f u = new org.joml.Vector3f(bx - ax, by - ay, bz - az);
+        if (u.lengthSquared() < 1e-8f) return;
+        u.normalize();
+        org.joml.Vector3f p1 = Math.abs(u.y) < 0.9f ? new org.joml.Vector3f(u).cross(0, 1, 0) : new org.joml.Vector3f(u).cross(1, 0, 0);
+        p1.normalize().mul(w / 2);
+        org.joml.Vector3f p2 = new org.joml.Vector3f(u).cross(p1).normalize().mul(w / 2);
+        for (org.joml.Vector3f q : new org.joml.Vector3f[]{p1, p2}) {
+            org.joml.Vector3f nrm = new org.joml.Vector3f(u).cross(q).normalize();
+            quad(c, s, rgb, ax - q.x, ay - q.y, az - q.z, bx - q.x, by - q.y, bz - q.z, bx + q.x, by + q.y, bz + q.z, ax + q.x, ay + q.y, az + q.z, nrm.x, nrm.y, nrm.z);
+            quad(c, s, rgb, ax + q.x, ay + q.y, az + q.z, bx + q.x, by + q.y, bz + q.z, bx - q.x, by - q.y, bz - q.z, ax - q.x, ay - q.y, az - q.z, -nrm.x, -nrm.y, -nrm.z);
+        }
+    }
+
     /** A block of transparent material (glass, fused silica, acrylic): drawn see-through. */
     private static boolean isClear(PlacedPart p) {
         return p.kind == PartKind.BLOCK && p.spec.resolveMaterial().transparent();
@@ -440,7 +488,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         double rim = dev.emergence.core.assembly.PartGeometry.lensRim(cp), half = dev.emergence.core.assembly.PartGeometry.lensThickness(cp) / 2;
         double r1 = dev.emergence.core.assembly.PartGeometry.lensRadius1(cp), r2 = dev.emergence.core.assembly.PartGeometry.lensRadius2(cp);
         c.quadTarget = c.glass;
-        c.quadAlpha = 55;
+        c.quadAlpha = 70;
         TextureAtlasSprite gl = PartModels.sprite("glass");
         int tint = tintOf(c, c.materialRgb);
         int steps = 6;
@@ -454,6 +502,23 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         }
         c.quadTarget = null;
         c.quadAlpha = 255;
+    }
+
+    /** A lens's cell: a thin metal band round its rim (the glass is drawn in the translucent pass). */
+    private void drawLensCell(Ctx c, PlacedPart p) {
+        var cp = p.toCore(BlockPos.ZERO, 16);
+        double rim = dev.emergence.core.assembly.PartGeometry.lensRim(cp), t = dev.emergence.core.assembly.PartGeometry.lensThickness(cp);
+        double r1 = dev.emergence.core.assembly.PartGeometry.lensRadius1(cp), r2 = dev.emergence.core.assembly.PartGeometry.lensRadius2(cp);
+        double edge = t - (r1 == 0 ? 0 : dev.emergence.core.optics.Optics.sag(r1, Math.min(rim, 0.999 * Math.abs(r1))))
+                + (r2 == 0 ? 0 : dev.emergence.core.optics.Optics.sag(r2, Math.min(rim, 0.999 * Math.abs(r2))));
+        float half = (float) Math.max(edge * 8 + 0.03, 0.05), rr = (float) (rim * 16) + 0.025f;
+        TextureAtlasSprite s = PartModels.sprite("metal_brushed");
+        int tint = tintOf(c, 0x2E3034);
+        cylinder(c, s, tint, rr, -half, half, 32, false);
+        c.ps.pushPose();
+        c.ps.mulPose(new Quaternionf().rotateY((float) Math.PI));
+        cylinder(c, s, tint, rr - 0.03f, -half, half, 32, false); // the inside of the band
+        c.ps.popPose();
     }
 
     /**

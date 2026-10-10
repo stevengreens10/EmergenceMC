@@ -443,6 +443,14 @@ public final class CompiledAssembly {
         return new double[]{tq, pw};
     }
 
+    /** LED part id → rays showing its beam through mirrors and lenses (points in metres). */
+    final Map<Long, List<List<Vec3>>> beams = new HashMap<>();
+
+    /** Rays showing an LED's beam where mirrors or lenses turn it (polylines, metres), or null. */
+    public List<List<Vec3>> beams(long ledId) {
+        return beams.get(ledId);
+    }
+
     /** Part id → index in {@link #absorbedLight}. */
     final Map<Long, Integer> lightIndex = new HashMap<>();
     dev.emergence.core.sim.elements.AbsorbedLight absorbedLight;
@@ -480,6 +488,13 @@ public final class CompiledAssembly {
     public double sunlightAbsorbed(long partId) {
         Integer i = lightIndex.get(partId);
         return i == null || absorbedLight == null ? 0 : absorbedLight.power(i);
+    }
+
+    /** Sunlight absorbed in the whole assembly [W] (as last set). */
+    public double sunlightAbsorbed() {
+        double s = 0;
+        if (absorbedLight != null) for (int i : lightIndex.values()) s += absorbedLight.power(i);
+        return s;
     }
 
     /** Sun traces so far and their total time [ms]. */

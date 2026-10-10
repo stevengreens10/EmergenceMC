@@ -192,6 +192,13 @@ public final class SimulationManager {
             bubbles(isl);
             ventPlumes(isl);
             if (tickCount % 20 == 0) daylight(isl);
+            if (tickCount % 400 == 0 && Boolean.getBoolean("emergence.debugIslands") && isl.compiled.sunlightAbsorbed() > 100) {
+                long hot = isl.partPos.keySet().stream().max(java.util.Comparator.comparingDouble(isl.compiled::temperature)).orElse(-1L);
+                EmergenceMod.LOG.info("Island at {}: t = {} s, time scale {}, {} ms/step, hottest {} at {} K", isl.blocks.iterator().next(),
+                        Math.round(isl.compiled.time()), String.format("%.3f", isl.timeScale * scaleOf(isl)), String.format("%.1f", isl.costMs),
+                        hot < 0 ? "-" : isl.compiled.assembly().get(hot).kind() + "@" + isl.partPos.get(hot).toShortString(),
+                        hot < 0 ? 0 : Math.round(isl.compiled.temperature(hot)));
+            }
             sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
         }
@@ -349,10 +356,19 @@ public final class SimulationManager {
         double angle = level.getSunAngle(1.0f); // 0 at noon
         dev.emergence.core.math.Vec3 toSun = new dev.emergence.core.math.Vec3(-Math.sin(angle), Math.cos(angle), 0);
         double irr = toSun.y() > 0 ? 1000 * (1 - 0.75 * level.getRainLevel(1.0f) - 0.15 * level.getThunderLevel(1.0f)) : 0;
+        double traces = isl.compiled.sunTraceCost()[0];
         isl.compiled.setDaylight(toSun.mul(-1), irr, id -> {
             BlockPos pos = isl.partPos.get(id);
             return pos != null && level.canSeeSky(pos.above());
         });
+        if (Boolean.getBoolean("emergence.debugIslands") && isl.compiled.sunTraceCost()[0] > traces) {
+            String top = isl.partPos.keySet().stream()
+                    .sorted((x, y) -> Double.compare(isl.compiled.sunlightAbsorbed(y), isl.compiled.sunlightAbsorbed(x))).limit(3)
+                    .map(id -> isl.compiled.assembly().get(id).kind() + "@" + isl.partPos.get(id).toShortString()
+                            + " " + Math.round(isl.compiled.sunlightAbsorbed(id)) + " W").collect(java.util.stream.Collectors.joining(", "));
+            EmergenceMod.LOG.info("Island at {}: sunlight traced ({} W/m², {} ms so far), {} W absorbed; most by {}", isl.blocks.iterator().next(),
+                    Math.round(irr), Math.round(isl.compiled.sunTraceCost()[1]), Math.round(isl.compiled.sunlightAbsorbed()), top);
+        }
     }
 
     /** Time dilation: shrink an island's simulated step while its cost exceeds the budget, recover when cheap. */
@@ -367,17 +383,20 @@ public final class SimulationManager {
         Set<BlockPos> seeds = new HashSet<>(dirty);
         dirty.clear();
         Set<Island> old = new HashSet<>();
-        // block-scale parts interact across air gaps (gear rims reaching into the next blocks, magnets near
-        // coils); a symmetric reach keeps island membership independent of the flood order
-        int blockReach = 1;
-        for (AssemblyBlockEntity be : blocks.values()) {
-            if (be.resolution() == AssemblyBlockEntity.BLOCK_SCALE) blockReach = Math.max(blockReach, reach(be));
-        }
+        // block-scale parts interact across air gaps (magnets near coils: 2 blocks); large gears' rims reach further,
+        // and optical parts couple whatever lies in their line of sight — both as symmetric links, so island
+        // membership does not depend on the flood order, and one big gear does not widen every block's reach
+        int blockReach = 2;
+        Map<BlockPos, Set<BlockPos>> sight = sightLinks();
         for (BlockPos p : seeds) {
             forNeighbours(p, blockReach, n -> {
                 Island i = islandOf.get(n);
                 if (i != null) old.add(i);
             });
+            for (BlockPos n : sight.getOrDefault(p, Set.of())) {
+                Island i = islandOf.get(n);
+                if (i != null) old.add(i);
+            }
             Island i = islandOf.get(p);
             if (i != null) old.add(i);
         }
@@ -412,10 +431,82 @@ public final class SimulationManager {
                 forNeighbours(b, isl.resolution == AssemblyBlockEntity.BLOCK_SCALE ? blockReach : 1, n -> {
                     if (blocks.containsKey(n) && blocks.get(n).resolution() == isl.resolution && visited.add(n)) q.add(n);
                 });
+                for (BlockPos n : sight.getOrDefault(b, Set.of())) {
+                    if (blocks.containsKey(n) && blocks.get(n).resolution() == isl.resolution && visited.add(n)) q.add(n);
+                }
             }
             AssemblyState st = mergeWithSaved(isl, merged);
             isl.compiled = compile(isl, st);
         }
+    }
+
+    /**
+     * Range [blocks] of an optical part's line of sight for joining islands: a mirror's (concentrators throw light
+     * far), a lens's, LED's or photodiode's (these work at short range); and the cone's half-angle (cosine).
+     */
+    private static final int SIGHT = 15, SIGHT_NEAR = 8;
+    private static final double SIGHT_COS = 0.5;
+
+    /**
+     * Blocks joined by light: a block-scale mirror (lens, LED or photodiode) joins its island with every assembly
+     * block within {@link #SIGHT} ({@link #SIGHT_NEAR}) blocks inside a 60° cone about the directions it sends or receives light along
+     * (a mirror's front, a lens's axis both ways, an LED's or photodiode's face) — the dish and the plate at its
+     * focus are one machine. Symmetric, so membership does not depend on the flood order.
+     */
+    private Map<BlockPos, Set<BlockPos>> sightLinks() {
+        Map<BlockPos, Set<BlockPos>> links = new HashMap<>();
+        List<BlockPos> all = null;
+        for (AssemblyBlockEntity be : blocks.values()) {
+            if (be.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
+            // a large gear's rim reaches into blocks beyond the common reach
+            int far = reach(be);
+            if (far > 2) {
+                BlockPos o = be.getBlockPos();
+                forNeighbours(o, far, n -> {
+                    if (blocks.containsKey(n)) {
+                        links.computeIfAbsent(o, k -> new HashSet<>()).add(n);
+                        links.computeIfAbsent(n, k -> new HashSet<>()).add(o);
+                    }
+                });
+            }
+            List<dev.emergence.core.math.Vec3> dirs = new ArrayList<>();
+            int range = SIGHT_NEAR;
+            for (PlacedPart p : be.parts()) {
+                switch (p.kind) {
+                    case MIRROR -> {
+                        dirs.add(dev.emergence.core.assembly.PartGeometry.mirrorNormal(p.toCore(BlockPos.ZERO, 1)));
+                        range = SIGHT;
+                    }
+                    case LENS -> {
+                        dirs.add(p.axis.vec());
+                        dirs.add(p.axis.vec().mul(-1));
+                    }
+                    case LED, PHOTODIODE -> dirs.add(dev.emergence.core.assembly.PartGeometry.facing(p.toCore(BlockPos.ZERO, 1)));
+                    default -> {
+                    }
+                }
+            }
+            if (dirs.isEmpty()) continue;
+            if (all == null) {
+                all = new ArrayList<>();
+                for (var e : blocks.entrySet()) if (e.getValue().resolution() == AssemblyBlockEntity.BLOCK_SCALE) all.add(e.getKey());
+            }
+            BlockPos o = be.getBlockPos();
+            for (BlockPos n : all) {
+                int dx = n.getX() - o.getX(), dy = n.getY() - o.getY(), dz = n.getZ() - o.getZ();
+                double d2 = dx * dx + dy * dy + dz * dz;
+                if (d2 == 0 || d2 > range * range) continue;
+                double len = Math.sqrt(d2);
+                for (var d : dirs) {
+                    if (dx * d.x() + dy * d.y() + dz * d.z() >= SIGHT_COS * len) {
+                        links.computeIfAbsent(o, k -> new HashSet<>()).add(n);
+                        links.computeIfAbsent(n, k -> new HashSet<>()).add(o);
+                        break;
+                    }
+                }
+            }
+        }
+        return links;
     }
 
     /** True if any block of the island is in a chunk that ticks block entities. */
@@ -925,10 +1016,32 @@ public final class SimulationManager {
         }
         float[] sa = new float[sEnds.size()];
         for (int i = 0; i < sa.length; i++) sa[i] = sEnds.get(i);
+        // LED beams turned by mirrors and lenses: per LED its rays, each a polyline relative to the LED's block
+        // (packed: ray count, then per ray its point count and x, y, z in world blocks)
+        List<Long> bIds = new ArrayList<>();
+        List<Float> bData = new ArrayList<>();
+        for (long id : isl.partPos.keySet()) {
+            var rays = c.beams(id);
+            if (rays == null) continue;
+            BlockPos at = isl.partPos.get(id);
+            bIds.add(id);
+            bData.add((float) rays.size());
+            for (var ray : rays) {
+                bData.add((float) ray.size());
+                for (var pt : ray) {
+                    bData.add((float) (pt.x() * scale - at.getX()));
+                    bData.add((float) (pt.y() * scale - at.getY()));
+                    bData.add((float) (pt.z() * scale - at.getZ()));
+                }
+            }
+        }
+        float[] ba = new float[bData.size()];
+        for (int i = 0; i < ba.length; i++) ba[i] = bData.get(i);
         IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime(), scale,
                 tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray(),
                 fIds.stream().mapToLong(Long::longValue).toArray(), ga, pIds.stream().mapToLong(Long::longValue).toArray(), pa,
-                sIds.stream().mapToLong(Long::longValue).toArray(), sa, (float) (isl.timeScale * scaleOf(isl)));
+                sIds.stream().mapToLong(Long::longValue).toArray(), sa, (float) (isl.timeScale * scaleOf(isl)),
+                bIds.stream().mapToLong(Long::longValue).toArray(), ba);
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
     }

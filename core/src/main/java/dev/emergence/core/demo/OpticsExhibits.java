@@ -176,7 +176,7 @@ public final class OpticsExhibits {
         r.pin("gnd", 3, 1, 3).pin("gnd", 1, 1, 7);
         receiver(e, r, 6, 10, 2.2e6, new int[]{12, 1, 5}, new int[]{12, 1, 7});
         r.route();
-        return e.view(7, 6, 20, 15);
+        return e.view(7, 4, 15, 15);
     }
 
     /**
@@ -199,7 +199,7 @@ public final class OpticsExhibits {
         // the dish: 81 square facets, each a small concave mirror canted so that sunlight from straight above
         // striking its centre reflects through the focus 12 cells (0.75 m) above the middle facet, its radius of
         // curvature twice its distance to the focus (as real segmented concentrators are set up)
-        e.fill(BLOCK, st, 0, 0, 0, 12, 0, 12, Dir.UP, "fill", 0.25);
+        e.add(BLOCK, st, 6, 0, 6, Dir.UP); // one pedestal: the facets touching one another are one rigid dish
         double fx = 6.5, fy = 13.5, fz = 6.5;
         for (int x = 0; x <= 12; x++)
             for (int z = 0; z <= 12; z++) {
@@ -212,6 +212,6 @@ public final class OpticsExhibits {
         e.fill(SHAFT, st, 14, 0, 6, 14, 13, 6, Dir.UP, "diameter", 0.012);
         e.fill(SHAFT, st, 7, 13, 6, 13, 13, 6, Dir.EAST, "diameter", 0.008);
         e.name("target", e.add(BLOCK, st, 6, 13, 6, Dir.UP, "fill", 0.02));
-        return e.view(6.5, 9, 22, 20);
+        return e.view(6.5, 7, 27, 5);
     }
 }

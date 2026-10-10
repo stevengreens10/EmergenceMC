@@ -479,4 +479,8 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   coupling (which now treats mirrors and glass as stopping the straight path and receives on the junction's face).
   Sunlight (`CompiledAssembly.setDaylight`) is traced at 700 nm whenever the sun moves half a degree or a body with
   a mirror, lens or glass moves: what each part absorbs heats it (`AbsorbedLight`, external power), what reaches a
-  junction is the photodiode's daylight. Parts whose block does not see the sky get none.
+  junction is the photodiode's daylight. Parts whose block does not see the sky get none. A small leaded component
+  (resistor, capacitor, chip) shades and absorbs over a cube of its own volume, not its whole cell.
+* **Display**: each visible LED whose axis meets a mirror or lens has its axis and a ring of six rays (filling that
+  first optic) followed along the stronger branch at every surface; the client draws them as faint ribbons of the
+  LED's colour while it shines — a visual aid (a beam in clean air is invisible from the side).

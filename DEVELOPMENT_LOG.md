@@ -307,3 +307,11 @@ photodiode; it now receives on its face, like the tubes, and a glass plate in a 
 source's apparent shift. Sunlight is traced too and heats every part it lands on. A big dish cannot be one part at
 block scale, so mirrors can be canted ("aim"): the solar furnace is 169 concave facets each aimed at one focus,
 as real segmented concentrators are. Exhibits: periscope, lens, solar furnace.
+
+**Optics in the world.** The solar furnace's plate stayed cold in-world although the core heated it red-hot: it was
+its own island (twelve blocks above the dish), and each island traces only its own light. Islands now join along
+optical parts' lines of sight. Then it heated at an eighth of real time: one big gear somewhere set every block's
+reach to 6, merging three exhibits into one slow island; reach is now per block. Then a GameTest's capacitor bank
+burned out: sunlight fell on whole cells round small components; they now absorb over their own size. LED beams are
+drawn (the axis and a ring of rays through mirrors and lenses), and `-Demergence.debugIslands=true` reports traced
+sunlight and the hottest part of sunlit islands.

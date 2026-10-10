@@ -223,6 +223,64 @@ public final class TubeTracer {
         return t.r;
     }
 
+    // ------------------------------------------------------------------ beams for display
+
+    /**
+     * Rays to draw a source's beam: its axis and six rays around it, each followed through mirrors and glass along
+     * the stronger branch at every surface until it is absorbed or leaves the scene ({@code reach} [m] past its last
+     * surface). The ring is set to fill the first mirror or lens the axis meets (half its angular radius, at most the
+     * beam's half-power angle); empty if the axis meets none — a beam that nothing turns is not drawn.
+     */
+    public static List<List<Vec3>> beams(OpticalScene scene, Vec3 pos, Vec3 axis, double m, double nm, long skip, double reach) {
+        Vec3 n = axis.normalize();
+        OpticalScene.Hit first = scene.trace(pos, n, null, skip);
+        if (first == null || !first.obj.redirects()) return List.of();
+        double[] sph = scene.worldSphere(first.obj);
+        double d = new Vec3(sph[0], sph[1], sph[2]).sub(pos).length();
+        double halfPower = m > 0 ? Math.acos(Math.pow(0.5, 1 / m)) : Math.PI / 3;
+        double a = Math.min(halfPower, d > sph[3] ? 0.5 * Math.asin(sph[3] / d) : halfPower);
+        Vec3 e1 = n.anyPerpendicular().normalize(), e2 = n.cross(e1);
+        List<List<Vec3>> out = new ArrayList<>();
+        out.add(follow(scene, pos, n, nm, skip, reach));
+        for (int k = 0; k < 6; k++) {
+            double ph = Math.PI / 3 * k;
+            Vec3 dir = n.mul(Math.cos(a)).add(e1.mul(Math.sin(a) * Math.cos(ph))).add(e2.mul(Math.sin(a) * Math.sin(ph)));
+            out.add(follow(scene, pos, dir, nm, skip, reach));
+        }
+        return out;
+    }
+
+    private static List<Vec3> follow(OpticalScene scene, Vec3 o, Vec3 d, double nm, long skip, double reach) {
+        List<Vec3> pts = new ArrayList<>();
+        pts.add(o);
+        OpticalScene.Obj inside = null;
+        for (int k = 0; k < 24; k++) {
+            OpticalScene.Hit h = scene.trace(o, d, inside, skip);
+            if (h == null) {
+                pts.add(o.add(d.mul(reach)));
+                break;
+            }
+            pts.add(h.point);
+            OpticalScene.Obj ob = h.obj;
+            if (ob.kind == OpticalScene.Kind.ABSORBER || (ob.kind == OpticalScene.Kind.MIRROR && h.surface != 0)
+                    || (ob.kind == OpticalScene.Kind.LENS && h.surface == OpticalScene.LENS_RIM)) break;
+            if (ob.kind == OpticalScene.Kind.MIRROR) {
+                d = Optics.reflect(d, h.normal);
+            } else {
+                double n = ob.index(nm), n1 = inside != null ? n : 1, n2 = inside != null ? 1 : n;
+                Vec3 t = Optics.refract(d, h.normal, n1, n2);
+                if (t != null && Optics.fresnel(Math.abs(d.dot(h.normal)), n1, n2) < 0.5) {
+                    d = t;
+                    inside = inside != null ? null : ob;
+                } else {
+                    d = Optics.reflect(d, h.normal);
+                }
+            }
+            o = h.point;
+        }
+        return pts;
+    }
+
     // ------------------------------------------------------------------ tubes
 
     private void tube(double ua, double va, double ub, double vb, double uc, double vc, int level) {

@@ -26,6 +26,7 @@ public final class ClientSimState {
     private static final Map<Long, Float> GAUGE = new HashMap<>();
     private static final Map<Long, float[]> PISTON = new HashMap<>();
     private static final Map<Long, float[]> SPRING = new HashMap<>();
+    private static final Map<Long, float[]> BEAM = new HashMap<>();
     private static final Map<Long, Track> BODY_TRACK = new HashMap<>(), PISTON_TRACK = new HashMap<>(), SPRING_TRACK = new HashMap<>();
     private static long lastPurge;
 
@@ -93,6 +94,7 @@ public final class ClientSimState {
             GAUGE.remove(id);
             PISTON.remove(id);
             SPRING.remove(id);
+            BEAM.remove(id);
         }
         double s = p.worldScale();
         long now = System.nanoTime();
@@ -114,6 +116,11 @@ public final class ClientSimState {
             for (int k = 0; k < d.length; k++) d[k] = st[k];
             record(PISTON_TRACK, p.pistonIds()[i], now, d, 1);
         }
+        for (int i = 0, k = 0; i < p.beamIds().length; i++) {
+            int start = k, rays = (int) p.beams()[k++];
+            for (int r = 0; r < rays; r++) k += 1 + 3 * (int) p.beams()[k];
+            BEAM.put(p.beamIds()[i], java.util.Arrays.copyOfRange(p.beams(), start, k));
+        }
         for (int i = 0; i < p.springIds().length; i++) {
             float[] se = java.util.Arrays.copyOfRange(p.springEnds(), 2 * i, 2 * i + 2);
             SPRING.put(p.springIds()[i], se);
@@ -125,6 +132,11 @@ public final class ClientSimState {
                 m.values().removeIf(tr -> now - tr.seen > 10_000_000_000L);
             }
         }
+    }
+
+    /** An LED's beam rays (see IslandSyncPayload: ray count, then point count and points per ray), or null. */
+    public static synchronized float[] beams(long partId) {
+        return BEAM.get(partId);
     }
 
     public static synchronized Pose pose(long partId) {

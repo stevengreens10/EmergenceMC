@@ -1792,6 +1792,11 @@ public final class AssemblyCompiler {
                 }));
                 Vec3 ft = PartGeometry.facing(tx), s0 = tx.center().add(ft.mul(0.3 * CELL));
                 var res = dev.emergence.core.optics.TubeTracer.point(scene, s0, ft, tx.param("beam", 6), nm, tx.id(), 16, 7);
+                // rays to show the beam by, if mirrors or lenses turn it (and it is visible)
+                if (nm >= 380 && nm <= 750) {
+                    var rays = dev.emergence.core.optics.TubeTracer.beams(scene, s0, ft, tx.param("beam", 6), nm, tx.id(), 0.25);
+                    if (!rays.isEmpty()) c.beams.put(tx.id(), rays);
+                }
                 for (Part rx : pds) {
                     double f = res.light(rx.id());
                     if (f > 1e-12 && c.deviceOfPart.get(rx.id()) instanceof Photodiode pd) pd.addSource(led, th -> f, null);

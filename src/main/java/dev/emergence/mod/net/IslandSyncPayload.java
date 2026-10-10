@@ -17,7 +17,8 @@ import java.util.List;
  */
 public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] hotIds, float[] hotTemps, long gameTime,
                                 float worldScale, long[] tintIds, int[] tints, long[] fluidIds, float[] gauges,
-                                long[] pistonIds, float[] pistons, long[] springIds, float[] springEnds, float simRate)
+                                long[] pistonIds, float[] pistons, long[] springIds, float[] springEnds, float simRate,
+                                long[] beamIds, float[] beams)
         implements CustomPacketPayload {
 
     /** A moving body: pivot and axis; angle and ω — or, for a slide, displacement [m] and velocity along the axis. */
@@ -62,6 +63,9 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         buf.writeVarInt(p.springEnds.length);
         for (float g : p.springEnds) buf.writeFloat(g);
         buf.writeFloat(p.simRate);
+        buf.writeLongArray(p.beamIds);
+        buf.writeVarInt(p.beams.length);
+        for (float g : p.beams) buf.writeFloat(g);
     }
 
     private static IslandSyncPayload read(FriendlyByteBuf buf) {
@@ -90,8 +94,11 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         float[] springEnds = new float[buf.readVarInt()];
         for (int i = 0; i < springEnds.length; i++) springEnds[i] = buf.readFloat();
         float simRate = buf.readFloat();
+        long[] beamIds = buf.readLongArray();
+        float[] beams = new float[buf.readVarInt()];
+        for (int i = 0; i < beams.length; i++) beams[i] = buf.readFloat();
         return new IslandSyncPayload(all, bodies, hot, temps, time, scale, tintIds, tints, fluidIds, gauges, pistonIds, pistons,
-                springIds, springEnds, simRate);
+                springIds, springEnds, simRate, beamIds, beams);
     }
 
     @Override

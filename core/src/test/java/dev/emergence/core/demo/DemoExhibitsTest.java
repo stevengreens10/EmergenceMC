@@ -691,9 +691,20 @@ class DemoExhibitsTest {
     /** The preheated can of methane–air runs away thermally: a temperature and pressure spike, burnt to CO2 and water. */
     @Test
     void thermalExplosionIgnites() {
+        thermalExplosion(false);
+    }
+
+    /** The same in noon sunshine (as in the world): the sun on its wires and leads must not burn anything out. */
+    @Test
+    void thermalExplosionIgnitesInSunshine() {
+        thermalExplosion(true);
+    }
+
+    static void thermalExplosion(boolean sun) {
         Exhibit e = ChemistryExhibits.thermalExplosion();
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = compile(e, b);
+        if (sun) c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
         var g = c.gas(b.id(e, "can"));
         var ch = dev.emergence.core.chem.Chemistry.standard();
         run(c, 2);
@@ -1219,6 +1230,16 @@ class DemoExhibitsTest {
                 1e3 * out, 1e6 * in, 1e6 * expect, 1e3 * c.probe(lit).current());
         assertEquals(expect, in, 0.03 * expect, "the folded beam's irradiance");
         assertTrue(c.probe(lit).current() > 2e-3, "the green LED lights");
+        // the beam drawn for it: up, east over the wall, down onto the photodiode's face
+        var rays = c.beams(led);
+        assertEquals(7, rays.size(), "the axis and a ring of six");
+        var chief = rays.get(0);
+        var pdPart = b.assembly().get(pd);
+        var end = chief.get(chief.size() - 1);
+        System.out.println("  beam axis: " + chief);
+        assertEquals(4, chief.size(), "LED, two mirrors, photodiode");
+        assertEquals(pdPart.center().x(), end.x(), 1e-9);
+        assertEquals(pdPart.center().y() + 0.5 / 16, end.y(), 1e-9, "on the photodiode's top face");
         b.assembly().remove(b.id(e, "mirrorB"));
         CompiledAssembly c2 = AssemblyCompiler.compile(b.assembly(), b.state());
         run(c2, 0.3);
@@ -1264,6 +1285,7 @@ class DemoExhibitsTest {
         double area = Math.pow(13.0 / 16, 2), dishHeatAll = 0;
         for (var p : b.assembly().parts()) if (p.kind() == dev.emergence.core.assembly.PartKind.MIRROR) dishHeatAll += c.sunlightAbsorbed(p.id());
         dishHeat = dishHeatAll;
+        System.out.printf("solar furnace: all parts absorb %.1f W%n", c.sunlightAbsorbed());
         System.out.printf("solar furnace: plate absorbs %.1f W, dish %.1f W, of %.1f W on the dish; traced in %.1f ms%n",
                 onPlate, dishHeat, 1000 * area, c.sunTraceCost()[1]);
         // aluminium reflects ~92 % at 700 nm; steel absorbs 1 − R ≈ 40 %; the plate's shadow and the dish's rim lose a little

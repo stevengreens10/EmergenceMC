@@ -102,7 +102,20 @@ final class AssemblyOptics {
                     double area = c.deviceOfPart.get(p.id()) instanceof dev.emergence.core.sim.elements.Photodiode pd ? pd.area() : 7.5e-6;
                     s.aperture(o, 2 * ax + (f.get(ax) > 0 ? 1 : 0), area);
                 }
-                default -> s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
+                default -> {
+                    // a small component (a resistor, a capacitor, a chip) shades and absorbs over its own body — a
+                    // cube of its volume in the middle of its cells — not over the whole cells it sits in
+                    if (p.kind().leaded) {
+                        double side = Math.cbrt(Math.max(PartGeometry.volume(p), 1e-12));
+                        Vec3 m = p.center();
+                        for (int k = 0; k < 3; k++) {
+                            double h = 0.5 * Math.min(side, hi[k] - lo[k]);
+                            lo[k] = m.get(k) - h;
+                            hi[k] = m.get(k) + h;
+                        }
+                    }
+                    s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
+                }
             }
         }
         return s;

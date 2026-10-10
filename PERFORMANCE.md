@@ -68,6 +68,11 @@ out of sight. In-world tests and demo generation lift both budgets (they test ti
   Minecraft day) or a body carrying optics moves — never in the noon-fixed demo world. LED ray tubes at compile:
   ~20–50 k tubes (tens of ms) for an LED looking at mirrors or lenses.
 
+* Island membership: the flood used one global reach, the largest of any block (a big gear's: 6), so exhibits
+  whose wires came within 6 blocks across an aisle merged — the periscope, lens and solar furnace became one island
+  costing 10 ms a step (0.13× real time). Reach is now 2 for every block, with large gears' rims and optical lines
+  of sight as symmetric links: the furnace runs alone at 0.6–0.7× in the full gallery.
+
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC
    states) and each step refactorises. Plan: (a) per-island accuracy level / relaxed tolerances for

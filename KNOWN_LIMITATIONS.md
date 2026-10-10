@@ -91,7 +91,9 @@ behaviour; where physics is missing the effect is simply absent.
 * Transistors: no breakdown, high-injection or short-channel effects; MOSFET body tied to source.
 * Logic chips are a reduced-order model (thresholds of ratioed 74HC parts, fixed 10 ns delay, no input
   leakage or ESD diodes); large digital systems still run in the analog solver (no event-driven engine).
-* Light: only LEDs (and daylight) illuminate photodiodes — incandescent parts and torches do not. Diffuse
+* Light: LEDs, daylight and hot parts illuminate photodiodes (hot parts directly only: not by way of mirrors and
+  lenses, and not lighting other parts); torches and Minecraft light do not. Tungsten does not oxidise in air (a real
+  filament needs a bulb of inert gas). Diffuse
   reflection is absorbed or lost (only polished mirrors and glass redirect light); glass is lossless (no bulk
   absorption); metal reflectance is unpolarised and independent of angle; sunlight is one wavelength (700 nm) and a
   point at infinity (no 0.53° solar disc: a perfect focus is sharper than a real one). LED light by way of mirrors

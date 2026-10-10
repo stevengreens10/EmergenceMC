@@ -315,3 +315,11 @@ reach to 6, merging three exhibits into one slow island; reach is now per block.
 burned out: sunlight fell on whole cells round small components; they now absorb over their own size. LED beams are
 drawn (the axis and a ring of rays through mirrors and lenses), and `-Demergence.debugIslands=true` reports traced
 sunlight and the hottest part of sunlit islands.
+
+**Incandescence.** Hot parts light photodiodes: Planck's spectrum weighted by silicon's response, tabulated, coupling
+the photodiode's current to the body's temperature. Daylight now uses the same table (0.243 A/W for a 5778 K sun, not a
+flat 0.5). The lamp exhibit took three tries: a router wire touching the bare filament's middle shorted two thirds of
+it out; then a 187 mm, 0.1 mm filament on 12 V reached only 1260 K — in air a thin wire convects as much as it
+radiates (why lamps are filled with inert gas) — so the filament became one 62.5 mm cell of 0.12 mm wire, ~31 W at
+2560 K. The first version counted gross room-temperature infrared from every part (milliwatts on each photodiode);
+radiation is now net of what the photodiode sends back.

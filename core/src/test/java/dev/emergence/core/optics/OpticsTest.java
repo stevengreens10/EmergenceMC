@@ -180,4 +180,28 @@ class OpticsTest {
             assertEquals(r.total, r.accounted(), 1e-9 * r.total, "every watt accounted for");
         }
     }
+
+    /** Silicon's response to black-body light: nothing from warm bodies, rising steeply with T, ~0.3 A/W for the sun. */
+    @Test
+    void blackbodyResponsivityOfSilicon() {
+        double r300 = dev.emergence.core.sim.elements.Photodiode.blackbodyResponsivity(300);
+        double r1000 = dev.emergence.core.sim.elements.Photodiode.blackbodyResponsivity(1000);
+        double r2856 = dev.emergence.core.sim.elements.Photodiode.blackbodyResponsivity(2856);
+        double rSun = dev.emergence.core.sim.elements.Photodiode.blackbodyResponsivity(5778);
+        System.out.printf("silicon vs black body: %.3g A/W at 300 K, %.3g at 1000 K, %.3f at 2856 K (illuminant A), %.3f at 5778 K%n",
+                r300, r1000, r2856, rSun);
+        assertTrue(r300 < 1e-15, "room-temperature bodies do not light a photodiode");
+        assertTrue(r1000 > 1e-5 && r1000 < 1e-2, "a red-hot body faintly");
+        // illuminant A: Planck's band fraction F(0 → 1.1 µm) at λT = 3140 µm·K is 0.29, where silicon gives ~0.5 A/W
+        assertEquals(0.29 * 0.47, r2856, 0.02);
+        // the sun: 72 % of its radiation lies in silicon's band (0.35–1.1 µm); with the model's 0.8 quantum efficiency
+        // ~0.25 A/W (high-grade cells, QE ~0.95: 0.3–0.35 A/W)
+        assertEquals(0.25, rSun, 0.03);
+        double prev = 0;
+        for (int t = 400; t <= 4000; t += 200) { // (past ~5000 K more of the spectrum lies beyond silicon's blue edge)
+            double v = dev.emergence.core.sim.elements.Photodiode.blackbodyResponsivity(t);
+            assertTrue(v > prev, "rises with temperature at " + t);
+            prev = v;
+        }
+    }
 }

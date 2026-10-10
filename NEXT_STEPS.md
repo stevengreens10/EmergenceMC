@@ -12,7 +12,7 @@
    data logger/oscilloscope instrument to plot the step response.
 
 0. **Light**: an in-game tool to aim mirrors (click a target: cant the facet), prisms (a spectrometer from a
-   flint prism and photodiodes), incandescent sources (hot parts emit Planck spectra), phototransistors and
+   flint prism and photodiodes), hot parts' light through mirrors and lenses (a lamp in a reflector), phototransistors and
    optocouplers; a sun-tracking heliostat (mirror on a clock-driven shaft — moving optics are already traced for
    sunlight); use the light barrier as an encoder for closed-loop motor control by the EM-4.
 

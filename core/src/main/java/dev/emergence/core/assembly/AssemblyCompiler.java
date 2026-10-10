@@ -1693,7 +1693,9 @@ public final class AssemblyCompiler {
                 if (p.kind() == PartKind.LED) leds.add(p);
                 if (p.kind() == PartKind.PHOTODIODE) pds.add(p);
             }
-            if (leds.isEmpty() || pds.isEmpty()) return;
+            if (pds.isEmpty()) return;
+            buildIncandescence(pds);
+            if (leds.isEmpty()) return;
             buildRayOptics(leds, pds);
             for (Part rx : pds) {
                 if (!(c.deviceOfPart.get(rx.id()) instanceof Photodiode pd)) continue;
@@ -1800,6 +1802,53 @@ public final class AssemblyCompiler {
                 for (Part rx : pds) {
                     double f = res.light(rx.id());
                     if (f > 1e-12 && c.deviceOfPart.get(rx.id()) instanceof Photodiode pd) pd.addSource(led, th -> f, null);
+                }
+            }
+        }
+
+        /**
+         * Hot bodies seen by photodiodes: every part with a thermal node within 16 cells in front of a photodiode's
+         * window radiates on it as a grey Lambertian body — g = ε·(A_s/4)·A·cos θ_r/(π d²), its mean projected area
+         * being a quarter of its surface (Cauchy), times the fraction of five rays from the window to the body that
+         * nothing stops. A pair is kept if it could drive 0.1 nA at the body's failure temperature.
+         */
+        void buildIncandescence(List<Part> pds) {
+            dev.emergence.core.optics.OpticalScene scene = null;
+            for (Part rx : pds) {
+                if (!(c.deviceOfPart.get(rx.id()) instanceof Photodiode pd)) continue;
+                Vec3 fr = PartGeometry.facing(rx);
+                int fa = Math.abs(fr.x()) > 0.5 ? 0 : Math.abs(fr.y()) > 0.5 ? 1 : 2;
+                Vec3 r0 = rx.center().add(fr.mul(0.5 * rx.boxSize(fa)));
+                for (Part src : parts) {
+                    if (src == rx || src.kind() == PartKind.ELECTROLYTE) continue;
+                    Node tn = c.thermalOfPart.get(src.id());
+                    if (tn == null) continue;
+                    Vec3 dv = src.center().sub(r0);
+                    double d = dv.length();
+                    if (d < 1e-6 || d > 16 * CELL) continue;
+                    double cr = fr.dot(dv) / d;
+                    if (cr <= 0) continue;
+                    double g0 = PartGeometry.emissivity(src) * PartGeometry.surfaceArea(src) / 4 * pd.area() * cr / (Math.PI * d * d);
+                    double tMax = Math.min(PartGeometry.failureTemperature(src), 5999);
+                    if (g0 * Photodiode.blackbodyCurrent(tMax) < 1e-10) continue;
+                    if (scene == null) scene = AssemblyOptics.scene(a, c, 700, b -> {
+                        double[] m = b.parts.isEmpty() ? null : prev.bodyMotion().get(b.parts.get(0));
+                        return m == null ? 0 : m[1];
+                    });
+                    Vec3 u = dv.mul(1 / d);
+                    Vec3 e1 = Math.abs(u.y()) < 0.9 ? u.cross(new Vec3(0, 1, 0)) : u.cross(new Vec3(1, 0, 0));
+                    e1 = e1.mul(1 / e1.length());
+                    Vec3 e2 = u.cross(e1);
+                    double off = 0.08 * CELL;
+                    int open = 0;
+                    for (Vec3 o : new Vec3[]{Vec3.ZERO, e1.mul(off), e1.mul(-off), e2.mul(off), e2.mul(-off)}) {
+                        Vec3 target = src.center().add(o), from = r0.add(fr.mul(1e-6));
+                        Vec3 ray = target.sub(from);
+                        double len = ray.length();
+                        var h = scene.trace(from, ray.mul(1 / len), null, rx.id());
+                        if (h == null || h.obj.part == src.id() || h.t >= len - 0.02 * CELL) open++;
+                    }
+                    if (open > 0) pd.addHotSource(tn, g0 * open / 5.0, ambientT);
                 }
             }
         }

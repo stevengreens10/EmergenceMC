@@ -205,6 +205,11 @@ public final class AutoShowcase {
                 STEPS.add(new Step(400, () -> server.overworld().removeBlock(part, false), null, () -> gone(part, kind)));
                 STEPS.add(new Step(60, () -> { }, "showcase-" + (i + 1) + "-" + id + "-dark"));
             }
+            if (id.equals("lamp")) {
+                // switch the lamp on: the filament glows white-hot and the electric eye lights its green LED
+                BlockPos sw = DemoBuilder.partBlock(plot, e, "switch"), fil = DemoBuilder.partBlock(plot, e, "filament");
+                STEPS.add(new Step(600, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-on", () -> hottest(fil) > 2300));
+            }
             if (id.equals("furnace")) {
                 // the plate heats in the dish's focus until it glows
                 BlockPos plate = DemoBuilder.partBlock(plot, e, "target");

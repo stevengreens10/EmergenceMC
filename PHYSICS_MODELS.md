@@ -297,7 +297,16 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   table over its angle (a vane or slotted disk chopping the beam). The photocurrent's Jacobian couples to the LED's
   junction unknown and to the rotor angle.
 * **Daylight**: 1000 W/m² × cos(zenith) × (1 − 0.75·rain − 0.15·thunder) along the sun's direction from the time
-  of day, on photodiodes whose face turns to the sun and whose block sees the sky; ~0.5 A/W for sunlight on silicon.
+  of day, traced through the assembly (see Ray optics); silicon's responsivity to it is its response to a 5778 K
+  black body, 0.243 A/W with the model's 0.8 quantum efficiency.
+* **Incandescence** (`Photodiode.addHotSource`, `AssemblyCompiler.buildIncandescence`): every part within 16 cells
+  in front of a photodiode is a grey Lambertian radiator; the radiation reaching the window, net of what the window
+  sends back at the surroundings' temperature, is g·σ(T⁴ − T_a⁴) with g = ε·(A_s/4)·A·cos θ_r/(π d²) × visibility (a
+  convex body's mean projected area is a quarter of its surface — Cauchy); the photocurrent is g·(f(T) − f(T_a)),
+  f(T) = ∫R(λ)·πB(λ, T)dλ, Planck's spectrum weighted by silicon's responsivity (tabulated every 10 K to 6000 K; its
+  Jacobian couples the photodiode to the body's temperature). Warm bodies' infrared lies beyond silicon's band:
+  f(300 K)/σT⁴ ≈ 2·10⁻¹⁶ A/W; a red-hot body (1000 K) 3·10⁻⁴; illuminant A (2856 K) 0.133. Pairs that could not
+  drive 0.1 nA even at the body's failure temperature are dropped.
 
 ## Control and robotics parts (`GravityTorque`, `Potentiometer`, `OpAmp`)
 * **Gravity on rotating bodies**: a body turning about a non-vertical axis whose centre of mass is off the axis

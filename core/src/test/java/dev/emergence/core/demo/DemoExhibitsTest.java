@@ -1320,4 +1320,32 @@ class DemoExhibitsTest {
         System.out.printf("sun tracing [ms]:%s; total %.0f, worst %.0f%n", log, total, worst);
         assertTrue(worst < 1000, "a trace stays under a second: " + worst);
     }
+
+    /** Incandescent lamp: the filament glows white-hot and its Planck radiation lights the photodiode's receiver. */
+    @Test
+    void lampFilamentLightsThePhotodiode() {
+        Exhibit e = OpticsExhibits.lamp();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pd = b.id(e, "pd"), lit = b.id(e, "lit"), fil = b.id(e, "filament");
+        run(c, 0.5);
+        assertTrue(Math.abs(c.probe(pd).current()) < 1e-9, "no photocurrent while the lamp is off (warm bodies' infrared lies beyond silicon's band)");
+        assertTrue(c.probe(lit).current() < 1e-4, "the green LED off");
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 3);
+        double t = c.temperature(fil), i = c.probe(fil).current(), in = c.lightInput(pd);
+        // the filament at T seen from the window 3.5 cells away: g = ε·(πdL/4)·A/(πr²), a quarter of its surface its
+        // mean projected area
+        double r = 3.5 / 16, g = 0.30 * Math.PI * 1.2e-4 / 16 / 4 * 7.5e-6 / (Math.PI * r * r);
+        double expect = g * dev.emergence.core.units.PhysicalConstants.STEFAN_BOLTZMANN * (Math.pow(t, 4) - Math.pow(AMBIENT, 4));
+        System.out.printf("lamp: filament %.0f K, %.3f A; photodiode %.3f µW (estimate %.3f µW), R_b(T) %.3f A/W; green LED %.2f mA%n",
+                t, i, 1e6 * in, 1e6 * expect, dev.emergence.core.sim.elements.Photodiode.blackbodyResponsivity(t), 1e3 * c.probe(lit).current());
+        assertTrue(t > 2300 && t < 3300, "white-hot: " + t);
+        assertEquals(expect, in, 0.02 * expect, "Lambertian emission of its surface onto the window");
+        assertTrue(c.probe(lit).current() > 2e-3, "the green LED lights");
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 3);
+        System.out.printf("  switched off: filament %.0f K, green LED %.3g mA%n", c.temperature(fil), 1e3 * c.probe(lit).current());
+        assertTrue(c.probe(lit).current() < 1e-4, "dark again as the filament cools");
+    }
 }

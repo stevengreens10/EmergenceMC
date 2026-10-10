@@ -229,6 +229,12 @@ two aluminium mirrors), none without the second; the lens gathers 383× the ligh
 direct value matches the analytic one exactly); the solar furnace's 169 canted facets put 230 W on the plate
 (1 − R of steel ≈ 40 % of the dish's focused 600 W), which settles near 880 K, and a sun 20° off axis misses it.
 
+Incandescence (`OpticsTest.blackbodyResponsivityOfSilicon`): silicon's response to black-body light is 0.133 A/W at
+2856 K (Planck's band fraction below 1.1 µm, 0.29, times ~0.47 A/W), 0.243 A/W at 5778 K, nothing at 300 K, and rises
+with T to 4000 K. Lamp exhibit: a 62.5 mm filament of 0.12 mm tungsten on 12 V settles at 2562 K (radiation and
+convection in air balancing ~2.5 A × 12 V); the photodiode 3.5 cells away receives 215.46 µW against the Lambertian
+g·σ(T⁴ − T_a⁴) = 215.40 µW, lights its receiver, and goes dark as the filament cools.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

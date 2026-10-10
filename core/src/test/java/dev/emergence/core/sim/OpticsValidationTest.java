@@ -51,7 +51,7 @@ class OpticsValidationTest {
         n.add(new Resistor(an, gnd, 1e9, null)); // open circuit (voltmeter)
         TransientSolver s = new TransientSolver(n);
         s.advance(1e-3);
-        double iph = 0.5 * 1000 * area, is = 1e-14 * area / 1e-6, vt = PhysicalConstants.K_OVER_Q * 300;
+        double iph = dev.emergence.core.sim.elements.Photodiode.blackbodyResponsivity(5778) * 1000 * area, is = 1e-14 * area / 1e-6, vt = PhysicalConstants.K_OVER_Q * 300;
         assertEquals(vt * Math.log(iph / is + 1), s.x(an), 2e-3, "V_oc = V_T ln(I_ph/I_s + 1)");
         assertTrue(s.x(an) > 0.5 && s.x(an) < 0.8, "a silicon cell's open-circuit voltage: " + s.x(an));
     }

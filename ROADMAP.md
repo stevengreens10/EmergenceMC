@@ -89,6 +89,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Ray optics: mirrors (flat, tilted, canted, concave), spherical lenses, glass blocks; Snell, Fresnel, total internal
    reflection, dispersion; ray-tube transport for LEDs and sunlight; sunlight heats every part (periscope, lens, solar
    furnace exhibits)
+✅ Incandescence: hot parts light photodiodes with Planck's spectrum weighted by silicon's response (lamp exhibit)
 ⬜ Acoustics, geology, environmental, biology; prisms and diffuse reflection; spectrum analyser,
    logic analyser, multi-channel loggers
 

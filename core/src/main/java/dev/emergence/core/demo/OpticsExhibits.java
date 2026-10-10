@@ -214,4 +214,42 @@ public final class OpticsExhibits {
         e.name("target", e.add(BLOCK, st, 6, 13, 6, Dir.UP, "fill", 0.02));
         return e.view(6.5, 7, 27, 5);
     }
+
+    /**
+     * An incandescent lamp: a filament of 0.12 mm tungsten wire, 62.5 mm long, between two leads, lit from a 12 V bank
+     * through a switch. Hot tungsten radiates Planck's spectrum; a photodiode four cells away catches some, and its receiver
+     * lights a green LED while the lamp glows.
+     */
+    public static Exhibit lamp() {
+        Exhibit e = new Exhibit("lamp", "Incandescent lamp",
+                List.of("LAMP", "Hot tungsten glows:", "Planck radiation", "(close the switch)"),
+                "Close the switch: 12 V drives two and a half amperes through a filament of tungsten wire an eighth "
+                        + "of a millimetre thick. It heats until it radiates and convects away what the current puts in, "
+                        + "near 2700 K: white-hot (its resistance rises fifteenfold as it heats, so it settles rather than "
+                        + "running away). Every hot body radiates with Planck's spectrum; at this temperature only about a "
+                        + "tenth of it is visible light, most is infrared. The photodiode facing it turns the part of "
+                        + "that spectrum silicon absorbs (up to 1.1 um) into current, which lights the green LED: an "
+                        + "electric eye. Its current rises steeply with the filament's temperature, which is how optical "
+                        + "pyrometers measure furnaces. (A real lamp keeps its tungsten in a bulb of inert gas: in air it "
+                        + "would burn; oxidation is not modelled here.)");
+        // the lamp circuit: a 12 V bank, a switch, and the filament held up between its two leads
+        int bank = e.add(CAPACITOR, "alumina", 2, 1, 2, Dir.EAST, "capacitance", 500);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        e.name("switch", e.add(SWITCH, "brass", 6, 1, 2, Dir.EAST));
+        e.name("filament", e.add(WIRE, "tungsten", 7, 3, 6, Dir.EAST, "diameter", 1.2e-4));
+        // the electric eye, facing the filament from four cells away
+        e.name("pd", e.add(PHOTODIODE, "silicon", 7, 3, 10, Dir.EAST, "face", 2));
+        int cell = e.add(CAPACITOR, "alumina", 13, 1, 12, Dir.EAST, "capacitance", 10);
+        e.init(cell, new Exhibit.Initial(Double.NaN, 0, 5));
+        Router r = new Router(e, 0, 0, 0, 15, 5, 16);
+        // nothing may touch the bare filament but its two leads, nor stand between it and the eye
+        r.keepClear(7, 4, 5, 7, 5, 9).keepClear(6, 3, 7, 8, 3, 9).keepClear(7, 2, 5, 7, 2, 7).keepClear(7, 3, 5, 7, 3, 5);
+        r.pin("bat", 3, 1, 2).pin("bat", 5, 1, 2);
+        r.pin("sw", 7, 1, 2).pin("sw", 6, 3, 6);    // the leads end against the filament's ends
+        r.pin("ret", 8, 3, 6).pin("ret", 1, 1, 2);
+        r.pin("vdd", 14, 1, 12).pin("gnd", 12, 1, 12);
+        receiver(e, r, 2, 12, 470e3, new int[]{6, 3, 10}, new int[]{8, 3, 10});
+        r.route();
+        return e.view(7, 5, 20, 15);
+    }
 }

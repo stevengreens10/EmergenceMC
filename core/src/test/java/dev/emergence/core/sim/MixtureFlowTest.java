@@ -193,4 +193,25 @@ class MixtureFlowTest {
         assertEquals(lo, r.temperature(s), 2, "adiabatic flame temperature");
         assertTrue(r.moleFraction(s, 3) < 1e-4, "burnt out");
     }
+
+    /** A cam-worked valve passes gas while the cam points at it and seals while it points away. */
+    @Test
+    void camWorkedValveOpensWithTheCam() {
+        double[] filled = new double[2];
+        for (int k = 0; k < 2; k++) {
+            Network n = new Network();
+            Node shaft = n.node(Domain.ROTATIONAL, "shaft");
+            n.add(new dev.emergence.core.sim.elements.Inertia(shaft, 1e3)); // held still: a massive shaft at rest
+            var cam = n.add(new dev.emergence.core.sim.elements.AngleTracker(shaft, k == 0 ? 0.3 : 0.3 + Math.PI));
+            GasReactor tank = volume(n, "tank", 1e-3, 1e5, 300);
+            n.add(new MixtureBranch(AIR, MixtureBranch.End.reservoir(2e5, 300, X_AIR), MixtureBranch.End.of(tank), 1e-5, 3.6e-3, 0.05, 1.5)
+                    .withCam(cam, 0.3, 0.7).withTag("cam valve"));
+            TransientSolver s = new TransientSolver(n).method(IntegrationMethod.BDF2);
+            s.advance(2);
+            filled[k] = tank.pressure(s) - 1e5;
+        }
+        System.out.printf("cam valve: open %.0f Pa, shut %.3g Pa gained in 2 s%n", filled[0], filled[1]);
+        assertTrue(filled[0] > 5e4, "open: the tank fills");
+        assertTrue(Math.abs(filled[1]) < 1e-3 * filled[0], "shut: next to nothing passes");
+    }
 }

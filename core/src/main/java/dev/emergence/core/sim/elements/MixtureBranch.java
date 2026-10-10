@@ -90,6 +90,32 @@ public final class MixtureBranch implements Element {
         return this;
     }
 
+    private AngleTracker cam;
+    private double camPhase, camLap;
+
+    /**
+     * A valve worked by a cam (an eccentric) on a turning body: the opening is scaled by
+     * smoothstep((cos(θ − θ_c) − c)/(1 − c)) — open while the cam's throw is within arccos(c) of pointing at the valve
+     * (as {@link FluidBranch#withCam}).
+     */
+    public MixtureBranch withCam(AngleTracker tracker, double phase, double lap) {
+        this.cam = tracker;
+        this.camPhase = phase;
+        this.camLap = Math.max(0, Math.min(lap, 0.95));
+        return this;
+    }
+
+    double camLift(double theta) {
+        double u = (Math.cos(theta - camPhase) - camLap) / (1 - camLap);
+        u = Math.max(0, Math.min(1, u));
+        return u * u * (3 - 2 * u);
+    }
+
+    /** True if this passage's valve is worked by a cam. */
+    public boolean hasCam() {
+        return cam != null;
+    }
+
     /** Valve opening 0 (shut) … 1 (fully open). */
     public void setOpening(double o) {
         this.opening = Math.max(0, Math.min(1, o));
@@ -111,9 +137,10 @@ public final class MixtureBranch implements Element {
 
     private int[] columns() {
         int m = m();
-        int[] c = new int[1 + 2 * (2 + m)];
+        int[] c = new int[1 + 2 * (2 + m) + (cam != null ? 1 : 0)];
         java.util.Arrays.fill(c, -1);
         c[0] = qIdx;
+        if (cam != null) c[c.length - 1] = cam.angleIndex(); // the cam's angle, last
         for (int side = 0; side < 2; side++) {
             End e = side == 0 ? a : b;
             int o = 1 + side * (2 + m);
@@ -159,7 +186,8 @@ public final class MixtureBranch implements Element {
         double q0 = 1e-9, w = 0.5 * (1 + Math.tanh(q / q0));
         double tUp = w * sa[1] + (1 - w) * sb[1], pUp = w * sa[0] + (1 - w) * sb[0], mUp = w * sa[2] + (1 - w) * sb[2];
         double rho = Math.max(pUp, 1) * mUp / (R * tUp);
-        double aEff = Math.max(opening, 1e-6) * area, mdot = mUp * q;
+        double open = cam == null ? opening : opening * camLift(v[v.length - 1]);
+        double aEff = Math.max(open, 1e-6) * area, mdot = mUp * q;
         double mu = 1.8e-5 * Math.pow(tUp / 300, 0.7);
         // choking: the passage feels at most the critical pressure drop (smoothly: soft max of the downstream
         // pressure and the critical fraction of the upstream one), γ from the upstream mixture
@@ -216,6 +244,7 @@ public final class MixtureBranch implements Element {
     private int rowOf(int[] col, int r) {
         int m = m();
         if (r == 0) return qIdx;
+        if (r >= 1 + 2 * (2 + m)) return -1; // the cam angle: an input only
         int o = (r - 1) % (2 + m);
         return o == 0 ? -1 : col[r];
     }
@@ -223,6 +252,7 @@ public final class MixtureBranch implements Element {
     private double scale(int j) {
         int m = m();
         if (j == 0) return 1e-3;
+        if (j >= 1 + 2 * (2 + m)) return 1; // cam angle [rad]
         int o = (j - 1) % (2 + m);
         return o == 0 ? 1e3 : o == 1 ? 1 : 1e-6;
     }

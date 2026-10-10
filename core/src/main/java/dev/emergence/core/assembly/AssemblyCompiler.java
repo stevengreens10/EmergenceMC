@@ -1987,6 +1987,14 @@ public final class AssemblyCompiler {
         /** A valve's seat in a mixture passage: an orifice (C_d ≈ 0.6) of the valve's bore, opened by hand. */
         void mixtureValve(Part v, MixtureBranch b) {
             if (v.kind() != PartKind.VALVE) return;
+            Object[] cam = cams.computeIfAbsent(v.id(), k -> findCam(v));
+            if (cam.length > 0) {
+                // a valve whose stem rides on a cam: opened by the turning shaft (no hand wheel)
+                CompiledAssembly.Body body = (CompiledAssembly.Body) cam[0];
+                b.withCam(body.tracker, (Double) cam[1], v.param("lap", 0.0));
+                b.setOpening(1);
+                return;
+            }
             b.setOpening(v.switchClosed() ? 1 : 0);
             c.mixtureValves.computeIfAbsent(v.id(), kk -> new ArrayList<>()).add(b);
         }

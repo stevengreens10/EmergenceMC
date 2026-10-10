@@ -1348,4 +1348,70 @@ class DemoExhibitsTest {
         System.out.printf("  switched off: filament %.0f K, green LED %.3g mA%n", c.temperature(fil), 1e3 * c.probe(lit).current());
         assertTrue(c.probe(lit).current() < 1e-4, "dark again as the filament cools");
     }
+
+    /** Metal fatigue: at the same rotating-bending stress the aluminium shaft cracks after its Basquin life; steel runs on. */
+    @Test
+    void aluminiumShaftFatiguesSteelRunsOn() {
+        Exhibit e = Exhibits.fatigue();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long alRoot = b.id(e, "aluminiumRoot"), stRoot = b.id(e, "steelRoot");
+        double[] al = c.fatigue(alRoot), st = c.fatigue(stRoot);
+        // the overhung load's moment at the outer bearing: Σ m·g·(distance beyond it), as 32M/(πd³)
+        var asm = b.assembly();
+        var bearingCell = asm.get(alRoot);
+        double m = 0;
+        for (long id : c.bodyOf(alRoot).parts()) {
+            var p = asm.get(id);
+            double arm = p.center().x() - bearingCell.center().x();
+            if (arm > 0) m += dev.emergence.core.assembly.PartGeometry.mass(p) * dev.emergence.core.assembly.PartGeometry.gravity() * arm;
+        }
+        double sigma = 32 * m / (Math.PI * Math.pow(0.0084, 3));
+        System.out.printf("fatigue: %.1f N·m at the bearing → %.1f MPa (analysed %.1f MPa aluminium, %.1f steel); lives %.0f and %.3g cycles%n",
+                m, sigma / 1e6, al[0] / 1e6, st[0] / 1e6, al[2], st[2]);
+        assertEquals(sigma, al[0], 0.01 * sigma, "rotating-bending amplitude at the bearing");
+        assertTrue(Double.isInfinite(st[2]), "steel below its endurance limit lasts for ever");
+        assertTrue(al[2] > 1e3 && al[2] < 1e4, "aluminium has a finite life");
+        // turn until the aluminium cracks: revolutions counted from the shaft's angle
+        long alBody = alRoot;
+        double turned = 0, last = c.probe(alBody).angle();
+        boolean broke = false;
+        for (int i = 0; i < 4000 && !broke; i++) {
+            var gone = c.step(0.05);
+            double th = c.probe(alBody).angle();
+            turned += Math.abs(th - last) / (2 * Math.PI);
+            last = th;
+            if (gone.contains(alRoot)) {
+                broke = true;
+                System.out.printf("  aluminium cracked after %.0f turns (%.1f s; Miner's sum of the Basquin life %.0f); its disc falls: %s%n",
+                        turned, c.time(), al[2], gone.contains(b.id(e, "aluminiumDisc")));
+                assertEquals(al[2], turned, 0.05 * al[2], "at its Basquin life");
+                assertTrue(gone.contains(b.id(e, "aluminiumDisc")), "the disc beyond the crack falls");
+                assertFalse(gone.contains(stRoot), "the steel shaft is intact");
+            }
+        }
+        assertTrue(broke, "the aluminium shaft cracks within 200 s");
+        System.out.printf("  steel: still turning at %.0f rad/s, damage %.3g%n", c.probe(stRoot).angularVelocity(), c.fatigue(stRoot)[1]);
+        assertEquals(0, c.fatigue(stRoot)[1], 0, "no damage below the endurance limit");
+    }
+
+    /** Only the fatigue exhibit's aluminium shaft has a finite life: the gallery's other machines run indefinitely. */
+    @Test
+    void galleryShaftsOutliveTheirUse() {
+        StringBuilder log = new StringBuilder();
+        for (Exhibit e : Exhibits.all()) {
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+            double worst = 0, life = Double.POSITIVE_INFINITY;
+            for (var p : b.assembly().parts()) {
+                double[] f = c.fatigue(p.id());
+                if (f == null) continue;
+                worst = Math.max(worst, f[0]);
+                life = Math.min(life, f[2]);
+            }
+            if (worst > 0) log.append(String.format(" %s %.0f MPa (life %.3g)", e.id, worst / 1e6, life));
+            if (!e.id.equals("fatigue")) assertTrue(Double.isInfinite(life) || life > 1e9, e.id + ": a shaft would fatigue in " + life + " turns");
+        }
+        System.out.println("rotating-bending amplitudes:" + log);
+    }
 }

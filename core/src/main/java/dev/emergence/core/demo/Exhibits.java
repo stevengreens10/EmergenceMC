@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(),
                 miniatureGenerator());
     }
 
@@ -414,6 +414,50 @@ public final class Exhibits {
         r.pin("s3", 12, 0, 13).pin("s3", 10, 0, 8);
         r.route();
         return e.view(7.5, 7, 17, 35);
+    }
+
+    /**
+     * Wöhler's axles: two shafts the same size, each in two bearings with the same lead disc overhung beyond the outer
+     * one, spun up and left to turn. The disc's weight bends each shaft at its outer bearing; as it turns, the bending
+     * reverses every revolution (rotating bending, ~260 MPa). The steel shaft is below its endurance limit and turns
+     * for ever; the aluminium one, at the same stress, cracks through after about two thousand turns and drops its disc.
+     */
+    public static Exhibit fatigue() {
+        Exhibit e = new Exhibit("fatigue", "Metal fatigue",
+                List.of("METAL FATIGUE", "Same load, same size:", "aluminium cracks,", "steel runs on"),
+                "Each shaft turns in two bearings with a lead disc of 11 kg overhung beyond the outer one. The disc's "
+                        + "weight bends the shaft there: its top fibres stretch and its bottom ones squeeze, about 260 MPa "
+                        + "each way, well below what either metal would take once. But the shaft turns, so every fibre "
+                        + "goes from tension to compression and back once a revolution. Wöhler found (testing railway "
+                        + "axles, 1860s) that metal cracks under a stress repeated often enough, the more readily the "
+                        + "higher it is. Steel has an endurance limit (here 280 MPa): below it, it lasts for ever. "
+                        + "Aluminium has none: at this stress the left shaft cracks after about two thousand turns and its "
+                        + "disc falls. This is why aircraft are inspected and retired by flight hours.");
+        String st = "steel_1045";
+        String[] shaft = {"aluminium_6061", st};
+        String[] name = {"aluminium", "steel"};
+        for (int k = 0; k < 2; k++) {
+            int z = 4 + 6 * k;
+            // the frame: two columns carrying the bearings
+            e.fill(BLOCK, st, 2, 0, z, 2, 2, z, Dir.UP);
+            e.fill(BLOCK, st, 4, 0, z, 4, 2, z, Dir.UP);
+            e.add(BEARING, st, 2, 3, z, Dir.EAST);
+            e.add(BEARING, st, 4, 3, z, Dir.EAST);
+            int s = e.fill(SHAFT, shaft[k], 1, 3, z, 6, 3, z, Dir.EAST, "diameter", 0.0084);
+            e.name(name[k] + "Shaft", s);
+            e.name(name[k] + "Root", s + 3); // the shaft in its outer bearing, where it bends most
+            e.init(s, new Exhibit.Initial(Double.NaN, 150, 0));
+            e.add(CRANK, st, 0, 3, z, Dir.EAST, "radius", 0.1);
+            // the disc: nine lead plates on the shaft's end (the middle one round the shaft itself)
+            int d = -1;
+            for (int y = 2; y <= 4; y++)
+                for (int dz = -1; dz <= 1; dz++) {
+                    int q = e.add(BLOCK, "lead", 6, y, z + dz, Dir.EAST, "fill", 0.5);
+                    if (d < 0) d = q;
+                }
+            e.name(name[k] + "Disc", d);
+        }
+        return e.view(3.5, 5, 17, 18, -150);
     }
 
     /**

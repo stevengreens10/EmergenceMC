@@ -216,6 +216,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
                 t.putDouble("p", v[5]);
                 t.putDouble("Tf", v[6]);
             }
+            if (v.length > 7 && v[7] > 0) t.putDouble("D", v[7]);
             st.add(t);
         }
         tag.put("state", st);
@@ -232,7 +233,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
         for (Tag x : tag.getList("state", Tag.TAG_COMPOUND)) {
             CompoundTag t = (CompoundTag) x;
             savedState.put(t.getLong("id"), new double[]{t.getDouble("T"), t.getDouble("w"), t.getDouble("a"), t.getDouble("i"),
-                    t.getDouble("v"), t.getDouble("p"), t.getDouble("Tf")});
+                    t.getDouble("v"), t.getDouble("p"), t.getDouble("Tf"), t.getDouble("D")});
         }
         savedChemistry.clear();
         CompoundTag chem = tag.getCompound("chem");

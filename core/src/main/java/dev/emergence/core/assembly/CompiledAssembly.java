@@ -332,6 +332,7 @@ public final class CompiledAssembly {
         lag += dt - done;
         List<Long> failed = new ArrayList<>();
         for (long id : vessels().keySet()) if (burstUtilisation(id) >= 1) failed.add(id);
+        if (fatigue != null) for (long id : fatigue.accumulate(this)) if (!failed.contains(id)) failed.add(id);
         sinceStructure += done;
         if (sinceStructure >= 1.0) {
             structure = StructuralAnalysis.run(this);
@@ -449,6 +450,18 @@ public final class CompiledAssembly {
     /** Rays showing an LED's beam where mirrors or lenses turn it (polylines, metres), or null. */
     public List<List<Vec3>> beams(long ledId) {
         return beams.get(ledId);
+    }
+
+    /** Fatigue of turning shafts in rotating bending. */
+    ShaftFatigue fatigue;
+
+    /**
+     * Fatigue of a shaft cell in rotating bending: {stress amplitude [Pa], accumulated damage (Miner's sum), cycles to
+     * failure at that amplitude}, or null if the part is not a bending shaft cell.
+     */
+    public double[] fatigue(long partId) {
+        ShaftFatigue.Cell cell = fatigue == null ? null : fatigue.byPart.get(partId);
+        return cell == null ? null : new double[]{cell.amplitude, cell.damage, ShaftFatigue.cyclesToFailure(cell.part.material(), cell.amplitude)};
     }
 
     /** Part id → index in {@link #absorbedLight}. */
@@ -867,6 +880,7 @@ public final class CompiledAssembly {
                 }
             }
         }
+        if (fatigue != null) for (var e : fatigue.byPart.entrySet()) if (e.getValue().damage > 0) s.damage().put(e.getKey(), e.getValue().damage);
         return s;
     }
 

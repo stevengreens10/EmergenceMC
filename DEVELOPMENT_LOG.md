@@ -323,3 +323,8 @@ it out; then a 187 mm, 0.1 mm filament on 12 V reached only 1260 K — in air a 
 radiates (why lamps are filled with inert gas) — so the filament became one 62.5 mm cell of 0.12 mm wire, ~31 W at
 2560 K. The first version counted gross room-temperature infrared from every part (milliwatts on each photodiode);
 radiation is now net of what the photodiode sends back.
+
+**Metal fatigue.** Turning shafts now fatigue: a beam model of each shaft on its bearings gives the rotating-bending
+stress, Basquin's S–N line from the materials' ultimate and fatigue strengths the life, Miner's rule the damage, which
+persists with the world. Wöhler's axles exhibit: the same load on aluminium and steel shafts of 8.4 mm; aluminium
+cracks after 2101 turns (its predicted life 2099) and drops its disc, steel runs on below its endurance limit.

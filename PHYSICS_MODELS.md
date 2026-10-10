@@ -493,3 +493,15 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Display**: each visible LED whose axis meets a mirror or lens has its axis and a ring of six rays (filling that
   first optic) followed along the stronger branch at every surface; the client draws them as faint ribbons of the
   LED's colour while it shines — a visual aid (a beam in clean air is invisible from the side).
+
+## Metal fatigue of turning shafts (`ShaftFatigue`)
+* **Rotating bending**: each turning body with a shaft along its axis in two or more bearings is a continuous
+  Euler–Bernoulli beam (cubic elements between cell centres, EI from the shaft's diameter and modulus) pinned at its
+  bearings and loaded by the weight across the axis of every part of the body at its place along it. A section's
+  bending stress σ = 32M/(πd³) (× "stress_concentration") reverses once a revolution: its amplitude.
+* **Life**: Basquin's line in log–log through (10³ cycles, 0.9 S_ut) and (N_e, S_e) — the material's fatigue
+  strength; N_e = 10⁷ for steels, irons and titanium, which have an endurance limit (unlimited life below S_e), and
+  5·10⁸ for other metals, which have none. Without fatigue data S_e = S_ut/2.
+* **Damage**: Miner's rule, D += n/N_f per step with n the revolutions turned (from the body's angle); D persists with
+  the world. At D = 1 the section cracks through and the part breaks; whatever of the body lies beyond it with no
+  bearing left to hold it falls.

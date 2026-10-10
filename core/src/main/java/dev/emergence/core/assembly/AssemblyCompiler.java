@@ -116,6 +116,7 @@ public final class AssemblyCompiler {
             buildFluids();
             buildElectrical();
             buildAbsorbedLight();
+            c.fatigue = ShaftFatigue.build(a, c, prev);
             c.network.compile();
             applyPreviousElectricalState();
             c.solver = new TransientSolver(c.network);

@@ -12,12 +12,14 @@ import java.util.Map;
  * @param coilCurrents      coil part id → current [A]
  * @param capacitorVoltages capacitor part id → voltage [V]
  * @param fluids            fluid part id → {pressure [Pa], fluid temperature [K]}
+ * @param damage            part id → accumulated fatigue damage (Miner's sum; 1 is failure)
  */
 public record AssemblyState(Map<Long, Double> temperatures, Map<Long, double[]> bodyMotion,
                             Map<Long, Double> coilCurrents, Map<Long, Double> capacitorVoltages,
-                            Map<String, Double> chemistry, Map<Long, double[]> fluids) {
+                            Map<String, Double> chemistry, Map<Long, double[]> fluids, Map<Long, Double> damage) {
     public static AssemblyState empty() {
-        return new AssemblyState(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+        return new AssemblyState(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(),
+                new HashMap<>());
     }
 
     /**
@@ -32,6 +34,7 @@ public record AssemblyState(Map<Long, Double> temperatures, Map<Long, double[]> 
         chemistry.forEach((k, v) -> { if (Double.isFinite(v)) s.chemistry.put(k, v); });
         bodyMotion.forEach((k, v) -> { if (java.util.Arrays.stream(v).allMatch(Double::isFinite)) s.bodyMotion.put(k, new double[]{0, v[1]}); });
         fluids.forEach((k, v) -> { if (java.util.Arrays.stream(v).allMatch(Double::isFinite)) s.fluids.put(k, v.clone()); });
+        damage.forEach((k, v) -> { if (Double.isFinite(v)) s.damage.put(k, v); });
         return s;
     }
 

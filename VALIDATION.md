@@ -235,6 +235,12 @@ with T to 4000 K. Lamp exhibit: a 62.5 mm filament of 0.12 mm tungsten on 12 V s
 convection in air balancing ~2.5 A × 12 V); the photodiode 3.5 cells away receives 215.46 µW against the Lambertian
 g·σ(T⁴ − T_a⁴) = 215.40 µW, lights its receiver, and goes dark as the filament cools.
 
+Fatigue (`FatigueTest`): Basquin's line passes 10³ cycles at 0.9 S_ut and 10⁷ at steel 1045's 280 MPa, 5·10⁸ at
+aluminium 6061's 96.5 MPa; log-midpoint stress gives the log-midpoint life; steel below its endurance limit lasts for
+ever, aluminium below its fatigue strength does not. Fatigue exhibit: the overhung disc's moment at the outer bearing
+(15.3 N·m) gives 262.8 MPa analysed against 32M/(πd³) = 262.8 MPa; the aluminium shaft cracks after 2101 turns
+against its Basquin life of 2099 and drops its disc; the steel shaft runs on with no damage.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

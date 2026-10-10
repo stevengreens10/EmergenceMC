@@ -51,7 +51,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Static frame analysis of every anchored structure: beam members from contact faces, gravity, held
    fluid and rotor weights; yield (ductile) and fracture (brittle) failure with progressive collapse
 ✅ Euler buckling (linear stability of the frame; buckling exhibit)
-⬜ Dynamic loads (impacts, vibration, resonance), fatigue, creep, plasticity, soil
+✅ Fatigue of turning shafts: rotating bending on a beam model, Basquin S–N lines, endurance limits, Miner's rule
+⬜ Dynamic loads (impacts, vibration, resonance), fatigue of the static frame, creep, plasticity, soil
 
 ## Phase 4 — Electronics and computation
 ✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED, photodiode / solar cell; ⬜ phototransistors

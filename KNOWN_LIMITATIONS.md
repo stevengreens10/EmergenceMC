@@ -164,3 +164,6 @@ multimeter, oscilloscope/data logging.
   build-up; static geometry (coupling computed when the island compiles — a moving source or shield needs a
   rebuild, which happens whenever parts are placed or removed). Energy deposited by gammas in absorbers is not
   added as heat (microwatts for these sources). The counter chip may miss the very first pulse while it powers up.
+* Fatigue: only turning shafts in rotating bending under the weight they carry (not gear-mesh, belt or unbalance
+  forces, not the static frame under vibration); no mean-stress (torque), size or surface-finish corrections; linear
+  (Miner) damage; the crack is all-or-nothing (no crack growth, no stiffness loss before it parts).

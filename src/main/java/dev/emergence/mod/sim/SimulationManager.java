@@ -410,6 +410,7 @@ public final class SimulationManager {
                 merged.capacitorVoltages().putAll(s.capacitorVoltages());
                 merged.chemistry().putAll(s.chemistry());
                 merged.fluids().putAll(s.fluids());
+                merged.damage().putAll(s.damage());
             }
             for (BlockPos b : i.blocks) {
                 islandOf.remove(b);
@@ -560,6 +561,7 @@ public final class SimulationManager {
                 st.coilCurrents().put(e.getKey(), v[3]);
                 st.capacitorVoltages().put(e.getKey(), v[4]);
                 if (v.length > 6 && v[5] > 0) st.fluids().put(e.getKey(), new double[]{v[5], v[6]});
+                if (v.length > 7 && v[7] > 0) st.damage().put(e.getKey(), v[7]);
             }
             st.chemistry().putAll(be.savedChemistry());
         }
@@ -569,6 +571,7 @@ public final class SimulationManager {
         st.capacitorVoltages().putAll(fromOld.capacitorVoltages());
         st.chemistry().putAll(fromOld.chemistry());
         st.fluids().putAll(fromOld.fluids());
+        st.damage().putAll(fromOld.damage());
         return st;
     }
 
@@ -926,7 +929,8 @@ public final class SimulationManager {
                 double[] m = s.bodyMotion().getOrDefault(p.id, new double[]{0, 0});
                 double[] fl = s.fluids().getOrDefault(p.id, new double[]{0, 0});
                 be.savedState().put(p.id, new double[]{s.temperatures().getOrDefault(p.id, isl.ambient), m[0], m[1],
-                        s.coilCurrents().getOrDefault(p.id, 0.0), s.capacitorVoltages().getOrDefault(p.id, 0.0), fl[0], fl[1]});
+                        s.coilCurrents().getOrDefault(p.id, 0.0), s.capacitorVoltages().getOrDefault(p.id, 0.0), fl[0], fl[1],
+                        s.damage().getOrDefault(p.id, 0.0)});
             }
             if (markChanged) be.setChanged();
         }

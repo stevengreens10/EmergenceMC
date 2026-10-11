@@ -339,8 +339,11 @@ momentum bound C_p ≤ 4a(1 − a)² ≤ 16/27 at its own induction, the best C_
 blades' drag); a hovering propeller's induced velocity is exactly momentum theory's √(T/2ρA), figure of merit 0.58;
 a windmill braked by a damper closes its energy ledger to 3·10⁻⁹. The wind turbine exhibit
 (`DemoExhibitsTest.windTurbineTurnsInTheWindAndPowersItsLoad`): 8 m/s → 151 rad/s, 14.1 W from the wind (C_p 0.18),
-7.7 W in the load; 5 m/s → 86 rad/s, 2.6 W; still air → nothing. Its ledger closes to 3·10⁻³ (the generator's
-magnetic coupling; see NEXT_STEPS).
+7.7 W in the load; 5 m/s → 86 rad/s, 2.6 W; still air → nothing. Its ledger closes to 3·10⁻³: the trapezoidal
+rule's energy error on the generator's AC (each step's energy differs from the trapezoid of the power by
+−h/4·Δv·Δi, of one sign for a resistive load). It converges as h²: the hand generator cranked to 160 rad/s shows
+2.4·10⁻⁴ of the work at the default tolerances, 7.3·10⁻⁵ with steps capped at 0.2 ms, 4.5·10⁻⁶ at 0.05 ms — accuracy,
+set by the 10⁻³ local-error tolerance, not a leak.
 
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo

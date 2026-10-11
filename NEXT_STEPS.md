@@ -27,9 +27,7 @@ regenerate the demo world → screenshot tour → docs → commit.
 8. **Magnetics**: iron saturation and hysteresis; hinged armatures and plungers; coils adding to a magnet's MMF
    (polarised relays, electro-permanent releases); relay logic (latching relays, relay gates); core losses; a
    drag-cup speedometer. (Magnets attract iron on slides now.)
-9. **Energy ledger of the magnet generator**: the wind-turbine exhibit's ledger closes only to 3·10⁻³ of the work
-   in (the aerofoil element alone to 10⁻⁹): find the generator coupling's (or multirate's) residue.
-   **Aerodynamics next**: twisted and cambered blades, wings on free bodies (gliders need free rigid bodies),
+9. **Aerodynamics next**: twisted and cambered blades, wings on free bodies (gliders need free rigid bodies),
    propellers driving carts on slides, wind loads on structures.
 10. **Performance**: async island compilation, factorisation reuse for linear islands, cheaper conductor loads (most
    of a circuit island's fast-step time); multirate is in (thermal apart);

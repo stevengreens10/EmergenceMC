@@ -446,3 +446,8 @@ limit holds without being written down. Minecraft has no wind, so there is a mod
 veering). The wind turbine exhibit: four flat blades and the magnet generator on its side; 8 W at 8 m/s. The flat
 plate's own drag holds C_p to ~0.48 at best (Betz 0.59), real enough for untwisted flat blades. An energy-ledger
 residue of 3·10⁻³ in that exhibit is the generator's (the blades' own closes to 10⁻⁹): queued.
+
+**The generator's ledger residue is accuracy, not a leak.** The magnet generator's energy ledger drifted ~6·10⁻⁴ of
+the work at speed, the same with or without multirate and whatever the outer step. Capping the inner step showed it
+converging as h² (16× smaller for 4× shorter steps): the trapezoidal rule's energy error on an AC waveform, where each
+step's −h/4·Δv·Δi has one sign for a resistive load. Within the 10⁻³ local tolerance; recorded in VALIDATION.

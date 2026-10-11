@@ -82,6 +82,19 @@ public final class Material {
         return r + f * (ir - r);
     }
 
+    /**
+     * Bulk absorption coefficient at a wavelength [1/m] (Beer–Lambert: light falls as e^{−α·path} inside): 0 for clear
+     * materials; α_max/(1 + e^{(λ − λ_c)/w}) across a coloured glass's edge (w > 0 long-pass, w < 0 short-pass).
+     */
+    public double absorptionCoefficient(double nm) {
+        Double a = props.get(MaterialProperty.ABSORPTION_COEFFICIENT);
+        if (a == null) return 0;
+        Double edge = props.get(MaterialProperty.ABSORPTION_EDGE), w = props.get(MaterialProperty.ABSORPTION_EDGE_WIDTH);
+        if (edge == null || w == null || w == 0) return a;
+        double x = (nm * 1e-9 - edge) / w;
+        return a / (1 + Math.exp(Math.max(-500, Math.min(500, x))));
+    }
+
     public boolean isConductor() {
         return props.containsKey(MaterialProperty.ELECTRICAL_RESISTIVITY)
                 && props.get(MaterialProperty.ELECTRICAL_RESISTIVITY) < 1e-3;

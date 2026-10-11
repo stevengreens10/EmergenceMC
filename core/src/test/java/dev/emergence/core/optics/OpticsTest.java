@@ -117,6 +117,47 @@ class OpticsTest {
         assertTrue(r.heat(2) > 0, "the floor round the window is warmed");
     }
 
+    /**
+     * A tinted plate: internal transmittance τ = e^{−αt}; with the Fresnel reflections bouncing inside it passes
+     * (1 − R)²τ/(1 − R²τ²), and what is neither passed nor reflected warms the glass.
+     */
+    @Test
+    void tintedPlateFollowsBeerLambert() {
+        double n = 1.5, alpha = 300, t = 0.2 * CELL;
+        OpticalScene s = new OpticalScene(CELL);
+        s.absorbing(s.glass(1, 0, new double[]{0, 3 * CELL, 0}, new double[]{4 * CELL, 3 * CELL + t, 4 * CELL}, n, 0), alpha);
+        OpticalScene.Obj floor = s.absorber(2, 0, new double[]{-CELL, 0, -CELL}, new double[]{5 * CELL, CELL, 5 * CELL}, 0.9);
+        s.aperture(floor, 3, 4 * CELL * CELL);
+        TubeTracer.Result r = TubeTracer.parallel(s, new Vec3(0, -1, 0), 550, 0.25 * CELL, 2, true);
+        double area = 4 * CELL * CELL, plate = 16 * CELL * CELL; // the window's area, and the whole plate's
+        double tau = Math.exp(-alpha * t), rf = ((n - 1) / (n + 1)) * ((n - 1) / (n + 1));
+        double expect = (1 - rf) * (1 - rf) * tau / (1 - rf * rf * tau * tau);
+        double reflected = rf + (1 - rf) * (1 - rf) * rf * tau * tau / (1 - rf * rf * tau * tau);
+        System.out.printf("tinted plate: τ %.4f, T = %.4f (expected %.4f); glass absorbs %.4f (expected %.4f)%n", tau,
+                r.light(2) / area, expect, r.heat(1) / plate, 1 - expect - reflected);
+        assertEquals(expect, r.light(2) / area, 2e-3);
+        // (each watt once: before light was shared between a surface's reflected and transmitted branches, what it had
+        // deposited on its way was counted in both)
+        assertEquals(1 - expect - reflected, r.heat(1) / plate, 2e-3, "the glass takes what it absorbs");
+        assertEquals(1, r.accounted() / r.total, 1e-9, "every watt accounted for");
+    }
+
+    /** The filter glasses' edges: RG630 half-transmits 630 nm through 3 mm and blocks green; BG39 the reverse in the red. */
+    @Test
+    void filterGlassEdges() {
+        var db = dev.emergence.core.materials.MaterialDatabase.standard();
+        var rg = db.get("glass_rg630");
+        var bg = db.get("glass_bg39");
+        double t = 0.003;
+        double rg630 = Math.exp(-rg.absorptionCoefficient(630) * t), rg530 = Math.exp(-rg.absorptionCoefficient(530) * t);
+        double bg500 = Math.exp(-bg.absorptionCoefficient(500) * t), bg800 = Math.exp(-bg.absorptionCoefficient(800) * t);
+        System.out.printf("filters (3 mm): RG630 passes %.3f at 630 nm, %.2g at 530; BG39 %.3f at 500 nm, %.2g at 800%n", rg630, rg530, bg500, bg800);
+        assertEquals(0.5, rg630, 0.05, "RG630: half at its nominal edge");
+        assertTrue(rg530 < 1e-4 && rg.absorptionCoefficient(800) < 1, "blocks green, clear in the red and IR");
+        assertTrue(bg500 > 0.95 && bg800 < 1e-3, "BG39: clear for blue-green, dark in the near infrared");
+        assertEquals(0, db.get("glass_bk7").absorptionCoefficient(550), 0, "clear glass absorbs nothing");
+    }
+
     /** Light launched into the end of a glass rod is trapped by total internal reflection and comes out of the far end. */
     @Test
     void glassRodGuidesLightByTotalInternalReflection() {

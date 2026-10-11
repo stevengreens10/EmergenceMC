@@ -355,6 +355,12 @@ reaches the phototransistor's window, 55 µA of photocurrent (silicon ≈ 0.24 A
 becomes 7.7 mA of collector current (×140, the transistor just saturated: V_CE 0.18 V), lighting the green LED; dark
 with the switch open, and again when it opens.
 
+Absorbing glass (`OpticsTest.tintedPlateFollowsBeerLambert`, `filterGlassEdges`): a plate with α t = 3.75 passes
+0.0217 (analytic (1 − R)²τ/(1 − R²τ²) 0.0217) and absorbs 0.9383 (0.9383), every watt accounted for; RG630 passes
+0.495 at 630 nm through 3 mm. Colour filters exhibit (`DemoExhibitsTest.colourFiltersSortTheFilamentsLightByColour`):
+the same filament seen both ways, red-hot (1607 K) the red side gets 73× the blue-green side's light and only its
+LED lights; white-hot (2748 K) the ratio falls to 7× and both light.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

@@ -12,7 +12,7 @@ regenerate the demo world → screenshot tour → docs → commit.
    on a carried rotor), two-stage isolation; fatigue of the static frame under cyclic loads (rainflow
    counting); gear-mesh and belt forces in the shaft fatigue model.
 3. **Light**: an in-game tool to aim mirrors; a clock-driven heliostat (moving optics are already traced for
-   sunlight); coloured glass (absorption spectra) as filters; hot non-circuit
+   sunlight); scattering (frosted glass, diffuse reflection); hot non-circuit
    parts (a furnace's glowing plate) through optics.
 4. **Acoustics**: turning bodies (fans, gear whine, an unbalanced rotor) and vibrating structures as sources; baffles
    and enclosures (a speaker cabinet turns a dipole into a monopole); impulsive sounds (impacts) beyond tones;

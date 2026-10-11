@@ -374,6 +374,21 @@ public final class TubeTracer {
             out.add(new Leaf(mix(sig, -1), events, w, ESCAPED, null, depObj, depW));
             return;
         }
+        if (inside != null && inside.alpha > 0) {
+            // crossing tinted glass: Beer–Lambert, the light lost heating the glass
+            double kept = w * Math.exp(-inside.alpha * h.point.sub(o).length());
+            int[] dob = Arrays.copyOf(depObj, depObj.length + 1);
+            double[] dw = Arrays.copyOf(depW, depW.length + 1);
+            dob[depObj.length] = inside.index;
+            dw[depW.length] = w - kept;
+            depObj = dob;
+            depW = dw;
+            w = kept;
+            if (w < CUTOFF) {
+                out.add(new Leaf(mix(sig, -3), events, w, CUT, null, depObj, depW));
+                return;
+            }
+        }
         OpticalScene.Obj ob = h.obj;
         long s = mix(sig, ob.index * 8L + h.surface);
         switch (ob.kind) {
@@ -401,10 +416,19 @@ public final class TubeTracer {
                 double rf = Optics.fresnel(cos, n1, n2);
                 Vec3 tr = rf < 1 ? Optics.refract(d, h.normal, n1, n2) : null;
                 if (tr == null) rf = 1;
-                if (rf < 1) path(h.point, tr, w * (1 - rf), inside != null ? null : ob, mix(s, 2), events + 1, depObj, depW, out);
-                if (rf > 0) path(h.point, Optics.reflect(d, h.normal), w * rf, inside, mix(s, 3), events + 1, depObj, depW, out);
+                // what was deposited on the way here is shared between the branches as the light is, so that summed
+                // over the leaves it counts once
+                if (rf < 1) path(h.point, tr, w * (1 - rf), inside != null ? null : ob, mix(s, 2), events + 1, depObj, scaled(depW, 1 - rf), out);
+                if (rf > 0) path(h.point, Optics.reflect(d, h.normal), w * rf, inside, mix(s, 3), events + 1, depObj, scaled(depW, rf), out);
             }
         }
+    }
+
+    private static double[] scaled(double[] a, double f) {
+        if (a.length == 0 || f == 1) return a;
+        double[] b = new double[a.length];
+        for (int i = 0; i < a.length; i++) b[i] = a[i] * f;
+        return b;
     }
 
     // ------------------------------------------------------------------ where the power goes

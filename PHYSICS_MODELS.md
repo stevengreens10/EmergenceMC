@@ -693,3 +693,12 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   photocurrent, collector → base, is base current, so the collector carries β times it until the transistor
   saturates. The enlarged junction's capacitance (≈ 70 pF per 7.5 mm²) sits base–collector, Miller-multiplied: what
   makes phototransistors slow. An LED facing one is an optocoupler: the two circuits share no conductor.
+
+## Absorbing glass (Beer–Lambert)
+* Glass, lenses and prisms of a material with an absorption coefficient α(λ) (`Material.absorptionCoefficient`,
+  coloured filter glasses) attenuate every traced segment inside them as e^{−α·path}, at each band's wavelength; the
+  light lost is deposited in the glass, which warms. A plate passes (1 − R)²τ/(1 − R²τ²), τ = e^{−αt}, with the
+  Fresnel reflections bouncing inside.
+* Tracing fix: light deposited on its way to a glass surface (absorbed by a mirror, or now by tinted glass) was
+  counted once in each of the surface's reflected and transmitted branches; it is now shared between them as the
+  light is, so it counts once.

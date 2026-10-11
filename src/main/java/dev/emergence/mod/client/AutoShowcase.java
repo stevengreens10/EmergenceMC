@@ -228,6 +228,13 @@ public final class AutoShowcase {
                     STEPS.add(new Step(60, () -> toggle(server.overworld(), at), "showcase-" + (i + 1) + "-" + id + "-" + sw));
                 }
             }
+            if (id.equals("filters")) {
+                // red-hot: only the red side lights; white-hot: both
+                BlockPos sw = DemoBuilder.partBlock(plot, e, "switch"), hot = DemoBuilder.partBlock(plot, e, "hotter");
+                BlockPos red = DemoBuilder.partBlock(plot, e, "litRed"), blue = DemoBuilder.partBlock(plot, e, "litBlue");
+                STEPS.add(new Step(400, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-redhot", () -> ledLit(red)));
+                STEPS.add(new Step(400, () -> toggle(server.overworld(), hot), "showcase-" + (i + 1) + "-" + id + "-whitehot", () -> ledLit(blue)));
+            }
             if (id.equals("optocoupler")) {
                 // close the input's switch: the invisible infrared crosses to the phototransistor; the green LED lights
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch"), led = DemoBuilder.partBlock(plot, e, "green");

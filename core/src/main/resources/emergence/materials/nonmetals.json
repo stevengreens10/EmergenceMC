@@ -29,6 +29,34 @@
       "sources": ["Schott N-BK7 data sheet (melting point: transformation temperature)"]
     },
     {
+      "id": "glass_rg630", "name": "Red long-pass filter glass (Schott RG630 type)", "category": "glass", "color": "#B3121C",
+      "properties": {
+        "density": "2.75 g/cm^3", "youngs_modulus": "75 GPa", "shear_modulus": "31 GPa", "poisson_ratio": 0.22,
+        "ultimate_tensile_strength": "45 MPa", "hardness": "5.5 GPa", "fracture_toughness_pa_sqrt_m": "0.8 MPa",
+        "thermal_conductivity": "1.0 W/(m*K)", "specific_heat": "800 J/(kg*K)", "thermal_expansion": "8.7e-6 1/K",
+        "melting_point": "800 K",
+        "electrical_resistivity": "1e12 ohm*m", "relative_permittivity": 7.0, "dielectric_strength": "10 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.5,
+        "refractive_index": 1.54, "abbe_number": 59,
+        "absorption_coefficient": "4000 1/m", "absorption_edge": "605 nm", "absorption_edge_width": "9 nm"
+      },
+      "sources": ["Schott optical filter glass catalogue: RG630 internal transmittance 0.5 at 630 nm for 3 mm, blocking below ~600 nm (edge fitted here by a logistic absorption coefficient; mechanical and thermal values typical of the family)"]
+    },
+    {
+      "id": "glass_bg39", "name": "Blue-green IR-blocking filter glass (Schott BG39 type)", "category": "glass", "color": "#3C9CC4",
+      "properties": {
+        "density": "2.73 g/cm^3", "youngs_modulus": "65 GPa", "shear_modulus": "26 GPa", "poisson_ratio": 0.25,
+        "ultimate_tensile_strength": "35 MPa", "hardness": "4.0 GPa", "fracture_toughness_pa_sqrt_m": "0.6 MPa",
+        "thermal_conductivity": "0.7 W/(m*K)", "specific_heat": "750 J/(kg*K)", "thermal_expansion": "12e-6 1/K",
+        "melting_point": "740 K",
+        "electrical_resistivity": "1e12 ohm*m", "relative_permittivity": 7.0, "dielectric_strength": "10 MV/m",
+        "relative_permeability": 1.0, "emissivity": 0.9, "friction_coefficient": 0.5,
+        "refractive_index": 1.54, "abbe_number": 61,
+        "absorption_coefficient": "3000 1/m", "absorption_edge": "680 nm", "absorption_edge_width": "-15 nm"
+      },
+      "sources": ["Schott optical filter glass catalogue: BG39, a phosphate glass passing blue-green and absorbing red and near infrared (edge fitted here by a logistic absorption coefficient; mechanical and thermal values typical of phosphate glasses)"]
+    },
+    {
       "id": "glass_sf11", "name": "Dense flint glass (N-SF11)", "category": "glass", "color": "#E8EEDD",
       "properties": {
         "density": "3.22 g/cm^3", "youngs_modulus": "90 GPa", "shear_modulus": "36 GPa", "poisson_ratio": 0.235,

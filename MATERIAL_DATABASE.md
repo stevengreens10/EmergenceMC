@@ -12,7 +12,8 @@ loading with a message naming the material and file.
   brass C26000, phosphor bronze C51000, Ti-6Al-4V.
 * **Magnetic**: NdFeB N42, hard ferrite C8, Alnico 5, Sm2Co17, M19 electrical steel.
 * **Glasses and clear plastic**: soda-lime glass, N-BK7 borosilicate crown, N-SF11 dense flint, fused silica,
-  acrylic (PMMA) — with refractive index n_d and Abbe number (Schott data sheets, Malitson 1965).
+  acrylic (PMMA) — with refractive index n_d and Abbe number (Schott data sheets, Malitson 1965); coloured filter glasses after Schott RG630 (red long-pass) and BG39 (blue-green, IR
+  blocking), their absorption edges fitted by a logistic absorption coefficient (see `absorption_*` below).
 * **Non-metals**: alumina 99.5 %, PTFE, nylon 6/6, PVC, natural rubber, muscovite mica,
   electrographite, silicon, germanium, oak, granite, quasi-isotropic CFRP.
 
@@ -58,3 +59,10 @@ Cs-137 (→ Ba-137m 94.4 %), Ba-137m (153.1 s, 661.7 keV 89.99 %), Co-60, Am-241
 lines and locally deposited energy from NNDC/ENSDF. Gamma mass attenuation coefficients at 60/662/1250 keV for air,
 water, silica, aluminium, iron, copper, tungsten, lead (NIST XCOM); every material maps to one of these classes.
 GM tube gamma efficiency 0.5/1.0/1.2 % at those energies; background 0.3 counts/s.
+
+### Absorption of transparent materials
+`absorption_coefficient` α_max [1/m], optional `absorption_edge` λ_c and `absorption_edge_width` w [m]:
+α(λ) = α_max/(1 + e^{(λ − λ_c)/w}) (w > 0: absorbs below the edge, long-pass; w < 0: short-pass); without an edge,
+α_max at every wavelength. Clear glasses have none. RG630: α_max 4000 /m, λ_c 605 nm, w 9 nm (3 mm passes 0.50 at
+630 nm, 6·10⁻⁶ at 530 nm; the catalogue gives 0.5 and < 10⁻⁵). BG39: 3000 /m, 680 nm, −15 nm (3 mm passes > 0.99 at
+500 nm, 1.2·10⁻⁴ at 800 nm). Fits of the edge only: no UV edge, no secondary bands.

@@ -60,6 +60,15 @@ public enum MaterialProperty {
     REFRACTIVE_INDEX("refractive_index", Dimension.DIMENSIONLESS),
     /** Abbe number V_d = (n_d − 1)/(n_F − n_C): the lower, the more the material disperses colours. */
     ABBE_NUMBER("abbe_number", Dimension.DIMENSIONLESS),
+    /**
+     * Absorption coefficient of a transparent material [1/m]: uniform (a grey glass), or with an absorption edge (see
+     * {@link #ABSORPTION_EDGE}) its value well inside the absorbing side.
+     */
+    ABSORPTION_COEFFICIENT("absorption_coefficient", Dimension.LENGTH.pow(-1)),
+    /** Wavelength at the middle of a coloured glass's absorption edge [m]. */
+    ABSORPTION_EDGE("absorption_edge", Dimension.LENGTH),
+    /** Width of the edge [m]: positive for a long-pass glass (absorbing below the edge), negative for a short-pass one. */
+    ABSORPTION_EDGE_WIDTH("absorption_edge_width", Dimension.LENGTH),
     /** Normal-incidence reflectance of a polished surface at 550 nm (green light). */
     REFLECTANCE("reflectance", Dimension.DIMENSIONLESS),
     /** Normal-incidence reflectance of a polished surface at 1000 nm (near infrared). */

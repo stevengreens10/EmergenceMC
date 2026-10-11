@@ -82,12 +82,13 @@ final class AssemblyOptics {
                 }
                 case LENS -> {
                     if (Double.isNaN(nd)) s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
-                    else s.lens(p.id(), frame, lo, hi, p.center(), p.axis().vec(), PartGeometry.lensRadius1(p),
-                            PartGeometry.lensRadius2(p), PartGeometry.lensThickness(p), PartGeometry.lensRim(p), nd, vd);
+                    else s.absorbing(s.lens(p.id(), frame, lo, hi, p.center(), p.axis().vec(), PartGeometry.lensRadius1(p),
+                            PartGeometry.lensRadius2(p), PartGeometry.lensThickness(p), PartGeometry.lensRim(p), nd, vd),
+                            p.material().absorptionCoefficient(nm));
                 }
                 case PRISM -> {
                     if (Double.isNaN(nd)) s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
-                    else s.prism(p.id(), frame, lo, hi, nd, vd, PartGeometry.prismCuts(p));
+                    else s.absorbing(s.prism(p.id(), frame, lo, hi, nd, vd, PartGeometry.prismCuts(p)), p.material().absorptionCoefficient(nm));
                 }
                 case BLOCK -> {
                     // a plate thinner than its cells fills only its thickness about the middle
@@ -97,7 +98,7 @@ final class AssemblyOptics {
                     lo[ax] = mid - half;
                     hi[ax] = mid + half;
                     if (Double.isNaN(nd)) s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
-                    else s.glass(p.id(), frame, lo, hi, nd, vd);
+                    else s.absorbing(s.glass(p.id(), frame, lo, hi, nd, vd), p.material().absorptionCoefficient(nm));
                 }
                 case PHOTODIODE -> receiverWindow(s, c, p, frame, lo, hi, nm);
                 case TRANSISTOR -> {

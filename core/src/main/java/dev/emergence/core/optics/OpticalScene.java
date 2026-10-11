@@ -33,6 +33,8 @@ public final class OpticalScene {
 
     /** An object light can meet. Geometry is in its frame's coordinates. */
     public static final class Obj {
+        /** Bulk absorption coefficient inside glass or a lens [1/m] (0: clear). */
+        public double alpha;
         public final int index;
         public final long part;
         public final Kind kind;
@@ -229,6 +231,12 @@ public final class OpticalScene {
             Vec3 n = cuts[k][0].normalize();
             o.planes[k] = new double[]{n.x(), n.y(), n.z(), n.dot(cuts[k][1])};
         }
+        return o;
+    }
+
+    /** Sets a glass or lens's bulk absorption coefficient at the scene's wavelength [1/m] (Beer–Lambert). */
+    public Obj absorbing(Obj o, double alpha) {
+        o.alpha = Math.max(0, alpha);
         return o;
     }
 

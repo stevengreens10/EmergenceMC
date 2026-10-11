@@ -1900,4 +1900,29 @@ class DemoExhibitsTest {
         run(c, 0.5);
         assertTrue(c.lightOutput(green) < 1e-6, "and goes out with the switch");
     }
+
+    /**
+     * Colour filters: the same filament, the same geometry both ways; only the glass differs. Red-hot, the red glass
+     * passes ~70× more light than the blue-green one and only the red LED lights; white-hot, both do.
+     */
+    @Test
+    void colourFiltersSortTheFilamentsLightByColour() {
+        Exhibit e = OpticsExhibits.colourFilters();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pdR = b.id(e, "pdRed"), pdB = b.id(e, "pdBlue"), litR = b.id(e, "litRed"), litB = b.id(e, "litBlue");
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 1.5);
+        double warmR = c.lightInput(pdR), warmB = c.lightInput(pdB), tWarm = c.temperature(b.id(e, "filament"));
+        boolean warmRedLit = c.lightOutput(litR) > 1e-4, warmBlueLit = c.lightOutput(litB) > 1e-4;
+        c.toggleSwitch(b.id(e, "hotter"));
+        run(c, 1);
+        double hotR = c.lightInput(pdR), hotB = c.lightInput(pdB), tHot = c.temperature(b.id(e, "filament"));
+        System.out.printf("filters: %.0f K → red side %.3g W, blue-green %.3g W (×%.0f); %.0f K → %.3g W, %.3g W (×%.1f)%n",
+                tWarm, warmR, warmB, warmR / warmB, tHot, hotR, hotB, hotR / hotB);
+        assertTrue(warmR > 20 * warmB, "red-hot: the red glass passes far more");
+        assertTrue(warmRedLit && !warmBlueLit, "only the red LED lights");
+        assertTrue(hotR / hotB < 0.5 * warmR / warmB, "white-hot: relatively more blue-green light");
+        assertTrue(c.lightOutput(litR) > 1e-4 && c.lightOutput(litB) > 1e-4, "both LEDs light");
+    }
 }

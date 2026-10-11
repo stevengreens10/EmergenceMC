@@ -104,15 +104,20 @@ public final class OpticsExhibits {
      * Laid out from (x, 1, z): load at x, trigger at x + 4, LED at (x + 4, z + 3), its resistor at (x + 7, z + 3).
      */
     static void receiver(Exhibit e, Router r, int x, int z, double load, int[] anode, int[] cathode) {
+        receiver(e, r, x, z, load, anode, cathode, "", 565, 3);
+    }
+
+    /** As above, its parts and nets named with {@code suffix}, its LED of the given colour facing {@code face}. */
+    static void receiver(Exhibit e, Router r, int x, int z, double load, int[] anode, int[] cathode, String suffix, double nm, int face) {
         e.add(RESISTOR, "alumina", x, 1, z, Dir.EAST, "resistance", load);
-        e.name("schmitt", e.add(LOGIC, "silicon", x + 4, 1, z, Dir.EAST, "function", 7));
-        e.name("lit", e.add(LED, "silicon", x + 4, 1, z + 3, Dir.EAST, "wavelength", 565, "face", 3, "beam", 20));
+        e.name("schmitt" + suffix, e.add(LOGIC, "silicon", x + 4, 1, z, Dir.EAST, "function", 7));
+        e.name("lit" + suffix, e.add(LED, "silicon", x + 4, 1, z + 3, Dir.EAST, "wavelength", nm, "face", face, "beam", 20));
         e.add(RESISTOR, "alumina", x + 7, 1, z + 3, Dir.EAST, "resistance", 470);
         r.pin("vdd", cathode[0], cathode[1], cathode[2]).pin("vdd", x + 4, 1, z + 1).pin("vdd", x + 8, 1, z + 3);
         r.pin("gnd", x - 1, 1, z).pin("gnd", x + 4, 1, z - 1);
-        r.pin("sense", anode[0], anode[1], anode[2]).pin("sense", x + 1, 1, z).pin("sense", x + 3, 1, z);
-        r.pin("out", x + 5, 1, z).pin("out", x + 5, 1, z + 3);
-        r.pin("litA", x + 3, 1, z + 3).pin("litA", x + 6, 1, z + 3);
+        r.pin("sense" + suffix, anode[0], anode[1], anode[2]).pin("sense" + suffix, x + 1, 1, z).pin("sense" + suffix, x + 3, 1, z);
+        r.pin("out" + suffix, x + 5, 1, z).pin("out" + suffix, x + 5, 1, z + 3);
+        r.pin("litA" + suffix, x + 3, 1, z + 3).pin("litA" + suffix, x + 6, 1, z + 3);
     }
 
     /**
@@ -413,5 +418,55 @@ public final class OpticsExhibits {
         r.pin("o4", 7, 0, 8).pin("o4", 11, 0, 4);
         r.route();
         return e.view(7, 4, 16, 18);
+    }
+
+    /**
+     * Colour filters: a filament shines both ways — through red glass onto one photodiode, through blue-green glass onto
+     * another. Each lights its own LED. Red-hot, only the red side (its glass passing red and infrared) lights; the
+     * blue-green glass passes enough only once the filament glows white.
+     */
+    public static Exhibit colourFilters() {
+        Exhibit e = new Exhibit("filters", "Colour filters",
+                List.of("COLOUR FILTERS", "Red glass and blue", "glass: which light", "gets through?"),
+                "Coloured glass is clear glass with something dissolved in it that absorbs some colours (Beer–Lambert: "
+                        + "the light fades exponentially along its path through the glass, at a rate set by the colour). "
+                        + "The red glass to the south absorbs everything bluer than about 610 nm and passes red and "
+                        + "infrared; the blue-green glass to the north passes blue and green and absorbs red and infrared. "
+                        + "Close the switch: the filament runs red-hot (about 1600 K) through a resistor. Most of what it "
+                        + "radiates is infrared, which the red glass lets through: its photodiode lights the red LED, while "
+                        + "the blue-green side, getting seventy times less, stays dark. Close the second switch: white-hot "
+                        + "(2750 K), there is now enough blue and green light for the other side's LED too. The glass "
+                        + "warms with what it absorbs, as sunglasses do in the sun.");
+        int y = 3;
+        // the lamp: a 12 V bank and a switch to the east, the filament between its two leads in the middle
+        int bank = e.add(CAPACITOR, "alumina", 13, 1, 5, Dir.EAST, "capacitance", 500);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        e.name("switch", e.add(SWITCH, "brass", 13, 1, 9, Dir.EAST));
+        e.add(RESISTOR, "alumina", 10, 1, 9, Dir.EAST, "resistance", 3.0); // in series: the filament runs red-hot
+        e.name("hotter", e.add(SWITCH, "brass", 10, 1, 11, Dir.EAST));     // across it: white-hot
+        e.name("filament", e.add(WIRE, "tungsten", 7, y, 7, Dir.EAST, "diameter", 1.2e-4));
+        // the filters (3 mm plates) and the photodiodes behind them, four cells from the filament
+        e.name("red", e.add(BLOCK, "glass_rg630", 7, y, 9, Dir.SOUTH, "fill", 0.048));
+        e.name("blue", e.add(BLOCK, "glass_bg39", 7, y, 5, Dir.SOUTH, "fill", 0.048));
+        e.name("pdRed", e.add(PHOTODIODE, "silicon", 7, y, 11, Dir.EAST, "face", Dir.NORTH.ordinal()));
+        e.name("pdBlue", e.add(PHOTODIODE, "silicon", 7, y, 3, Dir.EAST, "face", Dir.SOUTH.ordinal()));
+        e.fill(BLOCK, "oak", 7, 0, 9, 7, y - 1, 9, Dir.UP);   // stands for the filters
+        e.fill(BLOCK, "oak", 7, 0, 5, 7, y - 1, 5, Dir.UP);
+        int cell = e.add(CAPACITOR, "alumina", 13, 1, 13, Dir.EAST, "capacitance", 10);
+        e.init(cell, new Exhibit.Initial(Double.NaN, 0, 5));
+        Router r = new Router(e, 0, 0, 0, 15, 5, 15);
+        // nothing between the filament and the photodiodes, nothing touching the bare filament but its leads
+        r.keepClear(7, y, 4, 7, y, 10).keepClear(6, y, 5, 8, y, 5).keepClear(6, y, 9, 8, y, 9).keepClear(7, y + 1, 4, 7, y + 2, 10)
+                .keepClear(6, y, 6, 6, y, 6).keepClear(8, y, 6, 8, y, 6).keepClear(6, y, 8, 6, y, 8).keepClear(8, y, 8, 8, y, 8);
+        r.pin("bat", 14, 1, 5).pin("bat", 14, 1, 9);
+        r.pin("sw", 12, 1, 9).pin("sw", 11, 1, 9).pin("sw", 11, 1, 11);
+        r.pin("rs", 9, 1, 9).pin("rs", 9, 1, 11).pin("rs", 8, y, 7);
+        r.pin("ret", 6, y, 7).pin("ret", 12, 1, 5);
+        r.pin("vdd", 14, 1, 13).pin("gnd", 12, 1, 13);
+        // the red channel must see a red-hot filament (0.4 µA): 10 MΩ; the blue-green one only a white-hot one (3 µA): 1.5 MΩ
+        receiver(e, r, 2, 12, 10e6, new int[]{6, y, 11}, new int[]{8, y, 11}, "Red", 630, 3);
+        receiver(e, r, 2, 1, 1.5e6, new int[]{6, y, 3}, new int[]{8, y, 3}, "Blue", 470, 2);
+        r.route();
+        return e.view(7, 7, 18, 30);
     }
 }

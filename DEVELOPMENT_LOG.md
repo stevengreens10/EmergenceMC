@@ -465,3 +465,10 @@ collector–base junction: the photocurrent is base current. Every light path th
 optics, daylight, hot bodies) now reaches a "receiver", photodiode or phototransistor alike. The optocoupler exhibit:
 two circuits with no common conductor, an infrared LED against a phototransistor; 55 µA of photocurrent switches
 7.7 mA. First wiring had both LEDs backwards (an LED's anode is its −axis end).
+
+**Coloured glass.** Transparent materials may now absorb, with a spectral edge (two filter glasses after Schott RG630
+and BG39); every traced segment inside them fades by Beer–Lambert, the loss warming the glass. Testing the glass's
+heat turned up an old tracing bug: whatever a ray had deposited before reaching a glass surface was counted once in
+each of the reflected and transmitted branches (mirror heating behind glass was overstated); it is now shared like
+the light. The colour-filters exhibit: one filament, red glass one way and blue-green the other — red-hot only the red
+side lights, white-hot both.

@@ -443,7 +443,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             int n = (int) b[k++];
             float nm = b[k++];
             int rgb = nm > 0 ? mix(wavelengthRgb(nm), 0xFFFFFF, 0.15f) : own;
-            float w = led ? (r == 0 ? 0.07f : 0.04f) : 0.06f;
+            float w = led ? (r == 0 ? 0.07f : 0.04f) : 0.12f;
             if (led) {
                 c.quadAlpha = (int) Math.min(200, (r == 0 ? 120 : 80) * (1 + 0.5 * Math.log10(Math.max(1, watts / 1e-4))));
             } else {

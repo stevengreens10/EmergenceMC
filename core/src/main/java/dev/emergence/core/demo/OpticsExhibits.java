@@ -364,6 +364,6 @@ public final class OpticsExhibits {
             r.pin("lit_" + k, x + 3, 1, z + 3).pin("lit_" + k, x + 6, 1, z + 3);
         }
         r.route();
-        return e.view(18, 12, 26, 40, 180);
+        return e.view(15, 8, 21, 30, 180);
     }
 }

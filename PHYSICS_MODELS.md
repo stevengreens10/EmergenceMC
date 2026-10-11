@@ -239,6 +239,10 @@ smooth between — evaluated with finite-difference Jacobians in level space:
 * REGISTER4: loads D while EN is high.
 * ADDER4 (74HC283): ripple of full adders, carry = ab + c(a⊕b).
 * ROM16X8: word w is selected by Π(a_j or 1 − a_j) over the address bits; contents "w0".."w15" (mask PROM).
+* RAM16X4 (function 4): 64 master–slave flip-flops, synchronous write — on a rising CLK each bit's data target is
+  WE·sel_w·D_k + (1 − WE·sel_w)·q (the word selected by the same multilinear decode), so only the addressed word
+  takes the data; Q_k = Σ_w sel_w·q_{w,k} reads the addressed word continuously. Chips' stored bits (counters,
+  registers, memory) are saved with the build's state and restored into both latches when it is recompiled.
 A chip is a row of single-block segments (one pin pair each: input on the −lead-axis side, output on the +;
 the last segment carries GND/V_DD).
 

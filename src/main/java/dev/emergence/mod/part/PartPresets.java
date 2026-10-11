@@ -172,7 +172,8 @@ public final class PartPresets {
         l.add(stack(PartKind.GM_TUBE, PartSpec.of("stainless_304", 1, 1)));
         l.add(stack(PartKind.BLOCK, PartSpec.of("lead", 1, 1, "fill", 0.16)));
         // MSI chips (counter, register, adder, blank ROM) and a ROM holding the EM-4 stepper program
-        for (int fn = 0; fn <= 3; fn++) l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, "function", fn)));
+        for (int fn = 0; fn < dev.emergence.core.sim.elements.MsiChip.Type.values().length; fn++)
+            l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, "function", fn)));
         Object[] prog = new Object[2 + 32];
         prog[0] = "function";
         prog[1] = 3;

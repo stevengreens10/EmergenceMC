@@ -71,7 +71,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ MSI chips from multi-block packages: counter, register, 4-bit adder, programmable ROM
 ✅ **Milestone: a programmable computer controls a physical machine** — the EM-4 (PC, ROM program,
    adder, accumulator; add / jump / jump-if-SENSE) drives an axial-flux stepper motor through MOSFETs
-⬜ RAM, a richer instruction set, more sensors and actuators; event-driven simulation for thousands of gates
+✅ RAM (16 × 4 static memory chip, memory exhibit); chip contents survive recompiling and saving
+⬜ A richer instruction set (load/store to RAM), more sensors and actuators; event-driven simulation for thousands of gates
 
 ## Phase 5 — Chemistry and manufacturing
 ✅ Electrochemistry: Butler–Volmer/Nernst electrodes, galvanic cells, corrosion, displacement plating,

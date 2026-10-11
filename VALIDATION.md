@@ -361,6 +361,10 @@ Absorbing glass (`OpticsTest.tintedPlateFollowsBeerLambert`, `filterGlassEdges`)
 the same filament seen both ways, red-hot (1607 K) the red side gets 73× the blue-green side's light and only its
 LED lights; white-hot (2748 K) the ratio falls to 7× and both light.
 
+Memory chip (`DemoExhibitsTest.memoryChipStoresWordsByAddress`): words 1010, 0101, 1111 written by hand into words 1–3
+read back at their addresses (word 0 stays 0000) on the LEDs, and word 3 still reads 1111 after the build is
+recompiled from its exported state.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

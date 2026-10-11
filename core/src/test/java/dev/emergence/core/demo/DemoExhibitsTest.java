@@ -1925,4 +1925,58 @@ class DemoExhibitsTest {
         assertTrue(hotR / hotB < 0.5 * warmR / warmB, "white-hot: relatively more blue-green light");
         assertTrue(c.lightOutput(litR) > 1e-4 && c.lightOutput(litB) > 1e-4, "both LEDs light");
     }
+
+    /**
+     * Memory chip: words written by hand read back at their addresses and nowhere else, and survive the build being
+     * recompiled (the stored bits travel with its state).
+     */
+    @Test
+    void memoryChipStoresWordsByAddress() {
+        Exhibit e = ComputerExhibit.memory();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        run(c, 0.05);
+        java.util.function.IntConsumer setAddress = w -> {
+            for (int j = 0; j < 2; j++) setSwitch(c, b.id(e, "a" + j), ((w >> j) & 1) == 1);
+        };
+        java.util.function.BiConsumer<Integer, Integer> write = (w, data) -> {
+            setAddress.accept(w);
+            for (int k = 0; k < 4; k++) setSwitch(c, b.id(e, "d" + k), ((data >> k) & 1) == 1);
+            run(c, 0.05);
+            setSwitch(c, b.id(e, "write"), true);
+            run(c, 0.05);
+            setSwitch(c, b.id(e, "write"), false);
+            run(c, 0.05);
+        };
+        write.accept(1, 0b1010);
+        write.accept(2, 0b0101);
+        write.accept(3, 0b1111);
+        int[] expect = {0, 0b1010, 0b0101, 0b1111};
+        for (int w = 0; w < 4; w++) {
+            setAddress.accept(w);
+            run(c, 0.05);
+            int got = word(c, b, e);
+            System.out.printf("memory: word %d reads %s (wrote %s)%n", w, Integer.toBinaryString(got), Integer.toBinaryString(expect[w]));
+            assertEquals(expect[w], got, "word " + w);
+        }
+        // recompiled from its saved state, it still holds them
+        CompiledAssembly again = AssemblyCompiler.compile(b.assembly(), c.exportState());
+        run(again, 0.05);
+        assertEquals(0b1111, word(again, b, e), "word 3 after recompiling");
+    }
+
+    static void setSwitch(CompiledAssembly c, long id, boolean on) {
+        if (b(c, id) != on) c.toggleSwitch(id);
+    }
+
+    static boolean b(CompiledAssembly c, long id) {
+        return c.assembly().get(id).switchClosed();
+    }
+
+    /** The word the LEDs show (bit k lit: LED q_k emitting). */
+    static int word(CompiledAssembly c, Exhibits.Built b, Exhibit e) {
+        int w = 0;
+        for (int k = 0; k < 4; k++) if (c.lightOutput(b.id(e, "q" + k)) > 1e-4) w |= 1 << k;
+        return w;
+    }
 }

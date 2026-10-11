@@ -156,4 +156,57 @@ public final class ComputerExhibit {
         r.route();
         return e.view(19, 22, 30, 52);
     }
+
+    /**
+     * Memory: a 16 × 4-bit static RAM chip worked by hand. Two switches choose the address (words 0–3), four set the
+     * data, and the WRITE switch is the clock: turning it on stores the data in the addressed word. Four LEDs always
+     * show the word at the address — change the address and they show what was stored there.
+     */
+    public static Exhibit memory() {
+        Exhibit e = new Exhibit("memory", "Memory chip",
+                List.of("MEMORY", "Set address & data,", "flick WRITE on/off;", "the LEDs read back"),
+                "A static memory chip: 64 bits in 16 words of 4, each bit a flip-flop (two cross-coupled inverters that "
+                        + "hold either state as long as power lasts). The two switches on the left choose a word (the "
+                        + "chip decodes the address so only that word is connected); the four in the middle set the "
+                        + "data. Turn WRITE on — the rising edge of the chip's clock — and the data are stored in the "
+                        + "chosen word; turn it off again. The four LEDs always show the word at the current address: "
+                        + "choose another address and they show what was stored there. This is the memory a computer "
+                        + "keeps its working numbers in; take its power away and it forgets.");
+        int y = 1, cx = 2, cz = 6;
+        e.name("ram", chip(e, MsiChip.Type.RAM16X4, cx, y, cz));
+        // input pins along z = cz − 1: A0–A3 at x = 2..5, D0–D3 at 6..9, WE at 10, CLK at 11; GND (12, cz − 1); outputs
+        // Q0–Q3 along z = cz + 1 at x = 2..5, V_DD at (12, cz + 1)
+        String[] sw = {"a0", "a1", null, null, "d0", "d1", "d2", "d3", null, "write"};
+        Router r = new Router(e, 0, 0, 0, 15, 3, 15);
+        for (int k = 0; k < sw.length; k++) {
+            int x = cx + k;
+            String net = "in" + k;
+            if (sw[k] == null) {
+                // A2 and A3 held low (words 0–3 only); WE held high (every clock writes)
+                r.pin(k == 8 ? "vdd" : "gnd", x, y, cz - 1);
+                continue;
+            }
+            // side by side in a row: their side leads turned up/down (or north/south), away from their neighbours
+            e.name(sw[k], e.add(SWITCH, "brass", x, y, 2, Dir.SOUTH, "lead_axis", 1));
+            e.add(RESISTOR, "alumina", x, y + 1, 4, Dir.UP, "resistance", 10_000, "lead_axis", 2); // pull-down
+            r.keepClear(x, y - 1, 2, x, y - 1, 2).keepClear(x, y + 1, 2, x, y + 1, 2).keepClear(x, y + 1, 3, x, y + 1, 3)
+                    .keepClear(x, y + 1, 5, x, y + 1, 5);
+            r.pin("vdd", x, y, 1).pin(net, x, y, 3).pin(net, x, y, cz - 1).pin(net, x, y, 4).pin("gnd", x, y + 2, 4);
+        }
+        // the read-back LEDs, each with its resistor to ground
+        for (int k = 0; k < 4; k++) {
+            int x = cx + k;
+            e.name("q" + k, e.add(LED, "silicon", x, y, 10, Dir.SOUTH, "wavelength", 590, "face", 1, "lead_axis", 1));
+            e.add(RESISTOR, "alumina", x, y, 11, Dir.SOUTH, "resistance", 330, "lead_axis", 1); // lead to lead with the LED's cathode
+            r.keepClear(x, y - 1, 10, x, y - 1, 11).keepClear(x, y + 1, 10, x, y + 1, 11);
+            r.pin("q" + k, x, y, cz + 1).pin("q" + k, x, y, 9);
+            r.pin("gnd", x, y, 12);
+        }
+        int bat = e.add(CAPACITOR, "alumina", 14, y, 10, Dir.SOUTH, "capacitance", 500);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        r.pin("gnd", 14, y, 9).pin("gnd", cx + 10, y, cz - 1);
+        r.pin("vdd", 14, y, 11).pin("vdd", cx + 10, y, cz + 1);
+        r.route();
+        return e.view(7, 4, 16, 16);
+    }
 }

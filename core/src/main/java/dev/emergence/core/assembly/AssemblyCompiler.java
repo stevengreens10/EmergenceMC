@@ -1205,6 +1205,7 @@ public final class AssemblyCompiler {
             for (Part q : seg) for (int w = 0; w < 16; w++) if (q.params().containsKey("w" + w)) rom[w] = (int) Math.round(q.param("w" + w, 0));
             var chip = c.network.add(new dev.emergence.core.sim.elements.MsiChip(type, in, out, vdd, gnd, rom,
                     p.param("delay", 10e-9), p.param("output_resistance", 50), th));
+            if (type.flipFlops > 0) c.chips.put(p.id(), chip);
             for (int k = 0; k < seg.size(); k++) {
                 Part q = seg.get(k);
                 c.deviceOfPart.put(q.id(), chip);
@@ -3000,6 +3001,14 @@ public final class AssemblyCompiler {
         }
 
         void applyPreviousElectricalState() {
+            // chips keep what they stored: counters, registers, memory
+            for (var e : c.chips.entrySet()) {
+                for (int i = 0; i < e.getValue().type().flipFlops; i++) {
+                    Double bit = prev.chemistry().get(AssemblyState.registerKey(e.getKey(), i));
+                    if (bit == null) continue;
+                    for (int idx : e.getValue().latchIndices(i)) c.network.setInitial(idx, bit);
+                }
+            }
             for (var e : c.deviceOfPart.entrySet()) {
                 if (e.getValue() instanceof MagneticSystem.Coil coil) {
                     Double i = prev.coilCurrents().get(e.getKey());

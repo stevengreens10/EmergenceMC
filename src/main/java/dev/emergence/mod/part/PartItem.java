@@ -157,7 +157,8 @@ public final class PartItem extends Item {
             case BLADE -> String.format(", pitch %.0f°", p.getOrDefault("pitch", 0.0));
             case PRISM -> String.format(", apex %.0f°", p.getOrDefault("apex", 60.0))
                     + (p.containsKey("face") ? " pointing " + dev.emergence.core.assembly.Dir.values()[(int) Math.round(p.get("face"))].name().toLowerCase() : "");
-            case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")
+            case CHIP -> ", " + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.RAM16X4 ? "RAM 16×4"
+                    : chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit"))
                     + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[
                     (int) Math.max(0, Math.min(8, Math.round(p.getOrDefault("function", 2.0))))];

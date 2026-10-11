@@ -40,9 +40,15 @@ public record AssemblyState(Map<Long, Double> temperatures, Map<Long, double[]> 
 
     /**
      * Chemistry keys: "S{electrolyteId}:{species}" dissolved moles, "M{electrodeId}:{electrolyteId}" remaining
-     * electrode metal, "D{electrodeId}:{metal}" deposited foreign metal.
+     * electrode metal, "D{electrodeId}:{metal}" deposited foreign metal. The same keyed store (saved per owning part)
+     * holds chips' stored bits: "R{chipPartId}:{bit}" (see {@link #registerKey}).
      */
     public static String speciesKey(long electrolyte, String species) {
         return "S" + electrolyte + ":" + species;
+    }
+
+    /** Key of a chip's stored bit (a counter's, a register's, a memory cell's) in {@link #chemistry}. */
+    public static String registerKey(long chipPart, int bit) {
+        return "R" + chipPart + ":" + bit;
     }
 }

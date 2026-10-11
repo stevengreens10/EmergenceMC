@@ -73,6 +73,8 @@ public final class CompiledAssembly {
     final Map<Long, Node> thermalOfPart = new HashMap<>();
     final Map<Long, Node[]> leadsOfPart = new HashMap<>();   // {neg, pos} or {node}
     final Map<Long, Object> deviceOfPart = new HashMap<>(); // Resistor, Diode, Switch, Capacitor, MagneticSystem.Coil
+    /** Chips with registers or memory, by their first segment's part id (their bits are saved with the build). */
+    final Map<Long, dev.emergence.core.sim.elements.MsiChip> chips = new HashMap<>();
     /** A phototransistor's light-sensitive collector–base junction (its device is the transistor). */
     final Map<Long, dev.emergence.core.sim.elements.Photodiode> photoJunction = new HashMap<>();
 
@@ -963,6 +965,12 @@ public final class CompiledAssembly {
             }
         }
         if (fatigue != null) for (var e : fatigue.byPart.entrySet()) if (e.getValue().damage > 0) s.damage().put(e.getKey(), e.getValue().damage);
+        for (var e : chips.entrySet()) {
+            for (int i = 0; i < e.getValue().type().flipFlops; i++) {
+                double bit = Math.max(0, Math.min(1, e.getValue().register(solver, i)));
+                s.chemistry().put(AssemblyState.registerKey(e.getKey(), i), bit);
+            }
+        }
         return s;
     }
 

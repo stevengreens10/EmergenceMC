@@ -228,6 +228,15 @@ public final class AutoShowcase {
                     STEPS.add(new Step(60, () -> toggle(server.overworld(), at), "showcase-" + (i + 1) + "-" + id + "-" + sw));
                 }
             }
+            if (id.equals("memory")) {
+                // write 1010 into word 1, look at word 0 (empty), then back at word 1
+                java.util.function.Function<String, BlockPos> at = name -> DemoBuilder.partBlock(plot, e, name);
+                for (String sw : new String[]{"a0", "d1", "d3"}) STEPS.add(new Step(10, () -> toggle(server.overworld(), at.apply(sw)), null));
+                STEPS.add(new Step(20, () -> toggle(server.overworld(), at.apply("write")), null));
+                STEPS.add(new Step(20, () -> toggle(server.overworld(), at.apply("write")), "showcase-" + (i + 1) + "-" + id + "-written"));
+                STEPS.add(new Step(30, () -> toggle(server.overworld(), at.apply("a0")), "showcase-" + (i + 1) + "-" + id + "-word0"));
+                STEPS.add(new Step(30, () -> toggle(server.overworld(), at.apply("a0")), "showcase-" + (i + 1) + "-" + id + "-word1"));
+            }
             if (id.equals("filters")) {
                 // red-hot: only the red side lights; white-hot: both
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch"), hot = DemoBuilder.partBlock(plot, e, "hotter");

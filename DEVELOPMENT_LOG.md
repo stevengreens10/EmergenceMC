@@ -472,3 +472,10 @@ heat turned up an old tracing bug: whatever a ray had deposited before reaching 
 each of the reflected and transmitted branches (mirror heating behind glass was overstated); it is now shared like
 the light. The colour-filters exhibit: one filament, red glass one way and blue-green the other — red-hot only the red
 side lights, white-hot both.
+
+**Memory.** A 16 × 4 static RAM chip: 64 master–slave flip-flops behind the same multilinear address decode as the
+ROM, written on the clock's rising edge while WE is high. Chips' stored bits are now part of an assembly's saved
+state (keyed per chip in the state's keyed store), so counters, registers and memory survive recompiling (placing
+a part nearby) and saving. The memory exhibit — address and data switches, a WRITE switch, four LEDs reading back —
+first shorted its supply: single-cell parts in a row touch their neighbours with their side leads; those now face
+away. (And the test first wrote nothing: `run(c, 0.02)` rounds to zero 50 ms steps.)

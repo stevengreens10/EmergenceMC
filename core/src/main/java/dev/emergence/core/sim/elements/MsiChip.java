@@ -29,6 +29,10 @@ import dev.emergence.core.sim.StateView;
  *   <li>{@link Type#ADDER4} (74HC283): S = A + B + C_in as a ripple of full adders, C_out the carry.</li>
  *   <li>{@link Type#ROM16X8}: 16 words of 8 bits, contents fixed when the chip is made (a mask/fuse PROM —
  *       the program); D0–D7 show the word at address A0–A3.</li>
+ *   <li>{@link Type#RAM16X4}: 16 words of 4 bits of static memory, 64 flip-flops (synchronous write): on a rising
+ *       clock while WE is high, D0–D3 are stored in the word at A0–A3; Q0–Q3 always show the word addressed. The
+ *       address decoding is the multilinear product of the address levels, so selection, data and the stored bits
+ *       stay smooth for the solver.</li>
  * </ul>
  */
 public final class MsiChip implements Element {
@@ -36,7 +40,8 @@ public final class MsiChip implements Element {
         COUNTER4(new String[]{"P0", "P1", "P2", "P3", "CLK", "CLR", "LOAD", "EN"}, new String[]{"Q0", "Q1", "Q2", "Q3", "TC"}, 4),
         REGISTER4(new String[]{"D0", "D1", "D2", "D3", "CLK", "EN"}, new String[]{"Q0", "Q1", "Q2", "Q3"}, 4),
         ADDER4(new String[]{"A0", "A1", "A2", "A3", "B0", "B1", "B2", "B3", "CIN"}, new String[]{"S0", "S1", "S2", "S3", "COUT"}, 0),
-        ROM16X8(new String[]{"A0", "A1", "A2", "A3"}, new String[]{"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7"}, 0);
+        ROM16X8(new String[]{"A0", "A1", "A2", "A3"}, new String[]{"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7"}, 0),
+        RAM16X4(new String[]{"A0", "A1", "A2", "A3", "D0", "D1", "D2", "D3", "WE", "CLK"}, new String[]{"Q0", "Q1", "Q2", "Q3"}, 64);
 
         /** Input and output pin names, in package order. */
         public final String[] inputs, outputs;
@@ -90,6 +95,12 @@ public final class MsiChip implements Element {
         this.nOut = type.outputs.length;
         this.nF = type.flipFlops;
         this.clk = type.clockPin();
+        int nq = Math.max(nF, 1), no = Math.max(nOut, 1);
+        qs = new double[nq];
+        dd = new double[nq];
+        dp = new double[nq];
+        tt = new double[no];
+        tp = new double[no];
     }
 
     public Type type() {
@@ -147,6 +158,13 @@ public final class MsiChip implements Element {
                 double en = x[5];
                 for (int i = 0; i < 4; i++) d[i] = en * x[i] + (1 - en) * q[i];
             }
+            case RAM16X4 -> {
+                double we = x[8];
+                for (int w = 0; w < 16; w++) {
+                    double write = we * select(x, w);
+                    for (int k = 0; k < 4; k++) d[4 * w + k] = write * x[4 + k] + (1 - write) * q[4 * w + k];
+                }
+            }
             default -> {
             }
         }
@@ -171,6 +189,13 @@ public final class MsiChip implements Element {
                 }
                 t[4] = c;
             }
+            case RAM16X4 -> {
+                for (int k = 0; k < 4; k++) t[k] = 0;
+                for (int w = 0; w < 16; w++) {
+                    double sel = select(x, w);
+                    for (int k = 0; k < 4; k++) t[k] += sel * q[4 * w + k];
+                }
+            }
             case ROM16X8 -> {
                 for (int k = 0; k < 8; k++) t[k] = 0;
                 for (int w = 0; w < 16; w++) {
@@ -183,10 +208,17 @@ public final class MsiChip implements Element {
         }
     }
 
+    /** Multilinear decode of word w from address levels x[0..3]: 1 exactly at its address, 0 at every other. */
+    private static double select(double[] x, int w) {
+        double sel = 1;
+        for (int j = 0; j < 4; j++) sel *= ((w >> j) & 1) == 1 ? x[j] : 1 - x[j];
+        return sel;
+    }
+
     // ------------------------------------------------------------------ load
 
-    private final double[] xs = new double[16], dx = new double[16], qs = new double[8], tq = new double[8], dd = new double[8],
-            tt = new double[8], tp = new double[8], dp = new double[8];
+    private final double[] xs = new double[16], dx = new double[16];
+    private final double[] qs, dd, tt, tp, dp;
 
     @Override
     public void load(LoadContext ctx) {
@@ -315,6 +347,11 @@ public final class MsiChip implements Element {
     /** Register bit i (0..1). */
     public double register(StateView s, int i) {
         return s.x(sIdx[i]);
+    }
+
+    /** Solver unknowns of flip-flop i's master and slave latches (for restoring stored bits). */
+    public int[] latchIndices(int i) {
+        return new int[]{mIdx[i], sIdx[i]};
     }
 
     @Override

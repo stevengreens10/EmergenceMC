@@ -17,7 +17,7 @@ regenerate the demo world → screenshot tour → docs → commit.
 4. **Acoustics**: turning bodies (fans, gear whine, an unbalanced rotor) and vibrating structures as sources; baffles
    and enclosures (a speaker cabinet turns a dipole into a monopole); impulsive sounds (impacts) beyond tones;
    faster audio-rate machines (their fast partition's own cost).
-5. **Computing**: RAM chip, in-game ROM programmer, instruction-set growth (load/store, branch on carry),
+5. **Computing**: (RAM chip in) the EM-4 using RAM (load/store), an in-game ROM programmer, instruction-set growth (load/store, branch on carry),
    event-driven simulation for large gate counts.
 6. **Steam and heat engines**: a condenser and feed pump so the boiler runs indefinitely; liquid level shown in
    tanks; multi-stage turbines and nozzles (a working Brayton cycle); the steam engine's cost (≈ 1.5× real time).

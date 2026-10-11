@@ -19,7 +19,8 @@ import java.util.Map;
  * The lattice is coarse (a coil is a cell), so it is used for what the iron adds: the inductances solved with the
  * iron minus those solved with air everywhere, added to the coils' analytic air inductances. A closed iron path
  * through two coils thus gives L = N²/ℛ and coupling k → 1 (a transformer); an open core, the increase from the
- * iron's share of the path; a steel frame near a coil, a modest increase. Linear (no saturation).
+ * iron's share of the path; a steel frame near a coil, a modest increase. The solve is linear; {@link
+ * #peakSaturation} tells how hard a current pattern drives the iron, from which {@code MagneticSystem} saturates it.
  */
 public final class ReluctanceLattice {
     public static final double MU0 = 4e-7 * Math.PI;
@@ -92,6 +93,47 @@ public final class ReluctanceLattice {
         for (int j = 0; j < n; j++)
             for (int k = j + 1; k < n; k++) l[j][k] = l[k][j] = 0.5 * (l[j][k] + l[k][j]);
         return l;
+    }
+
+    /**
+     * How near saturation the iron is for coil currents {@code currents} [A] (linear superposition): the largest
+     * |B|/B_sat over the cells of {@code bSat} (key → saturation flux density [T]). A cell's B is the mean of the flux
+     * densities through its two faces on each axis.
+     */
+    public double peakSaturation(List<Cut> cuts, double[] currents, Map<Long, Double> bSat) {
+        double[] psi = new double[mu.length];
+        for (int j = 0; j < cuts.size(); j++) {
+            if (currents[j] == 0) continue;
+            double[] pj = solve(mu, cuts.get(j));
+            for (int i = 0; i < psi.length; i++) psi[i] += currents[j] * pj[i];
+        }
+        double worst = 0;
+        for (var e : bSat.entrySet()) {
+            int[] c = unkey(e.getKey());
+            if (c[0] <= x0 || c[1] <= y0 || c[2] <= z0 || c[0] >= x0 + nx - 1 || c[1] >= y0 + ny - 1 || c[2] >= z0 + nz - 1) continue;
+            double b2 = 0;
+            for (int ax = 0; ax < 3; ax++) {
+                int[] d = step(ax);
+                double lo = faceFlux(psi, cuts, currents, c[0] - d[0], c[1] - d[1], c[2] - d[2], ax);
+                double hi = faceFlux(psi, cuts, currents, c[0], c[1], c[2], ax);
+                double bAx = 0.5 * (lo + hi) / (h * h);
+                b2 += bAx * bAx;
+            }
+            worst = Math.max(worst, Math.sqrt(b2) / e.getValue());
+        }
+        return worst;
+    }
+
+    /** Flux through the face between cell (x, y, z) and its +axis neighbour, with the coils' MMF on their cuts. */
+    private double faceFlux(double[] psi, List<Cut> cuts, double[] currents, int x, int y, int z, int axis) {
+        int[] d = step(axis);
+        int a = index(x, y, z), b = index(x + d[0], y + d[1], z + d[2]);
+        double mmf = 0;
+        for (int j = 0; j < cuts.size(); j++) {
+            Cut c = cuts.get(j);
+            if (c.axis == axis && c.x == x && c.y == y && c.z == z) mmf += c.sign * c.turns * currents[j];
+        }
+        return g(mu, a, b) * (psi[a] - psi[b] + mmf);
     }
 
     private double[] filled(double v) {

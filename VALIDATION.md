@@ -345,6 +345,11 @@ rule's energy error on the generator's AC (each step's energy differs from the t
 2.4·10⁻⁴ of the work at the default tolerances, 7.3·10⁻⁵ with steps capped at 0.2 ms, 4.5·10⁻⁶ at 0.05 ms — accuracy,
 set by the 10⁻³ local-error tolerance, not a leak.
 
+Iron saturation (`DemoExhibitsTest.faradayRingCoreSaturatesAtTheSteelsSaturationFluxDensity`): the Faraday ring's core
+mode levels off, for the primary, at 0.345 Wb, against N₁·B_sat·A_iron = 200 × 2.0 T × (the coil core's iron) =
+0.358 Wb (4 %); the bank's 3 A would add 1.08 Wb unsaturated, the linkage stays at 0.43 Wb; energy error 1.6 mJ of the
+bank's 360 J.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

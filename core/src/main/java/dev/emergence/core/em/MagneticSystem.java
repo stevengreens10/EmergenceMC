@@ -41,7 +41,7 @@ import java.util.stream.IntStream;
  *
  * <h2>Validity</h2>
  * Magnetostatic (quasi-static) fields, rigid magnetisation. Ferromagnetic parts add to the inductances of the
- * coils fixed relative to them (a {@link ReluctanceLattice} over their cells, linear, unsaturated); iron moving
+ * coils fixed relative to them (a {@link ReluctanceLattice} over their cells), saturating (see addIronInductance); iron moving
  * relative to coils (reluctance torque), iron's pull on magnets and eddy currents in structural conductors are not
  * modelled yet. Non-coaxial pairs of moving bodies are not coupled (reported in
  * {@link #warnings()}). See PHYSICS_MODELS.md §Electromagnetism.
@@ -69,6 +69,14 @@ public final class MagneticSystem implements Element {
             this.wireArea = Math.PI * wireDiameter * wireDiameter / 4;
             this.thermal = thermal;
             this.fixedTemperature = fixedTemperature;
+        }
+
+        public CoilGeometry geom() {
+            return geom;
+        }
+
+        public double wireDiameter() {
+            return wireDiameter;
         }
 
         public double resistance(double temperature) {
@@ -104,13 +112,26 @@ public final class MagneticSystem implements Element {
     private final List<String> warnings = new ArrayList<>();
     private double[][] lConst;
     private boolean built;
-    /** Ferromagnetic cells: {body, int[]{x, y, z}, relative permeability}; and the cell size [m]. */
+    /** Ferromagnetic cells: {body, int[]{x, y, z}, relative permeability, saturation flux density}; and the cell size [m]. */
     private final List<Object[]> iron = new ArrayList<>();
     private double cell = Double.NaN;
 
+    /**
+     * A saturating mode of the iron's inductance: coils {@code idx}, unit current pattern u, linear inductance mu [H],
+     * saturation flux linkage psiSat [Wb]: psi = psiSat * tanh(mu * m / psiSat), m = u . i.
+     */
+    record SatMode(int[] idx, double[] u, double mu, double psiSat) {}
+
+    private final List<SatMode> modes = new ArrayList<>();
+
     /** A ferromagnetic cell (relative permeability μr) of a part on {@code body}, at integer cell (x, y, z). */
     public void addIronCell(EmBody body, int x, int y, int z, double muR, double cellSize) {
-        iron.add(new Object[]{body, new int[]{x, y, z}, muR});
+        addIronCell(body, x, y, z, muR, cellSize, Double.POSITIVE_INFINITY);
+    }
+
+    /** As {@link #addIronCell(EmBody, int, int, int, double, double)}, saturating at mean flux density bSat [T]. */
+    public void addIronCell(EmBody body, int x, int y, int z, double muR, double cellSize, double bSat) {
+        iron.add(new Object[]{body, new int[]{x, y, z}, muR, bSat});
         cell = cellSize;
         if (!body.isStatic()) registerBody(body); // moving iron (an armature) is pulled
     }
@@ -161,7 +182,17 @@ public final class MagneticSystem implements Element {
 
     /**
      * For each rigid body, the inductance its iron adds to the coils on it (and between them): solved on the cell
-     * lattice with the iron and with air, the difference added to the analytic air inductances.
+     * lattice with the iron and with air, the difference ΔL added to the analytic air inductances.
+     * <p>
+     * <b>Saturation.</b> ΔL is split into its eigenmodes, ΔL = Σ μ_k u_k u_kᵀ — current patterns u_k that drive the
+     * iron's flux paths (for a transformer core, essentially one: the core flux). Each mode's flux linkage saturates,
+     * ψ_k = ψ_s·tanh(μ_k m_k/ψ_s) with m_k = u_k·i: linear (inductance μ_k) at small current, approaching ψ_s where
+     * the iron's most loaded cell reaches its saturation flux density — ψ_s = μ_k/r_k, r_k the peak |B|/B_sat per
+     * ampere of the pattern, from the lattice. Saturated iron's incremental permeability is ~μ0, so its added
+     * inductance vanishes, as tanh's slope does. The coils' linkage is the gradient of a co-energy (Σ ∫ψ_k dm), so
+     * dλ/di stays symmetric and the field energy, Σ (m_k ψ_k − (ψ_s²/μ_k) ln cosh(μ_k m_k/ψ_s)), is exact. Not
+     * modelled: hysteresis (no remanence in soft iron, no loop loss), modes saturating each other, the curve's shape
+     * (tanh rather than the material's B–H knee).
      */
     private void addIronInductance() {
         for (EmBody body : bodies) {
@@ -190,10 +221,34 @@ public final class MagneticSystem implements Element {
             if (mu.isEmpty()) continue;
             ReluctanceLattice lattice = new ReluctanceLattice(mu, cuts, cell, AIR_MARGIN);
             double[][] withIron = lattice.inductances(cuts, false), air = lattice.inductances(cuts, true);
-            for (int a = 0; a < idx.size(); a++)
-                for (int b = 0; b < idx.size(); b++) {
-                    lConst[idx.get(a)][idx.get(b)] += withIron[a][b] - air[a][b];
+            int n = idx.size();
+            double[][] dl = new double[n][n];
+            for (int a = 0; a < n; a++)
+                for (int b = 0; b < n; b++) dl[a][b] = withIron[a][b] - air[a][b];
+            // saturation flux densities of this body's iron cells, keyed as in the lattice
+            java.util.Map<Long, Double> bSat = new java.util.HashMap<>();
+            for (Object[] f : iron) {
+                if (f[0] != body || !Double.isFinite((Double) f[3])) continue;
+                int[] w = (int[]) f[1];
+                long key = ReluctanceLattice.key(w[0] - o[0], w[1] - o[1], w[2] - o[2]);
+                if (mu.containsKey(key)) bSat.merge(key, (Double) f[3], Math::min);
+            }
+            double[][] vec = new double[n][n];
+            double[] val = symmetricEigen(dl, vec);
+            double top = 0;
+            for (double v : val) top = Math.max(top, Math.abs(v));
+            int[] ids = idx.stream().mapToInt(Integer::intValue).toArray();
+            for (int k = 0; k < n; k++) {
+                double[] u = new double[n];
+                for (int a = 0; a < n; a++) u[a] = vec[a][k];
+                double ratio = val[k] > 1e-9 * top && !bSat.isEmpty() ? lattice.peakSaturation(cuts, u, bSat) : 0;
+                if (ratio > 0) {
+                    modes.add(new SatMode(ids, u, val[k], val[k] / ratio));
+                } else {
+                    for (int a = 0; a < n; a++)
+                        for (int b = 0; b < n; b++) lConst[ids[a]][ids[b]] += val[k] * u[a] * u[b];
                 }
+            }
         }
     }
 
@@ -357,17 +412,86 @@ public final class MagneticSystem implements Element {
         return new ReluctanceLattice.Cut(i[0], i[1], i[2], axis, sign, turns);
     }
 
-    /** The inductance matrix of the coils with no relative motion [H] (a copy), in the order of {@link #coils()}. */
+    /** Eigenvalues of symmetric a0 (cyclic Jacobi); eigenvectors into the columns of v. */
+    static double[] symmetricEigen(double[][] a0, double[][] v) {
+        int n = a0.length;
+        double[][] a = new double[n][];
+        for (int i = 0; i < n; i++) {
+            a[i] = a0[i].clone();
+            java.util.Arrays.fill(v[i], 0);
+            v[i][i] = 1;
+        }
+        for (int sweep = 0; sweep < 100; sweep++) {
+            double off = 0, scale = 0;
+            for (int p = 0; p < n; p++)
+                for (int q = 0; q < n; q++) {
+                    if (p != q) off += a[p][q] * a[p][q];
+                    scale += a[p][q] * a[p][q];
+                }
+            if (off <= 1e-30 * scale) break;
+            for (int p = 0; p < n; p++)
+                for (int q = p + 1; q < n; q++) {
+                    if (a[p][q] == 0) continue;
+                    double theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+                    double t = theta == 0 ? 1 : Math.signum(theta) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+                    double c = 1 / Math.sqrt(t * t + 1), sn = t * c;
+                    for (int k = 0; k < n; k++) {
+                        double akp = a[k][p], akq = a[k][q];
+                        a[k][p] = c * akp - sn * akq;
+                        a[k][q] = sn * akp + c * akq;
+                    }
+                    for (int k = 0; k < n; k++) {
+                        double apk = a[p][k], aqk = a[q][k];
+                        a[p][k] = c * apk - sn * aqk;
+                        a[q][k] = sn * apk + c * aqk;
+                    }
+                    for (int k = 0; k < n; k++) {
+                        double vkp = v[k][p], vkq = v[k][q];
+                        v[k][p] = c * vkp - sn * vkq;
+                        v[k][q] = sn * vkp + c * vkq;
+                    }
+                }
+        }
+        double[] out = new double[n];
+        for (int i = 0; i < n; i++) out[i] = a[i][i];
+        return out;
+    }
+
+    /**
+     * The inductance matrix of the coils with no relative motion [H] (a copy), in the order of {@link #coils()}: at zero
+     * current (the saturating iron at its small-signal inductance).
+     */
     public double[][] constantInductances() {
         build();
         double[][] l = new double[lConst.length][];
         for (int i = 0; i < l.length; i++) l[i] = lConst[i].clone();
+        for (SatMode md : modes)
+            for (int a = 0; a < md.idx.length; a++)
+                for (int b = 0; b < md.idx.length; b++) l[md.idx[a]][md.idx[b]] += md.mu * md.u[a] * md.u[b];
         return l;
+    }
+
+    /**
+     * The saturating iron modes: each {ψ_s [Wb], μ [H], u_0 … u_{n−1}} — the flux linkage it levels off at, its
+     * small-signal inductance, and its current pattern over {@link #coils()} (unit length).
+     */
+    public List<double[]> saturationModes() {
+        build();
+        List<double[]> out = new ArrayList<>();
+        for (SatMode md : modes) {
+            double[] r = new double[2 + coils.size()];
+            r[0] = md.psiSat;
+            r[1] = md.mu;
+            for (int a = 0; a < md.idx.length; a++) r[2 + md.idx[a]] = md.u[a];
+            out.add(r);
+        }
+        return out;
     }
 
     public double selfInductance(Coil c) {
         build();
-        return lConst[coils.indexOf(c)][coils.indexOf(c)];
+        int j = coils.indexOf(c);
+        return constantInductances()[j][j];
     }
 
     // ------------------------------------------------------------------ build
@@ -593,7 +717,18 @@ public final class MagneticSystem implements Element {
             java.util.Arrays.fill(dTdI[b], 0);
             java.util.Arrays.fill(dTdTh[b], 0);
         }
-        double energy = 0; // stored field energy W = ½ i·L·i + U_mm
+        double energy = 0; // stored field energy W = ½ i·L·i + U_mm (+ the saturating iron's)
+        for (SatMode md : modes) {
+            double m = 0;
+            for (int a = 0; a < md.idx.length; a++) m += md.u[a] * cur[md.idx[a]];
+            double x = md.mu * m / md.psiSat, t = Math.tanh(x), psi = md.psiSat * t, slope = md.mu * (1 - t * t);
+            for (int a = 0; a < md.idx.length; a++) {
+                lambda[md.idx[a]] += psi * md.u[a];
+                for (int b = 0; b < md.idx.length; b++) dLdI[md.idx[a]][md.idx[b]] += slope * md.u[a] * md.u[b];
+            }
+            double ax = Math.abs(x), lnCosh = ax + Math.log1p(Math.exp(-2 * ax)) - Math.log(2);
+            energy += m * psi - md.psiSat * md.psiSat / md.mu * lnCosh;
+        }
         for (int j = 0; j < nc; j++) {
             for (int k = 0; k < nc; k++) {
                 double l = lConst[j][k];

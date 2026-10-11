@@ -1727,34 +1727,40 @@ public final class AssemblyCompiler {
             // ferromagnetic parts (μr ≥ 2: soft iron, electrical steel, structural steel, nickel) and coils wound on a
             // core ("core" = 1: electrical steel filling the bore) shape the coils' and magnets' magnetic circuits
             if (!coils.isEmpty() || !magnets.isEmpty()) {
-                double steel = MaterialDatabase.standard().get("electrical_steel").get(MaterialProperty.RELATIVE_PERMEABILITY, 5000);
+                Material es = MaterialDatabase.standard().get("electrical_steel");
+                double steel = es.get(MaterialProperty.RELATIVE_PERMEABILITY, 5000);
                 for (Part p : parts) {
-                    double muR;
+                    double muR, fill, bSat;
                     if (p.kind() == PartKind.COIL) {
                         if (p.param("core", 0) <= 0) continue;
                         CoilGeometry g = PartGeometry.coil(p);
                         double rIn = g.meanRadius() - 0.5 * g.thickness();
-                        double f = Math.min(1, Math.PI * rIn * rIn / (CELL * CELL));
-                        muR = 1 + f * (steel - 1);
+                        fill = Math.min(1, Math.PI * rIn * rIn / (CELL * CELL));
+                        muR = 1 + fill * (steel - 1);
+                        bSat = es.get(MaterialProperty.SATURATION_FLUX_DENSITY, 2.0);
                     } else if (p.kind() == PartKind.MAGNET || isWire(p)) {
                         continue;
                     } else {
                         muR = p.material().get(MaterialProperty.RELATIVE_PERMEABILITY, 1);
+                        bSat = p.material().get(MaterialProperty.SATURATION_FLUX_DENSITY, Double.POSITIVE_INFINITY);
+                        fill = 1;
                         if (p.kind() == PartKind.SHAFT) {
                             double d = PartGeometry.shaftDiameter(p);
-                            muR = 1 + Math.PI * d * d / 4 / (CELL * CELL) * (muR - 1);
+                            fill = Math.PI * d * d / 4 / (CELL * CELL);
                         } else if (p.kind() == PartKind.BLOCK) {
-                            muR = 1 + Math.max(0.01, Math.min(1, p.param("fill", 1.0))) * (muR - 1);
+                            fill = Math.max(0.01, Math.min(1, p.param("fill", 1.0)));
                         } else if (!p.kind().structural) {
                             continue;
                         }
+                        muR = 1 + fill * (muR - 1);
                     }
                     if (muR < 2) continue;
                     EmBody body = em.get(c.bodyOfPart.get(p.id()));
                     if (body == null) continue;
+                    // a part-filled cell carries the cell's mean flux in its iron alone: it saturates at fill·B_sat
                     for (int x = p.minX(); x <= p.maxX(); x++)
                         for (int y = p.minY(); y <= p.maxY(); y++)
-                            for (int z = p.minZ(); z <= p.maxZ(); z++) ms.addIronCell(body, x, y, z, muR, CELL);
+                            for (int z = p.minZ(); z <= p.maxZ(); z++) ms.addIronCell(body, x, y, z, muR, CELL, fill * bSat);
                 }
             }
             c.magnetics = c.network.add(ms);

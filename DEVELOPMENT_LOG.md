@@ -451,3 +451,11 @@ residue of 3·10⁻³ in that exhibit is the generator's (the blades' own closes
 the work at speed, the same with or without multirate and whatever the outer step. Capping the inner step showed it
 converging as h² (16× smaller for 4× shorter steps): the trapezoidal rule's energy error on an AC waveform, where each
 step's −h/4·Δv·Δi has one sign for a resistive load. Within the 10⁻³ local tolerance; recorded in VALIDATION.
+
+**Iron saturates.** The iron's contribution to coil inductances is split into its eigenmodes (flux paths), each
+saturating by a tanh curve whose level is set where the lattice says the iron's most loaded cell reaches its
+saturation flux density; λ is the gradient of a co-energy, so the Jacobian stays symmetric and energy exact. The
+Faraday ring turned out to be run past saturation by its own 3 A: its core levels off at 0.345 Wb, against N·B_sat·A
+= 0.358 Wb by hand, and its make pulse is now cut short by it, as a real one would be. A saturable-reactor timer
+exhibit was sketched and dropped: with electrical steel the magnetising current before saturation is as large as an
+LED's; it wants permalloy.

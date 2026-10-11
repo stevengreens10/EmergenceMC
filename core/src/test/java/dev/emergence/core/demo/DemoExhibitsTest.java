@@ -1167,6 +1167,38 @@ class DemoExhibitsTest {
         assertTrue(peakOther > 1e-4, "the other LED flashes on break");
     }
 
+    /**
+     * Faraday's ring saturates: its core mode's flux linkage levels off where the iron through the primary reaches
+     * electrical steel's 2.0 T — N₁·B_sat·A_iron for the primary — and at the bank's 3 A the core is driven past that,
+     * so the primary's linkage stays near it rather than the linear model's far larger μ·m.
+     */
+    @Test
+    void faradayRingCoreSaturatesAtTheSteelsSaturationFluxDensity() {
+        Exhibit e = Exhibits.faradayRing();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var ms = c.magnetics();
+        double[] mode = ms.saturationModes().stream().max(java.util.Comparator.comparingDouble(m -> m[1])).orElseThrow();
+        var pri = b.assembly().get(b.id(e, "primary"));
+        var g = dev.emergence.core.assembly.PartGeometry.coil(pri);
+        double rIn = g.meanRadius() - 0.5 * g.thickness(), aIron = Math.PI * rIn * rIn;
+        double expect = 200 * 2.0 * aIron, got = mode[0] * Math.abs(mode[2]);
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 2);
+        var s = c.solverView();
+        double i1 = c.probe(b.id(e, "primary")).current(), lambda = Math.abs(ms.fluxLinkage(ms.coils().get(0), s));
+        double air = ms.coils().get(0).geom().selfInductance(ms.coils().get(0).wireDiameter()) * Math.abs(i1);
+        double linear = mode[1] * Math.abs(mode[2] * i1) * Math.abs(mode[2]);
+        System.out.printf("ring saturation: primary level-off %.4g Wb (N1·Bsat·A_iron %.4g); at %.2f A the linkage is %.4g Wb (air %.3g, iron unsaturated would add %.3g)%n",
+                got, expect, Math.abs(i1), lambda, air, linear);
+        assertEquals(expect, got, 0.2 * expect, "the core saturates at the steel's flux density through the coil's iron");
+        assertTrue(linear > 2 * got, "3 A drives the core well past saturation");
+        // (the primary's linkage also holds the iron's smaller leakage modes, here unsaturated)
+        assertTrue(lambda > 0.9 * got && lambda < 0.5 * (air + linear), "so the linkage levels off near N₁·B_sat·A, far below μ·m");
+        System.out.printf("ring saturation: energy error %.3g J of the bank's 360 J%n", c.energyError());
+        assertTrue(Math.abs(c.energyError()) < 1e-3 * 360, "energy conserved through the saturating core");
+    }
+
     /** Buckling: the loaded short strip stands below its Euler load; the same lead block on the tall strip buckles it. */
     @Test
     void tallStripBucklesUnderTheBlockTheShortOneCarries() {

@@ -454,8 +454,13 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   analytic air inductances (so air-cored behaviour is unchanged and the coarse lattice only supplies what the iron
   adds). Parts with μr ≥ 2 count (electrical steel 5000, iron 2000, nickel 300, structural steel 100; a plate by its
   fill, a shaft by its share of the cell); a coil with `core` = 1 has electrical steel in its bore (μ weighted by
-  the bore's share of the cell) and its leads leave at the sides. Linear (no saturation or hysteresis); coils and
-  iron on the same rigid body only.
+  the bore's share of the cell) and its leads leave at the sides. Coils and iron on the same rigid body only.
+* **Saturation**: the iron's inductance ΔL is split into eigenmodes, ΔL = Σ μ_k u_k u_kᵀ (for a closed core,
+  essentially one: the core flux); each mode's flux linkage follows ψ_k = ψ_s·tanh(μ_k m_k/ψ_s), m_k = u_k·i, with
+  ψ_s = μ_k/r_k where r_k is the lattice's peak |B|/B_sat per ampere of the pattern (a part-filled cell — a shaft,
+  a thin plate, a coil's core — saturating at fill·B_sat, its iron carrying the cell's mean flux alone). The coils'
+  linkage is the gradient of the co-energy Σ ∫ψ_k dm: dλ/di symmetric, field energy
+  Σ (m ψ − (ψ_s²/μ) ln cosh(μm/ψ_s)) exact. No hysteresis (soft iron: no remanence, no loop loss).
 * **Inconsistent coil currents on restart**: if the first step of a newly compiled assembly fails, the restored coil
   currents could not flow in the circuit as built (its loop was broken — a chunk loaded without the rest of the
   circuit); they start from rest, everything else kept, as an inductor's current collapses when its circuit opens.

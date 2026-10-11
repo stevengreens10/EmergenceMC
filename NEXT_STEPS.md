@@ -24,7 +24,8 @@ regenerate the demo world → screenshot tour → docs → commit.
 7. **Chemical engineering**: a distillation column (stages, reflux); liquid flows between vessels (drains, siphons);
    more condensables (methanol, acetone, …) and activity models (Wilson, NRTL) for any pair; solutions of solids,
    crystallisation; a voltaic pile driving the DC motor. (Liquids, VLE and a still are in.)
-8. **Magnetics**: iron saturation and hysteresis; hinged armatures and plungers; coils adding to a magnet's MMF
+8. **Magnetics**: hysteresis (and core loss), saturation of armatures and magnet–iron pulls; a saturable-reactor
+   timer (needs a high-permeability alloy such as 80 % permalloy in the database); hinged armatures and plungers; coils adding to a magnet's MMF
    (polarised relays, electro-permanent releases); relay logic (latching relays, relay gates); core losses; a
    drag-cup speedometer. (Magnets attract iron on slides now.)
 9. **Aerodynamics next**: twisted and cambered blades, wings on free bodies (gliders need free rigid bodies),

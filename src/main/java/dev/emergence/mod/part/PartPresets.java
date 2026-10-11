@@ -59,6 +59,7 @@ public final class PartPresets {
         l.add(stack(PartKind.INSULATED_WIRE, PartSpec.of("copper", 1, 1, "diameter", 0.5e-3)));
         l.add(stack(PartKind.WIRE, PartSpec.of("nichrome", 1, 1, "diameter", 0.3e-3)));
         l.add(stack(PartKind.WIRE, PartSpec.of("tungsten", 1, 1, "diameter", 0.05e-3)));
+        l.add(stack(PartKind.WIRE, PartSpec.of("copper", 1, 1, "diameter", 0.3e-3, "flexible", 1)));
         l.add(stack(PartKind.WIRE, PartSpec.of("constantan", 1, 1, "diameter", 0.5e-3)));
         l.add(stack(PartKind.BRUSH, PartSpec.of("graphite", 1, 1)));
         // manufactured components

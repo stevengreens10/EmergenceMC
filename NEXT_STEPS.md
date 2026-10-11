@@ -12,8 +12,9 @@ regenerate the demo world → screenshot tour → docs → commit.
 3. **Light**: an in-game tool to aim mirrors; a clock-driven heliostat (moving optics are already traced for
    sunlight); phototransistors and optocouplers; coloured glass (absorption spectra) as filters; hot non-circuit
    parts (a furnace's glowing plate) through optics.
-4. **Acoustics**: sound from vibrating parts (radiation from a piston or cone, ρcS·v²), propagation to listening
-   parts, a loudspeaker and microphone built from coil, magnet and membrane; audible playback in the world.
+4. **Acoustics**: audible playback in the world (a procedural sound stream from the simulated pressure at the
+   player); turning bodies (fans, gear whine) and vibrating structures as sources; baffles and enclosures (a
+   speaker cabinet turns a dipole into a monopole); multirate stepping so audio-rate machines run in real time.
 5. **Computing**: RAM chip, in-game ROM programmer, instruction-set growth (load/store, branch on carry),
    event-driven simulation for large gate counts.
 6. **Steam and heat engines**: a condenser and feed pump so the boiler runs indefinitely; liquid level shown in

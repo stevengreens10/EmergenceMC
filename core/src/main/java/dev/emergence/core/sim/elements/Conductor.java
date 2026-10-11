@@ -30,6 +30,9 @@ public final class Conductor implements Element {
     private double seebeck;
     private Node[] aNodes = new Node[0], bNodes = new Node[0];
     private double[] aW = new double[0], bW = new double[0];
+    /** Scratch for the thermoelectric Jacobian (sized when the end nodes are set; no allocation per load). */
+    private int[] col = new int[3];
+    private double[] di = new double[3], dta = new double[3], dtb = new double[3], dj = new double[3];
 
     /**
      * @param length       conduction path length [m]
@@ -55,6 +58,12 @@ public final class Conductor implements Element {
         this.aW = aW;
         this.bNodes = bNodes;
         this.bW = bW;
+        int nc = 3 + aNodes.length + bNodes.length;
+        col = new int[nc];
+        di = new double[nc];
+        dta = new double[nc];
+        dtb = new double[nc];
+        dj = new double[nc];
         return this;
     }
 
@@ -109,9 +118,9 @@ public final class Conductor implements Element {
         for (int k = 0; k < aNodes.length; k++) ctx.addF(aNodes[k].index(), aW[k] * seebeck * ta * i);  // Peltier heat taken at a
         for (int k = 0; k < bNodes.length; k++) ctx.addF(bNodes[k].index(), -bW[k] * seebeck * tb * i); // and given at b
         // Jacobian: columns V_a, V_b, T (resistance), the end temperatures
-        int nc = 3 + aNodes.length + bNodes.length;
-        int[] col = new int[nc];
-        double[] di = new double[nc], dta = new double[nc], dtb = new double[nc], dj = new double[nc];
+        int nc = col.length;
+        java.util.Arrays.fill(dta, 0);
+        java.util.Arrays.fill(dtb, 0);
         col[0] = ia;
         di[0] = g;
         dj[0] = 2 * i;

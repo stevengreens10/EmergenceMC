@@ -315,6 +315,9 @@ public final class TransientSolver implements StateView {
     }
 
     private String lastBadUnknown = "";
+    /** The last unknown still moving in a Newton iteration (its message is built only when a step fails). */
+    private int lastBadIndex = -1;
+    private double lastBadX, lastBadDx;
     private double tolScale = 1;
     private boolean skipLte;
     private long rescues;
@@ -334,6 +337,7 @@ public final class TransientSolver implements StateView {
     }
 
     private String worstNewtonDiagnostic() {
+        if (lastBadIndex >= 0) lastBadUnknown = net.unknownName(lastBadIndex) + " = " + lastBadX + " (step " + lastBadDx + ")";
         return "Last non-converging unknown: " + lastBadUnknown;
     }
 
@@ -425,6 +429,7 @@ public final class TransientSolver implements StateView {
                 jac.solve(dx);
             } catch (SingularMatrixException e) {
                 lastBadUnknown = "singular in column of " + net.unknownName(Math.min(e.row(), n - 1));
+                lastBadIndex = -1;
                 return 1;
             }
             boolean small = true;
@@ -433,6 +438,7 @@ public final class TransientSolver implements StateView {
             for (int i = 0; i < n; i++) {
                 if (!Double.isFinite(dx[i])) {
                     lastBadUnknown = net.unknownName(i) + " (non-finite" + nonFiniteSource() + ")";
+                    lastBadIndex = -1;
                     return 1;
                 }
             }
@@ -453,7 +459,9 @@ public final class TransientSolver implements StateView {
                 double tol = Math.max((relTol * Math.max(Math.abs(xTrial[i]), Math.abs(x[i])) + absTol[i]) * tolScale, ctx.floor[i]);
                 if (Math.abs(dx[i]) > tol) {
                     small = false;
-                    lastBadUnknown = net.unknownName(i) + " = " + xTrial[i] + " (step " + dx[i] + ")";
+                    lastBadIndex = i;
+                    lastBadX = xTrial[i];
+                    lastBadDx = dx[i];
                 }
             }
             if (DEBUG) System.out.println("t=" + t + " h=" + h + " it=" + it + " m=" + m + " x=" + Arrays.toString(xTrial) + " dx=" + Arrays.toString(dx));

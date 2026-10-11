@@ -494,6 +494,11 @@ public final class AssemblyCompiler {
 
         final Map<Long, WireRun> runOf = new HashMap<>();
 
+        /** A flexible lead: a bare wire marked "flexible" (a moving coil's tinsel lead). */
+        boolean isFlexibleLead(Part p) {
+            return p.kind() == PartKind.WIRE && p.param("flexible", 0) > 0.5;
+        }
+
         /** The parts a wire makes electrical contact with (on the same body), or null if it is not a plain wire. */
         List<Part> wireContacts(Part p) {
             if (!isWire(p) || p.minX() != p.maxX() || p.minY() != p.maxY() || p.minZ() != p.maxZ()) return null;
@@ -1142,7 +1147,8 @@ public final class AssemblyCompiler {
                                     // a thin shaft physically touches neighbours only at its ends (or hubs on it)
                                     if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
                                     CompiledAssembly.Body bp = c.bodyOfPart.get(p.id()), bq = c.bodyOfPart.get(q.id());
-                                    if (bp != bq) {
+                                    // a flexible lead conducts across a moving joint, whatever moves
+                                    if (bp != bq && !isFlexibleLead(p) && !isFlexibleLead(q)) {
                                         // only a brush may conduct across a moving joint, through its contact face —
                                         // or contacts a slide brings together across its direction of travel
                                         Part brush = p.kind() == PartKind.BRUSH ? p : q.kind() == PartKind.BRUSH ? q : null;

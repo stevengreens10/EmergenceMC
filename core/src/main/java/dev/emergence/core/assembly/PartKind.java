@@ -21,7 +21,11 @@ public enum PartKind {
     MAGNET(false, false),
     /** Wound coil of enamelled wire with two leads at its axial ends. */
     COIL(false, true),
-    /** Bare conductor wire segment (contacts any conductor it touches). */
+    /**
+     * Bare conductor wire segment (contacts any conductor it touches). With "flexible" = 1 it is a flexible lead (the
+     * tinsel lead of a loudspeaker's moving coil): it still conducts where the part it touches moves relative to it,
+     * and exerts no force on it.
+     */
     WIRE(false, true),
     /** Insulated wire segment (contacts only other wires and component leads). */
     INSULATED_WIRE(false, true),

@@ -30,6 +30,13 @@ simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its p
 out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
 
 ## History
+* Every island, per Newton iteration: natural convection's film-temperature air properties and Prandtl factors are
+  tabulated (1 K steps) and its slope takes one extra evaluation, not four (59 % → 12 % of the load time in a
+  circuit-heavy island); thermoelectric conductors reuse their Jacobian scratch arrays; the solver records the last
+  unconverged unknown and formats its message only when a step fails (it built a string per unknown per iteration).
+  The loudspeaker exhibit: 43 → 30 s per simulated second; it still needs ~60 000 steps a second (switching edges at
+  250 Hz, each resolved through the MOSFET's picofarad capacitances) and runs ~70× slower than real time — the next
+  step is multirate: 200 of its 514 unknowns are thermal and need no microsecond steps.
 * Speed governor 36 000 → 1 400 steps per regulated half second: the op-amp's internal state had a 1 µV
   truncation tolerance; in a closed loop its derivative A₀v_d/τ amplifies the inputs' Newton residuals, so the
   error estimate was noise. It now has 1 mV, like capacitor voltages. The exhibit still runs about 2× slower than

@@ -117,7 +117,8 @@ public final class PartItem extends Item {
                     + (p.getOrDefault("ntc_beta", 0.0) > 0 ? String.format(" NTC thermistor, β %.0f K", p.get("ntc_beta")) : "");
             case CAPACITOR -> ", " + Units.formatSI(p.getOrDefault("capacitance", 1e-4), "F");
             case GEAR -> ", " + p.getOrDefault("teeth", 24.0).intValue() + " teeth";
-            case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m");
+            case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m")
+                    + (p.getOrDefault("flexible", 0.0) > 0.5 ? ", flexible lead" : "");
             case BEARING -> p.getOrDefault("type", 0.0) >= 1 ? ", plain bushing" : ", ball";
             case SHAFT -> ", " + s.length() + " long";
             case PIPE -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.025), "m") + fluidLabel(p);

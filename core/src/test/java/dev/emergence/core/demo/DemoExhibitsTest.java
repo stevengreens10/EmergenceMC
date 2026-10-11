@@ -1623,4 +1623,26 @@ class DemoExhibitsTest {
             System.out.printf("  %s: filament %.0f K:%s%n", sw[s], c.probe(b.id(e, "filament")).temperature(), sb);
         }
     }
+
+    /** Loudspeaker: silent, the microphone's LED is dark; singing, the sound reaches the microphone and lights it. */
+    @Test
+    void loudspeakerIsHeardByTheMicrophone() {
+        Exhibit e = AcousticsExhibits.loudspeaker();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long mic = b.id(e, "micRod"), lit = b.id(e, "lit");
+        run(c, 0.15); // the amplifier settles from power-on
+        assertTrue(c.probe(lit).current() < 1e-6, "silence: the LED is dark");
+        c.toggleSwitch(b.id(e, "switch"));
+        double micPeak = 0, spkPeak = 0;
+        for (int k = 0; k < 600; k++) {
+            c.step(2e-4);
+            micPeak = Math.max(micPeak, Math.abs(c.probe(mic).angularVelocity()));
+            spkPeak = Math.max(spkPeak, Math.abs(c.probe(b.id(e, "spkRod")).angularVelocity()));
+        }
+        System.out.printf("loudspeaker: plate %.3g m/s, microphone plate %.3g m/s, hold %.2f V, LED %.2f mA%n", spkPeak, micPeak,
+                c.probe(b.id(e, "hold")).voltage(), 1e3 * c.probe(lit).current());
+        assertTrue(micPeak > 1e-5, "the air sets the microphone's plate moving: " + micPeak);
+        assertTrue(c.probe(lit).current() > 5e-3, "the microphone hears it: the LED lights");
+    }
 }

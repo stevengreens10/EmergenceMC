@@ -185,3 +185,5 @@ multimeter, oscilloscope/data logging.
   antiphase), in a free field (no walls, ground, rooms or absorption); its position is fixed at compile time (slides
   move millimetres); the radiation reaction on a source is not applied; bodies hear one another only within one
   island (slide bearings within 8 blocks are joined). Nothing is played as sound in the game yet.
+* The loudspeaker exhibit (and any machine switched at audio rates) runs far slower than real time: every edge is
+  resolved, and its thermal network is stepped with the electrical one.

@@ -284,6 +284,11 @@ out gives an oscillating sphere's radiated power within 1.8 % of (π/6)ρck⁴a�
 pressure falls as 1/r; the force A's motion puts on B equals B's on A. In the solver, a plate driven at 400 Hz
 makes a tuned plate 0.5 m away vibrate at 5.74 mm/s against the analytic 5.84 mm/s.
 
+Loudspeaker (`DemoExhibitsTest.loudspeakerIsHeardByTheMicrophone`): a moving-coil speaker (a 3×3-cell aluminium
+plate on a sprung rod, 0.22 kg, resonant near 250 Hz) switched at 250 Hz moves at 15.7 mm/s (≈ 70 dB at the
+microphone); an identical plate 0.6 m away is set moving at 54 µm/s by the air; its coil's tens of microvolts,
+amplified ≈ 45 000 times, light the LED. Silent, the LED stays dark.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

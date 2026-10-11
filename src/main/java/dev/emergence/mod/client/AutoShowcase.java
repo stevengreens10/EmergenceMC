@@ -210,6 +210,12 @@ public final class AutoShowcase {
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");
                 STEPS.add(new Step(60, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-energised"));
             }
+            if (id.equals("loudspeaker")) {
+                // switch the loudspeaker on; the simulation resolves every vibration, so give the microphone time
+                BlockPos sw = DemoBuilder.partBlock(plot, e, "switch"), led = DemoBuilder.partBlock(plot, e, "lit");
+                STEPS.add(new Step(3000, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-heard",
+                        () -> ledLit(led)));
+            }
             if (id.equals("spectrometer")) {
                 // red heat, orange, white: the infrared channel lights first, then the red, then the blue
                 for (String sw : new String[]{"switch", "warmer", "hotter"}) {
@@ -361,6 +367,12 @@ public final class AutoShowcase {
             for (PlacedPart p : be.parts()) t = Math.max(t, ClientSimState.temperature(p.id, 0f));
         }
         return t;
+    }
+
+    /** True once an LED in the block at {@code at} is glowing. */
+    private static boolean ledLit(BlockPos at) {
+        return Minecraft.getInstance().level.getBlockEntity(at) instanceof AssemblyBlockEntity be
+                && be.parts().stream().anyMatch(p -> p.kind == PartKind.LED && ClientSimState.gauge(p.id) > 1e-5f);
     }
 
     /** True once the fuse wire has been destroyed. */

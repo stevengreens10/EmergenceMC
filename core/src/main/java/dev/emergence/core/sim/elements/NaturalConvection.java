@@ -36,25 +36,48 @@ public final class NaturalConvection implements Element {
         this.length = length;
     }
 
+    /**
+     * The film-temperature groups, tabulated every kelvin from 100 to 4000 K (linear interpolation: relative error
+     * ~10⁻⁶): ν·α, k, and each shape's Prandtl factor 1/[1 + (c/Pr)^{9/16}]^e.
+     */
+    private static final int T0 = 100, T1 = 4000;
+    private static final double[] NU_ALPHA = new double[T1 - T0 + 1], K = new double[T1 - T0 + 1];
+    private static final double[][] PR_FACTOR = new double[3][T1 - T0 + 1];
+
+    static {
+        for (int i = 0; i <= T1 - T0; i++) {
+            double t = T0 + i, nu = Air.kinematicViscosity(t), alpha = Air.thermalDiffusivity(t), pr = nu / alpha;
+            NU_ALPHA[i] = nu * alpha;
+            K[i] = Air.conductivity(t);
+            PR_FACTOR[0][i] = 1 / Math.pow(1 + Math.pow(0.559 / pr, 9.0 / 16), 8.0 / 27);
+            PR_FACTOR[1][i] = 1 / Math.pow(1 + Math.pow(0.492 / pr, 9.0 / 16), 8.0 / 27);
+            PR_FACTOR[2][i] = 1 / Math.pow(1 + Math.pow(0.469 / pr, 9.0 / 16), 4.0 / 9);
+        }
+    }
+
+    private static double lerp(double[] tab, int i, double f) {
+        return tab[i] + f * (tab[i + 1] - tab[i]);
+    }
+
     public double heatTransferCoefficient(double ts, double ta) {
         double dT = Math.abs(ts - ta);
-        double tf = 0.5 * (ts + ta);
-        double nu = Air.kinematicViscosity(tf);
-        double alpha = Air.thermalDiffusivity(tf);
-        double pr = nu / alpha;
-        double ra = PhysicalConstants.STANDARD_GRAVITY * (1.0 / tf) * dT * length * length * length / (nu * alpha);
+        double tf = Math.max(T0, Math.min(T1 - 1e-9, 0.5 * (ts + ta)));
+        int i = (int) (tf - T0);
+        double f = tf - T0 - i;
+        double ra = PhysicalConstants.STANDARD_GRAVITY / tf * dT * length * length * length / lerp(NU_ALPHA, i, f);
+        double pf = lerp(PR_FACTOR[shape.ordinal()], i, f);
         double nusselt = switch (shape) {
             case HORIZONTAL_CYLINDER -> {
-                double v = 0.60 + 0.387 * Math.pow(ra, 1.0 / 6) / Math.pow(1 + Math.pow(0.559 / pr, 9.0 / 16), 8.0 / 27);
+                double v = 0.60 + 0.387 * Math.cbrt(Math.sqrt(ra)) * pf;
                 yield v * v;
             }
             case VERTICAL_PLATE -> {
-                double v = 0.825 + 0.387 * Math.pow(ra, 1.0 / 6) / Math.pow(1 + Math.pow(0.492 / pr, 9.0 / 16), 8.0 / 27);
+                double v = 0.825 + 0.387 * Math.cbrt(Math.sqrt(ra)) * pf;
                 yield v * v;
             }
-            case SPHERE -> 2.0 + 0.589 * Math.pow(ra, 0.25) / Math.pow(1 + Math.pow(0.469 / pr, 9.0 / 16), 4.0 / 9);
+            case SPHERE -> 2.0 + 0.589 * Math.sqrt(Math.sqrt(ra)) * pf;
         };
-        return nusselt * Air.conductivity(tf) / length;
+        return nusselt * lerp(K, i, f) / length;
     }
 
     /**
@@ -74,9 +97,10 @@ public final class NaturalConvection implements Element {
         double ts = ctx.x(surface.index());
         double ta = ctx.x(ambient.index());
         double q = q(ts, ta);
-        double eps = 1e-3;
-        double dqs = (q(ts + eps, ta) - q(ts - eps, ta)) / (2 * eps);
-        double dqa = (q(ts, ta + eps) - q(ts, ta - eps)) / (2 * eps);
+        // one-sided slope on the surface temperature (away from the ambient, where h is smooth); the ambient's is
+        // taken as its negative — the film-temperature terms differ, which only shades Newton's convergence
+        double eps = ts >= ta ? 1e-3 : -1e-3;
+        double dqs = (q(ts + eps, ta) - q) / eps, dqa = -dqs;
         ctx.addFlow(surface, ambient, q);
         ctx.addJ(surface.index(), surface.index(), dqs);
         ctx.addJ(surface.index(), ambient.index(), dqa);

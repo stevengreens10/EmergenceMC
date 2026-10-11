@@ -332,8 +332,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   ideal single pole (closed-loop bandwidth GBW/gain), large steps slew at SR, saturation recovers without wind-up.
   The output is s behind 75 Ω; sourced current is drawn from V₊, sunk current returned to V₋, plus 0.5 mA
   quiescent; all dissipation heats the part. Inputs draw no current (3 pF each). The truncation-error tolerance on
-  s is 1 mV, as for any capacitor's voltage (a tighter one let microvolt Newton residuals at the inputs, multiplied
-  by A₀/τ ≈ 2·10⁷ s⁻¹, set the step size of every closed loop).
+  s is 10 mV absolute (0.1 % of a 12 V swing) plus the solver's relative tolerance: microvolt Newton residuals at the
+  inputs, multiplied by A₀/τ ≈ 2·10⁷ s⁻¹, are noise in ds/dt, and a tighter tolerance let that noise set the step size
+  of every closed loop (an output resting at mid-supply has s ≈ 0, so the relative part does not help there).
 
 ## Instruments: data logger / oscilloscope (`DataLogger`, `CompiledAssembly.attachLogger`)
 * Fed the probed quantities of one part (temperature, current, voltage, power, speed, angle, fluid pressure,
@@ -557,6 +558,8 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   (1/r²) and radiated (1/r) parts; radiated power ρM²Ü²/(12πc³).
 * **Receivers**: each such body feels F = ρM·(∂u/∂t·ŝ) from the others' fields (Froude–Krylov plus added mass on a
   small body in unsteady potential flow); reciprocal by the Green's function's symmetry.
+* **Flexible leads**: a bare wire marked "flexible" (a loudspeaker's tinsel lead) conducts to a part on another,
+  moving body; it carries no force.
 * **Retardation**: velocities are kept per accepted step; derivatives at τ from a least-squares cubic through the
   eight nearest samples. The force within a step is known from history (the delay outlasts the step; otherwise the
   last values are held). The air is a reservoir: its work on receivers is external power; the radiation reaction on

@@ -97,7 +97,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    channels) shows a filament's glow shifting from infrared to blue as it heats (Wien)
 ✅ Prisms (dispersion exhibit)
 🟡 Acoustics: compact-dipole sound from bodies on slides, retarded near/induction/far field, receivers pushed by
-   the air; ⬜ turning bodies, enclosures and baffles, rooms, in-game audio
+   the air; a loudspeaker heard by a microphone (moving coils on flexible leads, an op-amp amplifier);
+   ⬜ turning bodies, enclosures and baffles, rooms, in-game audio
 ⬜ Geology, environmental, biology; diffuse reflection; spectrum analyser,
    logic analyser, multi-channel loggers
 

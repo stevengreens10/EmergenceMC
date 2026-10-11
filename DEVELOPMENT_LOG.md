@@ -379,3 +379,10 @@ by its outline (a disc's added mass) and its volume; the retarded field (near, i
 other bodies as ρM·∂u/∂t. Velocity histories per accepted step give the retarded derivatives by local cubic fits.
 Checked against the potential flow round a sphere, an oscillating sphere's radiated power, propagation at c,
 reciprocity, and a driven plate exciting a tuned one half a metre away.
+
+**Loudspeaker and microphone.** Two moving-coil transducers from parts, 0.6 m apart: an oscillator switches the
+speaker's coil, its plate pushes the air, the field moves the microphone's plate, and two op-amp stages, a peak
+detector and a comparator light an LED. Moving coils needed flexible leads (a wire marked "flexible" conducts across
+moving joints); a steel rod through a coil shorts its end faces (nylon rod) and bare leads beside a plate short to it.
+Profiling it found natural convection taking most of every island's load time (now tabulated), a diagnostic string
+built per Newton iteration (now lazy), and the op-amp state's error tolerance again (10 mV).

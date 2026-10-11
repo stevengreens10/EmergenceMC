@@ -45,6 +45,21 @@ public final class Photodiode implements Element {
 
     private final List<HotSource> hot = new ArrayList<>();
 
+    /**
+     * A hot body whose light reaches this junction by way of mirrors, lenses or glass, band by band: g[b] [m²] is the
+     * coupling in wavelength band b (its emissivity and surface times the fraction of its light in that band the optics
+     * deliver here), so that g[b]·(F_b(T) − F_b(T_a)) arrives in the band (see {@link #BAND_EDGES}).
+     */
+    record SpectralSource(Node thermal, double[] g, double ambient) {
+    }
+
+    private final List<SpectralSource> spectral = new ArrayList<>();
+
+    /** Wavelength bands [nm] for light traced through dispersive optics: 18 bands of 40 nm across silicon's response. */
+    public static final double[] BAND_EDGES = new double[19];
+    /** Per band: a black body's emitted power F_b(T) = ∫ πB dλ [W/m²] and its photocurrent ∫ R·πB dλ [A/m²], every 10 K. */
+    private static final double[][] BAND_POWER = new double[18][601], BAND_CURRENT = new double[18][601];
+
     /** Silicon's response to blackbody radiation, f(T) = R_b(T)·σT⁴ [A/m²], tabulated every 10 K from 0 to 6000 K. */
     private static final double[] BLACKBODY = new double[601];
 
@@ -62,6 +77,43 @@ public final class Photodiode implements Element {
             BLACKBODY[i] = sum;
         }
         SUN_RESPONSIVITY = blackbodyResponsivity(5778);
+        for (int b = 0; b <= 18; b++) BAND_EDGES[b] = 380 + 40 * b;
+        for (int b = 0; b < 18; b++) {
+            for (int i = 1; i < 601; i++) {
+                double t = 10.0 * i, pw = 0, cu = 0;
+                for (double nm = BAND_EDGES[b] + 0.5; nm < BAND_EDGES[b + 1]; nm += 1) {
+                    double l = nm * 1e-9, x = c2 / (l * t);
+                    if (x > 700) continue;
+                    double e = Math.PI * c1 / Math.pow(l, 5) / Math.expm1(x) * 1e-9;
+                    pw += e;
+                    cu += responsivity(nm) * e;
+                }
+                BAND_POWER[b][i] = pw;
+                BAND_CURRENT[b][i] = cu;
+            }
+        }
+    }
+
+    /** Centre wavelength of band b [nm]. */
+    public static double bandCentre(int b) {
+        return 0.5 * (BAND_EDGES[b] + BAND_EDGES[b + 1]);
+    }
+
+    private static double table(double[] tab, double t) {
+        double x = Math.max(0, Math.min(5999.999, t)) / 10;
+        int i = (int) x;
+        double f = x - i;
+        return tab[i] * (1 - f) + tab[i + 1] * f;
+    }
+
+    /** A black body's emitted power in band b [W/m²]. */
+    public static double bandPower(int b, double t) {
+        return table(BAND_POWER[b], t);
+    }
+
+    /** The photocurrent a black body's light in band b drives [A per W/m²·m²]. */
+    public static double bandCurrent(int b, double t) {
+        return table(BAND_CURRENT[b], t);
     }
 
     /**
@@ -118,6 +170,18 @@ public final class Photodiode implements Element {
         hot.add(new HotSource(thermal, g, ambient));
     }
 
+    /** A hot body seen through optics, band by band (see {@link SpectralSource}). */
+    public void addSpectralHotSource(Node thermal, double[] g, double ambient) {
+        spectral.add(new SpectralSource(thermal, g.clone(), ambient));
+    }
+
+    /** The summed band couplings [m²] of the hot bodies seen through optics (diagnostics, tests). */
+    public double[] spectralCoupling() {
+        double[] g = new double[BAND_EDGES.length - 1];
+        for (SpectralSource h : spectral) for (int b = 0; b < g.length; b++) g[b] += h.g[b];
+        return g;
+    }
+
     /** Daylight arriving on the sensitive face [W], converted with silicon's responsivity to a 5778 K black body. */
     public void setAmbientPower(double watts) {
         this.ambientWatts = Math.max(0, watts);
@@ -158,6 +222,15 @@ public final class Photodiode implements Element {
             // ∂i_ph/∂T, the table's slope
             ctx.addFlowJ(k, a, h.thermal.index(), h.g * (blackbodyCurrent(t + 5) - blackbodyCurrent(t - 5)) / 10);
         }
+        for (SpectralSource h : spectral) {
+            double t = ctx.x(h.thermal.index()), di = 0;
+            for (int b = 0; b < h.g.length; b++) {
+                if (h.g[b] == 0) continue;
+                iph += h.g[b] * (bandCurrent(b, t) - bandCurrent(b, h.ambient));
+                di += h.g[b] * (bandCurrent(b, t + 5) - bandCurrent(b, t - 5)) / 10;
+            }
+            ctx.addFlowJ(k, a, h.thermal.index(), di);
+        }
         ctx.addFlow(k, a, iph);
         if (thermal != null) {
             // absorbed light minus the electrical power delivered becomes heat: P_heat = P_in − (−v·i) with i the
@@ -171,6 +244,10 @@ public final class Photodiode implements Element {
     private double pinFrom(StateView s) {
         double pin = ambientWatts;
         for (HotSource h : hot) pin += h.g * PhysicalConstants.STEFAN_BOLTZMANN * (Math.pow(s.x(h.thermal.index()), 4) - Math.pow(h.ambient, 4));
+        for (SpectralSource h : spectral) {
+            double t = s.x(h.thermal.index());
+            for (int b = 0; b < h.g.length; b++) if (h.g[b] != 0) pin += h.g[b] * (bandPower(b, t) - bandPower(b, h.ambient));
+        }
         for (Source src : sources) {
             double c = src.coupling.applyAsDouble(src.angle == null ? 0 : s.x(src.angle.angleIndex()));
             pin += c * src.led.opticalPower(s);
@@ -193,6 +270,10 @@ public final class Photodiode implements Element {
             iph += responsivity(1239.84 / src.led.photonEnergyEv()) * c * src.led.opticalPower(s);
         }
         for (HotSource h : hot) iph += h.g * (blackbodyCurrent(s.x(h.thermal.index())) - blackbodyCurrent(h.ambient));
+        for (SpectralSource h : spectral) {
+            double t = s.x(h.thermal.index());
+            for (int b = 0; b < h.g.length; b++) if (h.g[b] != 0) iph += h.g[b] * (bandCurrent(b, t) - bandCurrent(b, h.ambient));
+        }
         return id - iph;
     }
 

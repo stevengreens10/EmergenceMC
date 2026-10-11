@@ -1021,17 +1021,21 @@ public final class SimulationManager {
         float[] sa = new float[sEnds.size()];
         for (int i = 0; i < sa.length; i++) sa[i] = sEnds.get(i);
         // LED beams turned by mirrors and lenses: per LED its rays, each a polyline relative to the LED's block
-        // (packed: ray count, then per ray its point count and x, y, z in world blocks)
+        // (packed: ray count, then per ray its point count, its wavelength [nm] (0: the LED's own) and x, y, z in world
+        // blocks)
         List<Long> bIds = new ArrayList<>();
         List<Float> bData = new ArrayList<>();
         for (long id : isl.partPos.keySet()) {
             var rays = c.beams(id);
             if (rays == null) continue;
+            double[] nms = c.beamWavelengths(id);
             BlockPos at = isl.partPos.get(id);
             bIds.add(id);
             bData.add((float) rays.size());
-            for (var ray : rays) {
+            for (int r = 0; r < rays.size(); r++) {
+                var ray = rays.get(r);
                 bData.add((float) ray.size());
+                bData.add(nms == null ? 0f : (float) nms[r]);
                 for (var pt : ray) {
                     bData.add((float) (pt.x() * scale - at.getX()));
                     bData.add((float) (pt.y() * scale - at.getY()));

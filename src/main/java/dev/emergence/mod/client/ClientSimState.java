@@ -118,7 +118,7 @@ public final class ClientSimState {
         }
         for (int i = 0, k = 0; i < p.beamIds().length; i++) {
             int start = k, rays = (int) p.beams()[k++];
-            for (int r = 0; r < rays; r++) k += 1 + 3 * (int) p.beams()[k];
+            for (int r = 0; r < rays; r++) k += 2 + 3 * (int) p.beams()[k];
             BEAM.put(p.beamIds()[i], java.util.Arrays.copyOfRange(p.beams(), start, k));
         }
         for (int i = 0; i < p.springIds().length; i++) {

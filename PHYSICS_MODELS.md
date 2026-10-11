@@ -307,6 +307,14 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   Jacobian couples the photodiode to the body's temperature). Warm bodies' infrared lies beyond silicon's band:
   f(300 K)/σT⁴ ≈ 2·10⁻¹⁶ A/W; a red-hot body (1000 K) 3·10⁻⁴; illuminant A (2856 K) 0.133. Pairs that could not
   drive 0.1 nA even at the body's failure temperature are dropped.
+* **Hot parts seen through optics** (`Photodiode.addSpectralHotSource`, `AssemblyCompiler.buildSpectralIncandescence`):
+  conductors in a circuit that survive 1200 K (filaments, heating elements), when mirrors, lenses or glass are within
+  16 cells, are traced as isotropic point sources (two opposite hemispheres of uniform intensity, each carrying half)
+  in 18 bands of 40 nm from 380 to 1100 nm, each at its centre wavelength — so a prism sends each band its own way.
+  Band b delivers g_b·(F_b(T) − F_b(T_a)) [W] with g_b = ε·A_s × (the fraction of the source's light the tubes bring
+  to the window), F_b(T) = ∫_b πB dλ (tabulated every 10 K) and the photocurrent g_b·∫_b R·πB dλ. Direct paths stay
+  with the grey calculation above. Display rays: the central ray through the nearest optic in seven colours, drawn
+  as bright as B(λ, T)/B(λ, 2800 K).
 
 ## Control and robotics parts (`GravityTorque`, `Potentiometer`, `OpAmp`)
 * **Gravity on rotating bodies**: a body turning about a non-vertical axis whose centre of mass is off the axis

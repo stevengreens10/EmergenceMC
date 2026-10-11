@@ -1937,6 +1937,80 @@ public final class AssemblyCompiler {
                     if (open > 0) pd.addHotSource(tn, g0 * open / 5.0, ambientT);
                 }
             }
+            buildSpectralIncandescence(pds);
+        }
+
+        /**
+         * Light from hot circuit parts (filaments, heating elements — conductors in a circuit that survive 1200 K) that
+         * reaches photodiodes by way of mirrors, lenses or glass, band by band: each of {@link Photodiode#BAND_EDGES}'s
+         * 40 nm bands is traced as ray tubes at its centre wavelength (so a prism sends each band its own way), from the
+         * part's centre into two opposite hemispheres of uniform intensity — an isotropic emitter of ε·A_s·F_b(T). Paths
+         * straight to a photodiode are left to the direct, grey calculation above.
+         */
+        void buildSpectralIncandescence(List<Part> pds) {
+            List<Part> optics = new ArrayList<>();
+            for (Part p : parts) if (AssemblyOptics.redirects(p)) optics.add(p);
+            if (optics.isEmpty()) return;
+            int nb = Photodiode.BAND_EDGES.length - 1;
+            dev.emergence.core.optics.OpticalScene[] scenes = new dev.emergence.core.optics.OpticalScene[nb];
+            for (Part src : parts) {
+                Node tn = c.thermalOfPart.get(src.id());
+                if (tn == null || !c.leadsOfPart.containsKey(src.id()) || !conductive(src)) continue;
+                double tMax = Math.min(PartGeometry.failureTemperature(src), 5999);
+                if (tMax < 1200) continue;
+                Part near = null;
+                double best = 16 * CELL;
+                for (Part o : optics) {
+                    double d = o.center().sub(src.center()).length();
+                    if (d < best) {
+                        best = d;
+                        near = o;
+                    }
+                }
+                if (near == null) continue;
+                Vec3 ax = near.center().sub(src.center());
+                ax = ax.mul(1 / ax.length());
+                double emit = PartGeometry.emissivity(src) * PartGeometry.surfaceArea(src);
+                Map<Long, double[]> g = new HashMap<>();
+                for (int b = 0; b < nb; b++) {
+                    double nm = Photodiode.bandCentre(b);
+                    if (scenes[b] == null) scenes[b] = AssemblyOptics.scene(a, c, nm, bd -> {
+                        double[] m = bd.parts.isEmpty() ? null : prev.bodyMotion().get(bd.parts.get(0));
+                        return m == null ? 0 : m[1];
+                    });
+                    for (Vec3 dir : new Vec3[]{ax, ax.mul(-1)}) {
+                        var res = dev.emergence.core.optics.TubeTracer.point(scenes[b], src.center(), dir, 0, nm, src.id(), 16, 7);
+                        for (Part rx : pds) {
+                            double f = res.light(rx.id());
+                            if (f > 0) g.computeIfAbsent(rx.id(), k -> new double[nb])[b] += 0.5 * emit * f;
+                        }
+                    }
+                }
+                for (var en : g.entrySet()) {
+                    if (!(c.deviceOfPart.get(en.getKey()) instanceof Photodiode pd)) continue;
+                    double[] gb = en.getValue();
+                    double peak = 0;
+                    for (int b = 0; b < nb; b++) peak = Math.max(peak, gb[b] * Photodiode.bandCurrent(b, tMax));
+                    if (peak > 1e-11) pd.addSpectralHotSource(tn, gb, ambientT);
+                }
+                // to draw by: the ray from the part through the nearest optic's centre, in seven colours
+                List<List<Vec3>> rays = new ArrayList<>();
+                List<Double> nms = new ArrayList<>();
+                for (double nm : new double[]{420, 460, 500, 540, 580, 620, 680}) {
+                    var sc = AssemblyOptics.scene(a, c, nm, bd -> {
+                        double[] m = bd.parts.isEmpty() ? null : prev.bodyMotion().get(bd.parts.get(0));
+                        return m == null ? 0 : m[1];
+                    });
+                    var rs = dev.emergence.core.optics.TubeTracer.beams(sc, src.center(), ax, 400, nm, src.id(), 0.25);
+                    if (rs.isEmpty()) continue;
+                    rays.add(rs.get(0));
+                    nms.add(nm);
+                }
+                if (!rays.isEmpty()) {
+                    c.beams.put(src.id(), rays);
+                    c.beamNm.put(src.id(), nms.stream().mapToDouble(Double::doubleValue).toArray());
+                }
+            }
         }
 
         /**

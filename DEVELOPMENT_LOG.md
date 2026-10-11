@@ -367,3 +367,9 @@ wiring onto the frame (wire networks take one body — now in KNOWN_LIMITATIONS)
 current than an op-amp gives (its current limit made the op-amp stiff — the Darlington is what a real drive uses);
 and the op-amp's internal state had a 1 µV error tolerance that turned Newton noise into 25× too many steps in any
 closed loop.
+
+**Spectrometer.** Light from hot circuit parts is now traced through mirrors, lenses and glass in 18 bands of 40 nm,
+each at its own refractive index, and photodiodes take band-by-band blackbody sources. A collimated filament beam
+through a 40° flint prism spreads violet to infrared across four cells 0.8 m on (a 45° prism sent the blue into total
+internal reflection); three receivers show the glow shifting to the blue as the filament heats. Display rays carry a
+wavelength each, drawn as bright as Planck's law makes that colour at the source's temperature.

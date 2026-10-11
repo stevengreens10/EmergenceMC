@@ -421,6 +421,11 @@ public final class CompiledAssembly {
         return c;
     }
 
+    /** A photodiode's coupling to hot parts seen through optics, per wavelength band [m²] (see {@code Photodiode#BAND_EDGES}). */
+    public double[] spectralCoupling(long partId) {
+        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Photodiode pd ? pd.spectralCoupling() : null;
+    }
+
     /** Register bits (or outputs, for chips without registers) of the chip a CHIP part belongs to, as 0..1 levels. */
     public double[] chipState(long partId) {
         if (!(deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.MsiChip chip)) return null;
@@ -448,6 +453,13 @@ public final class CompiledAssembly {
     final Map<Long, List<List<Vec3>>> beams = new HashMap<>();
 
     /** Rays showing an LED's beam where mirrors or lenses turn it (polylines, metres), or null. */
+    /** Wavelength [nm] of each of a source's display rays, for sources that send several colours (hot parts); null for LEDs. */
+    public double[] beamWavelengths(long partId) {
+        return beamNm.get(partId);
+    }
+
+    final Map<Long, double[]> beamNm = new HashMap<>();
+
     public List<List<Vec3>> beams(long ledId) {
         return beams.get(ledId);
     }

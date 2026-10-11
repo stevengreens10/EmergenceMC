@@ -55,7 +55,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     @Override
     public AABB getRenderBoundingBox(AssemblyBlockEntity be) {
         // an LED's beam reaches across the build
-        for (PlacedPart p : be.parts()) if (p.kind == PartKind.LED && ClientSimState.beams(p.id) != null) return new AABB(be.getBlockPos()).inflate(16);
+        for (PlacedPart p : be.parts()) if (ClientSimState.beams(p.id) != null) return new AABB(be.getBlockPos()).inflate(16);
         return new AABB(be.getBlockPos()).inflate(be.resolution() == AssemblyBlockEntity.BLOCK_SCALE ? 4 : 1);
     }
 
@@ -94,7 +94,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         float C = 1f / res; // one grid cell in blocks
         boolean glassPending = false;
         for (PlacedPart p : be.parts()) {
-            if (p.kind != PartKind.LED || ClientSimState.beams(p.id) == null || ClientSimState.gauge(p.id) < 1e-5f) continue;
+            if (ClientSimState.beams(p.id) == null) continue;
+            if (p.kind == PartKind.LED ? ClientSimState.gauge(p.id) < 1e-5f : ClientSimState.temperature(p.id, 0) < 1000) continue;
             if (c.glass == null) c.glass = buffers.getBuffer(Sheets.translucentCullBlockSheet());
             drawBeams(c, p);
         }
@@ -423,12 +424,16 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
 
     /**
      * An LED's beam through mirrors and lenses: its axis and six rays round it as faint ribbons of its colour,
-     * brighter with its output (a visual aid: light in clean air is invisible from the side).
+     * brighter with its output (a visual aid: light in clean air is invisible from the side). A hot part's rays come
+     * in several colours, each as bright as Planck's law makes that colour at the part's temperature (relative to a
+     * 2800 K lamp), so a red-hot filament's fan is all red and a white-hot one's a full spectrum.
      */
     private void drawBeams(Ctx c, PlacedPart p) {
         float[] b = ClientSimState.beams(p.id);
-        float watts = ClientSimState.gauge(p.id);
-        int rgb = mix(wavelengthRgb(p.spec.params().getOrDefault("wavelength", 630.0)), 0xFFFFFF, 0.25f);
+        boolean led = p.kind == PartKind.LED;
+        float watts = led ? ClientSimState.gauge(p.id) : 0;
+        double temp = led ? 0 : ClientSimState.temperature(p.id, 0);
+        int own = mix(wavelengthRgb(p.spec.params().getOrDefault("wavelength", 630.0)), 0xFFFFFF, 0.25f);
         int light = c.light;
         c.light = LightTexture.FULL_BRIGHT;
         c.quadTarget = c.glass;
@@ -436,8 +441,21 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         int k = 0, rays = (int) b[k++];
         for (int r = 0; r < rays; r++) {
             int n = (int) b[k++];
-            float w = r == 0 ? 0.07f : 0.04f;
-            c.quadAlpha = (int) Math.min(200, (r == 0 ? 120 : 80) * (1 + 0.5 * Math.log10(Math.max(1, watts / 1e-4))));
+            float nm = b[k++];
+            int rgb = nm > 0 ? mix(wavelengthRgb(nm), 0xFFFFFF, 0.15f) : own;
+            float w = led ? (r == 0 ? 0.07f : 0.04f) : 0.06f;
+            if (led) {
+                c.quadAlpha = (int) Math.min(200, (r == 0 ? 120 : 80) * (1 + 0.5 * Math.log10(Math.max(1, watts / 1e-4))));
+            } else {
+                // Planck: B(λ, T)/B(λ, 2800 K) = (e^{x0} − 1)/(e^{x} − 1), x = hc/λkT
+                double x = 14_388e3 / (nm * temp), x0 = 14_388e3 / (nm * 2800.0);
+                double rel = Math.expm1(x0) / Math.expm1(Math.min(x, 700));
+                c.quadAlpha = (int) Math.max(0, Math.min(170, 170 * (1 + 0.4 * Math.log10(Math.max(rel, 1e-9)))));
+                if (c.quadAlpha < 8) {
+                    k += 3 * n;
+                    continue;
+                }
+            }
             for (int i = 0; i + 1 < n; i++) {
                 int a = k + 3 * i, e = a + 3;
                 ribbon(c, s, rgb, b[a], b[a + 1], b[a + 2], b[e], b[e + 1], b[e + 2], w);

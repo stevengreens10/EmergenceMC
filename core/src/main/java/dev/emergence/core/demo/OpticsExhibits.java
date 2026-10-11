@@ -289,4 +289,81 @@ public final class OpticsExhibits {
         r.route();
         return e.view(7.5, 6.5, 13.5, 38);
     }
+
+    /**
+     * A spectrometer: a tungsten filament standing at the focus of a crown-glass lens, whose parallel beam crosses a
+     * 40° flint prism; the spectrum fans out to three photodiodes 0.8 m on — blue, red and near-infrared — each with a
+     * receiver lighting an indicator. Two switches take resistors out of the filament's circuit, raising its
+     * temperature from red heat (only the infrared channel sees enough) through orange (red too) to white heat (blue
+     * too): Planck's spectrum shifting to shorter wavelengths as the body gets hotter (Wien's law).
+     */
+    public static Exhibit spectrometer() {
+        Exhibit e = new Exhibit("spectrometer", "Spectrometer",
+                List.of("SPECTROMETER", "Hotter glows bluer:", "Planck & Wien", "(close the switches)"),
+                "A spectrometer sorts light by wavelength. The tungsten filament stands at the focus of the crown-glass "
+                        + "lens, which makes its light a parallel beam; the flint-glass prism bends each wavelength by its "
+                        + "own angle (dispersion), so the colours land side by side 0.8 m on: violet, blue, then red, and "
+                        + "past the red, invisible infrared. Three photodiodes sit in the blue, the red and the infrared; "
+                        + "each lights its indicator (blue, red, deep red) when its light passes a threshold. Close the "
+                        + "main switch: through two resistors the filament reaches only red heat, about 1500 K, and only "
+                        + "the infrared channel lights — most of a warm body's light is infrared. Close the second switch "
+                        + "(near 2000 K, orange) and the red channel lights too; the third (2700 K, white) and the blue "
+                        + "one joins. Planck's law: a hotter body radiates more at every wavelength, but its peak moves "
+                        + "to shorter ones (Wien: λ_max = 2898 µm·K / T), so the blue grows fastest of all.");
+        e.plots = 2;
+        String st = "steel_1045";
+        // the source: a vertical filament (along the prism's edge, so its length does not blur the spectrum)
+        e.name("filament", e.add(WIRE, "tungsten", 1, 2, 2, Dir.UP, "diameter", 1.2e-4));
+        // the collimator: f = 0.25 m (4 cells), the filament at its focus
+        e.add(BLOCK, st, 5, 0, 2, Dir.UP);
+        e.add(BLOCK, st, 5, 1, 2, Dir.UP);
+        e.name("lens", e.add(LENS, "glass_bk7", 5, 2, 2, Dir.EAST, "radius", 0.2584));
+        e.add(BLOCK, st, 8, 0, 2, Dir.UP);
+        e.name("prism", e.fill(PRISM, "glass_sf11", 8, 1, 2, 8, 3, 2, Dir.UP, "apex", 40, "face", Dir.NORTH.ordinal()));
+        // a screen keeps the filament's direct light off the detectors
+        e.fill(BLOCK, "oak", 6, 0, 5, 7, 4, 7, Dir.UP);
+        // the detectors, facing back up the beam
+        String[] ch = {"blue", "red", "infrared"};
+        double[] ledNm = {465, 630, 700};
+        for (int k = 0; k < 3; k++) e.name("pd_" + ch[k], e.add(PHOTODIODE, "silicon", 20 + k, 2, 13, Dir.UP, "face", 2, "area", 1e-3, "lead_axis", 2));
+        // the lamp circuit: 12 V, the main switch, two resistors each bridged by a switch
+        int bank = e.add(CAPACITOR, "alumina", 2, 1, 10, Dir.EAST, "capacitance", 3000);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        e.name("switch", e.add(SWITCH, "brass", 5, 1, 10, Dir.EAST));
+        e.add(RESISTOR, "alumina", 8, 1, 10, Dir.EAST, "resistance", 1.5);
+        e.name("warmer", e.add(SWITCH, "brass", 8, 1, 12, Dir.EAST));
+        e.add(RESISTOR, "alumina", 12, 1, 10, Dir.EAST, "resistance", 1.5);
+        e.name("hotter", e.add(SWITCH, "brass", 12, 1, 12, Dir.EAST));
+        // the receivers' 5 V supply
+        int cell = e.add(CAPACITOR, "alumina", 16, 1, 15, Dir.EAST, "capacitance", 10);
+        e.init(cell, new Exhibit.Initial(Double.NaN, 0, 5));
+        int[] rx = {14, 25, 25}, rz = {1, 1, 7};
+        for (int k = 0; k < 3; k++) {
+            int x = rx[k], z = rz[k];
+            e.add(RESISTOR, "alumina", x, 1, z, Dir.EAST, "resistance", 680e3);
+            e.add(LOGIC, "silicon", x + 4, 1, z, Dir.EAST, "function", 7);
+            e.name("lit_" + ch[k], e.add(LED, "silicon", x + 4, 1, z + 3, Dir.EAST, "wavelength", ledNm[k], "face", 1, "beam", 20));
+            e.add(RESISTOR, "alumina", x + 7, 1, z + 3, Dir.EAST, "resistance", 470);
+        }
+        Router r = new Router(e, 0, 0, 0, 35, 6, 15);
+        // nothing may touch the bare filament but its leads, nor cross the light's path (filament → lens → prism → detectors)
+        r.keepClear(0, 2, 1, 0, 2, 3).keepClear(1, 2, 1, 1, 2, 1).keepClear(1, 2, 3, 1, 2, 3).keepClear(2, 1, 1, 4, 3, 3);
+        r.keepClear(6, 1, 1, 7, 3, 3).keepClear(9, 2, 0, 23, 3, 12);
+        r.pin("bat", 3, 1, 10).pin("bat", 4, 1, 10);
+        r.pin("n1", 6, 1, 10).pin("n1", 7, 1, 10).pin("n1", 7, 1, 12);
+        r.pin("n2", 9, 1, 10).pin("n2", 9, 1, 12).pin("n2", 11, 1, 10).pin("n2", 11, 1, 12);
+        r.pin("n3", 13, 1, 10).pin("n3", 13, 1, 12).pin("n3", 1, 3, 2);
+        r.pin("ret", 1, 1, 2).pin("ret", 1, 1, 10);
+        r.pin("vdd", 17, 1, 15).pin("gnd", 15, 1, 15);
+        for (int k = 0; k < 3; k++) {
+            int x = rx[k], z = rz[k], px = 20 + k;
+            r.pin("vdd", px, 3, 13).pin("vdd", x + 4, 1, z + 1).pin("vdd", x + 8, 1, z + 3);
+            r.pin("gnd", x - 1, 1, z).pin("gnd", x + 4, 1, z - 1 < 0 ? z - 1 : z - 1);
+            r.pin("sense_" + k, px, 1, 13).pin("sense_" + k, x + 1, 1, z).pin("sense_" + k, x + 3, 1, z);
+            r.pin("out_" + k, x + 5, 1, z).pin("out_" + k, x + 5, 1, z + 3);
+            r.pin("lit_" + k, x + 3, 1, z + 3).pin("lit_" + k, x + 6, 1, z + 3);
+        }
+        r.route();
+        return e.view(18, 12, 26, 40, 180);
+    }
 }

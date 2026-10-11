@@ -176,3 +176,7 @@ multimeter, oscilloscope/data logging.
 * Wire networks take a body as a whole: a wire of one circuit lying against a rotor's wiring (even insulated, of
   another colour) joins the rotor's wiring to the frame and stops its circuit turning with it. Keep static wiring
   clear of moving wiring (the exhibits' router keeps a margin round rotors).
+* Light from hot parts through optics: only conductors in a circuit (filaments, heaters) are traced, as point
+  sources at their centres (an extended source's image size is not resolved), in 40 nm bands; a single-cell
+  component also takes contacts on its side faces along its lead axis, so leaded parts standing side by side
+  connect (set "lead_axis" across the row).

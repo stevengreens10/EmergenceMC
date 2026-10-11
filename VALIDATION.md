@@ -272,6 +272,12 @@ drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor'
 its free speed (26 rad/s; the drive rises from ≈ 9 V to ≈ 20 V); on a fixed 9.5 V supply that ran it at the same
 free speed, the same brake slows it by 39 % and still falling.
 
+Spectrometer (`DemoExhibitsTest.spectrometerSeesTheGlowShiftToBlue`): a tungsten filament at the focus of an
+N-BK7 collimator (f = 0.25 m), a 40° N-SF11 prism; the three detectors' band couplings centre on 473, 643 and
+931 nm (the dispersion orders them). With 680 kΩ receivers (≈ 4.4 µA thresholds): at 1652 K only the infrared
+channel lights, at 2095 K the red too, at 2558 K the blue too — the photocurrent ratios follow Planck's law (blue
+grows 20× from 2095 to 2558 K, infrared 4×).
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

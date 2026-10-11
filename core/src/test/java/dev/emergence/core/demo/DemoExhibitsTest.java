@@ -1584,4 +1584,43 @@ class DemoExhibitsTest {
         }
         assertTrue(bad.isEmpty(), "parts off their plots:" + bad);
     }
+
+    /**
+     * Spectrometer: the prism spreads the filament's light so the blue detector sees the shortest wavelengths and the
+     * infrared one the longest; heating the filament lights the infrared channel first, then the red, then the blue.
+     */
+    @Test
+    void spectrometerSeesTheGlowShiftToBlue() {
+        Exhibit e = OpticsExhibits.spectrometer();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        String[] ch = {"blue", "red", "infrared"};
+        double last = 0;
+        for (String k : ch) {
+            double[] g = c.spectralCoupling(b.id(e, "pd_" + k));
+            double sum = 0, mean = 0;
+            for (int j = 0; j < g.length; j++) {
+                sum += g[j];
+                mean += g[j] * dev.emergence.core.sim.elements.Photodiode.bandCentre(j);
+            }
+            mean /= sum;
+            System.out.printf("spectrometer: %s detector sees %.0f nm on average%n", k, mean);
+            assertTrue(sum > 0 && mean > last, k + " lies further along the spectrum");
+            last = mean;
+        }
+        run(c, 0.5);
+        String[] sw = {"switch", "warmer", "hotter"};
+        boolean[][] want = {{false, false, true}, {false, true, true}, {true, true, true}};
+        for (int s = 0; s < 3; s++) {
+            c.toggleSwitch(b.id(e, sw[s]));
+            run(c, 2);
+            StringBuilder sb = new StringBuilder();
+            for (int k = 0; k < 3; k++) {
+                double led = c.probe(b.id(e, "lit_" + ch[k])).current();
+                sb.append(String.format(" %s %s;", ch[k], led > 1e-3 ? "lit" : "dark"));
+                assertEquals(want[s][k], led > 1e-3, sw[s] + ": the " + ch[k] + " channel");
+            }
+            System.out.printf("  %s: filament %.0f K:%s%n", sw[s], c.probe(b.id(e, "filament")).temperature(), sb);
+        }
+    }
 }

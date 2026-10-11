@@ -289,6 +289,11 @@ plate on a sprung rod, 0.22 kg, resonant near 250 Hz) switched at 250 Hz moves a
 microphone); an identical plate 0.6 m away is set moving at 54 µm/s by the air; its coil's tens of microvolts,
 amplified ≈ 45 000 times, light the LED. Silent, the LED stays dark.
 
+Multirate (`MultirateTest`): a tungsten filament on 6 V heating from cold (R(T) couples current and temperature)
+ends at 2379.74 K both ways, energy error 5.4·10⁻⁹ J; an LC tank ringing at 5 kHz beside a resistor heated by DC
+takes 20 595 steps while the thermal network takes 16, the resistor ending at the same temperature, energy error
+7·10⁻¹⁰ J. The whole suite passes with multirate on (the default) and off.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

@@ -386,3 +386,11 @@ detector and a comparator light an LED. Moving coils needed flexible leads (a wi
 moving joints); a steel rod through a coil shorts its end faces (nylon rod) and bare leads beside a plate short to it.
 Profiling it found natural convection taking most of every island's load time (now tabulated), a diagnostic string
 built per Newton iteration (now lazy), and the op-amp state's error tolerance again (10 mV).
+
+**Multirate.** The thermal network now steps apart from the rest, inside the same solver: a dry run sorts elements by
+the rows they write; the fast partition holds temperatures and integrates the heat it delivers; the thermal network
+catches up at synchronisations with that heat as a constant power. First tries leaked a few per cent of the energy —
+the trapezoid carried the old input's derivative across each synchronisation, and the ledger integrated backward-Euler
+steps with the trapezoid — fixed by restarting the thermal phase at each synchronisation and a method-consistent
+ledger. Fluid temperatures had to stay fast (gas compression heats instantly). Gains are modest (20–25 %) until the
+fast partition's own loads get cheaper.

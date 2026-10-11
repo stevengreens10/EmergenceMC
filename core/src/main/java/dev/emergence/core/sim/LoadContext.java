@@ -21,6 +21,15 @@ public final class LoadContext implements StateView {
     double[] q0, q1, qd0, qNew, qdNew;
     /** Per unknown: the smallest Newton update that is resolvable at all (see {@link #noiseFloor}). */
     double[] floor;
+    /** When set, every row an element writes is marked (the solver's partitioning dry run), and every slot it keeps. */
+    boolean[] touched, touchedSlots;
+    /**
+     * Multirate: unknowns held fixed in the current phase. Jacobian entries in their rows or columns are left out of the
+     * phase's own matrix (its factorisation covers only what moves); a held row's diagonal is summed in
+     * {@link #frozenDiag} (the coupling's stiffness).
+     */
+    boolean[] frozen;
+    double[] frozenDiag;
 
     @Override
     public double x(int index) {
@@ -39,12 +48,21 @@ public final class LoadContext implements StateView {
 
     /** Adds v to residual row {@code row}; reference rows (index &lt; 0) are ignored. */
     public void addF(int row, double v) {
-        if (row >= 0) f[row] += v;
+        if (row >= 0) {
+            f[row] += v;
+            if (touched != null) touched[row] = true;
+        }
     }
 
     /** Adds ∂F_row/∂x_col. Entries touching reference nodes are ignored. */
     public void addJ(int row, int col, double v) {
-        if (row >= 0 && col >= 0 && v != 0.0) jac.add(row, col, v);
+        if (touched != null && row >= 0) touched[row] = true;
+        if (row < 0 || col < 0 || v == 0.0) return;
+        if (frozen != null && (frozen[row] || frozen[col])) {
+            if (row == col && frozenDiag != null) frozenDiag[row] += v;
+            return;
+        }
+        jac.add(row, col, v);
     }
 
     /**
@@ -80,6 +98,7 @@ public final class LoadContext implements StateView {
      */
     public double ddt(int slot, double q) {
         qNew[slot] = q;
+        if (touchedSlots != null) touchedSlots[slot] = true;
         double qd;
         if (initializing) {
             qd = 0.0;

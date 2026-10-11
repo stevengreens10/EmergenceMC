@@ -94,3 +94,17 @@ compiler recognises machines. See PHYSICS_MODELS.md §Assembly.
 | `./gradlew runDemoClient` | Client that opens the demo world directly. |
 | `./gradlew runShowcaseClient` | Automated tour that saves screenshots to `run/screenshots/`. |
 | `./gradlew build` | Mod jar in `build/libs/`. |
+
+## Multirate stepping (`TransientSolver.multirate`)
+Every island's thermal network — the thermal nodes of parts with a heat capacity, and the elements touching nothing
+else (heat capacities, conduction, convection, radiation, fixed temperatures) — steps apart from the rest. A dry run
+records the rows and history slots every element writes; elements touching only such nodes form the slow partition,
+those touching nothing thermal or a mix form the fast one (a gas's or liquid's temperature, whose inertia is in its
+fluid element, stays fast). The fast partition steps with temperatures held; the heat its elements put into thermal
+nodes is integrated with the quadrature of each step and handed over, at synchronisation, as a constant power across
+the interval, so energy crosses exactly. The thermal network then restarts (its input stepped) and integrates to the
+fast partition's time under its own error control and a change bound (5 K + 1 % per step). Synchronisations come at
+the end of every `advance` (a game tick) and whenever the thermal network's step or the coupling's stability ask
+(interval ≤ ½·C/G, G the fast side's ∂(heat in)/∂T). Each phase factorises its own matrix, entries in held rows and
+columns left out. The ledger integrates each phase's boundary power with the quadrature its steps used (the end point
+after backward Euler), and counts heat in transit as stored. `-Demergence.multirate=false` steps everything together.

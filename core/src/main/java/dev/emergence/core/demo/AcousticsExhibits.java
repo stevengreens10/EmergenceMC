@@ -145,6 +145,6 @@ public final class AcousticsExhibits {
             r.pin("micB", 18, 3, 9).pin("micB", 27, f, 13);
         }
         r.route();
-        return e.view(10, 8, 20, 30, 180);
+        return e.view(27, 14, 27, 36, 180);
     }
 }

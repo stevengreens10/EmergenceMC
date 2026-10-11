@@ -23,7 +23,8 @@ regenerate the demo world → screenshot tour → docs → commit.
    crystallisation; a voltaic pile driving the DC motor.
 8. **Magnetics**: iron saturation and hysteresis; hinged armatures and plungers, magnet–iron attraction; relay
    logic (latching relays, relay gates); core losses; a drag-cup speedometer.
-9. **Performance**: async island compilation, multirate thermal stepping, factorisation reuse for linear islands;
+9. **Performance**: async island compilation, factorisation reuse for linear islands, cheaper conductor loads (most
+   of a circuit island's fast-step time); multirate is in (thermal apart);
    the steam engine and gas engine run slower than real time at speed.
 10. **Broader science**: geology (ores, strata), environmental processes, biology — each connected to the existing
     chemistry, thermodynamics and fluids.

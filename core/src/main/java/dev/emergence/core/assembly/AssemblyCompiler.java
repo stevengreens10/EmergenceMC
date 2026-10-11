@@ -121,7 +121,9 @@ public final class AssemblyCompiler {
             c.fatigue = ShaftFatigue.build(a, c, prev);
             c.network.compile();
             applyPreviousElectricalState();
-            c.solver = new TransientSolver(c.network);
+            // the thermal network stepped apart from the rest (see TransientSolver#multirate); -Demergence.multirate=false
+            // steps everything together
+            c.solver = new TransientSolver(c.network).multirate(!"false".equals(System.getProperty("emergence.multirate")));
             // Switching electronics have sub-nanosecond modes (gate input capacitance against output resistance; an
             // LED's 20 pF junction against its series resistor) that a millisecond step cannot resolve: the
             // trapezoidal rule rings on them (its amplification → −1), so such islands integrate with L-stable BDF2,

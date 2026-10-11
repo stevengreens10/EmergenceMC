@@ -68,6 +68,44 @@ public final class TransientSolver implements StateView {
     // statistics
     private long acceptedSteps, rejectedSteps, newtonFailures, newtonIterations;
 
+    /**
+     * A part of the system stepped with its own clock: the whole system (single rate), or under multirate the fast
+     * partition (everything but the thermal network) and the slow one (the thermal network). Each keeps its time, step
+     * history and integration state; the unknowns of the other are held fixed while it steps.
+     */
+    private final class Phase {
+        double t, hPrev = 1e-6, hNext;
+        int validHistory;
+        boolean restart = true, forceBE;
+        /** Elements loaded (indices into {@link #elements}); null: all. */
+        int[] elems;
+        /** Slots it integrates; null: all. */
+        int[] slots;
+        /** Unknowns held fixed while it steps; null: none. */
+        boolean[] frozen;
+        /** Heat [W] delivered into each unknown's row from the other partition (slow phase only), or null. */
+        double[] heatIn;
+        /** Last external and untracked power of its elements, for the ledger's trapezoid. */
+        double lastPext, lastPloss;
+        /** Its Jacobian: under multirate each phase factorises only what moves in it (see LoadContext#frozen). */
+        LinearSystem jac;
+    }
+
+    private final Phase all = new Phase();
+    private Phase active = all;
+
+    // ---- multirate (see #multirate)
+    private boolean multirate;
+    private Phase fast, slow;
+    private int[] slowRows;
+    /** ∫ heat delivered into each slow row by the fast partition since the last synchronisation [J], and its rate [W]. */
+    private double[] heatAccum, heatRate;
+    /** Per slow row: heat capacity [J/K] and the fast side's latest ∂(heat in)/∂T [W/K] (the coupling's stiffness). */
+    private double[] capacity, coupling;
+    private long slowSteps;
+    /** The latest thermal step's largest change relative to its allowance (see #tryStep). */
+    private double slowChange;
+
     public TransientSolver(Network network) {
         this.net = network;
         net.compile();
@@ -113,6 +151,7 @@ public final class TransientSolver implements StateView {
         ctx.f = f;
         ctx.jac = jac;
         hNext = hRestart;
+        all.jac = jac;
         initializeHistory();
     }
 
@@ -122,11 +161,290 @@ public final class TransientSolver implements StateView {
     private void loadAll() {
         if (ctx.floor == null || ctx.floor.length != n) ctx.floor = new double[n];
         else Arrays.fill(ctx.floor, 0.0);
-        for (int k = 0; k < elements.size(); k++) {
-            jac.beginSegment(k);
-            elements.get(k).load(ctx);
+        LinearSystem jac = active.jac;
+        ctx.jac = jac;
+        ctx.frozen = active.frozen;
+        if (active.frozen != null) {
+            if (ctx.frozenDiag == null) ctx.frozenDiag = new double[n];
+            else Arrays.fill(ctx.frozenDiag, 0.0);
+        }
+        int[] el = active.elems;
+        if (el == null) {
+            for (int k = 0; k < elements.size(); k++) {
+                jac.beginSegment(k);
+                elements.get(k).load(ctx);
+            }
+        } else {
+            for (int k : el) {
+                jac.beginSegment(k);
+                elements.get(k).load(ctx);
+            }
         }
         jac.beginSegment(-1);
+    }
+
+    /**
+     * Multirate stepping: the thermal network — thermal nodes and the elements that touch nothing else (heat
+     * capacities, conduction, convection, radiation) — is stepped apart from the rest, at its own pace. The fast
+     * partition steps with temperatures held; the heat its elements deliver into thermal nodes (Joule heat, friction,
+     * absorbed light…) is integrated (trapezoid) and handed to the thermal network, at each synchronisation, as a
+     * constant power over the interval — so energy moves across exactly. Synchronisations come at least at the end of
+     * every {@link #advance}, and as often as the thermal network's error control and the coupling's stability ask:
+     * the interval stays below half the shortest C/G, G the fast side's ∂(heat in)/∂T at a node (a filament whose
+     * resistance rises with its temperature). Off by default; a no-op where either partition would be empty.
+     */
+    public TransientSolver multirate(boolean on) {
+        multirate = false;
+        active = all;
+        if (!on || n == 0) return this;
+        boolean[] isNode = new boolean[n], thermal = new boolean[n];
+        for (Node nd : net.nodes()) {
+            if (nd.index < 0) continue;
+            isNode[nd.index] = true;
+            thermal[nd.index] = nd.domain == Domain.THERMAL;
+        }
+        // dry run: the rows and slots each element writes
+        int ne = elements.size();
+        boolean[][] rows = new boolean[ne][], slotsOf = new boolean[ne][];
+        ctx.x = x;
+        ctx.time = t;
+        ctx.h = hRestart;
+        ctx.hPrev = hRestart;
+        ctx.method = IntegrationMethod.BACKWARD_EULER;
+        ctx.alpha = 1 / hRestart;
+        ctx.initializing = false;
+        if (ctx.floor == null || ctx.floor.length != n) ctx.floor = new double[n];
+        double[] q0s = q0.clone(), qd0s = qd0.clone();
+        ctx.jac = jac;
+        ctx.frozen = null;
+        for (int k = 0; k < ne; k++) {
+            ctx.touched = new boolean[n];
+            ctx.touchedSlots = new boolean[ns];
+            Arrays.fill(f, 0);
+            jac.clear();
+            jac.beginSegment(k);
+            elements.get(k).load(ctx);
+            jac.beginSegment(-1);
+            rows[k] = ctx.touched;
+            slotsOf[k] = ctx.touchedSlots;
+        }
+        ctx.touched = null;
+        ctx.touchedSlots = null;
+        System.arraycopy(q0s, 0, q0, 0, ns);
+        System.arraycopy(qd0s, 0, qd0, 0, ns);
+        Arrays.fill(f, 0);
+        jac.clear();
+        // slow candidates: elements whose node rows are all thermal (and there is one); their internal rows are slow
+        // unless an element outside the candidates writes them too (then neither is slow) — to a fixed point
+        boolean[] cand = new boolean[ne];
+        for (int k = 0; k < ne; k++) {
+            boolean anyThermal = false, onlyThermal = true;
+            for (int i = 0; i < n; i++) {
+                if (!rows[k][i] || !isNode[i]) continue;
+                if (thermal[i]) anyThermal = true;
+                else onlyThermal = false;
+            }
+            cand[k] = anyThermal && onlyThermal;
+        }
+        // a thermal node is slow only where a candidate stores heat at it (a part's thermal mass): a gas's or liquid's
+        // temperature, whose inertia lives in its fluid element, moves with the flow and stays in the fast partition
+        boolean[] slowNode = new boolean[n];
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            Arrays.fill(slowNode, false);
+            for (int k = 0; k < ne; k++) {
+                if (!cand[k]) continue;
+                boolean stores = false;
+                for (int s = 0; s < ns && !stores; s++) stores = slotsOf[k][s];
+                if (!stores) continue;
+                for (int i = 0; i < n; i++) if (rows[k][i] && isNode[i] && thermal[i]) slowNode[i] = true;
+            }
+            for (int k = 0; k < ne; k++) {
+                if (!cand[k]) continue;
+                for (int i = 0; i < n; i++) {
+                    if (rows[k][i] && isNode[i] && !slowNode[i]) {
+                        cand[k] = false;
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            for (int i = 0; i < n; i++) {
+                if (isNode[i]) continue;
+                boolean byCand = false, byOther = false;
+                for (int k = 0; k < ne; k++) {
+                    if (!rows[k][i]) continue;
+                    if (cand[k]) byCand = true;
+                    else byOther = true;
+                }
+                if (byCand && byOther) {
+                    for (int k = 0; k < ne; k++) {
+                        if (rows[k][i] && cand[k]) {
+                            cand[k] = false;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        boolean[] slowR = new boolean[n];
+        for (int i = 0; i < n; i++) if (slowNode[i]) slowR[i] = true;
+        for (int k = 0; k < ne; k++) {
+            if (!cand[k]) continue;
+            for (int i = 0; i < n; i++) if (rows[k][i] && !isNode[i]) slowR[i] = true;
+        }
+        java.util.List<Integer> fe = new java.util.ArrayList<>(), se = new java.util.ArrayList<>();
+        for (int k = 0; k < ne; k++) (cand[k] ? se : fe).add(k);
+        boolean[] slowSlot = new boolean[ns];
+        for (int k : se) for (int s = 0; s < ns; s++) if (slotsOf[k][s]) slowSlot[s] = true;
+        int nSlow = 0;
+        for (boolean b : slowR) if (b) nSlow++;
+        if (nSlow == 0 || nSlow == n || fe.isEmpty() || se.isEmpty()) return this;
+        slowRows = new int[nSlow];
+        for (int i = 0, j = 0; i < n; i++) if (slowR[i]) slowRows[j++] = i;
+        boolean[] fastR = new boolean[n];
+        for (int i = 0; i < n; i++) fastR[i] = !slowR[i];
+        fast = new Phase();
+        slow = new Phase();
+        fast.jac = LinearSystem.create(n);
+        slow.jac = LinearSystem.create(n);
+        fast.elems = fe.stream().mapToInt(Integer::intValue).toArray();
+        slow.elems = se.stream().mapToInt(Integer::intValue).toArray();
+        java.util.List<Integer> fs = new java.util.ArrayList<>(), ss = new java.util.ArrayList<>();
+        for (int s = 0; s < ns; s++) (slowSlot[s] ? ss : fs).add(s);
+        fast.slots = fs.stream().mapToInt(Integer::intValue).toArray();
+        slow.slots = ss.stream().mapToInt(Integer::intValue).toArray();
+        fast.frozen = slowR;
+        slow.frozen = fastR;
+        slow.heatIn = new double[n];
+        heatAccum = new double[n];
+        heatRate = new double[n];
+        coupling = new double[n];
+        // heat capacities: the slow elements' ∂F/∂T with α = 1 less that with α = 0
+        capacity = new double[n];
+        Phase saved = active;
+        active = slow;
+        for (int pass = 0; pass < 2; pass++) {
+            ctx.alpha = pass == 0 ? 1 : 0;
+            Arrays.fill(f, 0);
+            slow.jac.clear();
+            loadAll();
+            for (int i : slowRows) capacity[i] += (pass == 0 ? 1 : -1) * slow.jac.diagonal(i);
+        }
+        System.arraycopy(q0s, 0, q0, 0, ns);
+        System.arraycopy(qd0s, 0, qd0, 0, ns);
+        Arrays.fill(f, 0);
+        slow.jac.clear();
+        active = saved;
+        ctx.jac = active.jac;
+        ctx.frozen = active.frozen;
+        multirate = true;
+        resetPhases();
+        return this;
+    }
+
+    /** Whether multirate stepping is in effect. */
+    public boolean isMultirate() {
+        return multirate;
+    }
+
+    /** Thermal-network steps taken under multirate (diagnostics). */
+    public long slowSteps() {
+        return slowSteps;
+    }
+
+    /** Puts every phase at the current time with no history (after initialisation or a state change). */
+    private void resetPhases() {
+        for (Phase ph : new Phase[]{all, fast, slow}) {
+            if (ph == null) continue;
+            ph.t = t;
+            ph.validHistory = 0;
+            ph.restart = true;
+            ph.hNext = ph == slow ? 1e-3 : hRestart;
+        }
+        active = multirate ? fast : all;
+        if (multirate) {
+            Arrays.fill(heatAccum, 0);
+            fastHeatRate();
+            fast.lastPext = power(fast, true);
+            fast.lastPloss = power(fast, false);
+            slow.lastPext = power(slow, true);
+            slow.lastPloss = power(slow, false);
+        }
+    }
+
+    /** The fast partition's heat into each slow row [W] at the current state, and the coupling stiffness. */
+    private void fastHeatRate() {
+        Phase saved = active;
+        active = fast;
+        ctx.x = x;
+        ctx.time = t;
+        ctx.h = Math.max(fast.hPrev, hRestart);
+        ctx.hPrev = ctx.h;
+        ctx.method = IntegrationMethod.BACKWARD_EULER;
+        ctx.alpha = 1 / ctx.h;
+        double[] q0s = q0.clone(), qd0s = qd0.clone();
+        Arrays.fill(f, 0);
+        fast.jac.clear();
+        loadAll();
+        for (int i : slowRows) {
+            heatRate[i] = -f[i];
+            coupling[i] = ctx.frozenDiag[i];
+        }
+        System.arraycopy(q0s, 0, q0, 0, ns);
+        System.arraycopy(qd0s, 0, qd0, 0, ns);
+        Arrays.fill(f, 0);
+        fast.jac.clear();
+        active = saved;
+        ctx.jac = active.jac;
+        ctx.frozen = active.frozen;
+    }
+
+    /** External (true) or untracked (false) power of a phase's elements. */
+    private double power(Phase ph, boolean external) {
+        double s = 0;
+        if (ph.elems == null) {
+            for (Element e : elements) s += external ? e.externalPower(this) : e.untrackedLoss(this);
+        } else {
+            for (int k : ph.elems) s += external ? elements.get(k).externalPower(this) : elements.get(k).untrackedLoss(this);
+        }
+        return s;
+    }
+
+    /**
+     * Steps the thermal network from where it is to the fast partition's time, the heat the fast partition delivered
+     * meanwhile entering as a constant power, in as many steps as its error control asks.
+     */
+    private void synchronise() {
+        if (!multirate) return;
+        double span = t - slow.t;
+        if (span <= 1e-15 * Math.max(1, Math.abs(t))) return;
+        for (int i : slowRows) slow.heatIn[i] = heatAccum[i] / span;
+        // its input steps here: start afresh (backward Euler), not carrying the old input's derivative across
+        slow.restart = true;
+        active = slow;
+        double end = t;
+        while (slow.t < end - 1e-12 * Math.max(1, Math.abs(end))) {
+            double h = Math.min(slow.hNext, end - slow.t);
+            if (end - slow.t - h < 0.25 * h) h = end - slow.t;
+            stepAdaptive(slow, h);
+        }
+        slow.t = end;
+        active = fast;
+        Arrays.fill(heatAccum, 0);
+        storedNow = totalStored();
+    }
+
+
+    /** The interval after which the thermal network is brought up to date: its error control, the coupling's stability. */
+    private double syncInterval() {
+        double lim = Math.max(slow.hNext, fast.hPrev);
+        for (int i : slowRows) {
+            double g = Math.abs(coupling[i]);
+            if (g > 0 && capacity[i] > 0) lim = Math.min(lim, 0.5 * capacity[i] / g);
+        }
+        return Math.max(lim, fast.hPrev);
     }
 
     public TransientSolver method(IntegrationMethod m) {
@@ -183,6 +501,7 @@ public final class TransientSolver implements StateView {
         ctx.method = IntegrationMethod.BACKWARD_EULER;
         ctx.alpha = 0;
         Arrays.fill(f, 0);
+        active = all; // every element initialises its history
         jac.clear();
         loadAll();
         ctx.initializing = false;
@@ -198,6 +517,15 @@ public final class TransientSolver implements StateView {
         untrackedOut = 0;
         lastPext = totalExternalPower();
         lastPloss = totalUntrackedLoss();
+        all.lastPext = lastPext;
+        all.lastPloss = lastPloss;
+        if (multirate) resetPhases();
+        else {
+            all.t = t;
+            all.validHistory = 0;
+            all.restart = true;
+            all.hNext = hRestart;
+        }
     }
 
     /**
@@ -205,9 +533,10 @@ public final class TransientSolver implements StateView {
      * restarts with backward Euler and a small step so the integrator does not extrapolate across it.
      */
     public void markDiscontinuity() {
-        restart = true;
-        validHistory = 0;
-        hNext = Math.min(hNext, hRestart);
+        Phase ph = multirate ? fast : all;
+        ph.restart = true;
+        ph.validHistory = 0;
+        ph.hNext = Math.min(ph.hNext, hRestart);
     }
 
     // ------------------------------------------------------------------ stepping
@@ -222,18 +551,21 @@ public final class TransientSolver implements StateView {
         double tStart = t;
         double tEnd = t + duration;
         int steps = 0;
+        Phase ph = multirate ? fast : all;
         while (t < tEnd - 1e-12 * Math.max(1.0, Math.abs(tEnd))) {
             if (steps++ >= maxSteps) break;
             fireEvents();
-            double h = Math.min(hNext, hMax);
+            double h = Math.min(ph.hNext, hMax);
             double remaining = tEnd - t;
             if (h >= remaining * 0.99) h = remaining;
             else if (remaining - h < 0.25 * h) h = 0.5 * remaining;
             // land exactly on the next event
             double te = nextEventTime();
             if (te > t && te - t < h) h = Math.max(te - t, hMin * 2);
-            stepAdaptive(h);
+            stepAdaptive(ph, h);
+            if (multirate && t - slow.t >= syncInterval()) synchronise();
         }
+        synchronise();
         fireEvents();
         return t - tStart;
     }
@@ -269,7 +601,8 @@ public final class TransientSolver implements StateView {
     }
 
     /** Takes one accepted step of at most {@code hTry}, shrinking on Newton/LTE failure. */
-    private void stepAdaptive(double hTry) {
+    private void stepAdaptive(Phase ph, double hTry) {
+        active = ph;
         double h = hTry;
         while (true) {
             if (h < hMin) {
@@ -280,35 +613,36 @@ public final class TransientSolver implements StateView {
                 double hr = Math.max(1e-6, hMin * 1e4);
                 tolScale = 100;
                 skipLte = true;
-                restart = true;
-                validHistory = 0;
-                int rr = tryStep(Math.min(hr, Math.max(hTry, hMin)));
+                ph.restart = true;
+                ph.validHistory = 0;
+                int rr = tryStep(ph, Math.min(hr, Math.max(hTry, hMin)));
                 tolScale = 1;
                 skipLte = false;
                 if (rr == 0) {
                     rescues++;
-                    hNext = Math.max(hr, hNext);
+                    ph.hNext = Math.max(hr, ph.hNext);
                     return;
                 }
                 throw new SimulationException(String.format(
-                        "Time step underflow at t=%.6g s (h=%.3g s). %s", t, h, worstNewtonDiagnostic()));
+                        "Time step underflow at t=%.6g s (h=%.3g s)%s. %s", ph.t, h, ph == slow ? " in the thermal network" : "",
+                        worstNewtonDiagnostic()));
             }
-            int r = tryStep(h);
+            int r = tryStep(ph, h);
             if (r == 0) return;
             if (r == 1) { // Newton failure
                 newtonFailures++;
-                restart = true;
-                validHistory = 0;
+                ph.restart = true;
+                ph.validHistory = 0;
                 h *= 0.25;
             } else { // LTE rejection: hNext already set
                 rejectedSteps++;
-                h = Math.min(hNext, h * 0.9);
+                h = Math.min(ph.hNext, h * 0.9);
                 // An estimate that still fails after the step has shrunk by orders of magnitude compares against
                 // stale history (e.g. a derivative left by ringing across a fast edge): restart the integration
                 // there, as after any discontinuity, rather than chase it down to underflow.
                 if (h < 1e-4 * hTry || h < 1e3 * hMin) {
-                    restart = true;
-                    validHistory = 0;
+                    ph.restart = true;
+                    ph.validHistory = 0;
                 }
             }
         }
@@ -380,14 +714,17 @@ public final class TransientSolver implements StateView {
     }
 
     /** @return 0 accepted, 1 Newton failure, 2 LTE rejection */
-    private int tryStep(double h) {
-        boolean be = restart || forceBE || validHistory == 0 || method == IntegrationMethod.BACKWARD_EULER;
-        boolean wasRestart = restart;
+    private int tryStep(Phase ph, double h) {
+        LinearSystem jac = ph.jac;
+        boolean be = ph.restart || ph.forceBE || ph.validHistory == 0 || method == IntegrationMethod.BACKWARD_EULER;
+        boolean wasRestart = ph.restart;
+        double hPrev = ph.hPrev;
+        boolean[] frozen = ph.frozen;
         IntegrationMethod m = be ? IntegrationMethod.BACKWARD_EULER : method;
         ctx.method = m;
         ctx.h = h;
         ctx.hPrev = hPrev;
-        ctx.time = t + h;
+        ctx.time = ph.t + h;
         ctx.alpha = switch (m) {
             case BACKWARD_EULER -> 1.0 / h;
             case TRAPEZOIDAL -> 2.0 / h;
@@ -396,10 +733,10 @@ public final class TransientSolver implements StateView {
                 yield (1 + 2 * w) / ((1 + w) * h);
             }
         };
-        // predictor: linear extrapolation of the solution
-        if (!be) {
+        // predictor: linear extrapolation of the solution (held unknowns stay put; the thermal network starts from now)
+        if (!be && ph != slow) {
             double r = h / hPrev;
-            for (int i = 0; i < n; i++) xTrial[i] = x[i] + r * (x[i] - xPrev[i]);
+            for (int i = 0; i < n; i++) xTrial[i] = frozen != null && frozen[i] ? x[i] : x[i] + r * (x[i] - xPrev[i]);
         } else {
             System.arraycopy(x, 0, xTrial, 0, n);
         }
@@ -411,7 +748,17 @@ public final class TransientSolver implements StateView {
             Arrays.fill(f, 0.0);
             jac.clear();
             loadAll();
+            if (ph.heatIn != null) for (int i : slowRows) f[i] -= ph.heatIn[i];
+            if (frozen != null) {
+                // held unknowns: their rows (stamped with nothing else) say "do not move"
+                for (int i = 0; i < n; i++) {
+                    if (!frozen[i]) continue;
+                    f[i] = 0;
+                    jac.add(i, i, 1.0);
+                }
+            }
             for (int i = 0; i < n; i++) {
+                if (frozen != null && frozen[i]) continue;
                 if (gmin[i] != 0) {
                     // Relative shunt: an absolute GMIN vanishes in floating point next to large
                     // conductances of a floating sub-network (e.g. an isolated steel frame), leaving an
@@ -432,6 +779,7 @@ public final class TransientSolver implements StateView {
                 lastBadIndex = -1;
                 return 1;
             }
+            if (frozen != null) for (int i = 0; i < n; i++) if (frozen[i]) dx[i] = 0;
             boolean small = true;
             // damping: limit enormous Newton updates on nonlinear elements
             double scale = 1.0;
@@ -490,8 +838,13 @@ public final class TransientSolver implements StateView {
         // ---- local truncation error control
         double err = 0.0;
         int p = m.order;
+        int[] sl = ph.slots;
+        int nsl = sl == null ? ns : sl.length;
+        int validHistory = ph.validHistory;
+        worstSlot = -1;
         if (validHistory >= 1) {
-            for (int s = 0; s < ns; s++) {
+            for (int si = 0; si < nsl; si++) {
+                int s = sl == null ? si : sl[si];
                 double est;
                 if (p == 1 || validHistory < 2) {
                     est = 0.5 * Math.abs(qdNew[s] - qd0[s]) * h; // ≈ h²/2 |q''|
@@ -506,10 +859,21 @@ public final class TransientSolver implements StateView {
                 }
             }
         }
+        // the thermal network's steps are also held to modest changes: no node more than 5 K + 1 % per step (an
+        // accuracy guard that needs no history — it often takes a single step per synchronisation)
+        if (ph == slow) {
+            double worst = 0;
+            for (int i : slowRows) worst = Math.max(worst, Math.abs(xTrial[i] - x[i]) / (5 + 0.01 * Math.abs(x[i])));
+            if (worst > 1 && !skipLte) {
+                ph.hNext = h * Math.max(0.1, 0.9 / worst);
+                return 2;
+            }
+            slowChange = worst;
+        }
         double exponent = 1.0 / ((validHistory >= 2 ? p : 1) + 1);
         if (worstSlot >= 0 && err > 0.5) limiterCounts.merge(net.slotOwner(worstSlot) + "#" + worstSlot, 1, Integer::sum);
         if (err > 1.0 && !skipLte) {
-            hNext = h * Math.max(0.1, 0.9 * Math.pow(err, -exponent));
+            ph.hNext = h * Math.max(0.1, 0.9 * Math.pow(err, -exponent));
             if (TRACE && h < 1e-8) System.out.println("TRACE LTE reject h=" + h + " err=" + err + " slot " + net.slotOwner(worstSlot)
                     + "#" + worstSlot + " q=" + qNew[worstSlot] + " qd " + qd0[worstSlot] + " -> " + qdNew[worstSlot] + " validHistory " + validHistory);
             return 2;
@@ -519,14 +883,15 @@ public final class TransientSolver implements StateView {
         // A well-resolved oscillation changes the sign of Δq̇ at most once per half period, so three
         // consecutive alternations above tolerance can only be numerical ringing; one damping
         // backward-Euler step then removes it (BE amplification → 0 for stiff modes).
-        forceBE = false;
+        ph.forceBE = false;
         if (m == IntegrationMethod.TRAPEZOIDAL && validHistory >= 2) {
-            for (int s = 0; s < ns; s++) {
+            for (int si = 0; si < nsl; si++) {
+                int s = sl == null ? si : sl[si];
                 double d1 = qdNew[s] - qd0[s], d0 = qd0[s] - qd1[s];
                 double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) / h;
                 if (d1 * d0 < 0 && Math.abs(d1) > tol && Math.abs(d0) > tol) {
                     if (++alternations[s] >= 3) {
-                        forceBE = true;
+                        ph.forceBE = true;
                         alternations[s] = 0;
                     }
                 } else {
@@ -536,25 +901,61 @@ public final class TransientSolver implements StateView {
         }
 
         // ---- accept
-        System.arraycopy(q0, 0, q1, 0, ns);
-        System.arraycopy(qNew, 0, q0, 0, ns);
-        System.arraycopy(qd0, 0, qd1, 0, ns);
-        System.arraycopy(qdNew, 0, qd0, 0, ns);
-        System.arraycopy(x, 0, xPrev, 0, n);
-        System.arraycopy(xTrial, 0, x, 0, n);
-        t += h;
-        hPrev = h;
+        if (sl == null) {
+            System.arraycopy(q0, 0, q1, 0, ns);
+            System.arraycopy(qNew, 0, q0, 0, ns);
+            System.arraycopy(qd0, 0, qd1, 0, ns);
+            System.arraycopy(qdNew, 0, qd0, 0, ns);
+        } else {
+            for (int s : sl) {
+                q1[s] = q0[s];
+                q0[s] = qNew[s];
+                qd1[s] = qd0[s];
+                qd0[s] = qdNew[s];
+            }
+        }
+        if (frozen == null) {
+            System.arraycopy(x, 0, xPrev, 0, n);
+            System.arraycopy(xTrial, 0, x, 0, n);
+        } else {
+            for (int i = 0; i < n; i++) {
+                if (frozen[i]) continue;
+                xPrev[i] = x[i];
+                x[i] = xTrial[i];
+            }
+        }
+        ph.t += h;
+        ph.hPrev = h;
         // The first step after a restart absorbs any discontinuity (inconsistent initial conditions,
         // a switched source): its derivative q̇ spans the jump and must not seed the trapezoidal
         // history or the error estimator, so history counting begins with the following step.
-        validHistory = wasRestart ? 0 : validHistory + 1;
-        restart = false;
+        ph.validHistory = wasRestart ? 0 : validHistory + 1;
+        ph.restart = false;
         double grow = err == 0.0 ? 2.0 : Math.min(2.0, 0.9 * Math.pow(err, -exponent));
-        hNext = Math.max(h * Math.max(grow, 0.5), hMin * 10);
+        if (ph == slow && slowChange > 0) grow = Math.min(grow, 0.9 / slowChange);
+        ph.hNext = Math.max(h * Math.max(grow, 0.5), hMin * 10);
+        if (ph == slow) {
+            slowSteps++;
+            updateLedger(ph, h, m);
+            return 0;
+        }
+        if (ph == fast) {
+            // the heat the fast elements delivered into each thermal node over this step (f is their residual at
+            // the converged point: −heat in), and the coupling's stiffness there
+            for (int i : slowRows) {
+                double rate = -f[i];
+                // the quadrature of the step taken: the end point after backward Euler, else the trapezoid
+                heatAccum[i] += (m == IntegrationMethod.BACKWARD_EULER ? rate : 0.5 * (rate + heatRate[i])) * h;
+                heatRate[i] = rate;
+                coupling[i] = ctx.frozenDiag[i];
+            }
+        }
+        t = ph.t;
+        hPrev = h;
         acceptedSteps++;
 
         for (Element e : elements) e.acceptStep(this, t, h);
-        updateLedger(h);
+        updateLedger(ph, h, m);
         for (int i = 0; i < stepListeners.size(); i++) stepListeners.get(i).accept(this);
         return 0;
     }
@@ -587,14 +988,25 @@ public final class TransientSolver implements StateView {
         return sb.toString();
     }
 
-    private void updateLedger(double h) {
-        double pExt = totalExternalPower();
-        double pLoss = totalUntrackedLoss();
-        externalIn += 0.5 * (pExt + lastPext) * h;
-        untrackedOut += 0.5 * (pLoss + lastPloss) * h;
-        lastPext = pExt;
-        lastPloss = pLoss;
+    /**
+     * Integrates the energy crossing the system's boundary over an accepted step with the quadrature the step's method
+     * implies — the end point after backward Euler, the trapezoid otherwise — so the ledger and the integrated state agree.
+     */
+    private void updateLedger(Phase ph, double h, IntegrationMethod m) {
+        double pExt = power(ph, true);
+        double pLoss = power(ph, false);
+        boolean be = m == IntegrationMethod.BACKWARD_EULER;
+        externalIn += (be ? pExt : 0.5 * (pExt + ph.lastPext)) * h;
+        untrackedOut += (be ? pLoss : 0.5 * (pLoss + ph.lastPloss)) * h;
+        ph.lastPext = pExt;
+        ph.lastPloss = pLoss;
         storedNow = totalStored();
+        // heat delivered by the fast partition, not yet in the thermal network (during a synchronisation, the part of
+        // it the thermal network has still to take in)
+        if (multirate) {
+            if (ph == slow) for (int i : slowRows) storedNow += slow.heatIn[i] * (t - slow.t);
+            else for (int i : slowRows) storedNow += heatAccum[i];
+        }
     }
 
     private double totalStored() {

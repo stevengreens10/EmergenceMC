@@ -30,6 +30,11 @@ simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its p
 out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
 
 ## History
+* Multirate (the thermal network stepped apart, its rows and columns out of the fast partition's factorisation):
+  loudspeaker 20.7 → 15.9 s, governor 29.7 → 23.7 s, thermostat 35.5 → 29.6 s (alone, dev machine). The fast steps
+  still load every conductor (their heat goes to thermal nodes) — the next costs to attack. The energy ledger now uses
+  the quadrature of each step's method (backward Euler: the end point), which also cut single-rate energy errors
+  (a filament: 5.7·10⁻⁶ → 5.4·10⁻⁹ J).
 * Every island, per Newton iteration: natural convection's film-temperature air properties and Prandtl factors are
   tabulated (1 K steps) and its slope takes one extra evaluation, not four (59 % → 12 % of the load time in a
   circuit-heavy island); thermoelectric conductors reuse their Jacobian scratch arrays; the solver records the last

@@ -49,6 +49,7 @@ tasks.register('coreTest', Test) {
     // methods run in parallel (see core/src/test/resources/junit-platform.properties)
     maxHeapSize = '6G'
     systemProperty 'emergence.debugSolver', System.getProperty('emergence.debugSolver', 'false')
+    systemProperty 'emergence.multirate', System.getProperty('emergence.multirate', 'true')
     if (System.getProperty('emergence.method')) systemProperty 'emergence.method', System.getProperty('emergence.method')
     // diagnostic knobs for exploratory tests: -Ddiag.<name>=<value> reaches the test JVM
     System.properties.each { k, v -> if (k.toString().startsWith('diag.')) systemProperty k.toString(), v }

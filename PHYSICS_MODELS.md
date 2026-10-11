@@ -564,3 +564,10 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   eight nearest samples. The force within a step is known from history (the delay outlasts the step; otherwise the
   last values are held). The air is a reservoir: its work on receivers is external power; the radiation reaction on
   a source (≈ ρM²Ü²/(12πc³), orders of magnitude below mechanical losses) is not applied.
+
+## Numerical coupling: multirate (`TransientSolver.multirate`)
+* The thermal network lags the electrical and mechanical state by at most one synchronisation interval (≤ one game
+  tick, ≤ half the shortest C/G); temperature-dependent properties (resistance, thermistors, Seebeck EMFs) use the
+  temperatures of the last synchronisation. Heat crosses as the integral of what the fast elements delivered, so energy
+  is exact to the integrators' error: a tungsten filament heating from cold ends within 0.01 K of single-rate stepping,
+  energy error 5·10⁻⁹ J of 0.42 J.

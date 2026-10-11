@@ -81,6 +81,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    manufacturing
 
 ## Phase 6 — Advanced multiphysics
+✅ Multirate stepping: the thermal network apart from the electrical/mechanical/fluid partition, energy-exact coupling
 ✅ Control parts: potentiometers (angle sensors/knobs with end stops), op-amps (single pole, slew, rails),
    gravity torque on unbalanced rotating bodies; a servo arm exhibit (PID position control); an electronic speed
    governor (tachogenerator, PI op-amp loop, Darlington drive) holding a brushed motor's speed against a brake

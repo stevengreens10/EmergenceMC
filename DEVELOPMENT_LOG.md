@@ -399,3 +399,9 @@ fast partition's own loads get cheaper.
 (autocorrelation) and a band-limited pressure waveform (Ü's harmonics), streamed to the client and synthesised at the
 pressure the player's ear receives (dipole far field, physical distance). The trembler buzzes at 7.9 Hz; the
 loudspeaker sings at 261 Hz. A lone body now keeps its motion history too (the acoustic element is built for one).
+
+**Magnets attract iron.** First tried through the reluctance lattice (a magnet as a constant MMF): at cell resolution
+it gave a 5 cm NdFeB cube a pull of 13 N against iron — fifty times too little. The method of images, with the
+existing analytic magnet–magnet interaction, gives 533 N at 6 mm, falling to 14 N at 56 mm. The exhibit: two
+identical loaded armatures, one held at its magnet, the other — 5 cm away — falling. (A weight touching a bearing
+welds the slide to the frame: it sits clear of it now.)

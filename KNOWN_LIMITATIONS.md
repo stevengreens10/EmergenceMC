@@ -190,3 +190,6 @@ multimeter, oscilloscope/data logging.
 * In-game sound is a sonification: each sounding body's recent periodic motion is played as a looping tone at its
   simulated pitch and level (not a recording of the simulated pressure, which would slow with the simulation);
   aperiodic motion (a single impact) is silent; no near field, reflections or occlusion in what the player hears.
+* Magnets attract iron only where one of them rides a slide along the magnet's axis (not across it, not on turning
+  bodies), by the method of images (a wide iron face, unsaturated); coils on the same magnetic path do not interact
+  with that pull.

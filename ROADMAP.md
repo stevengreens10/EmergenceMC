@@ -24,7 +24,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    (synchronous motor driven by a rotating current pattern)
 ✅ Player-built brushed DC motor: angle-dependent brush/segment contacts → commutation emerges (exhibit)
 🟡 Ferromagnetic cores: linear magnetic equivalent circuit for iron fixed relative to coils ✅ (Faraday ring);
-   saturation, hysteresis, moving iron (reluctance torque), iron attracting magnets, eddy currents ⬜
+   saturation, hysteresis, moving iron (reluctance torque), eddy currents ⬜; iron attracting magnets ✅ (images)
 ✅ Slides on linear bearings, helical springs, end stops, gravity along the guide, magnetics on slides
 ✅ Rams: cylinders driving slides (hydraulic press)
 ✅ Check-valve pumps (hydraulic jack); cavitation in liquids

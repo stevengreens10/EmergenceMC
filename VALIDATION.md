@@ -299,6 +299,10 @@ and the dipole's far-field pressure within 0.6 %; a square wave keeps its odd ha
 synthesiser plays 440 rising crossings a second at the level the pressure asks for. The trembler's armature sounds at
 its cycling rate (7.91 Hz); the loudspeaker at 261 Hz.
 
+Magnet and iron (`DemoExhibitsTest.magnetHoldsAtContactButCannotLiftFromAfar`): the image model's pull of a 5 cm
+N42 cube on iron falls from 533 N at 6 mm to 14 N at 56 mm; an armature with a 3.2 kg load set against the magnet is
+held, the same set 5 cm below falls to its stop.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

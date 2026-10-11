@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), AcousticsExhibits.loudspeaker(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ThermoExhibits.thermocouple(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), AcousticsExhibits.loudspeaker(),
                 miniatureGenerator());
     }
 
@@ -524,6 +524,39 @@ public final class Exhibits {
         r.pin("fx", 7, 3, 8).pin("fx", 1, 1, 12);
         r.route();
         return e.view(7, 6, 15, 15, 160);
+    }
+
+    /**
+     * A magnet's pull: two neodymium magnets on brackets, each with an iron armature hanging below it on a vertical slide,
+     * loaded with a brass weight (3.2 kg all told). One armature was put up against its magnet; the other starts 5 cm below. Close to,
+     * the magnet holds five hundred newtons; 5 cm away, under fifteen: one hangs on, the other falls to its stop.
+     */
+    public static Exhibit magnetPull() {
+        Exhibit e = new Exhibit("magnetpull", "A magnet's pull",
+                List.of("MAGNET AND IRON", "Close, it holds 50 kg;", "5 cm away it cannot", "lift 3 kg"),
+                "Two identical neodymium magnets, each above an iron armature on a vertical slide carrying a brass "
+                        + "weight (3.2 kg all told, 31 N). The left armature was set against its magnet; the right one 5 cm below. Iron facing a "
+                        + "magnet is magnetised by it and acts like a mirror image of the magnet behind its face, so they "
+                        + "attract as two magnets do: about 530 N with the few millimetres between them here, but the pull "
+                        + "falls off steeply — 195 N at 16 mm, 14 N at 56 mm. So the left armature hangs on, weight and "
+                        + "all, while the right one, never near enough to be caught, drops to the end of its slide. That "
+                        + "is why magnetic catches and lifting magnets work only at contact.");
+        String st = "steel_1045";
+        for (int k = 0; k < 2; k++) {
+            int x = 4 + 6 * k, z = 6;
+            String side = k == 0 ? "near" : "far";
+            e.add(LINEAR_BEARING, st, x, 1, z, Dir.UP);
+            e.fill(BLOCK, st, x + 1, 0, z, x + 1, 1, z, Dir.UP);
+            int rod = e.fill(SHAFT, st, x, 1, z, x, 3, z, Dir.UP, "diameter", 0.012);
+            e.name(side, rod);
+            e.init(rod, new Exhibit.Initial(Double.NaN, 0, 0, k == 0 ? 0 : -0.05));
+            e.add(BLOCK, "brass", x, 3, z, Dir.UP); // the weight: a 2 kg brass block on the rod (3.2 kg all told), clear of the bearing
+            e.name(side + "Armature", e.add(BLOCK, "iron", x, 4, z, Dir.UP, "fill", 0.5));
+            e.name(side + "Magnet", e.add(MAGNET, "ndfeb_n42", x, 5, z, Dir.UP));
+            e.fill(BLOCK, st, x, 6, z, x + 2, 6, z, Dir.UP);
+            e.fill(BLOCK, st, x + 2, 0, z, x + 2, 5, z, Dir.UP);
+        }
+        return e.view(7.5, 5, 16, 15);
     }
 
     /**

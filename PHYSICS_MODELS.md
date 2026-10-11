@@ -583,3 +583,15 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   metres per block) — placed at the body for stereo, Minecraft's distance fade off; 94 dB plays at half full scale.
   It is a sonification at the true simulated pitch, not a recording: a machine simulated in slow motion still sounds
   at its real frequency. The trembler buzzes at 7.9 Hz (47 dB at a metre), the loudspeaker sings at 261 Hz (54 dB).
+
+## Magnets attracting iron (`MagneticSystem.addMagnetArmatures`)
+* Method of images: iron of permeability μr facing a magnet acts on it as the magnet's mirror image behind the iron's
+  face, strength k = (μr − 1)/(μr + 1) (0.98 for structural steel, ≈ 1 for iron). The energy is half the magnet's
+  interaction with its image, U(g) = ½·k·c·U_int(magnet, image at 2g + l) — the existing analytic magnet–magnet
+  interaction (Gauss quadrature of −M·B) — so the pull equals the magnet–image force. c is the fraction of the
+  magnet's face the iron's nearest face covers. Applies to a magnet and iron one of which rides a slide along the
+  magnet's axis (either way round); tabulated over the travel, conservative.
+* A 5 cm N42 cube on iron: 533 N at a 6 mm gap, 195 N at 16 mm, 14 N at 56 mm, 1 N at 126 mm (catalogue pulls for
+  such a cube at contact are about 1 kN). The face is taken at the iron's cell boundary (a thinner plate's own face is
+  not resolved); saturation is not modelled (pulls from within a few millimetres are overstated); coils sharing the
+  path do not add their MMF to the magnet's (no polarised relays or electro-permanent releases yet).

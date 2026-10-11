@@ -1654,4 +1654,18 @@ class DemoExhibitsTest {
         System.out.printf("  the loudspeaker sounds at %.1f Hz, %.1f dB at a metre%n", loudest.tone().frequency(), loudest.tone().level(1, 1));
         assertEquals(250, loudest.tone().frequency(), 15, "its note");
     }
+
+    /** A magnet holds its armature and weight at contact, but cannot lift the same from 5 cm away. */
+    @Test
+    void magnetHoldsAtContactButCannotLiftFromAfar() {
+        Exhibit e = Exhibits.magnetPull();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long near = b.id(e, "near"), far = b.id(e, "far");
+        run(c, 1.0);
+        double xn = c.probe(near).angle(), xf = c.probe(far).angle();
+        System.out.printf("magnet pull: near armature at %.1f mm, far armature at %.1f mm; energy error %.3g J%n", 1e3 * xn, 1e3 * xf, c.energyError());
+        assertTrue(xn > -0.001, "the near one is held against its magnet: " + xn);
+        assertTrue(xf < -0.1, "the far one falls to its stop: " + xf);
+    }
 }

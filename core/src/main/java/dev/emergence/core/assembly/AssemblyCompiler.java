@@ -1585,7 +1585,9 @@ public final class AssemblyCompiler {
                 if (p.kind() == PartKind.COIL) coils.add(p);
                 if (p.kind() == PartKind.MAGNET && p.material().has(MaterialProperty.REMANENCE)) magnets.add(p);
             }
-            if (coils.isEmpty() && magnets.size() < 2) return;
+            // (a magnet alone matters where something can move towards iron: a slide)
+            boolean slides = c.bodies.stream().anyMatch(b -> !b.isStatic && b.slider);
+            if (coils.isEmpty() && magnets.size() < 2 && (magnets.isEmpty() || !slides)) return;
             MagneticSystem ms = new MagneticSystem().tableResolution(256);
             Map<CompiledAssembly.Body, EmBody> em = new HashMap<>();
             for (CompiledAssembly.Body b : c.bodies) {
@@ -1603,8 +1605,8 @@ public final class AssemblyCompiler {
             }
             for (Part p : magnets) ms.addMagnet(PartGeometry.magnet(p), em.get(c.bodyOfPart.get(p.id())));
             // ferromagnetic parts (μr ≥ 2: soft iron, electrical steel, structural steel, nickel) and coils wound on a
-            // core ("core" = 1: electrical steel filling the bore) shape the coils' magnetic circuits
-            if (!coils.isEmpty()) {
+            // core ("core" = 1: electrical steel filling the bore) shape the coils' and magnets' magnetic circuits
+            if (!coils.isEmpty() || !magnets.isEmpty()) {
                 double steel = MaterialDatabase.standard().get("electrical_steel").get(MaterialProperty.RELATIVE_PERMEABILITY, 5000);
                 for (Part p : parts) {
                     double muR;

@@ -258,9 +258,95 @@ public final class MagneticSystem implements Element {
         }
     }
 
+    /**
+     * Permanent magnets and iron: a magnet and iron on a slide moving along the magnet's axis (the iron moving, or the
+     * magnet) pull together. By the method of images, iron of permeability μr facing a magnet acts on it as a mirror
+     * image of the magnet behind the iron's face, of strength k = (μr − 1)/(μr + 1) (≈ 1 for steel): the system's energy
+     * is half the magnet's interaction with its image, U(g) = ½·k·c·U_int(magnet, image at 2g + l), and the pull equals
+     * the force between the magnet and its image. Exact for a magnetisation normal to a wide, thick, unsaturated iron
+     * face; the face is taken where the nearest iron cells begin, its coverage c of the magnet's face scales the energy
+     * (a narrow armature catches less of the field); saturation is not modelled (a pull from closer than a few
+     * millimetres is overstated). Coils on the same path do not add to the magnet's field here.
+     */
+    private void addMagnetArmatures() {
+        for (Magnet mg : magnets) {
+            CuboidMagnet m = mg.magnet;
+            Vec3 dir = m.magnetization();
+            double mag = dir.length();
+            if (mag <= 0) continue;
+            dir = dir.mul(1 / mag);
+            int a = Math.abs(dir.x()) > 0.9 ? 0 : Math.abs(dir.y()) > 0.9 ? 1 : Math.abs(dir.z()) > 0.9 ? 2 : -1;
+            if (a < 0) continue; // only magnets magnetised along a world axis
+            int t1 = (a + 1) % 3, t2 = (a + 2) % 3;
+            double[] mc = {m.center.x(), m.center.y(), m.center.z()};
+            for (EmBody other : bodies) {
+                if (other == mg.body) continue;
+                // the slide: the magnet's body or the other's, moving along the magnet's axis; the other held still
+                EmBody slide = mg.body.slider && other.isStatic() ? mg.body : other.slider && mg.body.isStatic() ? other : null;
+                if (slide == null || Math.abs(Math.abs(slide.axis.dot(dir)) - 1) > 1e-6) continue;
+                // the other's iron in front of either pole, within the magnet's footprint: its nearest face, how much of the
+                // magnet's face it covers, and its permeability
+                for (int sgn = -1; sgn <= 1; sgn += 2) {
+                    double pole = mc[a] + sgn * m.half[a], face = Double.NaN, covered = 0, muR = 0;
+                    java.util.Set<Long> cols = new java.util.HashSet<>();
+                    for (Object[] f : iron) {
+                        if (f[0] != other) continue;
+                        int[] q = (int[]) f[1];
+                        double lo = q[a] * cell, hi = (q[a] + 1) * cell;
+                        double near = sgn > 0 ? lo : hi;
+                        if (sgn * (near - pole) < -1e-9 || sgn * (near - pole) > IRON_REACH * cell) continue;
+                        double o1 = Math.min((q[t1] + 1) * cell, mc[t1] + m.half[t1]) - Math.max(q[t1] * cell, mc[t1] - m.half[t1]);
+                        double o2 = Math.min((q[t2] + 1) * cell, mc[t2] + m.half[t2]) - Math.max(q[t2] * cell, mc[t2] - m.half[t2]);
+                        if (o1 <= 0 || o2 <= 0) continue;
+                        if (Double.isNaN(face) || sgn * (near - face) < 0) face = near;
+                        if (cols.add(ReluctanceLattice.key(q[t1], q[t2], 0))) covered += o1 * o2;
+                        muR = Math.max(muR, (Double) f[2]);
+                    }
+                    if (Double.isNaN(face)) continue;
+                    // only the cells at that nearest face count towards the coverage
+                    covered = 0;
+                    cols.clear();
+                    for (Object[] f : iron) {
+                        if (f[0] != other) continue;
+                        int[] q = (int[]) f[1];
+                        double near = sgn > 0 ? q[a] * cell : (q[a] + 1) * cell;
+                        if (Math.abs(near - face) > 1e-9) continue;
+                        double o1 = Math.min((q[t1] + 1) * cell, mc[t1] + m.half[t1]) - Math.max(q[t1] * cell, mc[t1] - m.half[t1]);
+                        double o2 = Math.min((q[t2] + 1) * cell, mc[t2] + m.half[t2]) - Math.max(q[t2] * cell, mc[t2] - m.half[t2]);
+                        if (o1 > 0 && o2 > 0 && cols.add(ReluctanceLattice.key(q[t1], q[t2], 0))) covered += o1 * o2;
+                    }
+                    double coverage = Math.min(1, covered / (4 * m.half[t1] * m.half[t2]));
+                    double k = (muR - 1) / (muR + 1) * coverage, g0 = sgn * (face - pole);
+                    // the gap widens as the slide moves the two apart: the iron moving away along sgn·axis, or the magnet
+                    // moving the other way
+                    double away = (slide == other ? 1 : -1) * sgn * Math.signum(slide.axis.dot(dir));
+                    Vec3 dirF = dir, sideV = dir.mul(sgn);
+                    double half = m.half[a];
+                    EmBody fixed = slide == other ? mg.body : other;
+                    Term t = relativeTerm(fixed, slide);
+                    if (t == null) continue;
+                    t.kind = Kind.MAGNET;
+                    List<CuboidMagnet> self = List.of(m);
+                    t.spline = table(fixed, slide, phi -> {
+                        double gap = Math.max(1e-4, g0 + away * phi);
+                        CuboidMagnet image = m.translated(sideV.mul(2 * (half + gap)));
+                        return 0.5 * k * interactionEnergy(self, image);
+                    });
+                    if (Boolean.getBoolean("diag.armature")) System.out.println("magnet image: pole " + sgn + " gap " + g0 + " coverage "
+                            + coverage + " k " + k + " direction " + dirF);
+                    terms.add(t);
+                }
+            }
+        }
+    }
+
     /** A coil's cut face: across its winding, through the face nearest its centre along its axis. */
     private ReluctanceLattice.Cut cut(CoilGeometry g) {
-        Vec3 c = g.center(), ax = g.axis();
+        return cutAt(g.center(), g.axis(), g.turns());
+    }
+
+    /** The cut face of a winding of {@code turns} about {@code ax} centred at {@code c} (see {@link #cut(CoilGeometry)}). */
+    private ReluctanceLattice.Cut cutAt(Vec3 c, Vec3 ax, int turns) {
         int axis = Math.abs(ax.x()) > 0.5 ? 0 : Math.abs(ax.y()) > 0.5 ? 1 : 2;
         double[] u = {c.x() / cell, c.y() / cell, c.z() / cell};
         int[] i = {(int) Math.floor(u[0]), (int) Math.floor(u[1]), (int) Math.floor(u[2])};
@@ -268,7 +354,7 @@ public final class MagneticSystem implements Element {
         // centre on a cell boundary (an even number of cells long): the face there; else the cell's +axis face
         if (frac < 0.25 || frac > 0.75) i[axis] = (int) Math.round(u[axis]) - 1;
         double sign = (axis == 0 ? ax.x() : axis == 1 ? ax.y() : ax.z()) > 0 ? 1 : -1;
-        return new ReluctanceLattice.Cut(i[0], i[1], i[2], axis, sign, g.turns());
+        return new ReluctanceLattice.Cut(i[0], i[1], i[2], axis, sign, turns);
     }
 
     /** The inductance matrix of the coils with no relative motion [H] (a copy), in the order of {@link #coils()}. */
@@ -317,6 +403,7 @@ public final class MagneticSystem implements Element {
         if (!iron.isEmpty()) {
             addIronInductance();
             addArmatures();
+            addMagnetArmatures();
         }
         // coil ↔ magnet flux linkage (only bodies different from the coil's: same-body flux is constant)
         for (int j = 0; j < nc; j++) {

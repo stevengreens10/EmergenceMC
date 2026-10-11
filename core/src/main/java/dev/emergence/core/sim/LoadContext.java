@@ -46,6 +46,14 @@ public final class LoadContext implements StateView {
         if (index >= 0 && floor != null && v > floor[index]) floor[index] = v;
     }
 
+    /**
+     * Whether unknown {@code index} is held fixed in this step (multirate: a temperature while the fast partition steps).
+     * An element may then skip working out derivatives with respect to it, which would be discarded.
+     */
+    public boolean held(int index) {
+        return frozen != null && index >= 0 && frozen[index];
+    }
+
     /** Adds v to residual row {@code row}; reference rows (index &lt; 0) are ignored. */
     public void addF(int row, double v) {
         if (row >= 0) {

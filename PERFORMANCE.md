@@ -30,6 +30,9 @@ simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its p
 out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
 
 ## History
+* Conductors under multirate skip the temperature derivatives the fast partition would discard (keeping only the
+  Joule heat's own slope, for the coupling's stability limit): loudspeaker 15.9 → 11.2 s, governor 23.7 → 19.4 s,
+  thermostat 29.6 → 20.6 s (against single rate: −46 %, −35 %, −42 %).
 * Multirate (the thermal network stepped apart, its rows and columns out of the fast partition's factorisation):
   loudspeaker 20.7 → 15.9 s, governor 29.7 → 23.7 s, thermostat 35.5 → 29.6 s (alone, dev machine). The fast steps
   still load every conductor (their heat goes to thermal nodes) — the next costs to attack. The energy ledger now uses

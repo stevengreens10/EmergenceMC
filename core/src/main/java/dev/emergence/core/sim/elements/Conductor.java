@@ -117,6 +117,13 @@ public final class Conductor implements Element {
         ctx.addF(t, -i * i * r);                          // Joule heat in the conductor
         for (int k = 0; k < aNodes.length; k++) ctx.addF(aNodes[k].index(), aW[k] * seebeck * ta * i);  // Peltier heat taken at a
         for (int k = 0; k < bNodes.length; k++) ctx.addF(bNodes[k].index(), -bW[k] * seebeck * tb * i); // and given at b
+        if (ctx.held(t)) {
+            // temperatures held (multirate, fast partition): the electrical derivatives, and the Joule heat's own
+            // temperature slope ∂(−I²r)/∂T = I²·dr/dT (at fixed EMF) — the coupling's stiffness the solver watches
+            ctx.stampConductance(a, b, g);
+            ctx.addJ(t, t, i * i * drdT);
+            return;
+        }
         // Jacobian: columns V_a, V_b, T (resistance), the end temperatures
         int nc = col.length;
         java.util.Arrays.fill(dta, 0);

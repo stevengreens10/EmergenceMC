@@ -278,6 +278,12 @@ N-BK7 collimator (f = 0.25 m), a 40° N-SF11 prism; the three detectors' band co
 channel lights, at 2095 K the red too, at 2558 K the blue too — the photocurrent ratios follow Planck's law (blue
 grows 20× from 2095 to 2558 K, infrared 4×).
 
+Acoustics (`SoundFieldTest`, `AcousticCouplingTest`): close to a steadily moving sphere the field is the potential
+flow round it (u_r = Ua³cosθ/r³, u_θ = Ua³sinθ/2r³, to 10⁻⁹); the intensity integrated over a sphere 30 wavelengths
+out gives an oscillating sphere's radiated power within 1.8 % of (π/6)ρck⁴a⁶U₀²; a pulse takes Δr/c and its far
+pressure falls as 1/r; the force A's motion puts on B equals B's on A. In the solver, a plate driven at 400 Hz
+makes a tuned plate 0.5 m away vibrate at 5.74 mm/s against the analytic 5.84 mm/s.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

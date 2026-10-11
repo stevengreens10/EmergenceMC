@@ -452,13 +452,19 @@ public final class SimulationManager {
      * Blocks joined by light: a block-scale mirror (lens, LED or photodiode) joins its island with every assembly
      * block within {@link #SIGHT} ({@link #SIGHT_NEAR}) blocks inside a 60° cone about the directions it sends or receives light along
      * (a mirror's front, a lens's axis both ways, an LED's or photodiode's face) — the dish and the plate at its
-     * focus are one machine. Symmetric, so membership does not depend on the flood order.
+     * focus are one machine. Symmetric, so membership does not depend on the flood order. Bodies on slides within
+     * {@link #HEAR} blocks are joined too (sound).
      */
     private Map<BlockPos, Set<BlockPos>> sightLinks() {
         Map<BlockPos, Set<BlockPos>> links = new HashMap<>();
         List<BlockPos> all = null;
+        List<BlockPos> slides = new ArrayList<>();
         for (AssemblyBlockEntity be : blocks.values()) {
             if (be.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
+            for (PlacedPart p : be.parts()) if (p.kind == PartKind.LINEAR_BEARING) {
+                slides.add(be.getBlockPos());
+                break;
+            }
             // a large gear's rim reaches into blocks beyond the common reach
             int far = reach(be);
             if (far > 2) {
@@ -507,8 +513,20 @@ public final class SimulationManager {
                 }
             }
         }
+        // bodies on slides hear one another through the air (sound): their bearings' blocks within HEAR blocks join
+        for (int i = 0; i < slides.size(); i++)
+            for (int j = i + 1; j < slides.size(); j++) {
+                BlockPos u = slides.get(i), v = slides.get(j);
+                if (u.distSqr(v) <= HEAR * HEAR) {
+                    links.computeIfAbsent(u, k -> new HashSet<>()).add(v);
+                    links.computeIfAbsent(v, k -> new HashSet<>()).add(u);
+                }
+            }
         return links;
     }
+
+    /** Range [blocks] over which bodies on slides are joined into one machine, to hear one another. */
+    private static final int HEAR = 8;
 
     /** True if any block of the island is in a chunk that ticks block entities. */
     private boolean anyTicking(Island isl) {

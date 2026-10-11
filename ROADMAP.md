@@ -96,7 +96,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Hot parts' light through mirrors, lenses and prisms, band by band: a spectrometer (collimator, prism, three
    channels) shows a filament's glow shifting from infrared to blue as it heats (Wien)
 ✅ Prisms (dispersion exhibit)
-⬜ Acoustics, geology, environmental, biology; diffuse reflection; spectrum analyser,
+🟡 Acoustics: compact-dipole sound from bodies on slides, retarded near/induction/far field, receivers pushed by
+   the air; ⬜ turning bodies, enclosures and baffles, rooms, in-game audio
+⬜ Geology, environmental, biology; diffuse reflection; spectrum analyser,
    logic analyser, multi-channel loggers
 
 ## Demo world

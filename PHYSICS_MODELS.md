@@ -546,3 +546,18 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   coefficients differ by under 20 µV/K, share one electrical node (otherwise 10⁷ S conductances left a circuit's
   floating potential known only to its roundoff, where a nearly open element held it). Components mount on one
   structure (a coil touching both its bracket and an armature does not weld them together).
+
+## Acoustics (`core.acoustics`: `DipoleRadiator`, `SoundField`, `AcousticCoupling`)
+* **Air**: ρ = pM/(RT), c = √(γRT/M) (dry air, γ = 1.4) at the ambient temperature and 101.325 kPa: 1.204 kg/m³ and
+  343 m/s at 20 °C. Linear acoustics, free field (no walls, no ground reflection), no absorption.
+* **Sources**: every body on a slide is a compact dipole (small against the wavelength) of strength m = M·U along its
+  slide, M = (8/3)(S/π)^{3/2} + V — the added mass of a disc of its outline S seen along the slide (Lamb) plus its
+  volume; a sphere's 2πa³ gives the exact potential flow round it. Its field, with τ = t − r/c:
+  φ = −(ŝ·r̂)[m(τ)/r² + ṁ(τ)/(cr)]/4π, u = ∇φ, p = −ρ∂φ/∂t = ρ(ŝ·r̂)[ṁ/r² + m̈/(cr)]/4π — near (1/r³), induction
+  (1/r²) and radiated (1/r) parts; radiated power ρM²Ü²/(12πc³).
+* **Receivers**: each such body feels F = ρM·(∂u/∂t·ŝ) from the others' fields (Froude–Krylov plus added mass on a
+  small body in unsteady potential flow); reciprocal by the Green's function's symmetry.
+* **Retardation**: velocities are kept per accepted step; derivatives at τ from a least-squares cubic through the
+  eight nearest samples. The force within a step is known from history (the delay outlasts the step; otherwise the
+  last values are held). The air is a reservoir: its work on receivers is external power; the radiation reaction on
+  a source (≈ ρM²Ü²/(12πc³), orders of magnitude below mechanical losses) is not applied.

@@ -180,3 +180,8 @@ multimeter, oscilloscope/data logging.
   sources at their centres (an extended source's image size is not resolved), in 40 nm bands; a single-cell
   component also takes contacts on its side faces along its lead axis, so leaded parts standing side by side
   connect (set "lead_axis" across the row).
+* Acoustics: only bodies on slides radiate and hear (not turning bodies, not vibrating structures); each is a compact
+  dipole at its outline's centroid (no baffles, enclosures or cabinets — a plate radiates from both faces in
+  antiphase), in a free field (no walls, ground, rooms or absorption); its position is fixed at compile time (slides
+  move millimetres); the radiation reaction on a source is not applied; bodies hear one another only within one
+  island (slide bearings within 8 blocks are joined). Nothing is played as sound in the game yet.

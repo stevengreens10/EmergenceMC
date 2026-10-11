@@ -373,3 +373,9 @@ each at its own refractive index, and photodiodes take band-by-band blackbody so
 through a 40° flint prism spreads violet to infrared across four cells 0.8 m on (a 45° prism sent the blue into total
 internal reflection); three receivers show the glow shifting to the blue as the filament heats. Display rays carry a
 wavelength each, drawn as bright as Planck's law makes that colour at the source's temperature.
+
+**Acoustics, first slice.** Sound in air from compact dipoles: every body on a slide pushes air with a strength set
+by its outline (a disc's added mass) and its volume; the retarded field (near, induction and far parts) acts on the
+other bodies as ρM·∂u/∂t. Velocity histories per accepted step give the retarded derivatives by local cubic fits.
+Checked against the potential flow round a sphere, an oscillating sphere's radiated power, propagation at c,
+reciprocity, and a driven plate exciting a tuned one half a metre away.

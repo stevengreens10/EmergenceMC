@@ -1375,6 +1375,7 @@ public final class AssemblyCompiler {
             buildElectrochemistry();
             buildMagnetics();
             buildEddyCurrents();
+            buildAcoustics();
         }
 
         /**
@@ -2010,6 +2011,72 @@ public final class AssemblyCompiler {
                     c.beams.put(src.id(), rays);
                     c.beamNm.put(src.id(), nms.stream().mapToDouble(Double::doubleValue).toArray());
                 }
+            }
+        }
+
+        /**
+         * Sound: every body on a slide pushes air as a compact dipole ({@link dev.emergence.core.acoustics.DipoleRadiator})
+         * of strength M = (8/3)(S/π)^{3/2} + V — S its outline seen along the slide (each cell column of its parts counted
+         * once, at the largest cross-section any part offers there: a plate facing the travel its whole cell, a thin
+         * plate edge-on its thickness, a rod along the travel its section), V its solid volume — sitting at the centroid
+         * of that outline. When two or more such bodies share the assembly, each feels the air the others set moving
+         * ({@link dev.emergence.core.acoustics.AcousticCoupling}). Turning bodies do not radiate yet.
+         */
+        void buildAcoustics() {
+            List<dev.emergence.core.acoustics.DipoleRadiator> rads = new ArrayList<>();
+            List<Node> nodes = new ArrayList<>();
+            for (CompiledAssembly.Body b : c.bodies) {
+                if (b.isStatic || !b.slider || b.node == null) continue;
+                int ax = Math.abs(b.axis.x()) > 0.5 ? 0 : Math.abs(b.axis.y()) > 0.5 ? 1 : 2;
+                Map<Long, Double> columns = new HashMap<>();
+                Map<Long, Vec3> where = new HashMap<>();
+                double volume = 0;
+                for (long id : b.parts) {
+                    Part p = a.get(id);
+                    if (p == null || isWire(p)) continue;
+                    double rho = p.material().get(MaterialProperty.DENSITY, 1000);
+                    volume += PartGeometry.mass(p) / rho;
+                    double f;
+                    if (p.kind() == PartKind.BLOCK) {
+                        f = p.axis().axis() == ax ? 1 : Math.max(0.01, Math.min(1, p.param("fill", 1.0)));
+                    } else if (p.kind() == PartKind.SHAFT) {
+                        double d = PartGeometry.shaftDiameter(p) / CELL;
+                        f = p.axis().axis() == ax ? Math.PI * d * d / 4 : Math.min(1, d);
+                    } else {
+                        f = 1;
+                    }
+                    for (int x = p.minX(); x <= p.maxX(); x++)
+                        for (int y = p.minY(); y <= p.maxY(); y++)
+                            for (int z = p.minZ(); z <= p.maxZ(); z++) {
+                                int[] cell = {x, y, z};
+                                cell[ax] = 0;
+                                long key = CellKey.key(cell[0], cell[1], cell[2]);
+                                columns.merge(key, f, Math::max);
+                                int[] full = {x, y, z};
+                                where.merge(key, new Vec3(full[0] + 0.5, full[1] + 0.5, full[2] + 0.5).mul(CELL), (u, v) -> u);
+                            }
+                }
+                double area = 0;
+                Vec3 centre = Vec3.ZERO;
+                for (var en : columns.entrySet()) {
+                    area += en.getValue();
+                    centre = centre.add(where.get(en.getKey()).mul(en.getValue()));
+                }
+                if (area <= 0) continue;
+                centre = centre.mul(1 / area);
+                area *= CELL * CELL;
+                rads.add(new dev.emergence.core.acoustics.DipoleRadiator(centre, b.axis, dev.emergence.core.acoustics.DipoleRadiator.plateMoment(area, volume)));
+                nodes.add(b.node);
+            }
+            if (rads.size() < 2) return;
+            var air = dev.emergence.core.acoustics.SoundField.air(ambientT, 101_325);
+            c.acoustics = c.network.add(new dev.emergence.core.acoustics.AcousticCoupling(air, rads, nodes));
+        }
+
+        /** Packs a cell coordinate into a map key. */
+        static final class CellKey {
+            static long key(int x, int y, int z) {
+                return ((long) (x + 1024) << 22) | ((long) (y + 1024) << 11) | (z + 1024);
             }
         }
 

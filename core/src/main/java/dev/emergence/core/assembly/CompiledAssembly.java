@@ -459,6 +459,13 @@ public final class CompiledAssembly {
     }
 
     final Map<Long, double[]> beamNm = new HashMap<>();
+    /** Sound in air between the bodies on slides, if there are two or more (null otherwise). */
+    dev.emergence.core.acoustics.AcousticCoupling acoustics;
+
+    /** Sound pressure [Pa] at a point [m] from the bodies moving on slides, now (0 when nothing can sound). */
+    public double soundPressure(Vec3 x) {
+        return acoustics == null ? 0 : acoustics.field().pressure(x, time(), null);
+    }
 
     public List<List<Vec3>> beams(long ledId) {
         return beams.get(ledId);

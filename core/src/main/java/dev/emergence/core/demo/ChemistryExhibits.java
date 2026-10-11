@@ -143,4 +143,61 @@ public final class ChemistryExhibits {
         r.route();
         return e.view(6, 5, 15, 15);
     }
+
+    /**
+     * A still: a steel pot of dilute ethanol (10 mol %) over a heating element; its vapour rises through a pipe to a
+     * finned copper-cooled receiver that vents to the air. Boiling, the liquid gives off a vapour far richer in ethanol
+     * than itself (vapour–liquid equilibrium); it condenses in the cool receiver as a distillate of about half ethanol.
+     */
+    public static Exhibit still() {
+        Exhibit e = new Exhibit("still", "Still",
+                List.of("DISTILLATION", "Switch the heater on:", "the distillate is", "4× richer in ethanol"),
+                "The pot holds 50 mL of dilute ethanol — one molecule in ten — already warm. Switch the heater on: the "
+                        + "liquid begins to boil near 88 °C. Its vapour is not like it: ethanol is the more volatile, and the "
+                        + "vapour over a 10 % solution is about 44 % ethanol (Raoult's law, corrected for how ethanol and "
+                        + "water dislike each other — the activity coefficients). The vapour flows to the receiver, whose "
+                        + "copper fins keep it cool, and condenses there: the distillate, about half ethanol (the cool receiver "
+                        + "keeps more of the water than of the ethanol: a second stage). Meter the pot and the receiver for "
+                        + "their liquids' compositions. As the pot loses ethanol its boiling point climbs towards 100 °C and "
+                        + "the distillate weakens; collecting it and distilling again (or a column of many stages) "
+                        + "concentrates it further — up to the azeotrope near 90 %, beyond which boiling cannot separate.");
+        String st = "steel_1045";
+        // warm already (80 °C), its headspace in equilibrium with the liquid: the vapours' partial pressures x·γ·p_sat
+        // (42 and 46 kPa) and the air that is left
+        int pot = e.add(TANK, st, 3, 1, 8, Dir.UP, "wall", 0.002, "liquid_C2H5OH", 0.23, "liquid_H2O", 2.07,
+                "x_N2", 0.095, "x_O2", 0.025, "x_H2O", 0.42, "x_C2H5OH", 0.455);
+        e.name("pot", pot);
+        e.init(pot, new Exhibit.Initial(353.15, 0, 0)); // warmed already: it boils soon after the heater goes on
+        // the vapour line: up from the pot's lid, across, down into the receiver
+        e.fill(PIPE, st, 3, 2, 8, 3, 3, 8, Dir.UP, "bore", 0.01);
+        e.fill(PIPE, st, 4, 3, 8, 7, 3, 8, Dir.EAST, "bore", 0.01);
+        e.add(PIPE, st, 8, 3, 8, Dir.DOWN, "bore", 0.01);
+        e.add(PIPE, st, 8, 2, 8, Dir.DOWN, "bore", 0.01);
+        // caps on the corners' upper ends (an open pipe end vents to the air)
+        e.add(BLOCK, st, 3, 4, 8, Dir.UP);
+        e.add(BLOCK, st, 8, 4, 8, Dir.UP);
+        int receiver = e.add(TANK, "copper", 8, 1, 8, Dir.UP, "wall", 0.002, "condenser", 1);
+        e.name("receiver", receiver);
+        e.add(BLOCK, st, 8, 0, 8, Dir.UP);
+        // cooling fins: thin copper plates against the receiver's sides
+        for (int k = 0; k < 3; k++) {
+            e.add(BLOCK, "copper", 8, 1, 9 + k, Dir.SOUTH, "fill", 0.15);
+            e.add(BLOCK, "copper", 8, 1, 7 - k, Dir.SOUTH, "fill", 0.15);
+        }
+        // its vent: a pipe east, open at its end
+        e.fill(PIPE, st, 9, 1, 8, 10, 1, 8, Dir.EAST, "bore", 0.006);
+        // the heater under the pot
+        e.name("heater", e.add(RESISTOR, "alumina", 3, 0, 8, Dir.EAST, "resistance", 9.0, "contact_area", 0.002,
+                "surface_area", 0.002, "mass", 0.05));
+        int bank = e.add(CAPACITOR, "alumina", 3, 0, 13, Dir.EAST, "capacitance", 200);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 30));
+        e.name("switch", e.add(SWITCH, "brass", 6, 0, 13, Dir.EAST));
+        Router r = new Router(e, 0, 0, 0, 15, 2, 15);
+        r.pin("bat", 4, 0, 13).pin("bat", 5, 0, 13);
+        r.pin("sw", 7, 0, 13).pin("sw", 4, 0, 8);
+        r.pin("ret", 2, 0, 8).pin("ret", 2, 0, 13);
+        r.keepClear(11, 1, 8, 11, 1, 8); // the vent's mouth stays open
+        r.route();
+        return e.view(6, 5, 15, 20);
+    }
 }

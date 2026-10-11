@@ -2,6 +2,7 @@ package dev.emergence.core.sim.elements;
 
 import dev.emergence.core.chem.Reaction;
 import dev.emergence.core.chem.Species;
+import dev.emergence.core.chem.VaporLiquid;
 import dev.emergence.core.sim.Domain;
 import dev.emergence.core.sim.Element;
 import dev.emergence.core.sim.LoadContext;
@@ -27,6 +28,17 @@ import java.util.List;
  * iterates that overshoot slightly negative do not produce complex powers. Valid while the gas is ideal, well mixed
  * (stirred, or small and slow compared with diffusion) and below the dissociation temperatures the species list
  * omits. A local flame front is not resolved: ignition happens when the bulk runs away thermally (Semenov).
+ * <p>
+ * <b>Liquids</b> ({@link #withLiquid}): condensable species ({@link VaporLiquid}) also have a liquid pool l_i in the
+ * vessel (its volume taken from the gas's). Each evaporates or condenses at the rate κ·(φ_i·x_i·γ_i·p_sat,i(T) − p_i)/(R·T)
+ * [mol/s], κ = k_G·A the gas-side mass-transfer conductance over the interface (k_G = {@value #K_G} m/s, a stirred or
+ * boiling liquid), x the liquid's mole fractions, γ its activity coefficients, φ_i = l_i/(l_i + 10⁻⁴ mol) (no liquid,
+ * no equilibrium pressure — a dry vessel's undersaturated vapour forms at most a negligible dew film), p_i the
+ * partial pressure: the gas
+ * approaches equilibrium with the liquid (Raoult's law, modified), and boils when the liquid's equilibrium pressure
+ * exceeds the gas's. The liquid's internal energy is the vapour's enthalpy less the heat of vaporisation,
+ * u_l = h_g(T) − L(T), with L from the same vapour-pressure curve (Clausius–Clapeyron), so evaporation cools and
+ * condensation warms exactly as much as equilibrium requires, and energy and elements stay conserved.
  */
 public final class GasReactor implements Element {
     private static final double R = PhysicalConstants.GAS_CONSTANT, EPS = 1e-9, CUT = 1e-4;
@@ -48,6 +60,16 @@ public final class GasReactor implements Element {
     private AngleTracker tracker;
     private PistonKinematics crank;
     private final List<Node> filmWall = new java.util.ArrayList<>();
+    /** Gas-side mass-transfer coefficient over a liquid surface [m/s] (a stirred or boiling liquid). */
+    public static final double K_G = 0.05;
+    private static final double LIQ_EPS = 1e-4;
+    // liquids: the condensable species (indices into sp), their data, initial liquid moles, unknowns and slots
+    private int[] cond = new int[0];
+    private VaporLiquid.Condensable[] cdata;
+    private String[] condIds;
+    private double[] l0;
+    private int[] lIdx, lSlot;
+    private double kA;
     private final List<double[]> filmGeom = new java.util.ArrayList<>(); // {area, thickness}
 
     /**
@@ -127,6 +149,79 @@ public final class GasReactor implements Element {
         return pNode;
     }
 
+    /**
+     * Gives the vessel liquids: every condensable species present gets a liquid pool, starting with {@code liquid[i]}
+     * moles (indexed like the species), exchanging with the gas over an interface of area {@code area} [m²].
+     */
+    public GasReactor withLiquid(double[] liquid, double area) {
+        java.util.List<Integer> c = new java.util.ArrayList<>();
+        for (int i = 0; i < sp.length; i++) if (VaporLiquid.of(sp[i].id()) != null) c.add(i);
+        cond = c.stream().mapToInt(Integer::intValue).toArray();
+        cdata = new VaporLiquid.Condensable[cond.length];
+        condIds = new String[cond.length];
+        l0 = new double[cond.length];
+        for (int k = 0; k < cond.length; k++) {
+            cdata[k] = VaporLiquid.of(sp[cond[k]].id());
+            condIds[k] = sp[cond[k]].id();
+            l0[k] = Math.max(0, liquid[cond[k]]);
+        }
+        lIdx = new int[cond.length];
+        lSlot = new int[cond.length];
+        kA = K_G * area;
+        return this;
+    }
+
+    /** Internal energy of a mole of species k's liquid at T [J/mol]: h_g(T) − L(T). */
+    private double uLiquid(int k, double t) {
+        return sp[cond[k]].internalEnergy(t) + R * t - cdata[k].latentHeat(t);
+    }
+
+    /** Its isochoric heat capacity [J/(mol·K)]. */
+    private double cvLiquid(int k, double t) {
+        return sp[cond[k]].cv(t) + R - cdata[k].dLatentHeat(t);
+    }
+
+    /** Volume the liquids take up [m³]. */
+    private double liquidVolume(double[] l) {
+        double v = 0;
+        for (int k = 0; k < l.length; k++) v += Math.max(0, l[k]) * cdata[k].liquidVolume();
+        return v;
+    }
+
+    /**
+     * The gas's share of a vessel of volume V with liquid volume vl: V − vl, smoothly floored (½(g + √(g² + 4f²)), f =
+     * 2 % of V) so a vessel the liquid fills still has some gas space, and the slopes stay continuous.
+     */
+    private static double gasVolume(double v, double vl) {
+        double g = v - vl, f = 0.02 * v;
+        return 0.5 * (g + Math.sqrt(g * g + 4 * f * f));
+    }
+
+    /** Evaporation rates [mol/s] (condensation negative) of each condensable at T with gas moles n and liquid moles l. */
+    private double[] evaporation(double t, double[] n, double[] l, double vg) {
+        int q = cond.length;
+        double[] r = new double[q];
+        double sumL = 0, sumN = 0;
+        for (int k = 0; k < q; k++) {
+            sumL += Math.max(0, l[k]);
+            sumN += Math.max(0, n[cond[k]]);
+        }
+        double[] x = new double[q];
+        for (int k = 0; k < q; k++) {
+            double y = sumN > 0 ? Math.max(0, n[cond[k]]) / sumN : 1.0 / q;
+            x[k] = (Math.max(0, l[k]) + LIQ_EPS * y) / (sumL + LIQ_EPS);
+        }
+        double[] g = VaporLiquid.activity(condIds, x);
+        for (int k = 0; k < q; k++) {
+            // the liquid's equilibrium pressure, present only as far as there is liquid (φ = l/(l + ε)): smooth through
+            // equilibrium; a dry vessel's undersaturated vapour forms at most a dew film of order ε
+            double phi = Math.max(0, l[k]) / (Math.max(0, l[k]) + LIQ_EPS);
+            double pk = n[cond[k]] * R * t / vg, pStar = phi * x[k] * g[k] * cdata[k].psat(t);
+            r[k] = kA * (pStar - pk) / (R * t);
+        }
+        return r;
+    }
+
     /** Unknown index of species i's moles. */
     public int molesIndex(int i) {
         return nIdx[i];
@@ -152,11 +247,20 @@ public final class GasReactor implements Element {
             ctx.limitNewton(nIdx[i], (old, proposed) -> old > 0 && proposed < 0 && proposed > -old ? 0.1 * old : proposed);
             nSlot[i] = ctx.allocState(tol);
         }
+        for (int k = 0; k < cond.length; k++) {
+            double tl = Math.max(1e-12, 1e-9 * (total + l0[k]));
+            lIdx[k] = ctx.allocUnknown("l:" + condIds[k], tl);
+            ctx.setInitial(lIdx[k], l0[k]);
+            ctx.limitNewton(lIdx[k], (old, proposed) -> old > 0 && proposed < 0 && proposed > -old ? 0.1 * old : proposed);
+            lSlot[k] = ctx.allocState(tl);
+        }
         // the energy slot holds U minus the formation energy of the initial charge, so its truncation-error
         // tolerance is set by the sensible energy, not by the (large) chemical energy
         for (int i = 0; i < sp.length; i++) uRef += n0[i] * sp[i].internalEnergy(Species.T0);
+        for (int k = 0; k < cond.length; k++) uRef += l0[k] * uLiquid(k, Species.T0);
         double cv = 0;
         for (int i = 0; i < sp.length; i++) cv += n0[i] * sp[i].cv(300);
+        for (int k = 0; k < cond.length; k++) cv += l0[k] * cvLiquid(k, 300);
         uSlot = ctx.allocState(Math.max(1e-9, cv * 1e-3));
     }
 
@@ -191,19 +295,29 @@ public final class GasReactor implements Element {
         int m = sp.length;
         int ia = tracker == null ? -1 : tracker.angleIndex();
         double th = ia < 0 ? 0 : ctx.x(ia);
-        double volume = crank == null ? this.volume : crank.volume(th), dV = crank == null ? 0 : crank.dVolume(th);
+        double vessel = crank == null ? this.volume : crank.volume(th), dV = crank == null ? 0 : crank.dVolume(th);
         double[] n = new double[m];
         for (int i = 0; i < m; i++) n[i] = ctx.x(nIdx[i]);
+        int q = cond.length;
+        double[] l = new double[q];
+        for (int k = 0; k < q; k++) l[k] = ctx.x(lIdx[k]);
+        double volume = q == 0 ? vessel : gasVolume(vessel, liquidVolume(l));
         // energy: dU/dt (heat flows in from other elements' contributions to this row)
         double u = -uRef, dudt = 0;
         for (int i = 0; i < m; i++) {
             u += n[i] * sp[i].internalEnergy(t);
             dudt += n[i] * sp[i].cv(t);
         }
+        for (int k = 0; k < q; k++) {
+            u += l[k] * uLiquid(k, t);
+            dudt += l[k] * cvLiquid(k, t);
+        }
         double du = ctx.ddt(uSlot, u), a = ctx.alpha();
         ctx.addF(ti, du);
         ctx.addJ(ti, ti, a * dudt);
         for (int i = 0; i < m; i++) ctx.addJ(ti, nIdx[i], a * sp[i].internalEnergy(t));
+        for (int k = 0; k < q; k++) ctx.addJ(ti, lIdx[k], a * uLiquid(k, t));
+        if (q > 0) loadLiquid(ctx, t, n, l, vessel);
         // species: dn_i/dt − V Σ ν r = 0
         for (int i = 0; i < m; i++) {
             ctx.addF(nIdx[i], ctx.ddt(nSlot[i], n[i]));
@@ -251,8 +365,64 @@ public final class GasReactor implements Element {
                 if (ia >= 0) ctx.addJ(nIdx[i], ia, -nu[r][i] * dVr);
             }
         }
-        if (pNode != null) loadPressure(ctx, t, volume, dV, ia);
+        if (pNode != null) {
+            loadPressure(ctx, t, volume, dV, ia);
+            for (int k = 0; k < q; k++) {
+                double dl = Math.max(1e-10, 1e-7 * Math.abs(l[k])), old = l[k];
+                l[k] = old + dl;
+                double dvg = (gasVolume(vessel, liquidVolume(l)) - volume) / dl;
+                l[k] = old;
+                ctx.addJ(pNode.index(), lIdx[k], ctx.x(pNode.index()) * dvg);
+            }
+        }
         for (int w = 0; w < filmWall.size(); w++) loadFilm(ctx, filmWall.get(w), filmGeom.get(w), n, t, volume);
+    }
+
+    /**
+     * The liquids: dl_k/dt = −r_k, and the gas gains r_k (the evaporation rates of {@link #evaporation}); their slopes by
+     * finite differences in T, the condensables' gas moles and the liquid moles (the liquid's volume moves the gas's).
+     */
+    private void loadLiquid(LoadContext ctx, double t, double[] n, double[] l, double vessel) {
+        int q = cond.length, ti = temp.index();
+        double vg = gasVolume(vessel, liquidVolume(l));
+        double[] r = evaporation(t, n, l, vg);
+        double a = ctx.alpha();
+        for (int k = 0; k < q; k++) {
+            ctx.addF(lIdx[k], ctx.ddt(lSlot[k], l[k]) + r[k]);
+            ctx.addJ(lIdx[k], lIdx[k], a);
+            ctx.addF(nIdx[cond[k]], -r[k]);
+        }
+        // slopes
+        double ht = 1e-4 * Math.max(1, t);
+        double[] rt = evaporation(t + ht, n, l, vg);
+        for (int k = 0; k < q; k++) {
+            double d = (rt[k] - r[k]) / ht;
+            ctx.addJ(lIdx[k], ti, d);
+            ctx.addJ(nIdx[cond[k]], ti, -d);
+        }
+        for (int j = 0; j < q; j++) {
+            int i = cond[j];
+            double h = Math.max(1e-10, 1e-7 * Math.abs(n[i]));
+            double old = n[i];
+            n[i] = old + h;
+            double[] rn = evaporation(t, n, l, vg);
+            n[i] = old;
+            for (int k = 0; k < q; k++) {
+                double d = (rn[k] - r[k]) / h;
+                ctx.addJ(lIdx[k], nIdx[i], d);
+                ctx.addJ(nIdx[cond[k]], nIdx[i], -d);
+            }
+            double hl = Math.max(1e-10, 1e-7 * Math.abs(l[j]));
+            double oldL = l[j];
+            l[j] = oldL + hl;
+            double[] rl = evaporation(t, n, l, gasVolume(vessel, liquidVolume(l)));
+            l[j] = oldL;
+            for (int k = 0; k < q; k++) {
+                double d = (rl[k] - r[k]) / hl;
+                ctx.addJ(lIdx[k], lIdx[j], d);
+                ctx.addJ(nIdx[cond[k]], lIdx[j], -d);
+            }
+        }
     }
 
     /** Reactions in a wall film at the wall temperature (see {@link #withWallFilm}). */
@@ -368,10 +538,11 @@ public final class GasReactor implements Element {
         return mm;
     }
 
-    /** Moles of an element held (for conservation checks). */
+    /** Moles of an element held, gas and liquid (for conservation checks). */
     public double elementMoles(StateView s, String element) {
         double e = 0;
         for (int i = 0; i < sp.length; i++) e += s.x(nIdx[i]) * sp[i].atoms(element);
+        for (int k = 0; k < cond.length; k++) e += s.x(lIdx[k]) * sp[cond[k]].atoms(element);
         return e;
     }
 
@@ -379,7 +550,20 @@ public final class GasReactor implements Element {
     public double storedEnergy(StateView s) {
         double u = 0, t = s.x(temp);
         for (int i = 0; i < sp.length; i++) u += s.x(nIdx[i]) * sp[i].internalEnergy(t);
+        for (int k = 0; k < cond.length; k++) u += s.x(lIdx[k]) * uLiquid(k, t);
         return u;
+    }
+
+    /** Liquid moles of species i [mol] (0 if it has none). */
+    public double liquidMoles(StateView s, int i) {
+        for (int k = 0; k < cond.length; k++) if (cond[k] == i) return s.x(lIdx[k]);
+        return 0;
+    }
+
+    /** Unknown index of species i's liquid moles, or −1. */
+    public int liquidIndex(int i) {
+        for (int k = 0; k < cond.length; k++) if (cond[k] == i) return lIdx[k];
+        return -1;
     }
 
     @Override

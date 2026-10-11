@@ -651,9 +651,18 @@ public final class CompiledAssembly {
             out.put("Gas pressure bar", gas.pressure(solver) / 1e5);
             out.put("Gas temperature °C", gas.temperature(solver) - 273.15);
             var sp = gas.species();
+            double liq = 0;
             for (int i = 0; i < sp.size(); i++) {
                 double xf = gas.moleFraction(solver, i);
                 if (xf > 1e-6) out.put(sp.get(i).id() + " %", 100 * xf);
+                liq += Math.max(0, gas.liquidMoles(solver, i));
+            }
+            if (liq > 1e-6) {
+                for (int i = 0; i < sp.size(); i++) {
+                    double l = gas.liquidMoles(solver, i);
+                    if (l > 1e-9) out.put("Liquid " + sp.get(i).id() + " mol %", 100 * l / liq);
+                }
+                out.put("Liquid mol", liq);
             }
         }
         ElectrochemicalCell cell = cells.get(partId);
@@ -902,7 +911,10 @@ public final class CompiledAssembly {
             var g = e.getValue();
             s.fluids().put(e.getKey(), new double[]{g.pressure(solver), g.temperature(solver)});
             var sp = g.species();
-            for (int i = 0; i < sp.size(); i++) s.chemistry().put("G" + e.getKey() + ":" + sp.get(i).id(), g.moles(solver, i));
+            for (int i = 0; i < sp.size(); i++) {
+                s.chemistry().put("G" + e.getKey() + ":" + sp.get(i).id(), g.moles(solver, i));
+                if (g.liquidIndex(i) >= 0) s.chemistry().put("L" + e.getKey() + ":" + sp.get(i).id(), g.liquidMoles(solver, i));
+            }
         }
         for (var e : cells.entrySet()) {
             for (var sp : e.getValue().allMoles(solver).entrySet()) {

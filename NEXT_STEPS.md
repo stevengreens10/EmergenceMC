@@ -19,8 +19,9 @@ regenerate the demo world → screenshot tour → docs → commit.
    event-driven simulation for large gate counts.
 6. **Steam and heat engines**: a condenser and feed pump so the boiler runs indefinitely; liquid level shown in
    tanks; multi-stage turbines and nozzles (a working Brayton cycle); the steam engine's cost (≈ 1.5× real time).
-7. **Chemical engineering**: liquid mixtures and vapour–liquid equilibrium (Raoult's law) → distillation; solutions,
-   crystallisation; a voltaic pile driving the DC motor.
+7. **Chemical engineering**: a distillation column (stages, reflux); liquid flows between vessels (drains, siphons);
+   more condensables (methanol, acetone, …) and activity models (Wilson, NRTL) for any pair; solutions of solids,
+   crystallisation; a voltaic pile driving the DC motor. (Liquids, VLE and a still are in.)
 8. **Magnetics**: iron saturation and hysteresis; hinged armatures and plungers; coils adding to a magnet's MMF
    (polarised relays, electro-permanent releases); relay logic (latching relays, relay gates); core losses; a
    drag-cup speedometer. (Magnets attract iron on slides now.)

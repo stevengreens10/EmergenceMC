@@ -1668,4 +1668,28 @@ class DemoExhibitsTest {
         assertTrue(xn > -0.001, "the near one is held against its magnet: " + xn);
         assertTrue(xf < -0.1, "the far one falls to its stop: " + xf);
     }
+
+    /** Still: boiling 10 % ethanol gives a distillate several times richer, and leaves the pot weaker. */
+    @Test
+    void stillConcentratesEthanol() {
+        Exhibit e = ChemistryExhibits.still();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var pot = c.gas(b.id(e, "pot"));
+        var rec = c.gas(b.id(e, "receiver"));
+        int iE = -1, iW = -1;
+        for (int i = 0; i < pot.species().size(); i++) {
+            if (pot.species().get(i).id().equals("C2H5OH")) iE = i;
+            if (pot.species().get(i).id().equals("H2O")) iW = i;
+        }
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 300);
+        var s = c.solverView();
+        double pe = pot.liquidMoles(s, iE), pw = pot.liquidMoles(s, iW), re = rec.liquidMoles(s, iE), rw = rec.liquidMoles(s, iW);
+        System.out.printf("still: pot %.1f °C, %.3f mol at %.3f ethanol; distillate %.4f mol at %.3f ethanol%n", pot.temperature(s) - 273.15,
+                pe + pw, pe / (pe + pw), re + rw, re / (re + rw));
+        assertTrue(re + rw > 0.03, "a distillate collects: " + (re + rw));
+        assertTrue(re / (re + rw) > 0.3, "several times richer in ethanol than the 10 % charge");
+        assertTrue(pe / (pe + pw) < 0.095, "the pot loses its ethanol faster than its water");
+    }
 }

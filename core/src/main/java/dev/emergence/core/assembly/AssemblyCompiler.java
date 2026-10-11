@@ -2203,7 +2203,7 @@ public final class AssemblyCompiler {
         /** A fluid part charged with a gas mixture ("x_" + species id = mole fraction). */
         static boolean isGasVessel(Part p) {
             if (!p.kind().holdsFluid()) return false;
-            for (String k : p.params().keySet()) if (k.startsWith("x_")) return true;
+            for (String k : p.params().keySet()) if (k.startsWith("x_") || k.startsWith("liquid_")) return true;
             return false;
         }
 
@@ -2272,9 +2272,13 @@ public final class AssemblyCompiler {
             Set<dev.emergence.core.chem.Species> present = new LinkedHashSet<>();
             for (String s : AIR_SPECIES) present.add(chem.species(s));
             for (Part p : comp)
-                for (String k : p.params().keySet())
-                    if (k.startsWith("x_") && chem.hasSpecies(k.substring(2))) present.add(chem.species(k.substring(2)));
-                    else if (k.startsWith("x_")) c.warnings.add("Unknown gas \"" + k.substring(2) + "\" in part #" + p.id());
+                for (String k : p.params().keySet()) {
+                    // "x_<species>": the gas's mole fractions; "liquid_<species>": moles of a condensable species' liquid
+                    String id = k.startsWith("x_") ? k.substring(2) : k.startsWith("liquid_") ? k.substring(7) : null;
+                    if (id == null) continue;
+                    if (chem.hasSpecies(id)) present.add(chem.species(id));
+                    else c.warnings.add("Unknown species \"" + id + "\" in part #" + p.id());
+                }
             boolean grew = true;
             while (grew) {
                 grew = false;
@@ -2295,6 +2299,7 @@ public final class AssemblyCompiler {
             for (Part p : parts) yRef = Math.min(yRef, p.center().y());
             Map<Long, Object[]> pistons = new HashMap<>();
             for (Part p : comp) if (p.kind() == PartKind.CYLINDER) linkPiston(p, pistons);
+            boolean condensables = list.stream().anyMatch(s -> dev.emergence.core.chem.VaporLiquid.of(s.id()) != null);
             Map<Long, GasReactor> gas = new HashMap<>();
             for (Part p : comp) {
                 double[] st = prev.fluids().get(p.id());
@@ -2318,6 +2323,16 @@ public final class AssemblyCompiler {
                 Node tn = c.network.node(Domain.THERMAL, "Tg" + p.id(), t0);
                 Node pn = c.network.node(Domain.FLUID, "pg" + p.id(), p0);
                 GasReactor r = new GasReactor(list, reactions, v, tn, n0).withPressureNode(pn);
+                // condensable species (water, ethanol…) may also be liquid in the vessel: every vessel of the network gets
+                // their pools (a cold one condenses what reaches it), over its horizontal section ≈ V^(2/3)
+                if (condensables) {
+                    double[] liq = new double[list.size()];
+                    for (int i = 0; i < list.size(); i++) {
+                        Double saved = prev.chemistry().get("L" + p.id() + ":" + list.get(i).id());
+                        liq[i] = saved != null ? saved : Math.max(0, p.param("liquid_" + list.get(i).id(), 0));
+                    }
+                    r.withLiquid(liq, Math.pow(v, 2.0 / 3));
+                }
                 if (k != null) {
                     r.withPiston(body.tracker, k);
                     PistonCoupling pc = c.network.add(new PistonCoupling(pn, tn, body.node, body.tracker, k, pAtm,
@@ -2330,7 +2345,12 @@ public final class AssemblyCompiler {
                 c.gasOfPart.put(p.id(), r);
                 Node wall = c.thermalOfPart.get(p.id());
                 double area = PartGeometry.wettedArea(p);
-                c.network.add(new ThermalConductance(tn, wall, 10 * area));
+                // gas against a wall: ~10 W/(m²·K); a vessel holding liquid (it boils on the wall) or made a condenser
+                // ("condenser" = 1: vapour condenses on its cold wall) exchanges far more — film condensation and
+                // nucleate boiling run to thousands; 200 is a modest lumped figure
+                boolean wet = p.param("condenser", 0) > 0;
+                for (String key : p.params().keySet()) if (key.startsWith("liquid_") && p.param(key, 0) > 0) wet = true;
+                c.network.add(new ThermalConductance(tn, wall, (condensables && wet ? 200 : 10) * area));
                 c.network.add(new Radiation(tn, wall, 0.05, area));
                 // the thermal boundary layer at the wall (δ = k/h ≈ 2 mm of gas at the wall's temperature)
                 if (!reactions.isEmpty()) r.withWallFilm(wall, area, 0.002);

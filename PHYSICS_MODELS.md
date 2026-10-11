@@ -595,3 +595,18 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   such a cube at contact are about 1 kN). The face is taken at the iron's cell boundary (a thinner plate's own face is
   not resolved); saturation is not modelled (pulls from within a few millimetres are overstated); coils sharing the
   path do not add their MMF to the magnet's (no polarised relays or electro-permanent releases yet).
+
+## Liquids in gas vessels; vapour–liquid equilibrium (`VaporLiquid`, `GasReactor.withLiquid`)
+* Condensable species (water, ethanol) have a liquid pool in every vessel of a gas network ("liquid_<species>" moles
+  to start). Each evaporates or condenses at κ·(φ·x·γ·p_sat(T) − p)/(RT) [mol/s]: κ = k_G·A (k_G = 0.05 m/s, a stirred
+  or boiling liquid; A ≈ V^(2/3), the vessel's section), x the liquid's mole fractions, γ its activity coefficients,
+  φ = l/(l + 10⁻⁴ mol) (no liquid, no equilibrium pressure — a dry vessel's undersaturated vapour forms at most a
+  negligible dew film), p the vapour's partial pressure. The liquid's volume is taken from the gas's.
+* Saturation pressures: Antoine (water 1–100 °C, ethanol −57–80 °C; extrapolated beyond): water boils at 373.1 K,
+  ethanol at 351.4 K (1 atm). Heat of vaporisation from the same curve (Clausius–Clapeyron, ideal vapour): 44.1 and
+  42.9 kJ/mol at 25 °C (tables: 44.0, 42.3). The liquid's internal energy is h_g(T) − L(T), so evaporative cooling,
+  latent heat and energy conservation follow without a separate phase-change term.
+* Activity: van Laar for ethanol–water (A₁₂ 1.6798, A₂₁ 0.9227); ideal (Raoult) otherwise. A 10 mol % solution boils
+  at 86.6 °C with a 44.0 % vapour (DECHEMA: 86.4 °C, 43.7 %); the azeotrope falls at 91.5 % (measured 89 %), 78.2 °C.
+* A vessel holding liquid, or marked "condenser", exchanges heat with its wall at 200 W/(m²·K) (boiling, film
+  condensation) instead of a gas's 10.

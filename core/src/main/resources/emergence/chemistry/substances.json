@@ -25,6 +25,7 @@
     {"id": "CH4",  "name": "Methane",           "formula": {"C": 1, "H": 4}, "phase": "gas", "hf": -74873,  "s0": 186.25, "cp": [35.69, 71.80, 94.40], "source": "JANAF"},
     {"id": "NH3",  "name": "Ammonia",           "formula": {"N": 1, "H": 3}, "phase": "gas", "hf": -45898,  "s0": 192.77, "cp": [35.65, 56.49, 72.03], "source": "JANAF"},
     {"id": "NO2",  "name": "Nitrogen dioxide",  "formula": {"N": 1, "O": 2}, "phase": "gas", "hf": 33095,   "s0": 240.04, "cp": [36.97, 52.03, 56.60], "source": "JANAF"},
-    {"id": "N2O4", "name": "Dinitrogen tetroxide", "formula": {"N": 2, "O": 4}, "phase": "gas", "hf": 9079, "s0": 304.38, "cp": [77.26, 128.0, 134.0], "source": "JANAF (Cp above 600 K extrapolated)"}
+    {"id": "N2O4", "name": "Dinitrogen tetroxide", "formula": {"N": 2, "O": 4}, "phase": "gas", "hf": 9079, "s0": 304.38, "cp": [77.26, 128.0, 134.0], "source": "JANAF (Cp above 600 K extrapolated)"},
+    {"id": "C2H5OH", "name": "Ethanol vapour", "formula": {"C": 2, "H": 6, "O": 1}, "phase": "gas", "hf": -234950, "s0": 281.6, "cp": [65.6, 128.3, 157.0], "source": "NIST WebBook (298 K); Burcat (1000, 2000 K)"}
   ]
 }

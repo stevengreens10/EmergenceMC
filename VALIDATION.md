@@ -303,6 +303,13 @@ Magnet and iron (`DemoExhibitsTest.magnetHoldsAtContactButCannotLiftFromAfar`): 
 N42 cube on iron falls from 533 N at 6 mm to 14 N at 56 mm; an armature with a 3.2 kg load set against the magnet is
 held, the same set 5 cm below falls to its stop.
 
+Vapour–liquid equilibrium (`VaporLiquidTest`, `GasLiquidTest`): pure boiling points (373.1, 351.4 K), latent heats
+at 25 °C, ethanol–water bubble points and vapour compositions within 0.2 °C and 0.3 % of DECHEMA data, a
+minimum-boiling azeotrope at 91.5 %; a closed litre of air over water settles at the water's vapour pressure (2330 vs
+2330 Pa) with hydrogen conserved to 10⁻⁹; an insulated vessel heated by 1 kJ warms by what is left after the latent
+heat of what evaporated, energy error 3·10⁻⁸ J. The still (`DemoExhibitsTest.stillConcentratesEthanol`): 10 % ethanol
+boiled for 300 s gives 0.18 mol of distillate at 48 % ethanol and leaves the pot at 6.5 %.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

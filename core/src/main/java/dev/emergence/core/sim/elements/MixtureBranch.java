@@ -26,6 +26,12 @@ import java.util.List;
  */
 public final class MixtureBranch implements Element {
     private static final double R = PhysicalConstants.GAS_CONSTANT;
+    /**
+     * Width [mol/s] of the blend between the two ends' properties as the flow reverses: 10⁻⁶ mol/s (0.03 mg/s of air) —
+     * negligible as a transport, but wide enough that Newton does not flip between the two states at every iteration
+     * when a passage carries almost nothing either way (both ends use the same blend, so nothing is lost).
+     */
+    private static final double Q_BLEND = 1e-6;
 
     /** One end of the passage: a reacting-gas volume, or a reservoir of fixed pressure, temperature and composition. */
     public static final class End {
@@ -183,7 +189,7 @@ public final class MixtureBranch implements Element {
         double[] f = new double[v.length];
         double q = v[0];
         double[] sa = endState(v, 0), sb = endState(v, 1);
-        double q0 = 1e-9, w = 0.5 * (1 + Math.tanh(q / q0));
+        double q0 = Q_BLEND, w = 0.5 * (1 + Math.tanh(q / q0));
         double tUp = w * sa[1] + (1 - w) * sb[1], pUp = w * sa[0] + (1 - w) * sb[0], mUp = w * sa[2] + (1 - w) * sb[2];
         double rho = Math.max(pUp, 1) * mUp / (R * tUp);
         double open = cam == null ? opening : opening * camLift(v[v.length - 1]);
@@ -281,7 +287,7 @@ public final class MixtureBranch implements Element {
         int[] col = columns();
         double[] v = new double[col.length];
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = s.x(col[j]);
-        double q = v[0], w = 0.5 * (1 + Math.tanh(q / 1e-9));
+        double q = v[0], w = 0.5 * (1 + Math.tanh(q / Q_BLEND));
         return q * (w * endState(v, 0)[2] + (1 - w) * endState(v, 1)[2]);
     }
 
@@ -292,7 +298,7 @@ public final class MixtureBranch implements Element {
         int[] col = columns();
         double[] v = new double[col.length];
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = s.x(col[j]);
-        double q = v[0], w = 0.5 * (1 + Math.tanh(q / 1e-9));
+        double q = v[0], w = 0.5 * (1 + Math.tanh(q / Q_BLEND));
         double[] sa = endState(v, 0), sb = endState(v, 1);
         double tUp = w * sa[1] + (1 - w) * sb[1], h = 0;
         for (int i = 0; i < m(); i++) h += (w * sa[3 + i] + (1 - w) * sb[3 + i]) * sp[i].enthalpy(tUp);

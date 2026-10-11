@@ -405,3 +405,10 @@ it gave a 5 cm NdFeB cube a pull of 13 N against iron — fifty times too little
 existing analytic magnet–magnet interaction, gives 533 N at 6 mm, falling to 14 N at 56 mm. The exhibit: two
 identical loaded armatures, one held at its magnet, the other — 5 cm away — falling. (A weight touching a bearing
 welds the slide to the frame: it sits clear of it now.)
+
+**Liquids and distillation.** Gas vessels now hold liquids of condensable species, exchanging with the gas at a
+rate set by how far each species' partial pressure is from x·γ·p_sat; the liquid's energy is the vapour's enthalpy
+less the Clausius–Clapeyron latent heat, so equilibrium, evaporative cooling and energy conservation agree. Ethanol
+joined the species. A still boils 10 % ethanol into a distillate of about half ethanol. Getting it to run: two pipe
+corners vented upwards to the air (open pipe ends vent: capped now), and a gas passage's blend between its ends'
+properties at flow reversal was so sharp (10⁻⁹ mol/s) that Newton flipped between them — it is 10⁻⁶ mol/s now.

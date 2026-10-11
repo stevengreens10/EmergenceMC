@@ -193,3 +193,7 @@ multimeter, oscilloscope/data logging.
 * Magnets attract iron only where one of them rides a slide along the magnet's axis (not across it, not on turning
   bodies), by the method of images (a wide iron face, unsaturated); coils on the same magnetic path do not interact
   with that pull.
+* Liquids in gas vessels: only water and ethanol are condensable; activity coefficients only for that pair (others
+  ideal); the liquid stays in its vessel (no liquid flows, no drains); one temperature for liquid and vapour in a
+  vessel; mass transfer at a fixed coefficient (no bubble nucleation, no superheating delays); liquid compressibility
+  and vapour non-ideality ignored.

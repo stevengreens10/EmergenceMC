@@ -210,6 +210,11 @@ public final class AutoShowcase {
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");
                 STEPS.add(new Step(60, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-energised"));
             }
+            if (id.equals("still")) {
+                // heater on: the warm pot boils and distillate gathers in the receiver
+                BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");
+                STEPS.add(new Step(1200, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-boiling"));
+            }
             if (id.equals("loudspeaker")) {
                 // switch the loudspeaker on; the simulation resolves every vibration, so give the microphone time
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch"), led = DemoBuilder.partBlock(plot, e, "lit");

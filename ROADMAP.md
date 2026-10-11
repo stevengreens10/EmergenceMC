@@ -77,7 +77,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Sealed gas vessels in builds: equilibrium (brown-gas exhibit) and thermal explosion (heated can of methane–air)
 ✅ Flowing gas mixtures: choked orifices, natural draft, well-stirred combustion; gas burner exhibit
 ✅ Internal-combustion engine (four-stroke gas engine: cam-timed valves, half-speed camshaft, glow-plug ignition)
-⬜ Liquids/solutions, separation processes,
+✅ Liquids in gas vessels with vapour–liquid equilibrium (Antoine, van Laar, Clausius–Clapeyron): boiling,
+   condensation, evaporative cooling; distillation (a still)
+⬜ Solutions of solids, crystallisation, filtration, other separation processes,
    manufacturing
 
 ## Phase 6 — Advanced multiphysics

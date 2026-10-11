@@ -310,6 +310,13 @@ minimum-boiling azeotrope at 91.5 %; a closed litre of air over water settles at
 heat of what evaporated, energy error 3·10⁻⁸ J. The still (`DemoExhibitsTest.stillConcentratesEthanol`): 10 % ethanol
 boiled for 300 s gives 0.18 mol of distillate at 48 % ethanol and leaves the pot at 6.5 %.
 
+Forced convection (`JetConvectionTest`): jet velocity through the core and the 1/x decay beyond it; h at Re 19 000
+equal to the Churchill–Bernstein correlation evaluated by hand (31.4 vs 31.6 W/(m²·K)); none at rest or on suction.
+Vents (`FluidAssemblyTest.idleDuctOpenAtTwoHeightsDrawsNoDraft`): an idle duct open at two heights carries under
+10⁻⁵ kg/s. Fan cooling (`DemoExhibitsTest.fanJetCoolsItsPlate`): idle, the two warm plates cool alike (gap < 0.05 K);
+cranked for a minute the fan blows 10.8 g/s, the jet takes 12.5 W (hA 0.363 W/K) and its plate falls 5.9 K below
+its twin.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

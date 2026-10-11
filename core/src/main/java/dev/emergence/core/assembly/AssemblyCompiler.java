@@ -116,6 +116,7 @@ public final class AssemblyCompiler {
             buildMechanics();
             buildBrakes();
             buildFluids();
+            buildJets();
             buildElectrical();
             buildAbsorbedLight();
             c.fatigue = ShaftFatigue.build(a, c, prev);
@@ -2454,6 +2455,8 @@ public final class AssemblyCompiler {
             for (Part p : parts) if (p.kind().holdsFluid() && !c.gasOfPart.containsKey(p.id())) fluids.add(p);
             if (fluids.isEmpty()) return;
             double pAtm = a.ambientPressure();
+            ventRef = Double.MAX_VALUE;
+            for (Part p : fluids) ventRef = Math.min(ventRef, p.center().y());
             Map<Long, Object[]> pistons = new HashMap<>();
             for (Part p : fluids) if (p.kind() == PartKind.CYLINDER) linkPiston(p, pistons);
             for (Part p : fluids) {
@@ -2625,7 +2628,43 @@ public final class AssemblyCompiler {
             return new Object[0];
         }
 
+        /**
+         * Air blowing out of an open duct end cools what it meets: along the vent's axis, the first solid part in its
+         * path (up to 16 cells downstream; what stands behind it is sheltered) gets a {@link
+         * dev.emergence.core.sim.elements.JetConvection} — the free jet's velocity at that distance, cross-flow forced
+         * convection over the part's surface — in addition to its natural convection.
+         */
+        void buildJets() {
+            for (CompiledAssembly.Vent v : c.vents) {
+                Part duct = a.get(v.partId());
+                if (duct == null || v.branch() == null) continue;
+                var fluid = c.fluidOfPart.get(duct.id());
+                if (fluid == null || fluid.twoPhase() || !fluid.fluid().id().equals("air")) continue;
+                double area = PartGeometry.passageArea(duct), d = equivalentDiameter(area);
+                Dir dir = v.face();
+                for (int k = 1; k <= 16; k++) {
+                    int x = v.cell()[0] + dir.dx * k, y = v.cell()[1] + dir.dy * k, z = v.cell()[2] + dir.dz * k;
+                    List<Part> here = a.at(x, y, z);
+                    boolean stop = false;
+                    for (Part q : here) {
+                        if (q.kind().holdsFluid() || isWire(q)) continue;
+                        Node tn = c.thermalOfPart.get(q.id());
+                        if (tn == null) continue;
+                        int ax = dir.axis();
+                        double across = Math.max(q.boxSize((ax + 1) % 3), q.boxSize((ax + 2) % 3));
+                        double dist = (k - 0.5) * CELL;
+                        c.network.add(new dev.emergence.core.sim.elements.JetConvection(tn, c.ambient, v.branch(), area, d,
+                                dist, PartGeometry.surfaceArea(q), across));
+                        stop = true;
+                    }
+                    if (stop) break;
+                }
+            }
+        }
+
         final Node[] atmSteam = new Node[2];
+        /** Height the single-fluid network's atmosphere node stands for [m]; vents above it see less pressure. */
+        double ventRef;
 
         void addVent(Part p, int[] cell, Dir d, Node[] atm, double pAtm, Map<Long, List<FluidBranch>> through) {
             if (atm[0] == null) {
@@ -2651,6 +2690,10 @@ public final class AssemblyCompiler {
             FluidBranch b = new FluidBranch(v.pressureNode(), v.temperatureNode(), sink[0], sink[1], v.fluid(), half,
                     equivalentDiameter(PartGeometry.passageArea(p)), roughness(p), 1.0, d.dy * half)
                     .withTag(p.kind() + "#" + p.id() + "->air");
+            // the outside air's own column: without it, two open ends at different heights of a cold duct would
+            // draw a draft through it forever (the column inside weighs on its lower end, the outside would not)
+            double rhoAir = pAtm * 0.028965 / (dev.emergence.core.units.PhysicalConstants.GAS_CONSTANT * ambientT);
+            b.withEndPressureOffset(-rhoAir * PartGeometry.gravity() * (p.center().y() + d.dy * half - ventRef));
             if (v.twoPhase()) b.withPorts(v.port(portHeight(p, cell[1], d)), null);
             if (p.kind() == PartKind.VALVE) {
                 b.withOrifice(PartGeometry.passageArea(p), 0.6);

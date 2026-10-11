@@ -33,7 +33,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ⬜ Linkages, free rigid bodies, helical joints (a nut turning on a fixed screw)
 
 ## Phase 3 — Thermal and fluid physics
-🟡 Heat transfer: conduction, natural convection, radiation, thermal masses ✅; forced convection ⬜
+🟡 Heat transfer: conduction, natural convection, radiation, thermal masses ✅; forced convection from
+   duct jets ✅ (flow over rotating parts ⬜)
 ✅ Fluid networks: control volumes, pipes (Darcy–Weisbach), tanks, valves (choked orifices), atmosphere
    vents, wall heat transfer, ideal-gas and liquid equations of state, gravity head
 ✅ Bladed rotors by blade-element theory: fans, pumps, turbines, windmills from one part

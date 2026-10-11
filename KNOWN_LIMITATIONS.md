@@ -41,8 +41,10 @@ behaviour; where physics is missing the effect is simply absent.
 
 ## Thermal
 * Lumped bodies (one node per part); large parts have no internal gradients.
-* Convection is natural convection only (no forced convection from rotation or fans); radiation exchanges
-  only with the ambient, not between parts.
+* Forced convection only from the free jets of duct outlets onto the first part in their path (one
+  correlation for all shapes; a part partly in the jet gets the jet's h over all its surface; the jet's spread
+  past the part, wakes, and air stirred by spinning parts are not modelled); otherwise natural convection.
+  Radiation exchanges only with the ambient, not between parts.
 * Ambient is a fixed reservoir per island (biome-based); world blocks are not thermal masses.
 
 ## Electrochemistry

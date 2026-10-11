@@ -113,4 +113,67 @@ public final class ThermoExhibits {
         r.route();
         return e.view(7.5, 4, 17, 25);
     }
+
+    /**
+     * Fan cooling: two identical aluminium plates, each warmed by a 5 W resistor beneath it. A cranked fan blows air
+     * out of a duct onto one of them; the other sits out of the jet. Forced convection — the moving air scrubbing the
+     * plate's boundary layer thin — carries off the heat several times faster than the still air round the other.
+     */
+    public static Exhibit fanCooling() {
+        Exhibit e = new Exhibit("fancooling", "Fan cooling",
+                List.of("FAN COOLING", "Crank the fan:", "the plate in its jet", "runs much cooler"),
+                "Two aluminium plates, each heated by a 5 W resistor. Still air carries heat off a warm surface only "
+                        + "slowly (natural convection, about 10 W per square metre per kelvin): left alone, both "
+                        + "settle some 40 °C above the room. Crank the fan: it drives air down the duct and out in a jet "
+                        + "onto the right-hand plate. Moving air scrubs the warm layer of air off the surface (forced "
+                        + "convection: the heat-transfer coefficient grows as the square root of the speed), so that plate "
+                        + "runs much cooler than its twin. The jet slows as it spreads; move a plate further away and it "
+                        + "helps less. This is how a computer's heat sink and a car's radiator work.");
+        String st = "steel_1045";
+        int y = 3;
+        int fanShaft = e.fill(SHAFT, st, 2, y, 8, 6, y, 8, Dir.EAST, "diameter", 0.012);
+        e.name("fanShaft", fanShaft);
+        e.add(GEAR, st, 2, y, 8, Dir.EAST, "teeth", 8, "pitch_radius", 0.5 / 16);
+        e.add(BEARING, st, 4, y, 8, Dir.EAST);
+        e.fill(BLOCK, st, 4, 0, 8, 4, y - 1, 8, Dir.UP);
+        e.add(PIPE, "pvc", 5, y, 8, Dir.EAST, "bore", 0.05, "wall", 0.003);
+        e.add(PIPE, "pvc", 5, y + 1, 8, Dir.UP, "bore", 0.05, "wall", 0.003);
+        e.name("fan", e.add(ROTOR, "aluminium_6061", 6, y, 8, Dir.EAST, "blade_angle", 60, "pitch", 1));
+        e.fill(PIPE, "pvc", 7, y, 8, 8, y, 8, Dir.EAST, "bore", 0.05, "wall", 0.003); // its outlet, open to the east
+        int midShaft = e.fill(SHAFT, st, 1, y, 11, 4, y, 11, Dir.EAST, "diameter", 0.015);
+        e.add(GEAR, st, 1, y, 11, Dir.EAST, "teeth", 8, "pitch_radius", 0.5 / 16);
+        e.add(GEAR, st, 2, y, 11, Dir.EAST, "teeth", 40, "pitch_radius", 2.5 / 16);
+        e.add(BEARING, st, 4, y, 11, Dir.EAST);
+        e.fill(BLOCK, st, 4, 0, 11, 4, y - 1, 11, Dir.UP);
+        int crankShaft = e.fill(SHAFT, st, 0, y, 14, 3, y, 14, Dir.EAST, "diameter", 0.015);
+        e.add(GEAR, st, 1, y, 14, Dir.EAST, "teeth", 40, "pitch_radius", 2.5 / 16);
+        e.add(BEARING, st, 3, y, 14, Dir.EAST);
+        e.fill(BLOCK, st, 3, 0, 14, 3, y - 1, 14, Dir.UP);
+        e.name("crank", e.add(CRANK, st, 0, y, 14, Dir.WEST, "radius", 0.15));
+        // the plates: one in the jet (two cells past the duct's mouth), one aside; a heater under each
+        for (int k = 0; k < 2; k++) {
+            int z = k == 0 ? 8 : 4;
+            String side = k == 0 ? "cooled" : "still";
+            int plate = e.add(BLOCK, "aluminium_6061", 10, y, z, Dir.EAST, "fill", 0.2);
+            int heater = e.add(RESISTOR, "alumina", 10, y - 1, z, Dir.EAST, "resistance", 20.0, "contact_area", 0.002);
+            e.name(side, plate);
+            e.name(side + "Heater", heater);
+            double warm = 333.15; // about where still air holds them with the heaters on
+            e.init(plate, new Exhibit.Initial(warm, 0, 0));
+            e.init(heater, new Exhibit.Initial(warm, 0, 0));
+            e.fill(BLOCK, "pvc", 10, 0, z, 10, y - 2, z, Dir.UP);
+        }
+        int bank = e.add(CAPACITOR, "alumina", 13, 1, 6, Dir.SOUTH, "capacitance", 2000); // hours of heating
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 10));
+        int sw = e.add(SWITCH, "brass", 13, 1, 10, Dir.SOUTH);
+        e.name("switch", sw);
+        e.latch(sw);
+        Router r = new Router(e, 0, 0, 0, 15, 4, 15);
+        r.keepClear(9, y, 8, 9, y, 8); // the jet's path
+        r.pin("pos", 13, 1, 7).pin("pos", 13, 1, 9);
+        r.pin("sw", 13, 1, 11).pin("sw", 11, y - 1, 8).pin("sw", 11, y - 1, 4);
+        r.pin("neg", 13, 1, 5).pin("neg", 9, y - 1, 8).pin("neg", 9, y - 1, 4);
+        r.route();
+        return e.view(7, 7, 18, 25);
+    }
 }

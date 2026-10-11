@@ -228,6 +228,14 @@ public final class AutoShowcase {
                     STEPS.add(new Step(60, () -> toggle(server.overworld(), at), "showcase-" + (i + 1) + "-" + id + "-" + sw));
                 }
             }
+            if (id.equals("fancooling")) {
+                // a hand on the crank: the fan's jet cools its plate until it is well below its twin in still air
+                BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank");
+                BlockPos cooled = DemoBuilder.partBlock(plot, e, "cooled"), still = DemoBuilder.partBlock(plot, e, "still");
+                STEPS.add(new Step(3000, () -> crank(server.overworld(), crankAt), "showcase-" + (i + 1) + "-" + id + "-cranked",
+                        () -> hottest(still) - hottest(cooled) > 8));
+                STEPS.add(new Step(1, () -> crank(server.overworld(), crankAt, 0), null));
+            }
             if (id.equals("governor")) {
                 // apply the brake: the speed sags, the drive rises and brings it back
                 BlockPos brake = DemoBuilder.partBlock(plot, e, "brake");

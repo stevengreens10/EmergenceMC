@@ -138,7 +138,11 @@ class FluidAssemblyTest {
             c.step(0.05);
         }
         double flow = c.fluid(fan.id())[3];
-        assertTrue(flow > 1e-3, "the fan moves air: " + flow + " kg/s");
+        // turned at hand speed (no step-up gearing) the fan moves a little air: ~0.4 g/s (until the vents saw the
+        // outside air's column, a spurious 1.5 g/s draft ran backwards through this duct and hid how little)
+        assertTrue(Math.abs(flow) > 2e-4, "the fan moves air: " + flow + " kg/s");
+        for (var v : c.vents())
+            assertEquals(v.face() == Dir.WEST ? -1 : 1, Math.signum(c.ventOutflow(v)), "drawn in at the inlet, blown out of the riser");
         double in = 0, out = 0;
         for (var v : c.vents()) {
             double q = c.ventOutflow(v);
@@ -146,5 +150,21 @@ class FluidAssemblyTest {
             else in -= q;
         }
         assertEquals(in, out, 0.02 * out, "steady: intake equals discharge");
+    }
+
+    /**
+     * An idle duct open at two heights holds still: the outside air's column presses on the lower opening as the
+     * inside air's does (before each vent saw the same pressure, and a cold duct drew a draft of 1.6 g/s forever).
+     */
+    @Test
+    void idleDuctOpenAtTwoHeightsDrawsNoDraft() {
+        add(PartKind.PIPE, "pvc", 2, 1, 1, 4, 1, 1, Dir.EAST, "bore", 0.05);
+        add(PartKind.BLOCK, "steel_1045", 5, 1, 1, Dir.UP); // caps the run's far end
+        add(PartKind.PIPE, "pvc", 4, 2, 1, 4, 5, 1, Dir.UP, "bore", 0.05);
+        add(PartKind.BLOCK, "steel_1045", 2, 0, 1, Dir.UP);
+        CompiledAssembly c = AssemblyCompiler.compile(asm);
+        assertEquals(2, c.vents().size());
+        run(c, 10);
+        for (var v : c.vents()) assertEquals(0, c.ventOutflow(v), 1e-5, "no draft through a duct at ambient temperature");
     }
 }

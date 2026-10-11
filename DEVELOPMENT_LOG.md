@@ -412,3 +412,13 @@ less the Clausius–Clapeyron latent heat, so equilibrium, evaporative cooling a
 joined the species. A still boils 10 % ethanol into a distillate of about half ethanol. Getting it to run: two pipe
 corners vented upwards to the air (open pipe ends vent: capped now), and a gas passage's blend between its ends'
 properties at flow reversal was so sharp (10⁻⁹ mol/s) that Newton flipped between them — it is 10⁻⁶ mol/s now.
+
+**Fan cooling and the outside air's weight.** Duct outlets now blow jets (core, then 1/x decay) that cool the first
+part they meet by cross-flow forced convection (Churchill–Bernstein). The exhibit: two warm plates on 5 W heaters,
+a cranked fan blowing on one. Two bugs surfaced. The jet first read the vent's mass flow from an index the branch
+allocates only at setup (it read a temperature: 293 "kg/s"). And with the fan still, the plate in its path cooled
+faster anyway: the duct, open at two heights, drew 1.6 g/s through itself forever, because every vent of a
+single-fluid network saw the same atmospheric pressure while the air inside weighed on its lower end. The gas
+networks already gave each vent its height's pressure; now the single-fluid vents do too. That also showed an
+older test (`crankedFanBlowsAirThroughADuct`) had been passing on the spurious draft, which ran backwards through
+its fan: a fan turned at hand speed really moves 0.4 g/s.

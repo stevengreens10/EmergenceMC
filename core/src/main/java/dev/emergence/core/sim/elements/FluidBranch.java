@@ -74,6 +74,7 @@ public final class FluidBranch implements Element {
     private AngleTracker cam;
     private double camPhase, camLap;
     private double mScale;
+    private double pbOffset;
 
     /**
      * @param dz height of b above a [m]
@@ -92,6 +93,15 @@ public final class FluidBranch implements Element {
         this.roughness = roughness;
         this.minorK = minorK;
         this.dz = dz;
+    }
+
+    /**
+     * Pressure of end b's surroundings relative to its node [Pa]: a vent into the open air at height z sees the
+     * atmosphere's column, p_atm − ρ_air·g·(z − z_ref), while one reservoir node stands for all of it.
+     */
+    public FluidBranch withEndPressureOffset(double dpB) {
+        this.pbOffset = dpB;
+        return this;
     }
 
     /** Hydraulic diameter for friction when the passage is not a plain round bore (e.g. finned tube) [m]. */
@@ -274,6 +284,7 @@ public final class FluidBranch implements Element {
 
     /** Evaluates [R (Pa), energy leaving a (W), energy leaving b (W), torque taken from the rotor (N·m)]. */
     private void eval(double m, double pA, double pB, double tA, double tB, double w, double sA, double sB, double th, double[] out) {
+        pB += pbOffset;
         camOpening = cam == null ? 1 : camLift(th) + 1e-6;
         tA = Math.max(tA, 1.0);
         tB = Math.max(tB, 1.0);

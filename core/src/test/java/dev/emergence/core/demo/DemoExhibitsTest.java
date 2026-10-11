@@ -1692,4 +1692,38 @@ class DemoExhibitsTest {
         assertTrue(re / (re + rw) > 0.3, "several times richer in ethanol than the 10 % charge");
         assertTrue(pe / (pe + pw) < 0.095, "the pot loses its ethanol faster than its water");
     }
+
+    /**
+     * Fan cooling: at rest the two warm plates cool alike (no draft through the idle duct); cranked, the fan's jet
+     * carries off several times the heater's power and the plate in it falls well below its twin.
+     */
+    @Test
+    void fanJetCoolsItsPlate() {
+        Exhibit e = ThermoExhibits.fanCooling();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long cooled = b.id(e, "cooled"), still = b.id(e, "still");
+        run(c, 20);
+        double idle = c.temperature(cooled) - c.temperature(still);
+        double jetIdle = jetHeat(c);
+        c.setCrankEffort(b.id(e, "crank"), 1, false);
+        run(c, 60);
+        double gap = c.temperature(still) - c.temperature(cooled), jet = jetHeat(c);
+        double h = jet / (c.temperature(cooled) - AMBIENT);
+        System.out.printf("fan cooling: idle gap %.3f K (jet %.3f W); cranked 60 s: fan %.0f rad/s, %.1f g/s, plates %.1f / %.1f °C, jet %.1f W (%.3f W/K)%n",
+                idle, jetIdle, c.probe(b.id(e, "fanShaft")).angularVelocity(), 1e3 * c.vents().stream().mapToDouble(c::ventOutflow).max().orElse(0),
+                c.temperature(cooled) - 273.15, c.temperature(still) - 273.15, jet, h);
+        assertEquals(0, idle, 0.05, "an idle duct draws no draft: the plates cool alike");
+        assertTrue(jetIdle < 0.01, "no jet without the fan");
+        assertTrue(gap > 4, "the plate in the jet falls well below its twin within a minute: " + gap);
+        assertTrue(jet > 2 * 4.5, "the jet carries off more than twice the heater's power: " + jet);
+        assertEquals(0.36, h, 0.05, "h·A: ~30 W/(m²·K) over the plate's 0.012 m² (Churchill–Bernstein at Re ≈ 19 000)");
+    }
+
+    static double jetHeat(CompiledAssembly c) {
+        double q = 0;
+        for (var el : c.network().elements())
+            if (el instanceof dev.emergence.core.sim.elements.JetConvection j) q += j.heatFlow(c.solverView());
+        return q;
+    }
 }

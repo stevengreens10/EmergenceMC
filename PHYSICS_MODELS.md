@@ -146,7 +146,9 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   (pipes along their axis or sideways as tees, tanks on all faces, rotors along their axis); open axial
   ends vent to an atmosphere reservoir unless the neighbouring cell is solid; a shaft passes through
   fluid parts in a gland (no rigid joint); a rotor's blade row sits on its +axis branch and acts through
-  its rigid body. Air pressure follows the isothermal barometric formula with height in the world.
+  its rigid body. Air pressure follows the isothermal barometric formula with height in the world. Each vent
+  sees the outside air at its own height, p_atm − ρ_air·g·(z − z_ref), so an idle duct at ambient temperature
+  open at two heights holds still and a duct of warm air draws as a chimney does.
 
 ## Pistons and cranks (`SliderCrank`, `PistonCoupling`)
 * **Kinematics**: s(ψ) = r + l − (r cos ψ + √(l² − r² sin² ψ)), V = A(c + s), exact for a rigid rod; rod and
@@ -610,3 +612,16 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   at 86.6 °C with a 44.0 % vapour (DECHEMA: 86.4 °C, 43.7 %); the azeotrope falls at 91.5 % (measured 89 %), 78.2 °C.
 * A vessel holding liquid, or marked "condenser", exchanges heat with its wall at 200 W/(m²·K) (boiling, film
   condensation) instead of a gas's 10.
+
+## Forced convection from jets (`JetConvection`, `AssemblyCompiler.buildJets`)
+* Air leaving a duct's open end (outflow ṁ, exit area A₀, diameter D) is a free jet: it keeps its exit speed
+  U₀ = ṁ/(ρA₀) through its potential core and slows as a round turbulent jet beyond x = 6.2·D, u = U₀·6.2·D/x
+  (Rajaratnam; ±15 %). A duct drawing air in makes no jet (the intake draws from all around).
+* Along the vent's axis, up to 16 cells out, the first solid part in the way is cooled (what stands behind it is
+  sheltered): Q̇ = h·A·(T_part − T_air), A its surface, h = Nu·k/L with L its size across the flow and the
+  Churchill–Bernstein cross-flow correlation, Nu = 0.3 + 0.62 Re^½ Pr^⅓/[1 + (0.4/Pr)^⅔]^¼ · [1 + (Re/282 000)^⅝]^⅘
+  (±20 % for cylinders; a plate face-on or a block, ±50 %). The 0.3 (conduction through still air) is left to
+  natural convection, which still acts; √Re is taken as √(Re + 1) − 1, the same above Re ≈ 100, so h has a finite
+  slope as the fan starts. The air is the ambient reservoir; the jet's heat is not returned to the duct's air.
+* A 5 cm duct blowing 10.8 g/s (4.6 m/s) on a 6.25 cm aluminium plate: Re 19 000, h 31 W/(m²·K), hA 0.36 W/K,
+  three times the plate's natural convection.

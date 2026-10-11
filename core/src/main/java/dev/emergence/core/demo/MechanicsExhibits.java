@@ -240,4 +240,49 @@ public final class MechanicsExhibits {
         }
         return e.view(7.5, 7, 19, 15);
     }
+
+    /**
+     * An unbalanced rotor on a sprung platform: rotating unbalance excites the platform at the rotor's speed. Spun up
+     * and left to coast down, the rotor passes through the platform's natural frequency: the shaking grows to a peak
+     * there and dies away on either side — above it the platform hardly moves (the principle of vibration isolation).
+     */
+    public static Exhibit unbalance() {
+        Exhibit e = new Exhibit("unbalance", "Unbalanced rotor",
+                List.of("UNBALANCED ROTOR", "A lopsided wheel on", "springs: it shakes", "hardest at resonance"),
+                "A steel platform rides on a rod in two oil-damped bushings, held between two springs. On it a "
+                        + "wheel spins on a vertical shaft, with a lead weight bolted to one side: its centre of mass is "
+                        + "off the axis, so as it turns it pulls the platform to and fro (rotating unbalance, force "
+                        + "m·e·ω²). Fast, the wheel shakes the platform only a little — the springs cannot follow and "
+                        + "the platform's own mass holds it nearly still (vibration isolation). As the wheel slows, it "
+                        + "comes down to the platform's natural frequency, √(k/M) — about two turns a second — and the "
+                        + "platform shakes hard; slower still it calms again. Crank the wheel to spin it back up. This "
+                        + "is why washing machines thump as they spin up, and why machines sit on soft mounts.");
+        String st = "steel_1045";
+        int y = 3;
+        // the frame: posts under the bushings, and stops for the springs at both ends
+        e.fill(BLOCK, st, 4, 0, 8, 4, y - 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 10, 0, 8, 10, y - 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 0, 0, 8, 0, y, 8, Dir.UP);
+        e.fill(BLOCK, st, 14, 0, 8, 14, y, 8, Dir.UP);
+        // the platform: a rod through two damped ball bushings, three steel blocks on it, a bracket for the wheel's bearing
+        int rod = e.fill(SHAFT, st, 2, y, 8, 12, y, 8, Dir.EAST, "diameter", 0.012);
+        e.name("rod", rod);
+        double damping = 5; // N·s/m each: ζ ≈ 0.03, a sharp resonance that does not reach the ends of the rod
+        e.add(LINEAR_BEARING, st, 4, y, 8, Dir.EAST, "viscosity", damping);
+        e.add(LINEAR_BEARING, st, 10, y, 8, Dir.EAST, "viscosity", damping);
+        e.name("springA", e.add(SPRING, st, 1, y, 8, Dir.EAST, "wire", 0.0027)); // ≈ 1 kN/m each
+        e.name("springB", e.add(SPRING, st, 13, y, 8, Dir.EAST, "wire", 0.0027));
+        e.name("platform", e.fill(BLOCK, st, 6, y, 8, 8, y, 8, Dir.EAST));
+        e.fill(BLOCK, st, 6, y + 1, 8, 6, y + 2, 8, Dir.UP);
+        // the wheel: a vertical shaft in a plain bearing on the bracket, a steel disc and a lead weight to one side
+        // a silicone-damped bearing: it slows the wheel steadily (about a minute's time constant on its own)
+        e.add(BEARING, "bronze", 7, y + 2, 8, Dir.UP, "type", 2, "viscosity", 0.01);
+        int shaft = e.fill(SHAFT, st, 7, y + 2, 8, 7, y + 4, 8, Dir.UP, "diameter", 0.012);
+        e.name("shaft", shaft);
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 30, 0)); // spinning at 30 rad/s, well above resonance
+        e.name("disc", e.add(BLOCK, st, 7, y + 4, 8, Dir.UP));
+        e.name("weight", e.add(BLOCK, "lead", 8, y + 4, 8, Dir.UP, "fill", 0.25));
+        e.name("crank", e.add(CRANK, st, 7, y + 5, 8, Dir.UP, "radius", 0.1));
+        return e.view(7, 4, 16, 14);
+    }
 }

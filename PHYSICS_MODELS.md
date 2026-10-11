@@ -76,8 +76,8 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   (revolute joint), gear–gear contact (mesh), brush–conductor contact (sliding), thin shafts (< 0.9 cell)
   only touch at their end faces or where mounted parts overlap them; wires never carry load.
 * **Kinematics**: groups touching the world are static; groups held only by collinear bearings on a
-  static body or a coaxial rotor become rotors; free-standing machines use their heaviest group as frame;
-  over-constrained groups lock (with a warning).
+  static body, a coaxial rotor or a slide become rotors (on a slide: carried by it); free-standing machines use
+  their heaviest group as frame; over-constrained groups lock (with a warning).
 * **Electrical contact**: wires connect on all faces (insulated wire only to wires/leads); components have
   leads at their axial ends (end-face centre, plus side faces of end layers when ≥ 2 cells long; a
   single-cell component also brings its − and + leads out on the −L and +L side faces of its lead axis L,
@@ -625,3 +625,20 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   slope as the fan starts. The air is the ambient reservoir; the jet's heat is not returned to the duct's air.
 * A 5 cm duct blowing 10.8 g/s (4.6 m/s) on a 6.25 cm aluminium plate: Re 19 000, h 31 W/(m²·K), hA 0.36 W/K,
   three times the plate's natural convection.
+
+## Rotors carried by slides (`CarriedRotor`)
+* A body turning in bearings mounted on a slide is a revolute joint carried by a prismatic one: two degrees of freedom,
+  the slide's displacement x (along unit axis a) and the rotor's angle θ (about its axis n). With the rotor's centre
+  of mass a distance e off its axis, r(θ) = e₀ cos θ + (n × e₀) sin θ, the kinetic energy is
+  T = ½(M + m)ẋ² + ½Jθ̇² + m·s(θ)·ẋ·θ̇,  s(θ) = a·(n × r(θ)),
+  J about the rotor's axis (with m e²). The slide's inertia carries M + m (and its weight, its stops' stiffness and its
+  bushings' load all count the rotor); `CarriedRotor` is the cross term. Lagrange's equations put d(m s θ̇)/dt on the
+  slide (the unbalance's centrifugal and tangential forces, m e θ̇² and m e θ̈) and d(m s ẋ)/dt − m s′ ẋ θ̇ on the rotor
+  (the slide's acceleration acting on the offset mass); their power is exactly d(m s ẋ θ̇)/dt, so energy and the
+  slide's momentum (absent other forces) are conserved. A balanced rotor (e = 0) just adds its mass.
+* What a carried rotor touches: its bearings (friction against the slide, which does not turn), meshes with gears on
+  the same slide, cranks, brakes and cams on the same slide. Things it moves past — gears, brushes, cams, cylinders,
+  light barriers, coils and magnets on the frame or elsewhere — are not coupled to it (a warning says so for gears,
+  coils, magnets, cylinders and fan blades); see KNOWN_LIMITATIONS.
+* Rotating unbalance on a sprung slide (M on springs k, damping c): the steady amplitude is
+  X = m e ω²/√((k − (M+m)ω²)² + (cω)²), largest near ω_n = √(k/(M+m)) and → m e/(M+m) far above it (isolation).

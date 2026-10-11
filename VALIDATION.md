@@ -317,6 +317,15 @@ Vents (`FluidAssemblyTest.idleDuctOpenAtTwoHeightsDrawsNoDraft`): an idle duct o
 cranked for a minute the fan blows 10.8 g/s, the jet takes 12.5 W (hA 0.363 W/K) and its plate falls 5.9 K below
 its twin.
 
+Carried rotors (`CarriedRotorTest`): an unbalanced rotor (m 0.5 kg, e 5 cm) on a free 2 kg slide keeps the slide's
+momentum at 10⁻¹² and the centre of mass in place, the slide swinging 2me/(M+m) = 20.00 mm peak to peak (20.00);
+energy drifts 1.4·10⁻⁶ in 120 turns at ¼ ms steps (6·10⁻⁴ at 1 ms: the trapezoidal rule's error on the turning
+inertia). On a spring (5 Hz) and damper (ζ 0.05), turning at 8 Hz: steady amplitude 16.33 mm, the analytical
+m e ω²/|k − Mω² + icω| 16.33 mm. The unbalanced-rotor exhibit (`DemoExhibitsTest.unbalancedRotorShakesItsPlatformHardestAtResonance`):
+coasting down from 30 rad/s, the platform shakes ±4.9 mm at speed, ±15.3 mm as the wheel passes ω_n = √(k/M) =
+12.2 rad/s (peak seen at 9.2 rad/s: a slowing sweep peaks just past resonance, its response lagging by ~1/(ζω_n)),
+±0.5 mm below; the wheel loses speed fastest at resonance (the Sommerfeld effect).
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

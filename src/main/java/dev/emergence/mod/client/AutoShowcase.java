@@ -228,6 +228,15 @@ public final class AutoShowcase {
                     STEPS.add(new Step(60, () -> toggle(server.overworld(), at), "showcase-" + (i + 1) + "-" + id + "-" + sw));
                 }
             }
+            if (id.equals("unbalance")) {
+                // the lopsided wheel coasts down: a little shaking at speed, hard shaking at resonance, calm below
+                BlockPos shaftAt = DemoBuilder.partBlock(plot, e, "shaft");
+                STEPS.add(new Step(20, () -> { }, "showcase-" + (i + 1) + "-" + id + "-fast"));
+                STEPS.add(new Step(3000, () -> { }, "showcase-" + (i + 1) + "-" + id + "-resonance",
+                        () -> Math.abs(wheelSpeed(server, shaftAt)) < 10.5));
+                STEPS.add(new Step(3000, () -> { }, "showcase-" + (i + 1) + "-" + id + "-calm",
+                        () -> Math.abs(wheelSpeed(server, shaftAt)) < 6));
+            }
             if (id.equals("fancooling")) {
                 // a hand on the crank: the fan's jet cools its plate until it is well below its twin in still air
                 BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank");
@@ -372,6 +381,15 @@ public final class AutoShowcase {
         if (gas) return c.gas(ch.id) == null ? 0 : c.gas(ch.id).temperature(c.solverView());
         var pr = c.probe(ch.id);
         return pr == null ? 0 : pr.temperature();
+    }
+
+    /** Angular velocity of the body turning the shaft in this block, read from the integrated server [rad/s]. */
+    private static double wheelSpeed(net.minecraft.server.MinecraftServer server, BlockPos at) {
+        if (!(server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be)) return 0;
+        PlacedPart sh = find(be, PartKind.SHAFT);
+        var c = sh == null ? null : SimulationManager.get(server.overworld()).compiledAt(at);
+        if (c == null || c.bodyOf(sh.id) == null) return 0;
+        return c.angularVelocity(c.bodyOf(sh.id));
     }
 
     private static double hottest(BlockPos at) {

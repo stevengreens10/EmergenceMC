@@ -3,11 +3,12 @@
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →
 regenerate the demo world → screenshot tour → docs → commit.
 
-1. **Control**: a centrifugal (flyball) governor on an engine — needs bodies sliding on turning bodies; the EM-4
+1. **Control**: a centrifugal (flyball) governor on an engine — needs bodies sliding on turning bodies (the reverse
+   of the rotors-on-slides now in: centrifugal force m r ω² on the slide, Coriolis on the rotor); the EM-4
    closing a loop through a light-barrier encoder; integrator wind-up limits. (The servo is a PID loop, the
    electronic speed governor a PI loop.)
-2. **Dynamics of structures**: vibration and resonance — an unbalanced rotor on a sprung platform (needs a turning
-   body carried by a sliding one), vibration isolation; fatigue of the static frame under cyclic loads (rainflow
+2. **Dynamics of structures**: (an unbalanced rotor on a sprung platform is in) a motor driving it (coils and magnets
+   on a carried rotor), two-stage isolation; fatigue of the static frame under cyclic loads (rainflow
    counting); gear-mesh and belt forces in the shaft fatigue model.
 3. **Light**: an in-game tool to aim mirrors; a clock-driven heliostat (moving optics are already traced for
    sunlight); phototransistors and optocouplers; coloured glass (absorption spectra) as filters; hot non-circuit

@@ -24,9 +24,12 @@ behaviour; where physics is missing the effect is simply absent.
 * Bulk metal parts are single electrical nodes (internal resistance neglected).
 
 ## Mechanical
-* Rigid bodies rotate only about fixed axes (bearing joints). No free 6-DOF bodies, no translation,
-  slides only on the frame (not on moving bodies), no rack/pinion or lead screw yet, no collisions. Gravity acts on each rotating body
-  about its own axis only (no joint reactions on moving parents).
+* Rigid bodies rotate about fixed axes (bearing joints) or slide along them (linear bearings on the frame); a rotor
+  may ride on a slide (two degrees of freedom), but a slide cannot ride on a rotor (no flyball governor yet), and no
+  deeper chains. No free 6-DOF bodies, no collisions. A rotor riding a slide is coupled only to that slide and what
+  rides on it: frame-mounted gears, brushes, cams, cylinders, light barriers, coils and magnets ignore it (gears,
+  coils, magnets, cylinders and fan blades warn). Gravity acts on each rotating body about its own axis only (no
+  joint reactions on moving parents); a carried rotor's bearings are not loaded by its unbalance's spinning force.
   Unsupported groups are treated as resting on the world.
 * Gears: external spur meshes between parallel shafts only; no backlash, tooth compliance, internal/ring
   gears, racks or bevel gears.

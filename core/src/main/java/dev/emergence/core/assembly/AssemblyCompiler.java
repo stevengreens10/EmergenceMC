@@ -325,6 +325,7 @@ public final class AssemblyCompiler {
                     progress = true;
                     J first = toResolved.get(0);
                     boolean ok = true, slide = first.prismatic();
+                    CompiledAssembly.Body carrier = null;
                     for (J j : toResolved) {
                         CompiledAssembly.Body parent = bodyOfGroup.get(j.g1 == g ? j.g2 : j.g1);
                         if (j.prismatic() != slide) ok = false;
@@ -334,7 +335,11 @@ public final class AssemblyCompiler {
                             continue;
                         }
                         if (!collinear(first.pivot, first.axis, j.pivot, j.axis)) ok = false;
-                        if (!parent.isStatic && (parent.slider || !collinear(first.pivot, first.axis, parent.pivot, parent.axis))) ok = false;
+                        // the bearings' side: the frame, a slide (the rotor rides on it), or a coaxial rotor (and its carrier)
+                        CompiledAssembly.Body on = parent.isStatic ? null : parent.slider ? parent : parent.carrier;
+                        if (j == first) carrier = on;
+                        else if (on != carrier) ok = false;
+                        if (!parent.isStatic && !parent.slider && !collinear(first.pivot, first.axis, parent.pivot, parent.axis)) ok = false;
                     }
                     if (!ok) {
                         c.warnings.add(slide ? "Locked: a slide must run in parallel linear bearings on the frame"
@@ -343,6 +348,7 @@ public final class AssemblyCompiler {
                         continue;
                     }
                     CompiledAssembly.Body rotor = new CompiledAssembly.Body(c.bodies.size(), false, first.pivot, first.axis);
+                    if (!slide) rotor.carrier = carrier;
                     if (slide) {
                         rotor.slider = true;
                         strokeOf(rotor, groups.get(g), toResolved.stream().map(J::bearing).toList());
@@ -606,6 +612,11 @@ public final class AssemblyCompiler {
 
         // ------------------------------------------------------------ 4. mechanics
         void buildMechanics() {
+            // a slide carries the rotors whose bearings ride on it: their mass moves with it
+            for (CompiledAssembly.Body b : c.bodies) {
+                if (b.isStatic || b.carrier == null) continue;
+                for (long id : b.parts) if (!isWire(a.get(id))) b.carrier.carriedMass += PartGeometry.mass(a.get(id));
+            }
             for (CompiledAssembly.Body b : c.bodies) {
                 if (b.isStatic) continue;
                 double j = 0, m = 0;
@@ -627,17 +638,18 @@ public final class AssemblyCompiler {
                 if (b.slider) {
                     // a slide: its mass on a velocity node, its displacement tracked, gravity along the guide, and
                     // stops where the bearings reach the shaft's ends
+                    double mt = m + b.carriedMass; // with what rides on it
                     b.node = c.network.node(Domain.TRANSLATIONAL, "v" + b.index, motion == null ? 0 : motion[0]);
-                    c.network.add(new Inertia(b.node, Math.max(m, 1e-6)));
+                    c.network.add(new Inertia(b.node, Math.max(mt, 1e-6)));
                     b.tracker = c.network.add(new AngleTracker(b.node, motion == null ? 0 : motion[1]));
                     b.drive = c.network.add(new FlowSource(refT, b.node, 0.0));
-                    double fg = -m * PartGeometry.gravity() * b.axis.y();
+                    double fg = -mt * PartGeometry.gravity() * b.axis.y();
                     if (fg != 0) c.network.add(new FlowSource(refT, b.node, fg));
                     // the stops: a firm, well-damped contact (150 Hz on the slide's mass, damping ratio 0.7): it
                     // settles within a few hundredths of a millimetre of the end, without bouncing
-                    double wStop = 2 * Math.PI * 150, kStop = Math.max(m, 1e-3) * wStop * wStop;
+                    double wStop = 2 * Math.PI * 150, kStop = Math.max(mt, 1e-3) * wStop * wStop;
                     c.network.add(new TravelStops(b.node, b.tracker, b.strokeLo, b.strokeHi, kStop,
-                            2 * 0.7 * Math.sqrt(kStop * Math.max(m, 1e-3)), null));
+                            2 * 0.7 * Math.sqrt(kStop * Math.max(mt, 1e-3)), null));
                     c.pushers.put(b, c.network.add(new HumanCrank(b.node, refT, 1.0)));
                     continue;
                 }
@@ -651,13 +663,18 @@ public final class AssemblyCompiler {
                 if (m > 0 && perp.length() > 1e-6 && Math.abs(b.axis.y()) < 0.999) {
                     c.network.add(new GravityTorque(b.node, b.tracker, b.axis, offset, m, new Vec3(0, -PartGeometry.gravity(), 0)));
                 }
+                // riding on a slide: an unbalanced rotor shakes it, and the slide's acceleration swings the rotor
+                if (b.carrier != null && m > 0 && perp.length() > 1e-6) {
+                    c.network.add(new dev.emergence.core.sim.elements.CarriedRotor(b.carrier.node, b.carrier.axis, b.node, b.tracker,
+                            b.axis, offset, m));
+                }
             }
             // bearings
             Map<CompiledAssembly.Body, Integer> bearingCount = new HashMap<>();
             for (long[] jt : joints) {
                 CompiledAssembly.Body bb = c.bodyOfPart.get(jt[0]), sb = c.bodyOfPart.get(jt[1]);
                 if (bb != sb) {
-                    bearingCount.merge(bb.isStatic ? sb : bb, 1, Integer::sum);
+                    bearingCount.merge(jointChild(bb, sb), 1, Integer::sum);
                 }
             }
             for (long[] jt : joints) {
@@ -665,8 +682,8 @@ public final class AssemblyCompiler {
                 CompiledAssembly.Body bb = c.bodyOfPart.get(bearing.id()), sb = c.bodyOfPart.get(shaft.id());
                 thermalLink(bearing, shaft);
                 if (bb == sb) continue; // locked joint
-                CompiledAssembly.Body rot = bb.isStatic ? sb : bb;
-                double load = rot.mass * PartGeometry.gravity() / Math.max(1, bearingCount.getOrDefault(rot, 1));
+                CompiledAssembly.Body rot = jointChild(bb, sb);
+                double load = (rot.mass + rot.carriedMass) * PartGeometry.gravity() / Math.max(1, bearingCount.getOrDefault(rot, 1));
                 if (bearing.kind() == PartKind.LINEAR_BEARING) {
                     // ball bushing: rolling friction μ ≈ 0.003 of the load across the guide, plus grease drag
                     Node ra = bb.isStatic ? refT : bb.node, rb = sb.isStatic ? refT : sb.node;
@@ -680,7 +697,7 @@ public final class AssemblyCompiler {
                 int btype = (int) Math.round(bearing.param("type", 0));
                 boolean plain = btype == 1;
                 Node th = c.thermalOfPart.get(bearing.id());
-                Node na = bb.isStatic ? refR : bb.node, nb = sb.isStatic ? refR : sb.node;
+                Node na = turning(bb), nb = turning(sb);
                 if (bearing.kind() == PartKind.POTENTIOMETER) {
                     // wiper and bushing drag of a panel potentiometer, scaled with its size (≈ 2 mN·m for a 25 mm body)
                     double size = PartGeometry.transverseSize(bearing) / 0.025;
@@ -743,6 +760,30 @@ public final class AssemblyCompiler {
                 }
                 c.cranks.put(p.id(), c.network.add(new HumanCrank(b.node, refR, PartGeometry.crankRadius(p))));
             }
+        }
+
+        /** Of two bodies joined by a bearing, the one that moves relative to the other. */
+        static CompiledAssembly.Body jointChild(CompiledAssembly.Body bb, CompiledAssembly.Body sb) {
+            if (bb.isStatic) return sb;
+            if (sb.isStatic) return bb;
+            if (sb.carrier == bb) return sb;
+            return bb;
+        }
+
+        /** A body's angular-velocity node: the reference for the frame and for slides (which do not turn). */
+        Node turning(CompiledAssembly.Body b) {
+            return b.isStatic || b.slider ? refR : b.node;
+        }
+
+        /**
+         * True if the geometry between parts of these two bodies changes only by their turning about fixed axes (or one
+         * sliding on the frame): a rotor carried by a slide keeps it with its carrier and that carrier's other
+         * passengers, but not with the frame or with anything else, which it moves past.
+         */
+        static boolean sameFrame(CompiledAssembly.Body x, CompiledAssembly.Body y) {
+            CompiledAssembly.Body fx = x.carrier, fy = y.carrier;
+            if (fx == null && fy == null) return true;
+            return fx == fy || fx == y || fy == x;
         }
 
         /** Potentiometer id → {rotating body its shaft belongs to, +1 if the housing is the static side else −1}. */
@@ -831,6 +872,10 @@ public final class AssemblyCompiler {
                 c.warnings.add("Rack #" + r.id() + " must ride on a slide running along its length");
                 return;
             }
+            if (bg.carrier != null) {
+                c.warnings.add("Gear #" + g.id() + " rides on a slide and is not meshed with rack #" + r.id());
+                return;
+            }
             // the gear's tooth at the contact point (−w·r_p from its centre) moves at −ω·r_p·(A × w); the rack at v·S
             Vec3 axisA = bg.isStatic ? n : bg.axis;
             double k = axisA.cross(w).dot(u), q = br.axis.dot(u);
@@ -895,7 +940,7 @@ public final class AssemblyCompiler {
             Vec3 u = nut.axis().vec();
             boolean screwTurns = !bs.isStatic && !bs.slider && Math.abs(Math.abs(bs.axis.dot(u)) - 1) < 1e-9;
             boolean nutSlides = bn.slider && Math.abs(Math.abs(bn.axis.dot(u)) - 1) < 1e-9;
-            if (!nutSlides || !(screwTurns || bs.isStatic)) {
+            if (!nutSlides || !(screwTurns || bs.isStatic) || bs.carrier != null) {
                 c.warnings.add("Nut #" + nut.id() + ": a lead screw needs the screw turning in bearings and the nut on a slide along it");
                 return;
             }
@@ -916,6 +961,10 @@ public final class AssemblyCompiler {
         void tryMesh(Part g1, Part g2) {
             CompiledAssembly.Body b1 = c.bodyOfPart.get(g1.id()), b2 = c.bodyOfPart.get(g2.id());
             if (b1 == b2 || g1.axis().axis() != g2.axis().axis() || b1.slider || b2.slider) return;
+            if (!sameFrame(b1, b2)) {
+                c.warnings.add("Gears #" + g1.id() + " and #" + g2.id() + ": one rides on a slide past the other and they are not meshed");
+                return;
+            }
             int ax = g1.axis().axis();
             int lo1 = ax == 0 ? g1.minX() : ax == 1 ? g1.minY() : g1.minZ();
             int hi1 = ax == 0 ? g1.maxX() : ax == 1 ? g1.maxY() : g1.maxZ();
@@ -1489,6 +1538,7 @@ public final class AssemblyCompiler {
                 for (Part q : parts) {
                     if (q == br || !isBulk(q) || !conductive(q)) continue;
                     CompiledAssembly.Body qb = c.bodyOfPart.get(q.id());
+                    if (!sameFrame(qb, bb)) continue; // a commutator riding a slide past the brush: not modelled
                     if (qb == bb || qb.isStatic) {
                         if (qb == bb && inFrontOf(br, q)) {
                             c.network.add(new Resistor(back, enode("p" + q.id()), rc, th));
@@ -1586,12 +1636,21 @@ public final class AssemblyCompiler {
                 if (p.kind() == PartKind.COIL) coils.add(p);
                 if (p.kind() == PartKind.MAGNET && p.material().has(MaterialProperty.REMANENCE)) magnets.add(p);
             }
+            // a coil or magnet on a rotor riding a slide moves past the frame's: not in the field model
+            for (List<Part> list : List.of(coils, magnets)) {
+                list.removeIf(p -> {
+                    boolean carried = c.bodyOfPart.get(p.id()).carrier != null;
+                    if (carried) c.warnings.add(p.kind() + " #" + p.id() + " rides on a slide's rotor: its magnetic coupling is not modelled");
+                    return carried;
+                });
+            }
             // (a magnet alone matters where something can move towards iron: a slide)
             boolean slides = c.bodies.stream().anyMatch(b -> !b.isStatic && b.slider);
             if (coils.isEmpty() && magnets.size() < 2 && (magnets.isEmpty() || !slides)) return;
             MagneticSystem ms = new MagneticSystem().tableResolution(256);
             Map<CompiledAssembly.Body, EmBody> em = new HashMap<>();
             for (CompiledAssembly.Body b : c.bodies) {
+                if (b.carrier != null) continue; // rotors riding on slides: not in the field model (see below)
                 em.put(b, b.isStatic ? EmBody.fixed("frame")
                         : b.slider ? EmBody.slider("slide" + b.index, b.axis, b.node, b.tracker, b.strokeLo, b.strokeHi)
                         : EmBody.rotor("rotor" + b.index, b.pivot, b.axis, b.node, b.tracker));
@@ -1661,7 +1720,7 @@ public final class AssemblyCompiler {
                 Set<CompiledAssembly.Body> done = new HashSet<>();
                 for (Part q : a.at(cell[0], cell[1], cell[2])) {
                     CompiledAssembly.Body qb = c.bodyOfPart.get(q.id());
-                    if (qb == null || qb.isStatic || qb.slider || !done.add(qb)) continue;
+                    if (qb == null || qb.isStatic || qb.slider || !sameFrame(qb, c.bodyOfPart.get(p.id())) || !done.add(qb)) continue;
                     Vec3 rel = contact.sub(qb.pivot);
                     double r = rel.sub(qb.axis.mul(rel.dot(qb.axis))).length();
                     if (r < 1e-6) continue; // pressing on the axis itself exerts no torque
@@ -1830,14 +1889,15 @@ public final class AssemblyCompiler {
                             for (Part o : a.at(cellOf(q.x()), cellOf(q.y()), cellOf(q.z()))) {
                                 if (o == tx || o == rx || !blocks(o, q)) continue;
                                 CompiledAssembly.Body b = c.bodyOfPart.get(o.id());
-                                if (b != null && !b.isStatic && !b.slider) mover = b;
+                                if (b != null && !b.isStatic && !b.slider && b.carrier == null) mover = b; // (riding a slide: seen as fixed)
                                 else staticBlocked[k] = true;
                             }
                         }
                         samples.add(pts);
                     }
                     // a turning body may also sweep into the path at other angles: test every body with off-axis parts
-                    for (CompiledAssembly.Body b : c.bodies) if (!b.isStatic && !b.slider && mover == null && sweeps(b, samples)) mover = b;
+                    for (CompiledAssembly.Body b : c.bodies)
+                        if (!b.isStatic && !b.slider && b.carrier == null && mover == null && sweeps(b, samples)) mover = b;
                     if (mover == null) {
                         int open = 0;
                         for (boolean bl : staticBlocked) if (!bl) open++;
@@ -2135,6 +2195,7 @@ public final class AssemblyCompiler {
             boolean coaxial = !bm.isStatic && !bc.isStatic && !bm.slider && !bc.slider
                     && bm.axis.dot(bc.axis) > 1 - 1e-9 && bm.pivot.sub(bc.pivot).cross(bc.axis).length() < 1e-9;
             if (!bm.isStatic && !bc.isStatic && !coaxial) return; // two independently moving bodies: not modelled
+            if (bm.carrier != null || bc.carrier != null) return; // a rotor riding a slide: not modelled
             CompiledAssembly.Body mover = bc.isStatic ? bm : bc;
             boolean slider = mover.slider;
             int n = slider ? 64 : 180;
@@ -2613,7 +2674,7 @@ public final class AssemblyCompiler {
                     for (Part q : here) if (q.kind() == PartKind.ECCENTRIC) ecc = q;
                     if (ecc == null) break;
                     CompiledAssembly.Body body = c.bodyOfPart.get(ecc.id());
-                    if (body == null || body.isStatic) break;
+                    if (body == null || body.isStatic || body.slider || !sameFrame(body, c.bodyOfPart.get(valve.id()))) break;
                     Vec3 n = body.axis;
                     if (Math.abs(n.dot(d.vec())) > 1e-6) break;
                     Vec3 rel = valve.center().sub(body.pivot);
@@ -2712,6 +2773,10 @@ public final class AssemblyCompiler {
          */
         void attachRotor(FluidBranch b, Part r, Dir face, boolean rotorIsA) {
             CompiledAssembly.Body body = c.bodyOfPart.get(r.id());
+            if (body.carrier != null) {
+                c.warnings.add("Rotor #" + r.id() + " rides on a slide: its blades are not coupled to the flow");
+                return;
+            }
             // flow a -> b runs along +axis when it leaves through the +axis face from the rotor, or enters the
             // rotor through its -axis face
             double flowAlongAxis = (rotorIsA ? 1 : -1) * face.sign() * r.axis().sign();
@@ -2773,6 +2838,10 @@ public final class AssemblyCompiler {
             CompiledAssembly.Body body = c.bodyOfPart.get(ecc.id());
             if (body == null || body.isStatic || body.slider) {
                 c.warnings.add("Cylinder #" + cyl.id() + ": its crank cannot turn");
+                return;
+            }
+            if (!sameFrame(body, c.bodyOfPart.get(cyl.id()))) {
+                c.warnings.add("Cylinder #" + cyl.id() + ": its crank rides on a slide past it (not modelled)");
                 return;
             }
             Vec3 n = body.axis;

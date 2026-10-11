@@ -17,7 +17,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 🟡 Simulation scheduler: per-tick islands; multirate and async compilation pending
 
 ## Phase 2 — Mechanical and electrical foundations
-✅ Rotating rigid bodies on bearings, shafts, bearings (ball/plain), spur gears, cranks
+✅ Rotating rigid bodies on bearings, shafts, bearings (ball/plain), spur gears, cranks; rotors carried by slides
+   (rotating unbalance, vibration, resonance)
 ✅ Conductors (T-dependent), resistors, capacitors, inductors, switches, diodes
 ✅ Magnetic elements: permanent magnets, coils, field-derived electromechanical coupling
 ✅ **Milestone: player-built generator** (demo exhibit, tests) — motor action demonstrated in core
@@ -55,7 +56,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Fatigue of turning shafts: rotating bending on a beam model, Basquin S–N lines, endurance limits, Miner's rule
 ✅ Eddy-current drag: moving conductors and magnets (Arago's disc, brakes, magnets in tubes), heat in the conductor
 ✅ Moving iron (armatures pulled across an air gap), contacts closed by a slide's travel: a relay from parts, and a trembler (buzzer) from the relay wired through its own contacts
-⬜ Dynamic loads (impacts, vibration, resonance), fatigue of the static frame, creep, plasticity, soil
+🟡 Vibration and resonance of sprung masses (unbalanced rotors on slides) ✅; dynamic loads on structures (impacts,
+   structural vibration), fatigue of the static frame, creep, plasticity, soil
 
 ## Phase 4 — Electronics and computation
 ✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED, photodiode / solar cell; ⬜ phototransistors

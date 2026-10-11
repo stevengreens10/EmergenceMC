@@ -422,3 +422,12 @@ single-fluid network saw the same atmospheric pressure while the air inside weig
 networks already gave each vent its height's pressure; now the single-fluid vents do too. That also showed an
 older test (`crankedFanBlowsAirThroughADuct`) had been passing on the spurious draft, which ran backwards through
 its fan: a fan turned at hand speed really moves 0.4 g/s.
+
+**Bodies on moving bodies: rotors carried by slides.** A rotor whose bearings sit on a slide now resolves (it used to
+lock): the slide carries its mass, and a cross-inertia element — the term m·s(θ)·ẋ·θ̇ of the pair's kinetic energy,
+straight from Lagrange — couples them, so an unbalanced wheel shakes its platform and the platform's motion swings
+the wheel. Tested against the textbook forced-vibration amplitude (to four figures) and for momentum and energy
+conservation. The exhibit: a lopsided wheel on a sprung, damped platform coasting down from 30 rad/s — a little
+shaking at speed, hard shaking as it passes √(k/M), calm below; the wheel is braked hardest at resonance, the
+Sommerfeld effect, which nobody wrote. Everything that couples a rotor to the frame (gears, brushes, cams, coils…)
+now checks that the two do not move past each other.

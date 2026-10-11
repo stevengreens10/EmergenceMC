@@ -41,6 +41,10 @@ public final class CompiledAssembly {
         /** A slider translates along its axis (node: velocity, tracker: displacement) instead of turning. */
         boolean slider;
         double strokeLo, strokeHi;
+        /** The slide this rotor's bearings ride on (null: they are on the frame, or on a rotor sharing its axis). */
+        Body carrier;
+        /** Mass of the bodies a slide carries [kg] (they move with it). */
+        double carriedMass;
         FlowSource drive; // external torque input (cranks, couplings to the world)
 
         Body(int index, boolean isStatic, Vec3 pivot, Vec3 axis) {
@@ -58,6 +62,7 @@ public final class CompiledAssembly {
         public double inertia() { return inertia; }
         public boolean slider() { return slider; }
         public double mass() { return mass; }
+        public Body carrier() { return carrier; }
     }
 
     final Assembly assembly;

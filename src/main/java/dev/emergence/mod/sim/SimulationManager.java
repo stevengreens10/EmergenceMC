@@ -967,8 +967,9 @@ public final class SimulationManager {
             if (b.isStatic()) continue;
             Vec3 pv = b.pivot(), ax = b.axis();
             long[] ids = b.parts().stream().mapToLong(Long::longValue).toArray();
+            long carrier = b.carrier() == null || b.carrier().parts().isEmpty() ? -1 : b.carrier().parts().get(0);
             bodies.add(new IslandSyncPayload.BodyState(pv.x(), pv.y(), pv.z(), ax.x(), ax.y(), ax.z(),
-                    c.angle(b), c.angularVelocity(b), ids, b.slider()));
+                    c.angle(b), c.angularVelocity(b), ids, b.slider(), carrier));
             if (dev.emergence.mod.debug.PoseLog.ENABLED && ids.length > 0) {
                 dev.emergence.mod.debug.PoseLog.server(level.getGameTime() + "," + ids[0] + "," + b.slider() + "," + c.angle(b) + ","
                         + c.angularVelocity(b) + "," + isl.timeScale + "," + scaleOf(isl) + "," + isl.costMs + "," + isl.near);

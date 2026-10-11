@@ -122,6 +122,12 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                         ps.translate((float) (bodyAngle * pose.ax()), (float) (bodyAngle * pose.ay()), (float) (bodyAngle * pose.az()));
                         bodyAngle = 0;
                     } else {
+                        // riding a slide: carried along by it, then turned about its (moving) axis
+                        ClientSimState.Pose cp = pose.carrier() >= 0 ? ClientSimState.pose(pose.carrier()) : null;
+                        if (cp != null && cp.slider()) {
+                            double x = ClientSimState.bodyAngle(cp);
+                            ps.translate((float) (x * cp.ax()), (float) (x * cp.ay()), (float) (x * cp.az()));
+                        }
                         float lx = (float) (pose.px() - pos.getX()), ly = (float) (pose.py() - pos.getY()), lz = (float) (pose.pz() - pos.getZ());
                         ps.translate(lx, ly, lz);
                         ps.mulPose(new Quaternionf().rotateAxis((float) bodyAngle, (float) pose.ax(), (float) pose.ay(), (float) pose.az()));

@@ -1726,4 +1726,48 @@ class DemoExhibitsTest {
             if (el instanceof dev.emergence.core.sim.elements.JetConvection j) q += j.heatFlow(c.solverView());
         return q;
     }
+
+    /**
+     * Unbalanced rotor: coasting down from well above the platform's natural frequency, the wheel shakes it little at
+     * first, hardest as its speed passes √(k/M), and little again below — with no machine-specific code: the shaking is
+     * the carried rotor's inertial coupling, the resonance the springs and the platform's mass.
+     */
+    @Test
+    void unbalancedRotorShakesItsPlatformHardestAtResonance() {
+        Exhibit e = MechanicsExhibits.unbalance();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertTrue(c.warnings().isEmpty(), c.warnings().toString());
+        CompiledAssembly.Body platform = c.bodyOf(b.id(e, "rod")), wheel = c.bodyOf(b.id(e, "shaft"));
+        assertSame(platform, wheel.carrier(), "the wheel rides on the platform");
+        double k = dev.emergence.core.assembly.PartGeometry.springRate(b.assembly().get(b.id(e, "springA")))
+                + dev.emergence.core.assembly.PartGeometry.springRate(b.assembly().get(b.id(e, "springB")));
+        double wn = Math.sqrt(k / (platform.mass() + wheel.mass()));
+        double w0 = c.angularVelocity(wheel), e0 = 0.5 * wheel.inertia() * w0 * w0, first = 0, peak = 0, peakSpeed = 0, last = 0;
+        for (int w = 0; w < 20; w++) {
+            double lo = 1e9, hi = -1e9, speed = 0;
+            for (int j = 0; j < 40; j++) {
+                c.step(0.05);
+                lo = Math.min(lo, c.angle(platform));
+                hi = Math.max(hi, c.angle(platform));
+                speed += c.angularVelocity(wheel) / 40;
+            }
+            double amp = (hi - lo) / 2;
+            if (w == 1) first = amp;
+            if (amp > peak) {
+                peak = amp;
+                peakSpeed = speed;
+            }
+            last = amp;
+        }
+        System.out.printf("unbalance: ω_n %.1f rad/s; platform ±%.1f mm at speed, ±%.1f mm peak (wheel %.1f rad/s), ±%.2f mm after; energy error %.2g of %.2f J%n",
+                wn, 1e3 * first, 1e3 * peak, peakSpeed, 1e3 * last, c.energyError(), e0);
+        assertTrue(peak > 2.5 * first, "the shaking peaks well above its level at speed");
+        // a slowing sweep: the response builds over ~1/(ζω_n) ≈ 3 s, so it peaks just after the resonance is passed
+        // (and the wheel is braked hardest there, the platform's damping taking its energy); steady forced amplitudes
+        // are checked against the analytical solution in CarriedRotorTest
+        assertTrue(peakSpeed > 0.6 * wn && peakSpeed < 1.1 * wn, "it peaks as the wheel passes the natural frequency √(k/M)");
+        assertTrue(last < 0.2 * peak, "below resonance it calms again");
+        assertTrue(Math.abs(c.energyError()) < 0.01 * e0, "energy ledger closes (to 1 % of the wheel's energy)");
+    }
 }

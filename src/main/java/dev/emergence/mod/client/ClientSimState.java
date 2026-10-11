@@ -16,9 +16,12 @@ import java.util.Map;
 public final class ClientSimState {
     private ClientSimState() {}
 
-    /** A body's pose; for a slide, angle and ω are its displacement and velocity in world blocks. */
+    /**
+     * A body's pose; for a slide, angle and ω are its displacement and velocity in world blocks. A rotor riding a slide
+     * names a part of it ({@code carrier}, else −1): its pivot moves with that slide.
+     */
     public record Pose(double px, double py, double pz, double ax, double ay, double az, double angle, double omega, long time, boolean slider,
-                       long key) {}
+                       long key, long carrier) {}
 
     private static final Map<Long, Pose> POSE = new HashMap<>();
     private static final Map<Long, Float> TEMP = new HashMap<>();
@@ -102,7 +105,7 @@ public final class ClientSimState {
             // pivot arrives in physical metres; convert to world block coordinates
             double k = b.slider() ? s : 1;
             Pose pose = new Pose(b.px() * s, b.py() * s, b.pz() * s, b.ax(), b.ay(), b.az(), b.angle() * k, b.omega() * k, p.gameTime(), b.slider(),
-                    b.partIds().length > 0 ? b.partIds()[0] : -1);
+                    b.partIds().length > 0 ? b.partIds()[0] : -1, b.carrier());
             for (long id : b.partIds()) POSE.put(id, pose);
             if (pose.key() >= 0) record(BODY_TRACK, pose.key(), now, new double[]{pose.angle()}, -1);
         }

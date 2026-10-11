@@ -431,3 +431,10 @@ conservation. The exhibit: a lopsided wheel on a sprung, damped platform coastin
 shaking at speed, hard shaking as it passes √(k/M), calm below; the wheel is braked hardest at resonance, the
 Sommerfeld effect, which nobody wrote. Everything that couples a rotor to the frame (gears, brushes, cams, coils…)
 now checks that the two do not move past each other.
+
+**Slides on rotors.** The reverse joint: a slide whose bushings ride on a turning body. Its Lagrangian adds the
+rotor inertia it carries (m ρ²(x)), a cross term for guides off the radial line, and its weight in the rotating
+frame; centrifugal force, Coriolis and the spinning skater all follow. Tested for angular momentum (10⁻⁹) and energy
+(10⁻⁸) and for the spring-held radius k·x = m·ω²·r. The exhibit: two lead weights on a cranked beam, sliding out
+against their springs. First try welded the beam to the bearing below it (touching blocks weld): the shaft now
+runs a cell clear.

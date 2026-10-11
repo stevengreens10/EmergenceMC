@@ -228,6 +228,14 @@ public final class AutoShowcase {
                     STEPS.add(new Step(60, () -> toggle(server.overworld(), at), "showcase-" + (i + 1) + "-" + id + "-" + sw));
                 }
             }
+            if (id.equals("weights")) {
+                // a hand on the crank: the beam spins up and the weights slide out against their springs
+                BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank"), shaftAt = DemoBuilder.partBlock(plot, e, "shaft");
+                STEPS.add(new Step(2, () -> { }, "showcase-" + (i + 1) + "-" + id + "-rest"));
+                STEPS.add(new Step(1200, () -> crank(server.overworld(), crankAt), "showcase-" + (i + 1) + "-" + id + "-spinning",
+                        () -> Math.abs(wheelSpeed(server, shaftAt)) > 13));
+                STEPS.add(new Step(1, () -> crank(server.overworld(), crankAt, 0), null));
+            }
             if (id.equals("unbalance")) {
                 // the lopsided wheel coasts down: a little shaking at speed, hard shaking at resonance, calm below
                 BlockPos shaftAt = DemoBuilder.partBlock(plot, e, "shaft");

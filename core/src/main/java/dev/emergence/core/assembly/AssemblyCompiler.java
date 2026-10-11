@@ -330,8 +330,12 @@ public final class AssemblyCompiler {
                         CompiledAssembly.Body parent = bodyOfGroup.get(j.g1 == g ? j.g2 : j.g1);
                         if (j.prismatic() != slide) ok = false;
                         if (slide) {
-                            // a slide: parallel guides on the frame (several bushings on one rod, or on parallel rods)
-                            if (Math.abs(Math.abs(first.axis.dot(j.axis)) - 1) > 1e-9 || !parent.isStatic) ok = false;
+                            // a slide: parallel guides (several bushings on one rod, or on parallel rods), all on the
+                            // frame or all on one turning body (a weight on a spinning arm: carried by it)
+                            if (Math.abs(Math.abs(first.axis.dot(j.axis)) - 1) > 1e-9 || parent.slider || parent.carrier != null) ok = false;
+                            CompiledAssembly.Body on = parent.isStatic ? null : parent;
+                            if (j == first) carrier = on;
+                            else if (on != carrier) ok = false;
                             continue;
                         }
                         if (!collinear(first.pivot, first.axis, j.pivot, j.axis)) ok = false;
@@ -339,16 +343,17 @@ public final class AssemblyCompiler {
                         CompiledAssembly.Body on = parent.isStatic ? null : parent.slider ? parent : parent.carrier;
                         if (j == first) carrier = on;
                         else if (on != carrier) ok = false;
+                        if (parent.slider && parent.carrier != null) ok = false; // a slide on a rotor carries nothing that turns
                         if (!parent.isStatic && !parent.slider && !collinear(first.pivot, first.axis, parent.pivot, parent.axis)) ok = false;
                     }
                     if (!ok) {
-                        c.warnings.add(slide ? "Locked: a slide must run in parallel linear bearings on the frame"
+                        c.warnings.add(slide ? "Locked: a slide must run in parallel linear bearings on the frame or on one turning body"
                                 : "Locked: a body is held by bearings that are not on one axis line");
                         bodyOfGroup.put(g, ground);
                         continue;
                     }
                     CompiledAssembly.Body rotor = new CompiledAssembly.Body(c.bodies.size(), false, first.pivot, first.axis);
-                    if (!slide) rotor.carrier = carrier;
+                    rotor.carrier = carrier;
                     if (slide) {
                         rotor.slider = true;
                         strokeOf(rotor, groups.get(g), toResolved.stream().map(J::bearing).toList());
@@ -644,7 +649,17 @@ public final class AssemblyCompiler {
                     b.tracker = c.network.add(new AngleTracker(b.node, motion == null ? 0 : motion[1]));
                     b.drive = c.network.add(new FlowSource(refT, b.node, 0.0));
                     double fg = -mt * PartGeometry.gravity() * b.axis.y();
-                    if (fg != 0) c.network.add(new FlowSource(refT, b.node, fg));
+                    if (fg != 0 && b.carrier == null) c.network.add(new FlowSource(refT, b.node, fg));
+                    if (b.carrier != null) {
+                        // riding on a turning body: its weight, the centrifugal and Coriolis forces, and the rotor's
+                        // inertia changing as it moves out or in
+                        CompiledAssembly.Body r = b.carrier;
+                        Vec3 com = b.pivot.add(moment.mul(1 / Math.max(m, 1e-12)));
+                        double js = 0;
+                        for (long id : b.parts) if (!isWire(a.get(id))) js += PartGeometry.inertiaAbout(a.get(id), com, r.axis);
+                        c.network.add(new dev.emergence.core.sim.elements.CarriedSlide(b.node, b.tracker, r.node, r.tracker, r.axis, b.axis,
+                                com.sub(r.pivot), Math.max(m, 1e-6), js, new Vec3(0, -PartGeometry.gravity(), 0)));
+                    }
                     // the stops: a firm, well-damped contact (150 Hz on the slide's mass, damping ratio 0.7): it
                     // settles within a few hundredths of a millimetre of the end, without bouncing
                     double wStop = 2 * Math.PI * 150, kStop = Math.max(mt, 1e-3) * wStop * wStop;
@@ -686,7 +701,7 @@ public final class AssemblyCompiler {
                 double load = (rot.mass + rot.carriedMass) * PartGeometry.gravity() / Math.max(1, bearingCount.getOrDefault(rot, 1));
                 if (bearing.kind() == PartKind.LINEAR_BEARING) {
                     // ball bushing: rolling friction μ ≈ 0.003 of the load across the guide, plus grease drag
-                    Node ra = bb.isStatic ? refT : bb.node, rb = sb.isStatic ? refT : sb.node;
+                    Node ra = bb.slider ? bb.node : refT, rb = sb.slider ? sb.node : refT; // (a turning body: the slide's own frame)
                     double across = Math.sqrt(Math.max(0, 1 - rot.axis.y() * rot.axis.y()));
                     c.network.add(new CoulombFriction(rb, ra, 0.003 * Math.max(load * across, 0.01), 1e-3, c.thermalOfPart.get(bearing.id())));
                     c.network.add(new Damper(rb, ra, bearing.param("viscosity", 0.05), c.thermalOfPart.get(bearing.id())));
@@ -814,6 +829,11 @@ public final class AssemblyCompiler {
                                 }
                             }
                 }
+                CompiledAssembly.Body ground = c.bodies.get(0);
+                if (!sameFrame(end[0] == null ? ground : end[0], end[1] == null ? ground : end[1])) {
+                    c.warnings.add("Spring #" + sp.id() + " joins a body riding on a turning one to something it moves past (not modelled)");
+                    continue;
+                }
                 double k = PartGeometry.springRate(sp);
                 // extension = (end b's displacement − end a's) along the spring axis; a slider moving along its
                 // (positive) axis moves that end by x·(axis·spring axis)
@@ -868,7 +888,7 @@ public final class AssemblyCompiler {
                 c.warnings.add("Gear #" + g.id() + " and rack #" + r.id() + " have different tooth modules and cannot mesh");
                 return;
             }
-            if (!br.slider || Math.abs(Math.abs(br.axis.dot(u)) - 1) > 1e-9) {
+            if (!br.slider || br.carrier != null || Math.abs(Math.abs(br.axis.dot(u)) - 1) > 1e-9) {
                 c.warnings.add("Rack #" + r.id() + " must ride on a slide running along its length");
                 return;
             }
@@ -939,7 +959,7 @@ public final class AssemblyCompiler {
             if (bs == null || bn == null || bs == bn) return;
             Vec3 u = nut.axis().vec();
             boolean screwTurns = !bs.isStatic && !bs.slider && Math.abs(Math.abs(bs.axis.dot(u)) - 1) < 1e-9;
-            boolean nutSlides = bn.slider && Math.abs(Math.abs(bn.axis.dot(u)) - 1) < 1e-9;
+            boolean nutSlides = bn.slider && bn.carrier == null && Math.abs(Math.abs(bn.axis.dot(u)) - 1) < 1e-9;
             if (!nutSlides || !(screwTurns || bs.isStatic) || bs.carrier != null) {
                 c.warnings.add("Nut #" + nut.id() + ": a lead screw needs the screw turning in bearings and the nut on a slide along it");
                 return;
@@ -1204,8 +1224,8 @@ public final class AssemblyCompiler {
                                         // only a brush may conduct across a moving joint, through its contact face —
                                         // or contacts a slide brings together across its direction of travel
                                         Part brush = p.kind() == PartKind.BRUSH ? p : q.kind() == PartKind.BRUSH ? q : null;
-                                        CompiledAssembly.Body sp = bp != null && bp.slider && (bq == null || bq.isStatic) ? bp
-                                                : bq != null && bq.slider && (bp == null || bp.isStatic) ? bq : null;
+                                        CompiledAssembly.Body sp = bp != null && bp.slider && bp.carrier == null && (bq == null || bq.isStatic) ? bp
+                                                : bq != null && bq.slider && bq.carrier == null && (bp == null || bp.isStatic) ? bq : null;
                                         if (brush == null && sp != null && Math.abs(Math.abs(sp.axis.dot(d.vec())) - 1) < 1e-9
                                                 && !isJournal(p) && !isJournal(q)) {
                                             // the slide's part moves towards the other along +sense·axis
@@ -2097,7 +2117,7 @@ public final class AssemblyCompiler {
             List<dev.emergence.core.acoustics.DipoleRadiator> rads = new ArrayList<>();
             List<Node> nodes = new ArrayList<>();
             for (CompiledAssembly.Body b : c.bodies) {
-                if (b.isStatic || !b.slider || b.node == null) continue;
+                if (b.isStatic || !b.slider || b.carrier != null || b.node == null) continue;
                 int ax = Math.abs(b.axis.x()) > 0.5 ? 0 : Math.abs(b.axis.y()) > 0.5 ? 1 : 2;
                 Map<Long, Double> columns = new HashMap<>();
                 Map<Long, Vec3> where = new HashMap<>();
@@ -2807,6 +2827,10 @@ public final class AssemblyCompiler {
                 for (Part q : a.at(x, y, z)) {
                     CompiledAssembly.Body sb = c.bodyOfPart.get(q.id());
                     if (sb == null || !sb.slider) continue;
+                    if (sb.carrier != null) {
+                        c.warnings.add("Cylinder #" + cyl.id() + ": its piston rod rides on a turning body (not modelled)");
+                        return;
+                    }
                     if (Math.abs(Math.abs(sb.axis.dot(ax.vec())) - 1) > 1e-6) {
                         c.warnings.add("Cylinder #" + cyl.id() + ": its piston rod slides across the bore");
                         return;

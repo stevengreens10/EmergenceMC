@@ -326,6 +326,13 @@ coasting down from 30 rad/s, the platform shakes ±4.9 mm at speed, ±15.3 mm as
 12.2 rad/s (peak seen at 9.2 rad/s: a slowing sweep peaks just past resonance, its response lagging by ~1/(ζω_n)),
 ±0.5 mm below; the wheel loses speed fastest at resonance (the Sommerfeld effect).
 
+Carried slides (`CarriedSlideTest`): a 0.5 kg weight on a damped spring along a radial guide of a freely spinning
+turntable settles where k·x = m·ω²·r (8.792 N both) while the turntable slows from 15 to 11.05 rad/s at constant
+angular momentum ((J₀ + J_s + m r²)ω = L₀ to 10⁻⁶; |ΔL| ≤ 10⁻⁹ throughout); an off-radial guide on a vertical turntable
+in gravity conserves energy to 10⁻⁸ (and angular momentum without gravity, 10⁻⁹). Spinning-weights exhibit
+(`DemoExhibitsTest.spinningWeightsGoOutUntilTheirSpringsHoldThem`): cranked to 15 rad/s, the weights go out 48.9 mm,
+spring force 193.3 N = m·ω²·r 193.3 N.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

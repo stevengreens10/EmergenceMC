@@ -76,8 +76,10 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   (revolute joint), gear–gear contact (mesh), brush–conductor contact (sliding), thin shafts (< 0.9 cell)
   only touch at their end faces or where mounted parts overlap them; wires never carry load.
 * **Kinematics**: groups touching the world are static; groups held only by collinear bearings on a
-  static body, a coaxial rotor or a slide become rotors (on a slide: carried by it); free-standing machines use
-  their heaviest group as frame; over-constrained groups lock (with a warning).
+  static body, a coaxial rotor or a slide become rotors (on a slide: carried by it); groups held only by parallel
+  linear bearings on the frame or on one rotor become slides (on a rotor: carried by it); one level of carrying
+  (no slide on a rotor on a slide); free-standing machines use their heaviest group as frame; over-constrained
+  groups lock (with a warning).
 * **Electrical contact**: wires connect on all faces (insulated wire only to wires/leads); components have
   leads at their axial ends (end-face centre, plus side faces of end layers when ≥ 2 cells long; a
   single-cell component also brings its − and + leads out on the −L and +L side faces of its lead axis L,
@@ -642,3 +644,17 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   coils, magnets, cylinders and fan blades); see KNOWN_LIMITATIONS.
 * Rotating unbalance on a sprung slide (M on springs k, damping c): the steady amplitude is
   X = m e ω²/√((k − (M+m)ω²)² + (cω)²), largest near ω_n = √(k/(M+m)) and → m e/(M+m) far above it (isolation).
+
+## Slides carried by rotors (`CarriedSlide`)
+* A slide whose linear bearings sit on a turning body: the rotor's angle θ (axis n through pivot p) and the slide's
+  displacement x along its guide u₀ (in the rotor's frame). Its centre of mass is at q = c₀ + x·u₀ from the pivot in
+  that frame; ρ² = |q⊥|² its squared distance from the axis; σ = u₀·(n × c₀) the guide's offset from a radial line
+  (constant). Kinetic energy T = ½mẋ² + ½(J₀ + J_s + mρ²)θ̇² + mσẋθ̇ (J_s the slide's own inertia about a parallel axis
+  through its centre of mass); gravity V = −m g·R(θ)q.
+* Lagrange: on the slide d(mσθ̇)/dt − ½mθ̇²·dρ²/dx − m g·R u₀ (the centrifugal force m ω² ρ along the guide, the tilt of
+  an off-radial guide, the weight along the guide); on the rotor d((J_s + mρ²)θ̇ + mσẋ)/dt − m g·(n × R q) (the
+  rotor's inertia growing as the weight moves out, so it slows at constant angular momentum; Coriolis; the weight's
+  torque). The power balance is exact: energy, and with no outside torque angular momentum, are conserved.
+* The slide's springs, travel stops and bushing friction act on the relative coordinate x, and are only coupled to
+  the rotor that carries it (a spring from the slide to the frame warns and is left out). Rams, racks, lead screws,
+  electrical contacts, magnetics and sound do not act on carried slides.

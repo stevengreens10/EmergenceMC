@@ -25,8 +25,9 @@ behaviour; where physics is missing the effect is simply absent.
 
 ## Mechanical
 * Rigid bodies rotate about fixed axes (bearing joints) or slide along them (linear bearings on the frame); a rotor
-  may ride on a slide (two degrees of freedom), but a slide cannot ride on a rotor (no flyball governor yet), and no
-  deeper chains. No free 6-DOF bodies, no collisions. A rotor riding a slide is coupled only to that slide and what
+  may ride on a slide, or a slide on a rotor (two degrees of freedom each), but no deeper chains (no slide on a rotor
+  on a slide). A carried slide's bushings feel only its weight, not the centrifugal and Coriolis loads; nothing
+  links a carried slide to a valve or contact yet (a flyball governor's output). No free 6-DOF bodies, no collisions. A rotor riding a slide is coupled only to that slide and what
   rides on it: frame-mounted gears, brushes, cams, cylinders, light barriers, coils and magnets ignore it (gears,
   coils, magnets, cylinders and fan blades warn). Gravity acts on each rotating body about its own axis only (no
   joint reactions on moving parents); a carried rotor's bearings are not loaded by its unbalance's spinning force.

@@ -1770,4 +1770,35 @@ class DemoExhibitsTest {
         assertTrue(last < 0.2 * peak, "below resonance it calms again");
         assertTrue(Math.abs(c.energyError()) < 0.01 * e0, "energy ledger closes (to 1 % of the wheel's energy)");
     }
+
+    /**
+     * Spinning weights: cranked up to speed, each weight slides out along its arm until its spring supplies the
+     * centripetal force its circle needs, k·x = m·ω²·r — from nothing but the carried slide's dynamics.
+     */
+    @Test
+    void spinningWeightsGoOutUntilTheirSpringsHoldThem() {
+        Exhibit e = MechanicsExhibits.spinningWeights();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        CompiledAssembly.Body rotor = c.bodyOf(b.id(e, "shaft")), a = c.bodyOf(b.id(e, "rodA")), bb = c.bodyOf(b.id(e, "rodB"));
+        assertTrue(a.slider() && a.carrier() == rotor && bb.carrier() == rotor, "the weights' rods are slides on the turning beam");
+        double k = dev.emergence.core.assembly.PartGeometry.springRate(b.assembly().get(b.id(e, "springA")));
+        for (int i = 0; i < 200; i++) {
+            c.setCrankEffort(b.id(e, "crank"), 1, false);
+            c.step(0.05);
+        }
+        double w = c.angularVelocity(rotor), xa = c.angle(a), xb = c.angle(bb);
+        dev.emergence.core.sim.elements.CarriedSlide sa = null;
+        for (var el : c.network().elements())
+            if (el instanceof dev.emergence.core.sim.elements.CarriedSlide cs && sa == null) sa = cs;
+        double r = Math.sqrt(sa.radiusSq(xa)), centripetal = a.mass() * w * w * r;
+        double ke = 0.5 * (rotor.inertia() + 2 * sa.inertia(xa)) * w * w;
+        System.out.printf("weights: ω %.2f rad/s; out %.1f / %.1f mm; spring %.1f N vs m·ω²·r %.1f N (r %.3f m); energy error %.2g of %.1f J%n",
+                w, -1e3 * xa, 1e3 * xb, k * Math.abs(xa), centripetal, r, c.energyError(), ke);
+        assertTrue(w > 10, "cranked up to speed: " + w);
+        assertTrue(Math.abs(xa) > 0.02 && Math.abs(xb) > 0.02, "both weights have gone out");
+        assertEquals(-xa, xb, 1e-4, "symmetrically");
+        assertEquals(centripetal, k * Math.abs(xa), 0.02 * centripetal, "the spring supplies the centripetal force");
+        assertTrue(Math.abs(c.energyError()) < 1e-3 * ke, "energy ledger closes");
+    }
 }

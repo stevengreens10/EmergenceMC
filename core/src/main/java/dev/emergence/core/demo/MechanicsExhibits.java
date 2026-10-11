@@ -285,4 +285,46 @@ public final class MechanicsExhibits {
         e.name("crank", e.add(CRANK, st, 7, y + 5, 8, Dir.UP, "radius", 0.1));
         return e.view(7, 4, 16, 14);
     }
+
+    /**
+     * Weights on a spinning beam: each slides along its arm, held in by a spring. Cranked faster, they fly out until
+     * the springs supply their centripetal force (k·x = m·ω²·r); past √(k/m) (beyond a hand's speed here) no spring
+     * force would be enough. Moving out they take angular momentum, so the beam slows (the spinning skater's arms).
+     */
+    public static Exhibit spinningWeights() {
+        Exhibit e = new Exhibit("weights", "Spinning weights",
+                List.of("SPINNING WEIGHTS", "Crank it: the weights", "fly out against", "their springs"),
+                "Two lead weights ride on rods across a light spinning beam, each held in towards the middle by a "
+                        + "spring. Nothing tells them to move: turning, each needs a force towards the axis to keep it on "
+                        + "its circle (m·ω²·r), and only its spring can give it — so the faster the beam turns, the "
+                        + "further out the weights go, until the squeezed springs push hard enough: at a hand's top speed, "
+                        + "about 15 radians a second, some 5 cm. (Near √(k/m), 37 radians a second — faster than a hand "
+                        + "can turn it — no squeeze would be enough and they would run out to their stops.) As they move out they "
+                        + "take up more of the beam's angular momentum (it stays constant), so the beam slows — the "
+                        + "spinning skater's arms. Speed governors on engines work like this.");
+        String al = "aluminium_6061", st = "steel_1045";
+        // the frame: a post holding the vertical shaft's bearing from the side
+        e.fill(BLOCK, st, 7, 0, 9, 7, 2, 9, Dir.UP);
+        e.add(BEARING, st, 7, 2, 8, Dir.UP);
+        int shaft = e.fill(SHAFT, st, 7, 2, 8, 7, 4, 8, Dir.UP, "diameter", 0.015); // up past the bearing, clear of it
+        e.name("shaft", shaft);
+        // the beam: light aluminium plates through the shaft's top, risers to the bushings and the spring seats
+        e.fill(BLOCK, al, 1, 4, 8, 6, 4, 8, Dir.EAST, "fill", 0.25);
+        e.add(BLOCK, al, 7, 4, 8, Dir.EAST, "fill", 0.25);
+        e.fill(BLOCK, al, 8, 4, 8, 13, 4, 8, Dir.EAST, "fill", 0.25);
+        for (int x : new int[]{1, 5, 9, 13}) e.add(BLOCK, al, x, 5, 8, Dir.UP, "fill", 0.25);
+        e.name("crank", e.add(CRANK, st, 7, 5, 8, Dir.UP, "radius", 0.2));
+        // each weight on a rod in a bushing, a spring between it and the beam's end
+        for (int k = 0; k < 2; k++) {
+            int seat = k == 0 ? 1 : 13, bush = k == 0 ? 5 : 9, w = k == 0 ? 3 : 11, sp = k == 0 ? 2 : 12;
+            e.add(BLOCK, al, seat, 6, 8, Dir.UP, "fill", 0.25);
+            e.add(LINEAR_BEARING, st, bush, 6, 8, Dir.EAST, "viscosity", 20);
+            int rod = k == 0 ? e.fill(SHAFT, st, 3, 6, 8, 6, 6, 8, Dir.EAST, "diameter", 0.01)
+                    : e.fill(SHAFT, st, 8, 6, 8, 11, 6, 8, Dir.EAST, "diameter", 0.01);
+            e.name(k == 0 ? "rodA" : "rodB", rod);
+            e.name(k == 0 ? "weightA" : "weightB", e.add(BLOCK, "lead", w, 6, 8, Dir.UP));
+            e.name(k == 0 ? "springA" : "springB", e.add(SPRING, st, sp, 6, 8, Dir.EAST, "wire", 0.0038));
+        }
+        return e.view(7, 4, 16, 14);
+    }
 }

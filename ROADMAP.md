@@ -18,7 +18,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 
 ## Phase 2 — Mechanical and electrical foundations
 ✅ Rotating rigid bodies on bearings, shafts, bearings (ball/plain), spur gears, cranks; rotors carried by slides
-   (rotating unbalance, vibration, resonance)
+   (rotating unbalance, vibration, resonance) and slides carried by rotors (centrifugal force, Coriolis, variable
+   inertia)
 ✅ Conductors (T-dependent), resistors, capacitors, inductors, switches, diodes
 ✅ Magnetic elements: permanent magnets, coils, field-derived electromechanical coupling
 ✅ **Milestone: player-built generator** (demo exhibit, tests) — motor action demonstrated in core

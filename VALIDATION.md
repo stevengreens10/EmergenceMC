@@ -266,6 +266,12 @@ contacts, a flyback diode across the coil, on 36 V: it pulls up and drops back 3
 current peaking at 0.84 A; no oscillator was programmed — the period is the coil's L/R rise to the pull-in current,
 the armature's flight, and the current's decay through the diode. Energy error over 4 s: 3 mJ.
 
+Speed governor (`DemoExhibitsTest.governorHoldsItsSpeedUnderLoad`): a brushed DC motor whose shaft carries a
+two-magnet tachogenerator; a diode peak detector gives 0.17 V per rad/s, an op-amp PI loop (K_p 10, K_i 10 s⁻¹)
+drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor's speed after 10 s is within 0.5 % of
+its free speed (26 rad/s; the drive rises from ≈ 9 V to ≈ 20 V); on a fixed 9.5 V supply that ran it at the same
+free speed, the same brake slows it by 39 % and still falling.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

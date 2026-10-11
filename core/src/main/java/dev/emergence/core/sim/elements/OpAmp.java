@@ -43,7 +43,7 @@ public final class OpAmp implements Element {
     @Override
     public void setup(SetupContext ctx) {
         sIdx = ctx.allocUnknown("opamp", 1e-6);
-        sSlot = ctx.allocState(1e-6);
+        sSlot = ctx.allocState(1e-3);
     }
 
     private static double softplus(double x) {

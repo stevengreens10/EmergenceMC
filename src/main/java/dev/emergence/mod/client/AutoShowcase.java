@@ -210,6 +210,11 @@ public final class AutoShowcase {
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");
                 STEPS.add(new Step(60, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-energised"));
             }
+            if (id.equals("governor")) {
+                // apply the brake: the speed sags, the drive rises and brings it back
+                BlockPos brake = DemoBuilder.partBlock(plot, e, "brake");
+                STEPS.add(new Step(200, () -> toggle(server.overworld(), brake), "showcase-" + (i + 1) + "-" + id + "-braked"));
+            }
             if (id.equals("trembler")) {
                 // close the switch: the relay chatters, opening its own coil's circuit eight times a second
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");

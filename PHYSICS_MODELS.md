@@ -323,7 +323,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   soft clamp (10 mV knee, K = 10⁹ s⁻¹) holding s within the supply span less 0.1 V. Small signals see the
   ideal single pole (closed-loop bandwidth GBW/gain), large steps slew at SR, saturation recovers without wind-up.
   The output is s behind 75 Ω; sourced current is drawn from V₊, sunk current returned to V₋, plus 0.5 mA
-  quiescent; all dissipation heats the part. Inputs draw no current (3 pF each).
+  quiescent; all dissipation heats the part. Inputs draw no current (3 pF each). The truncation-error tolerance on
+  s is 1 mV, as for any capacitor's voltage (a tighter one let microvolt Newton residuals at the inputs, multiplied
+  by A₀/τ ≈ 2·10⁷ s⁻¹, set the step size of every closed loop).
 
 ## Instruments: data logger / oscilloscope (`DataLogger`, `CompiledAssembly.attachLogger`)
 * Fed the probed quantities of one part (temperature, current, voltage, power, speed, angle, fluid pressure,

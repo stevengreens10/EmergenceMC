@@ -173,3 +173,6 @@ multimeter, oscilloscope/data logging.
 * Moving iron: only an armature on a slide moving along a fixed coil's axis (not hinged clapper armatures, not
   plungers entering a bore, not permanent magnets pulling iron); the gap is the slide's travel, not resolved by the
   lattice (cell-sized); no saturation (the pull grows as i² without limit).
+* Wire networks take a body as a whole: a wire of one circuit lying against a rotor's wiring (even insulated, of
+  another colour) joins the rotor's wiring to the frame and stops its circuit turning with it. Keep static wiring
+  clear of moving wiring (the exhibits' router keeps a margin round rotors).

@@ -1532,4 +1532,37 @@ class DemoExhibitsTest {
         assertTrue(ups >= 4, "it keeps cycling: " + ups);
         assertTrue(c.probe(b.id(e, "diode")).temperature() < 400, "the flyback diode copes");
     }
+
+    /**
+     * Speed governor: braked, the governed motor recovers its speed (within 5 %); the same motor on a fixed supply
+     * that ran it at that speed unloaded slows by a quarter and more.
+     */
+    @Test
+    void governorHoldsItsSpeedUnderLoad() {
+        double[] sag = new double[2];
+        for (int m = 0; m < 2; m++) {
+            Exhibit e = m == 0 ? ControlExhibits.governor() : ControlExhibits.governor(9.5);
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = compile(e, b);
+            if (m == 1) c.toggleSwitch(b.id(e, "switch"));
+            long rotor = b.id(e, "rotor");
+            run(c, 3);
+            double before = 0, after = 0;
+            for (int k = 0; k < 6; k++) {
+                run(c, 0.5);
+                before += c.probe(rotor).angularVelocity() / 6;
+            }
+            c.toggleSwitch(b.id(e, "brake"));
+            run(c, 10);
+            for (int k = 0; k < 6; k++) {
+                run(c, 0.5);
+                after += c.probe(rotor).angularVelocity() / 6;
+            }
+            sag[m] = 1 - after / before;
+            System.out.printf("governor (%s): %.2f rad/s free, %.2f rad/s braked (%.1f %% slower)%n", m == 0 ? "governed" : "fixed 9.5 V",
+                    before, after, 100 * sag[m]);
+        }
+        assertEquals(0, sag[0], 0.05, "the governor restores the speed");
+        assertTrue(sag[1] > 0.25, "without it the brake drags the motor down: " + sag[1]);
+    }
 }

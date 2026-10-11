@@ -30,6 +30,11 @@ simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its p
 out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
 
 ## History
+* Speed governor 36 000 → 1 400 steps per regulated half second: the op-amp's internal state had a 1 µV
+  truncation tolerance; in a closed loop its derivative A₀v_d/τ amplifies the inputs' Newton residuals, so the
+  error estimate was noise. It now has 1 mV, like capacitor voltages. The exhibit still runs about 2× slower than
+  real time on the dev machine (commutation events every few milliseconds; the transistor's junction
+  capacitances).
 * Generator 52 → 28 ms: coil flux LTE absolute tolerance was 1e-12 Wb (signal ~0.02 Wb); now scaled to the
   signal.
 * 28 → 2.8 ms: primitive open-addressing index in the sparse matrix (no boxing); realistic human cranking

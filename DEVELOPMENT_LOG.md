@@ -359,3 +359,11 @@ mass and stroke.
 bell's interrupter. It needed no new physics — the same moving-iron inductance, travel contacts and stops oscillate at
 7.9 Hz, set by the coil's L/R, the pull-in current and the armature's flight. Fed through the contacts and a brush the
 coil drew just under the relay's pull-in current at 24 V, so the trembler runs on 36 V.
+
+**Speed governor.** A brushed motor holding its speed against a brake through a tachogenerator (two magnets on a disc
+past a coil), a diode peak detector, an op-amp PI loop and a Darlington drive. Building it found: the exhibit's router
+had been created before some parts and laid wire through them; a supply wire lying on the rotor's wiring dragged that
+wiring onto the frame (wire networks take one body — now in KNOWN_LIMITATIONS); a single transistor needed more base
+current than an op-amp gives (its current limit made the op-amp stiff — the Darlington is what a real drive uses);
+and the op-amp's internal state had a 1 µV error tolerance that turned Newton noise into 25× too many steps in any
+closed loop.

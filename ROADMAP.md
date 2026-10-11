@@ -83,7 +83,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 
 ## Phase 6 — Advanced multiphysics
 ✅ Control parts: potentiometers (angle sensors/knobs with end stops), op-amps (single pole, slew, rails),
-   gravity torque on unbalanced rotating bodies; a servo arm exhibit (PD position control, proportional droop)
+   gravity torque on unbalanced rotating bodies; a servo arm exhibit (PID position control); an electronic speed
+   governor (tachogenerator, PI op-amp loop, Darlington drive) holding a brushed motor's speed against a brake
 ⬜ Advanced EM, aerodynamics, multi-joint robots (joints on moving bodies), state-space control
 
 ## Phase 7–8 — Broad scientific expansion, continuous expansion

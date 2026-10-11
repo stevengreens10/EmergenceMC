@@ -3,8 +3,9 @@
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →
 regenerate the demo world → screenshot tour → docs → commit.
 
-1. **Control**: a speed governor (centrifugal or electronic) holding an engine's speed against its brake; the EM-4
-   closing a loop through a light-barrier encoder; integrator wind-up limits. (The servo is a PID loop now.)
+1. **Control**: a centrifugal (flyball) governor on an engine — needs bodies sliding on turning bodies; the EM-4
+   closing a loop through a light-barrier encoder; integrator wind-up limits. (The servo is a PID loop, the
+   electronic speed governor a PI loop.)
 2. **Dynamics of structures**: vibration and resonance — an unbalanced rotor on a sprung platform (needs a turning
    body carried by a sliding one), vibration isolation; fatigue of the static frame under cyclic loads (rainflow
    counting); gear-mesh and belt forces in the shaft fatigue model.

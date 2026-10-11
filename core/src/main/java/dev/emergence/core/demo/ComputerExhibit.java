@@ -36,7 +36,7 @@ public final class ComputerExhibit {
             0x2C, 0x2E, 0x2F, 0x27, // 7–10: ACC 8→4→2→1→8 (reverse)
             0x47,                   // 11: JS 7 — keep reversing
             0x85,                   // 12: J 5 — back to forward
-            0x80, 0x80, 0x80};      // 13–15: J 0      // 13–15: J 0      // 13–15: J 0
+            0x80, 0x80, 0x80};      // 13–15: J 0
 
     /** Chip of the given type laid along +x from (x, y, z), pins on the north (inputs) and south (outputs) sides. */
     static int chip(Exhibit e, MsiChip.Type type, int x, int y, int z, Object... extra) {
@@ -66,7 +66,7 @@ public final class ComputerExhibit {
                         + "bearing damping its swing. Flip SENSE and the program branches into a "
                         + "loop that adds 12, 14, 15, 7 — the reverse sequence. Diodes across the coils absorb the "
                         + "inductive kick when a MOSFET turns off. Everything runs from a 5 V supercapacitor bank.");
-        e.plots = 2;
+        e.plots = 3; // the stepper motor stands past the second plot
         String st = "steel_1045", cu = "copper";
         int y = 1;
         // ---- chips: program counter and accumulator (z = 2), ROM and adder (z = 7)

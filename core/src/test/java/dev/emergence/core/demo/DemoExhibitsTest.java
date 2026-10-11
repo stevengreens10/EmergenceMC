@@ -1565,4 +1565,23 @@ class DemoExhibitsTest {
         assertEquals(0, sag[0], 0.05, "the governor restores the speed");
         assertTrue(sag[1] > 0.25, "without it the brake drags the motor down: " + sag[1]);
     }
+
+    /**
+     * Every exhibit stays on its plot: in front of the walkway (z < 16, where the signs stand) and clear of the 4-block
+     * aisle that keeps neighbouring exhibits out of each other's interaction reach (x < 20·plots − 4).
+     */
+    @Test
+    void exhibitsStayOnTheirPlots() {
+        StringBuilder bad = new StringBuilder();
+        for (Exhibit e : Exhibits.all()) {
+            int maxX = 20 * e.plots - 4;
+            for (Exhibit.PartDef d : e.parts) {
+                if (d.x0() < 0 || d.z0() < 0 || d.y0() < 0 || d.x1() >= maxX || d.z1() >= 16) {
+                    bad.append(String.format("%n  %s: %s at (%d,%d,%d)-(%d,%d,%d)", e.id, d.kind(), d.x0(), d.y0(), d.z0(), d.x1(), d.y1(), d.z1()));
+                    break;
+                }
+            }
+        }
+        assertTrue(bad.isEmpty(), "parts off their plots:" + bad);
+    }
 }

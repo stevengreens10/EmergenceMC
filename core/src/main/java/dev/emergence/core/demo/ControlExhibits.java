@@ -198,58 +198,58 @@ public final class ControlExhibits {
         e.fill(BLOCK, st, 9, 17, 8, 10, 17, 8, Dir.UP);
         e.add(BLOCK, st, 6, 13, 8, Dir.UP);
         e.name("brake", e.add(BRAKE, "bronze", 6, 14, 8, Dir.EAST, "force", 10));
-        // ---- electronics on the floor in front (y = 1, z ≥ 15)
+        // ---- electronics on the floor beside the motor (y = 1)
         int f = 1;
-        int bat = e.add(CAPACITOR, "alumina", 2, f, 16, Dir.EAST, "capacitance", 3000);
+        int bat = e.add(CAPACITOR, "alumina", 16, f, 4, Dir.EAST, "capacitance", 3000);
         e.name("battery", bat);
         e.init(bat, new Exhibit.Initial(Double.NaN, 0, 24));
         boolean closed = Double.isNaN(openLoop);
         if (closed) {
-            e.name("opamp", e.add(OPAMP, "silicon", 10, f, 19, Dir.EAST));
-            e.add(RESISTOR, "alumina", 6, f, 21, Dir.EAST, "resistance", 47_000);        // reference: +24 V → in+
-            e.add(RESISTOR, "alumina", 6, f, 23, Dir.EAST, "resistance", 10_000);        // in+ → 0 V
-            e.add(RESISTOR, "alumina", 6, f, 17, Dir.EAST, "resistance", 10_000);        // tacho → in−
-            e.add(RESISTOR, "alumina", 13, f, 16, Dir.EAST, "resistance", 100_000);      // in− → feedback capacitor
-            e.name("ci", e.add(CAPACITOR, "alumina", 16, f, 16, Dir.EAST, "capacitance", 10e-6));
+            e.name("opamp", e.add(OPAMP, "silicon", 24, f, 7, Dir.EAST));
+            e.add(RESISTOR, "alumina", 20, f, 9, Dir.EAST, "resistance", 47_000);        // reference: +24 V → in+
+            e.add(RESISTOR, "alumina", 20, f, 11, Dir.EAST, "resistance", 10_000);        // in+ → 0 V
+            e.add(RESISTOR, "alumina", 20, f, 5, Dir.EAST, "resistance", 10_000);        // tacho → in−
+            e.add(RESISTOR, "alumina", 27, f, 4, Dir.EAST, "resistance", 100_000);      // in− → feedback capacitor
+            e.name("ci", e.add(CAPACITOR, "alumina", 30, f, 4, Dir.EAST, "capacitance", 10e-6));
             e.init(e.named.get("ci"), new Exhibit.Initial(Double.NaN, 0, 5.8));
-            e.name("npn", e.add(TRANSISTOR, "silicon", 14, f, 20, Dir.EAST, "type", 0, "beta", 60, "saturation_current", 1e-12,
+            e.name("npn", e.add(TRANSISTOR, "silicon", 28, f, 8, Dir.EAST, "type", 0, "beta", 60, "saturation_current", 1e-12,
                     "surface_area", 0.03));
             // a driver transistor feeding the power transistor's base (a Darlington pair): the op-amp could not source the
             // ~50 mA of base current amps of motor current need
-            e.name("driver", e.add(TRANSISTOR, "silicon", 17, f, 20, Dir.EAST, "type", 0, "beta", 100, "saturation_current", 1e-14));
+            e.name("driver", e.add(TRANSISTOR, "silicon", 31, f, 8, Dir.EAST, "type", 0, "beta", 100, "saturation_current", 1e-14));
             // across the motor: a suppression capacitor and a freewheel diode take the commutator's switching surges
-            e.add(CAPACITOR, "alumina", 13, f, 23, Dir.EAST, "capacitance", 470e-6);
-            e.add(DIODE, "silicon", 17, f, 23, Dir.EAST);
+            e.add(CAPACITOR, "alumina", 27, f, 11, Dir.EAST, "capacitance", 470e-6);
+            e.add(DIODE, "silicon", 31, f, 11, Dir.EAST);
         } else {
             e.init(bat, new Exhibit.Initial(Double.NaN, 0, openLoop));
-            e.name("switch", e.add(SWITCH, "brass", 5, f, 16, Dir.EAST));
+            e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
         }
         // the tacho's rectifier: a diode charging a capacitor, a resistor bleeding it (τ = 2 s)
-        e.add(DIODE, "silicon", 6, f, 25, Dir.EAST);
-        e.name("ct", e.add(CAPACITOR, "alumina", 10, f, 25, Dir.EAST, "capacitance", 20e-6));
+        e.add(DIODE, "silicon", 20, f, 13, Dir.EAST);
+        e.name("ct", e.add(CAPACITOR, "alumina", 24, f, 13, Dir.EAST, "capacitance", 20e-6));
         e.init(e.named.get("ct"), new Exhibit.Initial(Double.NaN, 0, 4.15));
-        e.add(RESISTOR, "alumina", 14, f, 25, Dir.EAST, "resistance", 100_000);
-        Router r = new Router(e, 0, 0, 0, 18, 18, 27);
+        e.add(RESISTOR, "alumina", 28, f, 13, Dir.EAST, "resistance", 100_000);
+        Router r = new Router(e, 0, 0, 0, 35, 18, 15);
         if (closed) {
-            r.pin("vp", 3, f, 16).pin("vp", 10, f, 20).pin("vp", 5, f, 21).pin("vp", 15, f, 20).pin("vp", 18, f, 20);
-            r.pin("gnd", 10, f, 18).pin("gnd", 7, f, 23);
-            r.pin("inP", 7, f, 21).pin("inP", 5, f, 23).pin("inP", 9, f, 19);
-            r.pin("inN", 7, f, 17).pin("inN", 10, 0, 19).pin("inN", 12, f, 16);
-            r.pin("fb", 14, f, 16).pin("fb", 15, f, 16);
-            r.pin("out", 11, f, 19).pin("out", 17, f, 16).pin("out", 17, f, 19);
-            r.pin("b2", 16, f, 20).pin("b2", 14, f, 19);
-            r.pin("mot", 13, f, 20).pin("mot", 11, 8, 8).pin("mot", 14, f, 23).pin("mot", 18, f, 23);
-            r.pin("gnd", 12, f, 23).pin("gnd", 16, f, 23);
-            r.pin("tacho", 5, f, 17);
+            r.pin("vp", 17, f, 4).pin("vp", 24, f, 8).pin("vp", 19, f, 9).pin("vp", 29, f, 8).pin("vp", 32, f, 8);
+            r.pin("gnd", 24, f, 6).pin("gnd", 21, f, 11);
+            r.pin("inP", 21, f, 9).pin("inP", 19, f, 11).pin("inP", 23, f, 7);
+            r.pin("inN", 21, f, 5).pin("inN", 24, 0, 7).pin("inN", 26, f, 4);
+            r.pin("fb", 28, f, 4).pin("fb", 29, f, 4);
+            r.pin("out", 25, f, 7).pin("out", 31, f, 4).pin("out", 31, f, 7);
+            r.pin("b2", 30, f, 8).pin("b2", 28, f, 7);
+            r.pin("mot", 27, f, 8).pin("mot", 11, 8, 8).pin("mot", 28, f, 11).pin("mot", 32, f, 11);
+            r.pin("gnd", 26, f, 11).pin("gnd", 30, f, 11);
+            r.pin("tacho", 19, f, 5);
         } else {
-            r.pin("vb", 3, f, 16).pin("vb", 4, f, 16);
-            r.pin("vp", 6, f, 16).pin("vp", 11, 8, 8);
+            r.pin("vb", 17, f, 4).pin("vb", 18, f, 4);
+            r.pin("vp", 20, f, 4).pin("vp", 11, 8, 8);
         }
-        r.pin("gnd", 1, f, 16).pin("gnd", 5, 8, 8);
-        r.pin("tacho", 7, f, 25).pin("tacho", 11, f, 25).pin("tacho", 13, f, 25);
-        r.pin("coil", 5, f, 25);
+        r.pin("gnd", 15, f, 4).pin("gnd", 5, 8, 8);
+        r.pin("tacho", 21, f, 13).pin("tacho", 25, f, 13).pin("tacho", 27, f, 13);
+        r.pin("coil", 19, f, 13);
         r.pin("coil", 9, 16, 9).pin("gnd", 9, 16, 7);
-        r.pin("gnd", 9, f, 25).pin("gnd", 15, f, 25);
+        r.pin("gnd", 23, f, 13).pin("gnd", 29, f, 13);
         // the rotor, its wiring and the tacho disc sweep the cylinder round the shaft; no wire may touch the rotor's
         // wiring either (it would hold it to the frame)
         r.keepClear(4, 1, 3, 12, 7, 13);
@@ -258,6 +258,6 @@ public final class ControlExhibits {
         r.keepClear(4, 8, 5, 5, 8, 7);
         r.keepClear(5, 9, 4, 11, 15, 12);
         r.route();
-        return e.view(9, 13, 30, 18, 180);
+        return e.view(18, 15, 33, 22, 180);
     }
 }

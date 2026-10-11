@@ -25,6 +25,7 @@ public final class OpticsExhibits {
                         + "rotor cuts the beam once per turn, the input drops, and the trigger's output flips — lighting "
                         + "the yellow LED and clocking a flip-flop that toggles the green one: an optical encoder from "
                         + "parts. Glass would not stop the beam; any opaque part does.");
+        e.plots = 2; // the toggle flip-flop reaches past a single plot
         String st = "steel_1045";
         int sx = 4, sz = 6;
         // rotor: vertical shaft on a bearing, crank on top, a nylon hub with a steel vane reaching over the beam

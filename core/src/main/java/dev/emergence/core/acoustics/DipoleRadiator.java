@@ -83,6 +83,20 @@ public final class DipoleRadiator {
         start = 0;
     }
 
+    /** The samples {times, velocities} from just before {@code from} to the latest. */
+    public double[][] history(double from) {
+        int first = 0;
+        while (first < count - 1 && ts[(start + first + 1) % ts.length] <= from) first++;
+        int m = count - first;
+        double[] t = new double[m], u = new double[m];
+        for (int k = 0; k < m; k++) {
+            int i = (start + first + k) % ts.length;
+            t[k] = ts[i];
+            u[k] = us[i];
+        }
+        return new double[][]{t, u};
+    }
+
     public double latestTime() {
         return count == 0 ? Double.NEGATIVE_INFINITY : ts[(start + count - 1) % ts.length];
     }

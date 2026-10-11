@@ -99,7 +99,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Prisms (dispersion exhibit)
 🟡 Acoustics: compact-dipole sound from bodies on slides, retarded near/induction/far field, receivers pushed by
    the air; a loudspeaker heard by a microphone (moving coils on flexible leads, an op-amp amplifier);
-   ⬜ turning bodies, enclosures and baffles, rooms, in-game audio
+   in-game audio (each sounding body's tone synthesised at its simulated pitch and the listener's pressure);
+   ⬜ turning bodies, enclosures and baffles, rooms
 ⬜ Geology, environmental, biology; diffuse reflection; spectrum analyser,
    logic analyser, multi-channel loggers
 

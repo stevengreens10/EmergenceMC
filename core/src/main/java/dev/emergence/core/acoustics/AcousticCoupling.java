@@ -33,6 +33,14 @@ public final class AcousticCoupling implements Element {
         }
     }
 
+    /** History kept per body [s]: enough for the field's delays and to hear a few periods of a slow buzz ({@link Tone}). */
+    static final double KEEP = 0.5;
+
+    /** The bodies, as radiators. */
+    public List<DipoleRadiator> radiators() {
+        return bodies;
+    }
+
     public SoundField field() {
         return field;
     }
@@ -60,7 +68,7 @@ public final class AcousticCoupling implements Element {
         for (int i = 0; i < bodies.size(); i++) {
             DipoleRadiator b = bodies.get(i);
             b.record(time, s.x(nodes.get(i)));
-            b.forgetBefore(time - maxDelay - 0.01);
+            b.forgetBefore(time - Math.max(maxDelay + 0.01, KEEP));
         }
         forceTime = Double.NaN;
     }

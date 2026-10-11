@@ -2027,8 +2027,8 @@ public final class AssemblyCompiler {
          * of strength M = (8/3)(S/π)^{3/2} + V — S its outline seen along the slide (each cell column of its parts counted
          * once, at the largest cross-section any part offers there: a plate facing the travel its whole cell, a thin
          * plate edge-on its thickness, a rod along the travel its section), V its solid volume — sitting at the centroid
-         * of that outline. When two or more such bodies share the assembly, each feels the air the others set moving
-         * ({@link dev.emergence.core.acoustics.AcousticCoupling}). Turning bodies do not radiate yet.
+         * of that outline. Each feels the air the others set moving ({@link dev.emergence.core.acoustics.AcousticCoupling});
+         * each one's recent motion is what it sounds like in the game. Turning bodies do not radiate yet.
          */
         void buildAcoustics() {
             List<dev.emergence.core.acoustics.DipoleRadiator> rads = new ArrayList<>();
@@ -2076,7 +2076,7 @@ public final class AssemblyCompiler {
                 rads.add(new dev.emergence.core.acoustics.DipoleRadiator(centre, b.axis, dev.emergence.core.acoustics.DipoleRadiator.plateMoment(area, volume)));
                 nodes.add(b.node);
             }
-            if (rads.size() < 2) return;
+            if (rads.isEmpty()) return; // (one body alone still sounds: its history makes its tone, see CompiledAssembly#sounds)
             var air = dev.emergence.core.acoustics.SoundField.air(ambientT, 101_325);
             c.acoustics = c.network.add(new dev.emergence.core.acoustics.AcousticCoupling(air, rads, nodes));
         }

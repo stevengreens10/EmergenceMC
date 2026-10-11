@@ -86,6 +86,8 @@ public final class SimulationManager {
         double timeScale = 1;
         /** Smoothed wall-clock cost of this island's tick [ms]. */
         double costMs;
+        /** Whether its bodies were sounding at the last sound update. */
+        boolean sounding;
         /** The state the island was last compiled from (for diagnosing a failure right after a restart). */
         AssemblyState startState;
         /** Whether a player was near it this tick, and its bounding box grown by the near distance (lazily). */
@@ -1070,6 +1072,32 @@ public final class SimulationManager {
                 bIds.stream().mapToLong(Long::longValue).toArray(), ba);
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
+        syncSounds(isl, scale, any);
+    }
+
+    /**
+     * Every fourth tick: what the island's bodies on slides sound like (their tones, from their simulated motion), for
+     * the clients to play — and once more, empty, when it falls silent.
+     */
+    private void syncSounds(Island isl, float scale, BlockPos any) {
+        if (tickCount % 4 != 0) return;
+        var sounds = isl.compiled.sounds();
+        if (sounds.isEmpty() && !isl.sounding) return;
+        isl.sounding = !sounds.isEmpty();
+        List<dev.emergence.mod.net.SoundPayload.Source> out = new ArrayList<>();
+        for (var s : sounds) {
+            var t = s.tone();
+            float[] amp = new float[t.amplitude().length], ph = new float[t.phase().length];
+            for (int k = 0; k < amp.length; k++) {
+                amp[k] = (float) t.amplitude()[k];
+                ph[k] = (float) t.phase()[k];
+            }
+            out.add(new dev.emergence.mod.net.SoundPayload.Source(s.body(), s.position().x() * scale, s.position().y() * scale,
+                    s.position().z() * scale, (float) s.axis().x(), (float) s.axis().y(), (float) s.axis().z(), (float) t.frequency(),
+                    (float) t.rmsPressure(), amp, ph));
+        }
+        long key = any.asLong();
+        PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), new dev.emergence.mod.net.SoundPayload(key, 1f / scale, out));
     }
 
     public static boolean isCrank(PlacedPart p) {

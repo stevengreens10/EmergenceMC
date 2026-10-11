@@ -294,6 +294,11 @@ ends at 2379.74 K both ways, energy error 5.4·10⁻⁹ J; an LC tank ringing at
 takes 20 595 steps while the thermal network takes 16, the resistor ending at the same temperature, energy error
 7·10⁻¹⁰ J. The whole suite passes with multirate on (the default) and off.
 
+Hearing (`ToneTest`, `DemoExhibitsTest`): a 440 Hz velocity sinusoid analyses to 440.3 Hz with a pure first harmonic
+and the dipole's far-field pressure within 0.6 %; a square wave keeps its odd harmonics; a still body is silent; the
+synthesiser plays 440 rising crossings a second at the level the pressure asks for. The trembler's armature sounds at
+its cycling rate (7.91 Hz); the loudspeaker at 261 Hz.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

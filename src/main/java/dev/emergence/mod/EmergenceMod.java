@@ -48,6 +48,8 @@ public final class EmergenceMod {
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
         var reg = event.registrar("1");
         reg.playToClient(IslandSyncPayload.TYPE, IslandSyncPayload.STREAM_CODEC, EmergenceMod::handleSync);
+        reg.playToClient(dev.emergence.mod.net.SoundPayload.TYPE, dev.emergence.mod.net.SoundPayload.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.ClientSounds.apply(payload)));
         reg.playToClient(dev.emergence.mod.net.LoggerSyncPayload.TYPE, dev.emergence.mod.net.LoggerSyncPayload.STREAM_CODEC,
                 (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.LoggerHud.apply(payload)));
     }

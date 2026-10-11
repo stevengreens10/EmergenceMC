@@ -86,8 +86,15 @@ public final class ModRegistries {
             })
             .build());
 
+    public static final DeferredRegister<net.minecraft.sounds.SoundEvent> SOUNDS =
+            DeferredRegister.create(Registries.SOUND_EVENT, EmergenceMod.MODID);
+    /** The sound of a moving body, synthesised from its simulated motion (a streamed sound; see ClientSounds). */
+    public static final Supplier<net.minecraft.sounds.SoundEvent> TONE = SOUNDS.register("tone",
+            () -> net.minecraft.sounds.SoundEvent.createVariableRangeEvent(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(EmergenceMod.MODID, "tone")));
+
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);
+        SOUNDS.register(bus);
         ITEMS.register(bus);
         BLOCK_ENTITIES.register(bus);
         COMPONENTS.register(bus);

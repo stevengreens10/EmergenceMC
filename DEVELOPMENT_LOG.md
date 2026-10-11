@@ -394,3 +394,8 @@ the trapezoid carried the old input's derivative across each synchronisation, an
 steps with the trapezoid — fixed by restarting the thermal phase at each synchronisation and a method-consistent
 ledger. Fluid temperatures had to stay fast (gas compression heats instantly). Gains are modest (20–25 %) until the
 fast partition's own loads get cheaper.
+
+**Hearing it.** Bodies on slides now sound in the game: each one's last 0.4 s of motion gives a fundamental
+(autocorrelation) and a band-limited pressure waveform (Ü's harmonics), streamed to the client and synthesised at the
+pressure the player's ear receives (dipole far field, physical distance). The trembler buzzes at 7.9 Hz; the
+loudspeaker sings at 261 Hz. A lone body now keeps its motion history too (the acoustic element is built for one).

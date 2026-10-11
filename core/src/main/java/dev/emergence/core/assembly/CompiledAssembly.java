@@ -462,6 +462,27 @@ public final class CompiledAssembly {
     /** Sound in air between the bodies on slides, if there are two or more (null otherwise). */
     dev.emergence.core.acoustics.AcousticCoupling acoustics;
 
+    /** A sounding body: where it is [m], the direction it moves along, and its tone. */
+    public record Sound(int body, Vec3 position, Vec3 axis, dev.emergence.core.acoustics.Tone tone) {
+    }
+
+    /**
+     * What the bodies on slides sound like now: each one's tone over the last 0.4 s of simulated time (see
+     * {@link dev.emergence.core.acoustics.Tone}), those louder than 20 dB at a metre.
+     */
+    public List<Sound> sounds() {
+        if (acoustics == null) return List.of();
+        List<Sound> out = new ArrayList<>();
+        var air = acoustics.field();
+        var rads = acoustics.radiators();
+        for (int i = 0; i < rads.size(); i++) {
+            var r = rads.get(i);
+            var tone = dev.emergence.core.acoustics.Tone.of(r, time(), 0.4, air.density(), air.soundSpeed());
+            if (tone != null && tone.rmsPressure() > 2e-4) out.add(new Sound(i, r.centre(), r.axis(), tone));
+        }
+        return out;
+    }
+
     /** Sound pressure [Pa] at a point [m] from the bodies moving on slides, now (0 when nothing can sound). */
     public double soundPressure(Vec3 x) {
         return acoustics == null ? 0 : acoustics.field().pressure(x, time(), null);

@@ -187,3 +187,6 @@ multimeter, oscilloscope/data logging.
   island (slide bearings within 8 blocks are joined). Nothing is played as sound in the game yet.
 * The loudspeaker exhibit (and any machine switched at audio rates) runs far slower than real time: every edge is
   resolved, and its thermal network is stepped with the electrical one.
+* In-game sound is a sonification: each sounding body's recent periodic motion is played as a looping tone at its
+  simulated pitch and level (not a recording of the simulated pressure, which would slow with the simulation);
+  aperiodic motion (a single impact) is silent; no near field, reflections or occlusion in what the player hears.

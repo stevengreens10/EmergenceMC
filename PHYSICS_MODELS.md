@@ -571,3 +571,15 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   temperatures of the last synchronisation. Heat crosses as the integral of what the fast elements delivered, so energy
   is exact to the integrators' error: a tungsten filament heating from cold ends within 0.01 K of single-rate stepping,
   energy error 5·10⁻⁹ J of 0.42 J.
+
+## Hearing it (`Tone`, `ToneSynth`, `ClientSounds`)
+* Every body on a slide that moves is analysed every fourth tick over its last 0.4 s of simulated motion: its
+  fundamental is the first strong peak of its velocity's autocorrelation (5 Hz – 5 kHz); its pressure waveform is the
+  Fourier series of up to 64 harmonics below 4 kHz of Ü (the velocity's harmonics, from a DFT over whole periods,
+  weighted by (2πkf)²: the far field follows Ü); its level the far-field rms pressure 1 m away on its axis,
+  ρ·M·Ü_rms/(4πc). A 440 Hz sinusoid gives 440.3 Hz and its dipole pressure to 0.6 %.
+* The client plays each as a streamed sound synthesised from that waveform (1024-point table, 16-bit, 44.1 kHz) at the
+  pressure the listener's ear receives — the dipole's p·|cos θ|/r with r the physical distance (blocks × the island's
+  metres per block) — placed at the body for stereo, Minecraft's distance fade off; 94 dB plays at half full scale.
+  It is a sonification at the true simulated pitch, not a recording: a machine simulated in slow motion still sounds
+  at its real frequency. The trembler buzzes at 7.9 Hz (47 dB at a metre), the loudspeaker sings at 261 Hz (54 dB).

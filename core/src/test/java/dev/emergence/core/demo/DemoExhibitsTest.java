@@ -1530,6 +1530,11 @@ class DemoExhibitsTest {
         }
         System.out.printf("trembler: pulled up %d times in 4 s, at%s s; peak coil current %.2f A; energy error %.3g J%n", ups, log, peak, c.energyError());
         assertTrue(ups >= 4, "it keeps cycling: " + ups);
+        // it buzzes: the armature's tone, at the rate it cycles
+        var sounds = c.sounds();
+        assertFalse(sounds.isEmpty(), "the armature sounds");
+        System.out.printf("  trembler sounds at %.2f Hz, %.1f dB at a metre%n", sounds.get(0).tone().frequency(), sounds.get(0).tone().level(1, 1));
+        assertEquals(ups / 4.0, sounds.get(0).tone().frequency(), 1.0, "at its cycling rate");
         assertTrue(c.probe(b.id(e, "diode")).temperature() < 400, "the flyback diode copes");
     }
 
@@ -1644,5 +1649,9 @@ class DemoExhibitsTest {
                 c.probe(b.id(e, "hold")).voltage(), 1e3 * c.probe(lit).current());
         assertTrue(micPeak > 1e-5, "the air sets the microphone's plate moving: " + micPeak);
         assertTrue(c.probe(lit).current() > 5e-3, "the microphone hears it: the LED lights");
+        var sounds = c.sounds();
+        var loudest = sounds.stream().max(java.util.Comparator.comparingDouble(s -> s.tone().rmsPressure())).orElseThrow();
+        System.out.printf("  the loudspeaker sounds at %.1f Hz, %.1f dB at a metre%n", loudest.tone().frequency(), loudest.tone().level(1, 1));
+        assertEquals(250, loudest.tone().frequency(), 15, "its note");
     }
 }

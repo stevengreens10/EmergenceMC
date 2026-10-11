@@ -1,0 +1,10 @@
+{
+  "tone": {
+    "sounds": [
+      {
+        "name": "emergence:tone",
+        "stream": true
+      }
+    ]
+  }
+}

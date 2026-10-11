@@ -258,6 +258,6 @@ public final class ControlExhibits {
         r.keepClear(4, 8, 5, 5, 8, 7);
         r.keepClear(5, 9, 4, 11, 15, 12);
         r.route();
-        return e.view(9, 9, 24, 22, 180);
+        return e.view(9, 13, 30, 18, 180);
     }
 }

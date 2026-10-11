@@ -706,3 +706,16 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * Tracing fix: light deposited on its way to a glass surface (absorbed by a mirror, or now by tinted glass) was
   counted once in each of the surface's reflected and transmitted branches; it is now shared between them as the
   light is, so it counts once.
+
+## Liquid flows between gas vessels (`LiquidDrain`)
+* Wherever two gas-holding parts of a network with condensables meet, their liquid pools are joined beside the gas
+  passage. Each pool stands at h = floor + V_l/A (a tank between its walls; an upright tube over its length; a lying
+  tube over its bore); the passage leaves each part at a port: an upward joint at the lower part's top and the upper
+  part's floor, a side joint at the passage's bottom.
+* The liquid moves by its weight: Δ = ρ_a g H_a − ρ_b g H_b + ρg(z_a − z_b) (H the depth above a port, z the ports'
+  heights), through the passage as an orifice, Q = 0.6·A·√(2|Δ|/ρ)·sgn Δ, joined to a laminar Q ∝ Δ below 30 Pa; only
+  what is there flows (scaled by H/(H + 1 mm)·V_l/(V_l + 10 µL) of the upstream side). It carries its pool's
+  composition and internal energy (elements and energy conserved; its potential energy falling is not tracked). A
+  shut valve stops it with the gas.
+* The gas pressure difference does not push the liquid: the gas passage sharing the way equalises it, and gas and
+  liquid pass independently — counting it coupled the liquid stiffly to the gas's pressure swings in small pipes.

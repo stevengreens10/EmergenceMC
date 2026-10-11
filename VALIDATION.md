@@ -365,6 +365,11 @@ Memory chip (`DemoExhibitsTest.memoryChipStoresWordsByAddress`): words 1010, 010
 read back at their addresses (word 0 stays 0000) on the LEDs, and word 3 still reads 1111 after the build is
 recompiled from its exported state.
 
+Liquid drains (`LiquidDrainTest`): two litre vessels joined at the floor, 36 mm of water in one, level out at
+18.07 / 18.07 mm with hydrogen conserved to 10⁻⁹ and energy to 10⁻⁶ J; a vessel 0.3 m up drains completely into one
+below, its liquid arriving at the ethanol fraction it left with (0.167). The still with drains: 0.19 mol of
+distillate at 43 % ethanol.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

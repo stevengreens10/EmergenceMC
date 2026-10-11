@@ -479,3 +479,10 @@ state (keyed per chip in the state's keyed store), so counters, registers and me
 a part nearby) and saving. The memory exhibit — address and data switches, a WRITE switch, four LEDs reading back —
 first shorted its supply: single-cell parts in a row touch their neighbours with their side leads; those now face
 away. (And the test first wrote nothing: `run(c, 0.02)` rounds to zero 50 ms steps.)
+
+**Liquids flow.** Liquid pools in gas vessels now drain between connected vessels by their weight — levels, depths over
+ports, the fall between ports — carrying composition and energy. Communicating vessels level out exactly. Fitting it
+into the still took three things: a dry pipe must pass nothing (its smoothed depth alone let 5 % through, and pools
+went negative); the gas pressure difference must not push the liquid (it coupled the liquid to millisecond gas swings
+in small pipes); and the gas passages' reversal blend, 10⁻⁶ mol/s, had to widen to 10⁻⁵ — the drains nudged the
+still's gas to and fro across zero, and Newton was flipping between the two ends' states (rejected steps 9451 → 18).

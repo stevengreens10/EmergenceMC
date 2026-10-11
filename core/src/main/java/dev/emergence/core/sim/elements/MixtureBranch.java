@@ -27,11 +27,12 @@ import java.util.List;
 public final class MixtureBranch implements Element {
     private static final double R = PhysicalConstants.GAS_CONSTANT;
     /**
-     * Width [mol/s] of the blend between the two ends' properties as the flow reverses: 10⁻⁶ mol/s (0.03 mg/s of air) —
+     * Width [mol/s] of the blend between the two ends' properties as the flow reverses: 10⁻⁵ mol/s (0.3 mg/s of air) —
      * negligible as a transport, but wide enough that Newton does not flip between the two states at every iteration
-     * when a passage carries almost nothing either way (both ends use the same blend, so nothing is lost).
+     * when a passage carries almost nothing either way (both ends use the same blend, so nothing is lost). 10⁻⁶ failed
+     * once liquids drained through a still's pipes, nudging their gas to and fro.
      */
-    private static final double Q_BLEND = 1e-6;
+    private static final double Q_BLEND = 1e-5;
 
     /** One end of the passage: a reacting-gas volume, or a reservoir of fixed pressure, temperature and composition. */
     public static final class End {

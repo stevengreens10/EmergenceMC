@@ -2556,8 +2556,45 @@ public final class AssemblyCompiler {
                                 mixtureValve(p, b);
                                 mixtureValve(q, b);
                                 c.network.add(b);
+                                if (condensables) {
+                                    // the liquid pools pass the same way, by their levels and weights
+                                    double[] sp = liquidSpace(p, gas.get(p.id())), sq = liquidSpace(q, gas.get(q.id()));
+                                    double portP, portQ;
+                                    if (d == Dir.UP) {
+                                        portP = sp[0] + sp[2];
+                                        portQ = sq[0];
+                                    } else if (d == Dir.DOWN) {
+                                        portP = sp[0];
+                                        portQ = sq[0] + sq[2];
+                                    } else {
+                                        portP = portQ = Math.max(y * CELL, Math.max(sp[0], sq[0]));
+                                    }
+                                    c.network.add(new LiquidDrain(gas.get(p.id()), sp[0], sp[1], portP, gas.get(q.id()), sq[0], sq[1], portQ, amin)
+                                            .gatedBy(b));
+                                }
                             }
             }
+        }
+
+        /**
+         * The space a liquid fills in a gas-holding part: {floor height [m], horizontal section [m²], height [m]} — a tank
+         * between its walls, an upright tube its length, a lying tube its bore (its volume spread over that height).
+         */
+        double[] liquidSpace(Part p, GasReactor g) {
+            double floor, height;
+            if (p.kind() == PartKind.TANK) {
+                double w = PartGeometry.wallThickness(p);
+                floor = p.minY() * CELL + w;
+                height = Math.max(p.boxSize(1) - 2 * w, 1e-3);
+            } else if (p.axis().axis() == 1) {
+                floor = p.minY() * CELL;
+                height = p.boxSize(1);
+            } else {
+                double bore = 2 * Math.sqrt(PartGeometry.passageArea(p) / Math.PI);
+                floor = p.center().y() - bore / 2;
+                height = bore;
+            }
+            return new double[]{floor, g.volume() / height, height};
         }
 
         /** Flow area through face d of part p in a mixture network (a valve's seat only on its +axis face). */

@@ -84,7 +84,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Flowing gas mixtures: choked orifices, natural draft, well-stirred combustion; gas burner exhibit
 ✅ Internal-combustion engine (four-stroke gas engine: cam-timed valves, half-speed camshaft, glow-plug ignition)
 ✅ Liquids in gas vessels with vapour–liquid equilibrium (Antoine, van Laar, Clausius–Clapeyron): boiling,
-   condensation, evaporative cooling; distillation (a still)
+   condensation, evaporative cooling; distillation (a still); liquid flows between vessels (drains, communicating
+   vessels)
 ⬜ Solutions of solids, crystallisation, filtration, other separation processes,
    manufacturing
 

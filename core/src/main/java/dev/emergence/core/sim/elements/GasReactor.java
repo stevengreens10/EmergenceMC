@@ -566,6 +566,12 @@ public final class GasReactor implements Element {
         return -1;
     }
 
+    /** Internal energy of a mole of species i's liquid at T [J/mol] (the vapour's, less the heat of vaporisation). */
+    public double liquidEnergy(int i, double t) {
+        for (int k = 0; k < cond.length; k++) if (cond[k] == i) return uLiquid(k, t);
+        return Double.NaN;
+    }
+
     @Override
     public String label() {
         return "GasReactor(" + volume + " m³)";

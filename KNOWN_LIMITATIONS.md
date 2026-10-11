@@ -203,3 +203,8 @@ multimeter, oscilloscope/data logging.
   ideal); the liquid stays in its vessel (no liquid flows, no drains); one temperature for liquid and vapour in a
   vessel; mass transfer at a fixed coefficient (no bubble nucleation, no superheating delays); liquid compressibility
   and vapour non-ideality ignored.
+* Aerodynamics: flat-plate polars only; no tip vortices or finite-span correction; a rotor's inflow is a uniform
+  actuator disc (no wake rotation, tip loss or radial variation), axial only (vertical-axis or yawed rotors get no
+  induction across their axis); blades on carried bodies and on the frame do nothing; blades do not shade each
+  other or other parts; the wind is uniform over a machine, modelled (not Minecraft's), and does not blow on
+  anything but blades (no drag on other parts, no wind loads on structures).

@@ -228,6 +228,12 @@ public final class AutoShowcase {
                     STEPS.add(new Step(60, () -> toggle(server.overworld(), at), "showcase-" + (i + 1) + "-" + id + "-" + sw));
                 }
             }
+            if (id.equals("windturbine")) {
+                // the wind (from the west, by the weather) turns the rotor up to speed
+                BlockPos shaftAt = DemoBuilder.partBlock(plot, e, "shaft");
+                STEPS.add(new Step(2400, () -> { }, "showcase-" + (i + 1) + "-" + id + "-turning",
+                        () -> Math.abs(wheelSpeed(server, shaftAt)) > 30));
+            }
             if (id.equals("weights")) {
                 // a hand on the crank: the beam spins up and the weights slide out against their springs
                 BlockPos crankAt = DemoBuilder.partBlock(plot, e, "crank"), shaftAt = DemoBuilder.partBlock(plot, e, "shaft");

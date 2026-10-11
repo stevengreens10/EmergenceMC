@@ -658,3 +658,25 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * The slide's springs, travel stops and bushing friction act on the relative coordinate x, and are only coupled to
   the rotor that carries it (a spring from the slide to the frame warns and is left out). Rams, racks, lead screws,
   electrical contacts, magnetics and sound do not act on carried slides.
+
+## Aerodynamics of blades (`Aerofoils`, part BLADE) and the wind
+* **Blade elements**: every cell of a BLADE part on a moving body (a rotor, or a slide) is a flat-plate aerofoil
+  element (chord c, plan area c·cell, span along the part's axis, chord in its "face" direction turned "pitch").
+  It meets the air at w = u_air − v_body (on a rotor v_body = ω n × (r − p), its pose turning with the rotor),
+  less the spanwise part. Angle of attack α = atan2(w·(s × c), w·c); lift ⟂ w along s × ŵ, drag along ŵ, each
+  ½ρ|w|²A times C_L = sin 2α·(1 + (π − 1)e^{−(sin α/0.25)²}) (2π slope to ~14°, flat-plate sin 2α beyond) and
+  C_D = C_D0 + 1.8 sin²α (C_D0 "drag", default 0.02). All quadrants (reversed flow, stall) are covered. No finite-span
+  (tip vortex) correction; the polar is a flat plate's (L/D ≈ 15–50), not a cambered aerofoil's.
+* **Inflow** (momentum theory, uniform actuator disc): a rotor's blades together push the air through their disc
+  (A = πR², R the outermost blade element's radius) with thrust T along the axis; the air through it moves at
+  u_n + v_i with v_i a solver unknown closed by Glauert's T = 2ρA·v_i·|u_n + v_i| (propeller and windmill states), and
+  for windmills slowing the air by more than 40 % Buhl's C_T = 8/9 + (4 − 40/9)a + (50/9 − 4)a² (C¹ with 4a(1 − a)).
+  Drag-free, the shaft power is −T(u_n + v_i): C_p = 4a(1 − a)² ≤ 16/27, the Betz limit. Neglected: wake rotation,
+  tip loss, radial variation of the inflow, induction across the axis (a rotor edge-on to the wind, a vertical-axis
+  turbine, gets none: overpredicted), and blades shading each other.
+* **Energy**: the air is an outside reservoir; the work it does on the body (torque × ω, force × v) is external
+  power in the ledger.
+* **The wind** (`Assembly.ambientWind`, uniform over a machine). In the world (Minecraft has none) it is modelled:
+  4.5 m/s at 10 m in clear weather, 8 in rain, 12 in thunder, from the west, veering ±25° over 20 minutes and gusting
+  ±15 % over tens of seconds, reduced near the ground by the neutral log profile u(h) = u₁₀ ln(h/z₀)/ln(10/z₀),
+  z₀ = 0.1 m, h the machine's middle above the ground beneath it (≥ 2 m).

@@ -171,7 +171,15 @@ public enum PartKind {
      * its apex (angle "apex" [°], default 60) pointing along "face" (a {@link Dir} ordinal across the axis); a steep
      * apex is truncated by the box. Light crossing it is bent towards the base, blue more than red (dispersion).
      */
-    PRISM(true, false);
+    PRISM(true, false),
+    /**
+     * Blade: a thin aerofoil plate, its span along the axis, its chord ("chord" [m], default 90 % of the box across)
+     * set in "face" (a {@link Dir} ordinal across the axis; default the first axis across it) and turned "pitch" [°]
+     * about the span, "thickness" [m] (default 10 % of the chord). Moving air (wind, or its own motion) lifts and drags
+     * it; on a turning body a set of blades is a propeller, fan or windmill — momentum theory gives their inflow.
+     * "drag": its profile drag coefficient at zero incidence (default 0.02).
+     */
+    BLADE(true, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

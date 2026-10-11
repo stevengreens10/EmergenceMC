@@ -237,6 +237,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case SPRING -> drawSpring(c, be, p, ez);
             case RACK -> drawRack(c, p, f, ex, ey, ez);
             case MIRROR -> drawMirror(c, p, f, ex, ey, ez);
+            case BLADE -> drawBlade(c, p, f, ez);
             case LENS -> drawLensCell(c, p);
             case NUT -> {
                 // a hexagon-ish bronze block round the screw, chamfered at its ends
@@ -608,6 +609,22 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
      * A mirror: a polished plate across its front normal (leaning by its tilt: a 45° mirror spans the box's diagonal),
      * or a dish whose surface follows the sphere the optics uses, its vertex at the back of the box.
      */
+    /** A blade: a thin plate along its span (model Z), its chord turned to the blade's pitch. */
+    private void drawBlade(Ctx c, PlacedPart p, Frame f, float ez) {
+        var cp = p.toCore(BlockPos.ZERO, 16);
+        var ch = dev.emergence.core.assembly.PartGeometry.bladeChordDirection(cp);
+        org.joml.Vector3f cm = new Matrix3f(f.m3).transpose().transform(new org.joml.Vector3f((float) ch.x(), (float) ch.y(), (float) ch.z()));
+        float chord = (float) (dev.emergence.core.assembly.PartGeometry.bladeChord(cp) / dev.emergence.core.assembly.Part.CELL);
+        float th = (float) Math.max(dev.emergence.core.assembly.PartGeometry.bladeThickness(cp) / dev.emergence.core.assembly.Part.CELL, 0.05);
+        TextureAtlasSprite s = PartModels.sprite("metal_cast");
+        c.ps.pushPose();
+        c.ps.mulPose(new Quaternionf().rotationZ((float) Math.atan2(cm.y, cm.x)));
+        box(c, s, tintOf(c, c.materialRgb), -chord / 2, -th / 2, -ez / 2 + 0.02f, chord / 2, th / 2, ez / 2 - 0.02f);
+        // a darker leading-edge strip, so the pitch reads at a glance
+        box(c, s, tintOf(c, darken(c.materialRgb, 0.6f)), chord / 2 - 0.08f, -th / 2 - 0.005f, -ez / 2 + 0.02f, chord / 2, th / 2 + 0.005f, ez / 2 - 0.02f);
+        c.ps.popPose();
+    }
+
     private void drawMirror(Ctx c, PlacedPart p, Frame f, float ex, float ey, float ez) {
         var cp = p.toCore(BlockPos.ZERO, 16);
         var n = dev.emergence.core.assembly.PartGeometry.mirrorNormal(cp);

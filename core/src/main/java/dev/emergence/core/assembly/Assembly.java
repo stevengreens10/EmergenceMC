@@ -21,6 +21,7 @@ public final class Assembly {
     private Predicate<Part> anchored = p -> false;
     private double ambientTemperature = 293.15;
     private double ambientPressure = 101_325;
+    private dev.emergence.core.math.Vec3 ambientWind = dev.emergence.core.math.Vec3.ZERO;
     private CellPredicate solid = (x, y, z) -> false;
 
     /** Tests a grid cell (global cell coordinates). */
@@ -102,6 +103,16 @@ public final class Assembly {
 
     public Assembly ambientTemperature(double t) {
         this.ambientTemperature = t;
+        return this;
+    }
+
+    /** The wind blowing past the assembly (world frame, uniform over it) [m/s]. */
+    public dev.emergence.core.math.Vec3 ambientWind() {
+        return ambientWind;
+    }
+
+    public Assembly ambientWind(dev.emergence.core.math.Vec3 w) {
+        this.ambientWind = w;
         return this;
     }
 

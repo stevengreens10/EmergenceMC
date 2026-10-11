@@ -81,6 +81,8 @@ public final class SimulationManager {
         final Map<Long, Integer> pushTicks = new HashMap<>();
         final Map<BlockPos, Integer> light = new HashMap<>();
         double ambient;
+        /** Height of the island's middle above the ground under it [m, world blocks]; −1 until found. */
+        double windHeight = -1;
         int resolution = AssemblyBlockEntity.MINIATURE;
         /** Simulated seconds per real second: below 1 when the island cannot keep up within its budget. */
         double timeScale = 1;
@@ -158,6 +160,7 @@ public final class SimulationManager {
             // it by an arbitrary one of its blocks made one straddling a chunk border run or freeze by chance)
             if (!anyTicking(isl)) continue;
             updateCranks(isl);
+            updateWind(isl);
             isl.near = nearPlayer(isl);
             List<Long> failed;
             long t0 = System.nanoTime();
@@ -750,6 +753,43 @@ public final class SimulationManager {
         if (!isl.compiled.setPushEffort(partId, player.isShiftKeyDown() ? -1 : 1)) return false;
         isl.pushTicks.put(partId, 6);
         return true;
+    }
+
+    /**
+     * The wind at an island. Minecraft has none, so it is modelled: 4.5 m/s at 10 m in clear weather, 8 in rain, 12 in
+     * a thunderstorm, from the west (veering ±25° over twenty minutes, gusting ±15 % over tens of seconds), less near
+     * the ground by the neutral log profile u(h) = u₁₀·ln(h/z₀)/ln(10/z₀) over open country (z₀ = 0.1 m), h the
+     * height of the machine's middle above the ground beneath it (at least 2 m).
+     */
+    private void updateWind(Island isl) {
+        if (isl.windHeight < 0) isl.windHeight = windHeight(isl);
+        double t = level.getGameTime() / 20.0;
+        double u10 = 4.5 + 3.5 * level.getRainLevel(1f) + 4.0 * level.getThunderLevel(1f);
+        double z0 = 0.1, u = u10 * Math.log(Math.max(isl.windHeight, 2) / z0) / Math.log(10 / z0);
+        double gust = 1 + 0.1 * Math.sin(2 * Math.PI * t / 37) + 0.05 * Math.sin(2 * Math.PI * t / 11.3 + 1.3);
+        double dir = Math.toRadians(25) * Math.sin(2 * Math.PI * t / 1200);
+        isl.compiled.setWind(new Vec3(u * gust * Math.cos(dir), 0, u * gust * Math.sin(dir)));
+    }
+
+    /** Height of an island's middle above the first non-machine block under its lowest block [blocks]. */
+    private double windHeight(Island isl) {
+        double sum = 0;
+        int minY = Integer.MAX_VALUE;
+        BlockPos low = null;
+        for (BlockPos b : isl.blocks) {
+            sum += b.getY();
+            if (b.getY() < minY) {
+                minY = b.getY();
+                low = b;
+            }
+        }
+        if (low == null) return 2;
+        int ground = minY - 1;
+        for (int k = 0; k < 256 && ground > level.getMinBuildHeight(); k++, ground--) {
+            BlockPos q = new BlockPos(low.getX(), ground, low.getZ());
+            if (!isl.blocks.contains(q) && !level.getBlockState(q).isAir()) break;
+        }
+        return sum / isl.blocks.size() + 0.5 - (ground + 1);
     }
 
     private void updateCranks(Island isl) {

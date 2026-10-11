@@ -91,7 +91,11 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Control parts: potentiometers (angle sensors/knobs with end stops), op-amps (single pole, slew, rails),
    gravity torque on unbalanced rotating bodies; a servo arm exhibit (PID position control); an electronic speed
    governor (tachogenerator, PI op-amp loop, Darlington drive) holding a brushed motor's speed against a brake
-⬜ Advanced EM, aerodynamics, multi-joint robots (joints on moving bodies), state-space control
+🟡 Aerodynamics: blades (flat-plate blade elements, all quadrants) on rotors and slides, momentum-theory inflow
+   (Glauert/Buhl; the Betz limit emerges), a modelled wind from the weather ✅; a wind turbine exhibit; wings on free
+   bodies, finite-span effects, cambered aerofoils, propeller thrust on vehicles ⬜
+🟡 Joints on moving bodies (a rotor on a slide, a slide on a rotor) ✅; multi-joint robots, linkages ⬜; state-space
+   control ⬜; advanced EM ⬜
 
 ## Phase 7–8 — Broad scientific expansion, continuous expansion
 ✅ Data logger / oscilloscope: 1 kHz sampling of any part, on-screen trace, CSV export

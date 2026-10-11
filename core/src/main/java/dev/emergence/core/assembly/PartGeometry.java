@@ -373,6 +373,7 @@ public final class PartGeometry {
             case BEARING -> 0.4 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
             case RACK -> 0.7 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // bar, half its tooth depth empty
             case NUT -> 0.5 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // hexagon less the threaded bore
+            case BLADE -> axialLength(p) * bladeChord(p) * bladeThickness(p) * 0.7; // an aerofoil fills ~70 % of its chord × thickness
             case MIRROR -> {
                 int ax = p.axis().axis();
                 double tilt = Math.toRadians(p.param("tilt", 0));
@@ -558,6 +559,30 @@ public final class PartGeometry {
         double d = p.param("wire", 0.002), dc = p.param("coil", 0.6 * transverseSize(p)), n = p.param("turns", 10);
         double g = p.material().get(dev.emergence.core.materials.MaterialProperty.SHEAR_MODULUS, 79e9);
         return g * d * d * d * d / (8 * dc * dc * dc * n);
+    }
+
+    /** A blade's chord [m]. */
+    public static double bladeChord(Part p) {
+        int ax = p.axis().axis();
+        return p.param("chord", 0.9 * p.boxSize((ax + 1) % 3));
+    }
+
+    /** A blade's thickness [m]. */
+    public static double bladeThickness(Part p) {
+        return p.param("thickness", 0.1 * bladeChord(p));
+    }
+
+    /**
+     * A blade's chord direction (unit; from its leading towards its trailing edge is not distinguished: a flat plate):
+     * its "face" direction across the span, turned "pitch" degrees about the span axis (right-handed).
+     */
+    public static Vec3 bladeChordDirection(Part p) {
+        Vec3 s = p.axis().vec();
+        int f = (int) Math.round(p.param("face", -1));
+        Vec3 ref = f >= 0 && f < Dir.values().length && Dir.values()[f].axis() != p.axis().axis() ? Dir.values()[f].vec()
+                : Vec3.axis((p.axis().axis() + 1) % 3);
+        double a = Math.toRadians(p.param("pitch", 0));
+        return ref.mul(Math.cos(a)).add(s.cross(ref).mul(Math.sin(a)));
     }
 
     public static double gravity() {

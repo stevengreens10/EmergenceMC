@@ -438,3 +438,11 @@ frame; centrifugal force, Coriolis and the spinning skater all follow. Tested fo
 (10⁻⁸) and for the spring-held radius k·x = m·ω²·r. The exhibit: two lead weights on a cranked beam, sliding out
 against their springs. First try welded the beam to the bearing below it (touching blocks weld): the shaft now
 runs a cell clear.
+
+**Blades and wind.** A new part, the blade: a flat aerofoil whose every cell is a blade element in the air moving past
+it, on any turning body or slide. A turning body's blades also get a momentum-theory inflow — one more solver unknown
+per rotor, the induced velocity, closing blade thrust against Glauert's 2ρAv|V+v| (Buhl beyond a = 0.4) — so the Betz
+limit holds without being written down. Minecraft has no wind, so there is a modelled one (weather, height, gusts,
+veering). The wind turbine exhibit: four flat blades and the magnet generator on its side; 8 W at 8 m/s. The flat
+plate's own drag holds C_p to ~0.48 at best (Betz 0.59), real enough for untwisted flat blades. An energy-ledger
+residue of 3·10⁻³ in that exhibit is the generator's (the blades' own closes to 10⁻⁹): queued.

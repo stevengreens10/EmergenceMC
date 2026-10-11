@@ -131,6 +131,8 @@ public final class CompiledAssembly {
     final Map<Long, List<dev.emergence.core.sim.elements.CoulombFriction>> brakeElements = new HashMap<>();
     final Map<Long, FluidBranch> rotorBranches = new HashMap<>();
     final List<Vent> vents = new ArrayList<>();
+    final List<dev.emergence.core.sim.elements.Aerofoils> aerofoils = new ArrayList<>();
+    final Map<Body, dev.emergence.core.sim.elements.Aerofoils> aeroOfBody = new HashMap<>();
     final Map<Long, dev.emergence.core.sim.elements.PistonCoupling> pistons = new HashMap<>();
     final Map<Long, Vec3> pistonLateral = new HashMap<>();
 
@@ -379,6 +381,18 @@ public final class CompiledAssembly {
      * A person turns (or stops turning) a crank: +1 / −1 for the direction, 0 to let go. The torque
      * follows the human force–velocity–power model inside the solver.
      */
+    /** Changes the wind blowing past the assembly [m/s] (its blades feel it from the next step). */
+    public void setWind(dev.emergence.core.math.Vec3 wind) {
+        assembly.ambientWind(wind);
+        double rho = dev.emergence.core.fluids.Air.density(assembly.ambientTemperature(), assembly.ambientPressure());
+        for (var af : aerofoils) af.setAir(wind, rho);
+    }
+
+    /** The air's forces on a body's blades, or null if it has none. */
+    public dev.emergence.core.sim.elements.Aerofoils aerofoils(Body b) {
+        return aeroOfBody.get(b);
+    }
+
     public void setCrankEffort(long crankPartId, int direction, boolean sprint) {
         var h = cranks.get(crankPartId);
         if (h == null) return;

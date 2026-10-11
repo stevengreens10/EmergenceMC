@@ -114,6 +114,7 @@ public final class AssemblyCompiler {
             buildWireRuns();
             buildThermal();
             buildMechanics();
+            buildAero();
             buildBrakes();
             buildFluids();
             buildJets();
@@ -774,6 +775,45 @@ public final class AssemblyCompiler {
                     continue;
                 }
                 c.cranks.put(p.id(), c.network.add(new HumanCrank(b.node, refR, PartGeometry.crankRadius(p))));
+            }
+        }
+
+        /**
+         * Blades: each moving body's blade cells become blade elements of one {@link Aerofoils} element (on a turning
+         * body with momentum-theory inflow through the disc its blades sweep). Blades on the frame feel the wind but
+         * move nothing; blades riding on a carried body are not modelled (a warning).
+         */
+        void buildAero() {
+            double rho = dev.emergence.core.fluids.Air.density(ambientT, a.ambientPressure());
+            for (CompiledAssembly.Body b : c.bodies) {
+                if (b.isStatic) continue;
+                List<Aerofoils.Foil> foils = new ArrayList<>();
+                double tip = 0;
+                for (long id : b.parts) {
+                    Part p = a.get(id);
+                    if (p.kind() != PartKind.BLADE) continue;
+                    if (b.carrier != null) {
+                        c.warnings.add("Blade #" + p.id() + " rides on a carried body: its aerodynamics are not modelled");
+                        continue;
+                    }
+                    Vec3 s = p.axis().vec(), ch = PartGeometry.bladeChordDirection(p);
+                    double chord = PartGeometry.bladeChord(p), cd0 = p.param("drag", 0.02);
+                    for (int x = p.minX(); x <= p.maxX(); x++)
+                        for (int y = p.minY(); y <= p.maxY(); y++)
+                            for (int z = p.minZ(); z <= p.maxZ(); z++) {
+                                Vec3 ctr = Part.cellCenter(x, y, z);
+                                foils.add(new Aerofoils.Foil(ctr, s, ch, chord * CELL, cd0));
+                                if (!b.slider) {
+                                    Vec3 d = ctr.sub(b.pivot);
+                                    tip = Math.max(tip, d.sub(b.axis.mul(d.dot(b.axis))).length() + CELL / 2);
+                                }
+                            }
+                }
+                if (foils.isEmpty()) continue;
+                Aerofoils af = c.network.add(new Aerofoils(b.node, b.tracker, !b.slider, b.axis, b.pivot, foils,
+                        b.slider ? 0 : Math.PI * tip * tip, rho, a.ambientWind()));
+                c.aerofoils.add(af);
+                c.aeroOfBody.put(b, af);
             }
         }
 

@@ -333,6 +333,15 @@ in gravity conserves energy to 10⁻⁸ (and angular momentum without gravity, 1
 (`DemoExhibitsTest.spinningWeightsGoOutUntilTheirSpringsHoldThem`): cranked to 15 rad/s, the weights go out 48.9 mm,
 spring force 193.3 N = m·ω²·r 193.3 N.
 
+Aerodynamics (`AerofoilsTest`): a flat plate at 5° in a 10 m/s wind is lifted by exactly ½ρV²A·C_L (C_L 0.503 against
+the thin-aerofoil 2πα 0.548); a windmill swept over tip-speed ratios 3–12 and pitches −6…6° never exceeds the
+momentum bound C_p ≤ 4a(1 − a)² ≤ 16/27 at its own induction, the best C_p 0.483 at λ 8 (Betz 0.593, less the flat
+blades' drag); a hovering propeller's induced velocity is exactly momentum theory's √(T/2ρA), figure of merit 0.58;
+a windmill braked by a damper closes its energy ledger to 3·10⁻⁹. The wind turbine exhibit
+(`DemoExhibitsTest.windTurbineTurnsInTheWindAndPowersItsLoad`): 8 m/s → 151 rad/s, 14.1 W from the wind (C_p 0.18),
+7.7 W in the load; 5 m/s → 86 rad/s, 2.6 W; still air → nothing. Its ledger closes to 3·10⁻³ (the generator's
+magnetic coupling; see NEXT_STEPS).
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

@@ -66,6 +66,8 @@
   "item.emergence.mirror": "Mirror",
   "tooltip.emergence.mirror": "A polished plate facing along its axis: light leaves at the angle it arrived. Concave mirrors bring parallel light to a focus at half their radius; 45° mirrors turn a beam through a right angle. Metal mirrors absorb what they do not reflect.",
   "item.emergence.prism": "Prism",
+  "item.emergence.blade": "Blade",
+  "tooltip.emergence.blade": "A thin aerofoil. Air meeting it at a small angle lifts it sideways (lift ~2π per radian of incidence until it stalls near 14°). Several on a shaft make a windmill or, driven, a propeller. Its chord lies along the direction it faces when placed, turned by its pitch.",
   "tooltip.emergence.prism": "A triangle of glass: light crossing it bends towards its base, by an angle that depends on the glass's index, which depends on colour — blue bends more than red. Dense flint spreads colours most.",
   "item.emergence.lens": "Lens",
   "tooltip.emergence.lens": "A disc of glass with spherical faces: refraction at each face (Snell's law) brings light to a focus, f from the lensmaker's equation. Blue focuses nearer than red; each face reflects about 4 %.",

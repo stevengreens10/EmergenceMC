@@ -1801,4 +1801,44 @@ class DemoExhibitsTest {
         assertEquals(centripetal, k * Math.abs(xa), 0.02 * centripetal, "the spring supplies the centripetal force");
         assertTrue(Math.abs(c.energyError()) < 1e-3 * ke, "energy ledger closes");
     }
+
+    /**
+     * Wind turbine: in a steady 8 m/s wind the blades' lift turns the rotor up to where the generator's braking balances
+     * it; it takes a fraction of the wind's power through its disc, below the Betz limit, and delivers it to the load.
+     * In 5 m/s it makes several times less (power ∝ V³); in still air it does not turn.
+     */
+    @Test
+    void windTurbineTurnsInTheWindAndPowersItsLoad() {
+        double[] power = new double[3], cp = new double[3];
+        double[] winds = {8, 5, 0};
+        for (int k = 0; k < 3; k++) {
+            Exhibit e = AeroExhibits.windTurbine();
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            // started near its running speed (a minute's spin-up skipped; still air: from rest)
+            double w0 = new double[]{140, 80, 0}[k];
+            b.state().bodyMotion().put(b.id(e, "shaft"), new double[]{w0, 0});
+            CompiledAssembly c = compile(e, b);
+            CompiledAssembly.Body rotor = c.bodyOf(b.id(e, "shaft"));
+            c.setWind(new dev.emergence.core.math.Vec3(winds[k], 0, 0));
+            var af = c.aerofoils(rotor);
+            assertNotNull(af, "the blades are aerofoils on the rotor");
+            run(c, winds[k] > 0 ? 25 : 2);
+            double load = 0, aero = 0;
+            for (int i = 0; i < 200; i++) {
+                c.step(0.05);
+                load += c.probe(b.id(e, "load")).power() / 200;
+                aero += af.generalisedForce(c.solverView()) * c.angularVelocity(rotor) / 200;
+            }
+            power[k] = load;
+            cp[k] = winds[k] > 0 ? aero / (0.5 * 1.2 * af.discArea() * Math.pow(winds[k], 3)) : 0;
+            System.out.printf("wind turbine at %.0f m/s: ω %.1f rad/s, from the wind %.2f W (C_p %.3f), load %.2f W; energy error %.2g of %.3g J in%n",
+                    winds[k], c.angularVelocity(rotor), aero, cp[k], load, c.energyError(), c.solver().externalEnergyIn());
+            // (the ledger integrates the wind's power at step ends: 2.5·10⁻³ over the spin-up in 50 ms chunks)
+            if (winds[k] > 0) assertTrue(Math.abs(c.energyError()) < 1e-2 * c.solver().externalEnergyIn(), "energy ledger closes");
+        }
+        assertTrue(power[0] > 3, "a few watts in a fresh breeze: " + power[0]);
+        assertTrue(cp[0] > 0.05 && cp[0] < 16.0 / 27, "a fraction of the wind's power, below Betz: " + cp[0]);
+        assertTrue(power[0] > 2.5 * power[1], "much less in a light wind (∝ V³): " + power[0] + " vs " + power[1]);
+        assertTrue(power[2] < 1e-6, "nothing in still air");
+    }
 }

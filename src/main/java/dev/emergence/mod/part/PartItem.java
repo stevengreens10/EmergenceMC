@@ -86,6 +86,7 @@ public final class PartItem extends Item {
             case MIRROR -> PartSpec.of("aluminium", 1, 1);
             case LENS -> PartSpec.of("glass_bk7", 1, 1);
             case PRISM -> PartSpec.of("glass_sf11", 1, 1, "apex", 45);
+            case BLADE -> PartSpec.of("aluminium_6061", 1, 1, "pitch", -10);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -152,6 +153,7 @@ public final class PartItem extends Item {
                     + (p.getOrDefault("tilt", 0.0) != 0 ? String.format(", leaning %.0f° %s", p.get("tilt"),
                     dev.emergence.core.assembly.Dir.values()[(int) Math.max(0, Math.min(5, Math.round(p.getOrDefault("tilt_toward", 0.0))))].name().toLowerCase()) : "");
             case LENS -> lensDetail(s);
+            case BLADE -> String.format(", pitch %.0f°", p.getOrDefault("pitch", 0.0));
             case PRISM -> String.format(", apex %.0f°", p.getOrDefault("apex", 60.0))
                     + (p.containsKey("face") ? " pointing " + dev.emergence.core.assembly.Dir.values()[(int) Math.round(p.get("face"))].name().toLowerCase() : "");
             case CHIP -> ", " + chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit")

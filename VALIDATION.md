@@ -350,6 +350,11 @@ mode levels off, for the primary, at 0.345 Wb, against N₁·B_sat·A_iron = 200
 0.358 Wb (4 %); the bank's 3 A would add 1.08 Wb unsaturated, the linkage stays at 0.43 Wb; energy error 1.6 mJ of the
 bank's 360 J.
 
+Optocoupler (`DemoExhibitsTest.optocouplerCarriesTheSignalAsLight`): a 940 nm LED at 16 mA emits 4.3 mW, 0.23 mW
+reaches the phototransistor's window, 55 µA of photocurrent (silicon ≈ 0.24 A/W there after the window's geometry)
+becomes 7.7 mA of collector current (×140, the transistor just saturated: V_CE 0.18 V), lighting the green LED; dark
+with the switch open, and again when it opens.
+
 ## In-world (`EmergenceGameTests`, GameTest server)
 Hand-cranked generator inside a real world heats its resistor; part persistence round trip; the demo
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the

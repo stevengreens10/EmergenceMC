@@ -1873,4 +1873,31 @@ class DemoExhibitsTest {
         assertTrue(power[0] > 2.5 * power[1], "much less in a light wind (∝ V³): " + power[0] + " vs " + power[1]);
         assertTrue(power[2] < 1e-6, "nothing in still air");
     }
+
+    /**
+     * Optocoupler: with the switch open both LEDs are dark; closed, the infrared LED's light makes a photocurrent at the
+     * phototransistor's collector–base junction which, multiplied by its gain, lights the green LED — across circuits
+     * that share no conductor.
+     */
+    @Test
+    void optocouplerCarriesTheSignalAsLight() {
+        Exhibit e = OpticsExhibits.optocoupler();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long ir = b.id(e, "ir"), green = b.id(e, "green"), photo = b.id(e, "photo");
+        run(c, 0.5);
+        assertTrue(c.lightOutput(green) < 1e-6, "dark with the switch open");
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 0.5);
+        var pd = c.receiver(photo);
+        double light = c.lightInput(photo), iph = Math.abs(pd.current(c.solverView())), ic = Math.abs(c.probe(photo).current());
+        System.out.printf("optocoupler: IR LED %.2f mW, %.3f mW at the window, photocurrent %.1f µA, collector %.2f mA (×%.0f), green LED %.3g W%n",
+                1e3 * c.lightOutput(ir), 1e3 * light, 1e6 * iph, 1e3 * ic, ic / iph, c.lightOutput(green));
+        assertTrue(light > 0, "the infrared light reaches the window");
+        assertTrue(ic > 30 * iph, "the transistor amplifies its photocurrent");
+        assertTrue(c.lightOutput(green) > 1e-4, "the green LED lights");
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 0.5);
+        assertTrue(c.lightOutput(green) < 1e-6, "and goes out with the switch");
+    }
 }

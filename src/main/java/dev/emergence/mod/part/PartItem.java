@@ -132,7 +132,8 @@ public final class PartItem extends Item {
             case ROTOR -> String.format(", %.0f° blades%s", p.getOrDefault("blade_angle", 45.0), p.getOrDefault("pitch", 1.0) < 0 ? ", left-hand" : "");
             case CYLINDER -> ", ⌀" + Units.formatSI(p.getOrDefault("bore", 0.04), "m") + (p.getOrDefault("fins", 0.0) > 0 ? ", finned" : "");
             case ECCENTRIC -> ", throw " + Units.formatSI(p.getOrDefault("throw", 0.015), "m");
-            case TRANSISTOR -> ", " + new String[]{"NPN", "PNP", "N-MOSFET", "P-MOSFET"}[(int) Math.max(0, Math.min(3, Math.round(p.getOrDefault("type", 0.0))))];
+            case TRANSISTOR -> ", " + new String[]{"NPN", "PNP", "N-MOSFET", "P-MOSFET"}[(int) Math.max(0, Math.min(3, Math.round(p.getOrDefault("type", 0.0))))]
+                    + (p.getOrDefault("photo", 0.0) > 0 ? " phototransistor" : "");
             case LED -> String.format(", %.0f nm", p.getOrDefault("wavelength", 630.0))
                     + (p.containsKey("face") ? ", facing " + dev.emergence.core.assembly.Dir.values()[(int) Math.round(p.get("face"))].name().toLowerCase() : "");
             case PHOTODIODE -> (p.getOrDefault("area", 7.5e-6) > 1e-3 ? ", solar cell " : ", ") + String.format("%.3g mm²", 1e6 * p.getOrDefault("area", 7.5e-6))

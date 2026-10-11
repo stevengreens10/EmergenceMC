@@ -62,7 +62,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    structural vibration), fatigue of the static frame, creep, plasticity, soil
 
 ## Phase 4 — Electronics and computation
-✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED, photodiode / solar cell; ⬜ phototransistors
+✅ Diode, BJT (Ebers–Moll), MOSFET (EKV), LED, photodiode / solar cell, phototransistor (optocoupler exhibit)
 ✅ Optical links with occlusion (light barriers, choppers on rotors) and daylight
 ✅ Logic from transistors (CMOS NAND exhibit) and a validated chip-level model (gates, D flip-flop,
    Schmitt trigger): oscillator + 4-bit counter exhibit

@@ -99,29 +99,40 @@ final class AssemblyOptics {
                     if (Double.isNaN(nd)) s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
                     else s.glass(p.id(), frame, lo, hi, nd, vd);
                 }
-                case PHOTODIODE -> {
-                    OpticalScene.Obj o = s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
-                    Vec3 f = PartGeometry.facing(p);
-                    int ax = Math.abs(f.x()) > 0.5 ? 0 : Math.abs(f.y()) > 0.5 ? 1 : 2;
-                    double area = c.deviceOfPart.get(p.id()) instanceof dev.emergence.core.sim.elements.Photodiode pd ? pd.area() : 7.5e-6;
-                    s.aperture(o, 2 * ax + (f.get(ax) > 0 ? 1 : 0), area);
+                case PHOTODIODE -> receiverWindow(s, c, p, frame, lo, hi, nm);
+                case TRANSISTOR -> {
+                    if (PartGeometry.isPhototransistor(p)) receiverWindow(s, c, p, frame, lo, hi, nm);
+                    else smallComponent(s, p, frame, lo, hi, nm);
                 }
-                default -> {
-                    // a small component (a resistor, a capacitor, a chip) shades and absorbs over its own body — a
-                    // cube of its volume in the middle of its cells — not over the whole cells it sits in
-                    if (p.kind().leaded) {
-                        double side = Math.cbrt(Math.max(PartGeometry.volume(p), 1e-12));
-                        Vec3 m = p.center();
-                        for (int k = 0; k < 3; k++) {
-                            double h = 0.5 * Math.min(side, hi[k] - lo[k]);
-                            lo[k] = m.get(k) - h;
-                            hi[k] = m.get(k) + h;
-                        }
-                    }
-                    s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
-                }
+                default -> smallComponent(s, p, frame, lo, hi, nm);
             }
         }
         return s;
+    }
+
+    /** A light-sensitive junction's part: it absorbs over its cells and receives through a window on its "face". */
+    private static void receiverWindow(OpticalScene s, CompiledAssembly c, Part p, int frame, double[] lo, double[] hi, double nm) {
+        OpticalScene.Obj o = s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
+        Vec3 f = PartGeometry.facing(p);
+        int ax = Math.abs(f.x()) > 0.5 ? 0 : Math.abs(f.y()) > 0.5 ? 1 : 2;
+        var pd = c.receiver(p.id());
+        s.aperture(o, 2 * ax + (f.get(ax) > 0 ? 1 : 0), pd != null ? pd.area() : 7.5e-6);
+    }
+
+    /**
+     * A small component (a resistor, a capacitor, a chip) shades and absorbs over its own body — a cube of its volume
+     * in the middle of its cells — not over the whole cells it sits in.
+     */
+    private static void smallComponent(OpticalScene s, Part p, int frame, double[] lo, double[] hi, double nm) {
+        if (p.kind().leaded) {
+            double side = Math.cbrt(Math.max(PartGeometry.volume(p), 1e-12));
+            Vec3 m = p.center();
+            for (int k = 0; k < 3; k++) {
+                double h = 0.5 * Math.min(side, hi[k] - lo[k]);
+                lo[k] = m.get(k) - h;
+                hi[k] = m.get(k) + h;
+            }
+        }
+        s.absorber(p.id(), frame, lo, hi, absorptance(p, nm));
     }
 }

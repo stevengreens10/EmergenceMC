@@ -73,6 +73,13 @@ public final class CompiledAssembly {
     final Map<Long, Node> thermalOfPart = new HashMap<>();
     final Map<Long, Node[]> leadsOfPart = new HashMap<>();   // {neg, pos} or {node}
     final Map<Long, Object> deviceOfPart = new HashMap<>(); // Resistor, Diode, Switch, Capacitor, MagneticSystem.Coil
+    /** A phototransistor's light-sensitive collector–base junction (its device is the transistor). */
+    final Map<Long, dev.emergence.core.sim.elements.Photodiode> photoJunction = new HashMap<>();
+
+    /** The junction that turns light arriving at this part into current: a photodiode's, a phototransistor's; or null. */
+    public dev.emergence.core.sim.elements.Photodiode receiver(long partId) {
+        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Photodiode pd ? pd : photoJunction.get(partId);
+    }
     final Map<Long, Double> failureTemp = new HashMap<>();
     final Map<Long, Double> crankTorque = new HashMap<>();
     final Map<Long, dev.emergence.core.sim.elements.HumanCrank> cranks = new HashMap<>();
@@ -442,7 +449,8 @@ public final class CompiledAssembly {
 
     /** A photodiode's coupling to hot parts seen through optics, per wavelength band [m²] (see {@code Photodiode#BAND_EDGES}). */
     public double[] spectralCoupling(long partId) {
-        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Photodiode pd ? pd.spectralCoupling() : null;
+        var pd = receiver(partId);
+        return pd != null ? pd.spectralCoupling() : null;
     }
 
     /** Register bits (or outputs, for chips without registers) of the chip a CHIP part belongs to, as 0..1 levels. */
@@ -544,6 +552,7 @@ public final class CompiledAssembly {
         if (!(irradiance > 0)) {
             if (absorbedLight != null) absorbedLight.clear();
             for (Object d : deviceOfPart.values()) if (d instanceof dev.emergence.core.sim.elements.Photodiode ph) ph.setAmbientPower(0);
+            for (var ph : photoJunction.values()) ph.setAmbientPower(0);
             return;
         }
         var r = sunlight(sunDirection.normalize());
@@ -554,6 +563,7 @@ public final class CompiledAssembly {
             if (!(e.getValue() instanceof dev.emergence.core.sim.elements.Photodiode ph)) continue;
             ph.setAmbientPower(exposed.test(e.getKey()) ? irradiance * r.light(e.getKey()) : 0);
         }
+        for (var e : photoJunction.entrySet()) e.getValue().setAmbientPower(exposed.test(e.getKey()) ? irradiance * r.light(e.getKey()) : 0);
     }
 
     /** Sunlight absorbed in a part [W] (as last set by {@link #setDaylight}). */
@@ -603,7 +613,8 @@ public final class CompiledAssembly {
 
     /** Light arriving at a photodiode [W], or 0. */
     public double lightInput(long partId) {
-        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Photodiode ph ? ph.incidentPower(solver) : 0;
+        var ph = receiver(partId);
+        return ph != null ? ph.incidentPower(solver) : 0;
     }
 
     /** Light emitted by a part (an LED) [W], 0 otherwise. */

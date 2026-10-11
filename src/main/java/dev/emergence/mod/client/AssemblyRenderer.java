@@ -270,7 +270,10 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             case VALVE -> drawModel(c, "valve", p, 1, 1, ez, false);
             case PIPE -> drawPipe(c, be, p, f);
             case ROTOR -> drawRotor(c, p, ex, ey, ez);
-            case TRANSISTOR -> drawModel(c, "transistor", p, 1, 1, 1, false);
+            case TRANSISTOR -> {
+                drawModel(c, "transistor", p, 1, 1, 1, false);
+                if (p.spec.params().getOrDefault("photo", 0.0) > 0) drawPhotoWindow(c, p, f);
+            }
             case LOGIC -> drawModel(c, "logic", p, 1, 1, 1, false);
             case LED -> drawModel(c, "led", p, 1, 1, 1, false);
             case CYLINDER -> {
@@ -692,6 +695,18 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
 
     /** Photodiode: a small black body with a clear window on its sensitive face; a large-area one is a blue solar
      *  cell with silver busbars. Drawn in grid axes, turned to face along "face". */
+    /** A phototransistor's window: a clear lens on the face it looks out of. */
+    private void drawPhotoWindow(Ctx c, PlacedPart p, Frame f) {
+        int fi = (int) Math.max(0, Math.min(5, Math.round(p.spec.params().getOrDefault("face", 1.0))));
+        Dir face = Dir.values()[fi];
+        c.ps.pushPose();
+        c.ps.last().pose().mul(new Matrix4f(f.m4).transpose());
+        c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
+        c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f(face.dx, face.dy, face.dz)));
+        box(c, PartModels.sprite("silicon"), tintOf(c, 0x9FB8D8), -0.1f, -0.1f, 0.2f, 0.1f, 0.1f, 0.26f);
+        c.ps.popPose();
+    }
+
     private void drawPhotodiode(Ctx c, PlacedPart p, Frame f) {
         int fi = (int) Math.max(0, Math.min(5, Math.round(p.spec.params().getOrDefault("face", 1.0))));
         Dir face = Dir.values()[fi];

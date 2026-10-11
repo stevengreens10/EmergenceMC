@@ -366,4 +366,52 @@ public final class OpticsExhibits {
         r.route();
         return e.view(15, 8, 21, 30, 180);
     }
+
+    /**
+     * An optocoupler: an infrared LED shining on a phototransistor right against it. The two circuits share no
+     * conductor; the switch in one lights the indicator in the other, the signal crossing as light. The phototransistor's
+     * photocurrent is its base current, multiplied by its gain.
+     */
+    public static Exhibit optocoupler() {
+        Exhibit e = new Exhibit("optocoupler", "Optocoupler",
+                List.of("OPTOCOUPLER", "Close the switch:", "light carries it", "across the gap"),
+                "Two separate circuits, each with its own battery, joined by no wire. On the left, the switch sends "
+                        + "current through an infrared LED (940 nm, invisible). Against it sits a phototransistor: a "
+                        + "transistor whose collector-base junction lies under a window, so the light makes a tiny "
+                        + "photocurrent there — and that photocurrent is the transistor's base current, amplified 150 "
+                        + "times into collector current. Enough flows to light the green LED on the right. Signals cross "
+                        + "this way between circuits at very different voltages (a mains-powered controller and a "
+                        + "computer), since light needs no conductor.");
+        // the infrared LED (leads top and bottom), facing the phototransistor's window to the east
+        e.name("ir", e.add(LED, "silicon", 6, 1, 8, Dir.DOWN, "wavelength", 940, "face", Dir.EAST.ordinal(), "lead_axis", 2));
+        // the phototransistor: collector up, emitter down, its base left unconnected; window facing west
+        e.name("photo", e.add(TRANSISTOR, "silicon", 7, 1, 8, Dir.UP, "type", 0, "photo", 7.5e-6, "face", Dir.WEST.ordinal(),
+                "lead_axis", 2));
+        // input circuit: 3 V bank, switch, 100 ohm
+        int bank1 = e.add(CAPACITOR, "alumina", 2, 0, 4, Dir.EAST, "capacitance", 50);
+        e.init(bank1, new Exhibit.Initial(Double.NaN, 0, 3));
+        e.name("switch", e.add(SWITCH, "brass", 2, 0, 12, Dir.EAST));
+        e.add(RESISTOR, "alumina", 4, 0, 14, Dir.EAST, "resistance", 100);
+        // output circuit: 5 V bank, green LED, 330 ohm, the phototransistor
+        int bank2 = e.add(CAPACITOR, "alumina", 12, 0, 4, Dir.EAST, "capacitance", 50);
+        e.init(bank2, new Exhibit.Initial(Double.NaN, 0, 5));
+        e.name("green", e.add(LED, "silicon", 12, 0, 12, Dir.WEST, "wavelength", 530));
+        e.add(RESISTOR, "alumina", 10, 0, 8, Dir.EAST, "resistance", 330);
+        Router r = new Router(e, 0, 0, 2, 15, 3, 15);
+        // the base's and the LED's side leads stay bare
+        for (int x = 6; x <= 7; x++) {
+            r.keepClear(x, 1, 7, x, 1, 7);
+            r.keepClear(x, 1, 9, x, 1, 9);
+        }
+        r.pin("i1", 3, 0, 4).pin("i1", 3, 0, 12);
+        r.pin("i2", 1, 0, 12).pin("i2", 3, 0, 14);
+        r.pin("i3", 5, 0, 14).pin("i3", 6, 2, 8);
+        r.pin("i4", 6, 0, 8).pin("i4", 1, 0, 4);
+        r.pin("o1", 13, 0, 4).pin("o1", 13, 0, 12);
+        r.pin("o2", 11, 0, 12).pin("o2", 11, 0, 8);
+        r.pin("o3", 9, 0, 8).pin("o3", 7, 2, 8);
+        r.pin("o4", 7, 0, 8).pin("o4", 11, 0, 4);
+        r.route();
+        return e.view(7, 4, 16, 18);
+    }
 }

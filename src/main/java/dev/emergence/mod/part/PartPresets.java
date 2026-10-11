@@ -111,6 +111,8 @@ public final class PartPresets {
         for (double t : new double[]{0.01, 0.015, 0.02}) l.add(stack(PartKind.ECCENTRIC, PartSpec.of("steel_1045", 1, 1, "throw", t)));
         // semiconductors
         for (int type = 0; type < 4; type++) l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", type)));
+        // NPN phototransistors: the window looking up, or sideways
+        for (int face : new int[]{1, 2, 4}) l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 0, "photo", 7.5e-6, "face", face)));
         for (double nm : new double[]{630, 590, 525, 470}) l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", nm)));
         l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10)));
         l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10e-6)));

@@ -459,3 +459,9 @@ Faraday ring turned out to be run past saturation by its own 3 A: its core level
 = 0.358 Wb by hand, and its make pulse is now cut short by it, as a real one would be. A saturable-reactor timer
 exhibit was sketched and dropped: with electrical steel the magnetising current before saturation is as large as an
 LED's; it wants permalloy.
+
+**Phototransistors and an optocoupler.** A bipolar transistor with a "photo" window gets a photodiode across its
+collector–base junction: the photocurrent is base current. Every light path that reached photodiodes (LEDs, ray
+optics, daylight, hot bodies) now reaches a "receiver", photodiode or phototransistor alike. The optocoupler exhibit:
+two circuits with no common conductor, an infrared LED against a phototransistor; 55 µA of photocurrent switches
+7.7 mA. First wiring had both LEDs backwards (an LED's anode is its −axis end).

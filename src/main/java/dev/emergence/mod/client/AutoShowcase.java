@@ -228,6 +228,11 @@ public final class AutoShowcase {
                     STEPS.add(new Step(60, () -> toggle(server.overworld(), at), "showcase-" + (i + 1) + "-" + id + "-" + sw));
                 }
             }
+            if (id.equals("optocoupler")) {
+                // close the input's switch: the invisible infrared crosses to the phototransistor; the green LED lights
+                BlockPos sw = DemoBuilder.partBlock(plot, e, "switch"), led = DemoBuilder.partBlock(plot, e, "green");
+                STEPS.add(new Step(200, () -> toggle(server.overworld(), sw), "showcase-" + (i + 1) + "-" + id + "-on", () -> ledLit(led)));
+            }
             if (id.equals("windturbine")) {
                 // the wind (from the west, by the weather) turns the rotor up to speed
                 BlockPos shaftAt = DemoBuilder.partBlock(plot, e, "shaft");

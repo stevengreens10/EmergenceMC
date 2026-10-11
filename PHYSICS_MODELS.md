@@ -685,3 +685,11 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   4.5 m/s at 10 m in clear weather, 8 in rain, 12 in thunder, from the west, veering ±25° over 20 minutes and gusting
   ±15 % over tens of seconds, reduced near the ground by the neutral log profile u(h) = u₁₀ ln(h/z₀)/ln(10/z₀),
   z₀ = 0.1 m, h the machine's middle above the ground beneath it (≥ 2 m).
+
+## Phototransistors (TRANSISTOR with "photo")
+* An NPN (or PNP) bipolar transistor whose collector–base junction lies under a window ("photo": its area [m²],
+  "face": the side it looks out of) is a photodiode across base and collector (`Photodiode`, the same responsivity,
+  LED, daylight and hot-body couplings as the PHOTODIODE part) in parallel with the Ebers–Moll transistor: the
+  photocurrent, collector → base, is base current, so the collector carries β times it until the transistor
+  saturates. The enlarged junction's capacitance (≈ 70 pF per 7.5 mm²) sits base–collector, Miller-multiplied: what
+  makes phototransistors slow. An LED facing one is an optocoupler: the two circuits share no conductor.

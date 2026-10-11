@@ -585,6 +585,11 @@ public final class PartGeometry {
         return ref.mul(Math.cos(a)).add(s.cross(ref).mul(Math.sin(a)));
     }
 
+    /** True for a bipolar transistor with a light window over its collector–base junction ("photo": its area [m²]). */
+    public static boolean isPhototransistor(Part p) {
+        return p.kind() == PartKind.TRANSISTOR && p.param("photo", 0) > 0 && Math.round(p.param("type", 0)) <= 1;
+    }
+
     public static double gravity() {
         return PhysicalConstants.STANDARD_GRAVITY;
     }

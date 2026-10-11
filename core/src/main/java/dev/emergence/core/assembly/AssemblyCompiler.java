@@ -1467,6 +1467,15 @@ public final class AssemblyCompiler {
                                     p.param("beta", 150), p.param("beta_r", 2), p.param("early_voltage", 75), th));
                             c.network.add(new Capacitor(gate, l[0], p.param("c_be", 18e-12)));
                             c.network.add(new Capacitor(gate, l[1], p.param("c_bc", 4e-12)));
+                            if (PartGeometry.isPhototransistor(p)) {
+                                // a phototransistor: its collector–base junction, enlarged under a window, is a photodiode
+                                // whose photocurrent (collector → base) is the base current the transistor amplifies;
+                                // the big junction's capacitance (Miller-multiplied) is what makes it slow
+                                double area = p.param("photo", 0);
+                                Node anode = type == 1 ? l[1] : gate, cathode = type == 1 ? gate : l[1];
+                                c.photoJunction.put(p.id(), c.network.add(new Photodiode(anode, cathode, area, th)));
+                                c.network.add(new Capacitor(gate, l[1], Math.max(5e-12, 70e-12 * area / 7.5e-6)));
+                            }
                         } else {
                             // small-signal MOSFET (2N7000/BS250 class); gate capacitances C_gs, C_gd
                             boolean pch = type == 3;
@@ -1913,14 +1922,15 @@ public final class AssemblyCompiler {
             List<Part> leds = new ArrayList<>(), pds = new ArrayList<>();
             for (Part p : parts) {
                 if (p.kind() == PartKind.LED) leds.add(p);
-                if (p.kind() == PartKind.PHOTODIODE) pds.add(p);
+                if (p.kind() == PartKind.PHOTODIODE || PartGeometry.isPhototransistor(p)) pds.add(p);
             }
             if (!pds.isEmpty()) buildIncandescence(pds);
             if (leds.isEmpty()) return;
             buildRayOptics(leds, pds);
             if (pds.isEmpty()) return;
             for (Part rx : pds) {
-                if (!(c.deviceOfPart.get(rx.id()) instanceof Photodiode pd)) continue;
+                Photodiode pd = c.receiver(rx.id());
+                if (pd == null) continue;
                 // the junction's window lies on the sensitive face (as the ray tubes see it)
                 Vec3 fr = PartGeometry.facing(rx);
                 int fa = Math.abs(fr.x()) > 0.5 ? 0 : Math.abs(fr.y()) > 0.5 ? 1 : 2;
@@ -2025,7 +2035,7 @@ public final class AssemblyCompiler {
                 if (res == null) continue;
                 for (Part rx : pds) {
                     double f = res.light(rx.id());
-                    if (f > 1e-12 && c.deviceOfPart.get(rx.id()) instanceof Photodiode pd) pd.addSource(led, th -> f, null);
+                    if (f > 1e-12 && c.receiver(rx.id()) != null) c.receiver(rx.id()).addSource(led, th -> f, null);
                 }
             }
         }
@@ -2039,7 +2049,8 @@ public final class AssemblyCompiler {
         void buildIncandescence(List<Part> pds) {
             dev.emergence.core.optics.OpticalScene scene = null;
             for (Part rx : pds) {
-                if (!(c.deviceOfPart.get(rx.id()) instanceof Photodiode pd)) continue;
+                Photodiode pd = c.receiver(rx.id());
+                if (pd == null) continue;
                 Vec3 fr = PartGeometry.facing(rx);
                 int fa = Math.abs(fr.x()) > 0.5 ? 0 : Math.abs(fr.y()) > 0.5 ? 1 : 2;
                 Vec3 r0 = rx.center().add(fr.mul(0.5 * rx.boxSize(fa)));
@@ -2125,7 +2136,8 @@ public final class AssemblyCompiler {
                     }
                 }
                 for (var en : g.entrySet()) {
-                    if (!(c.deviceOfPart.get(en.getKey()) instanceof Photodiode pd)) continue;
+                    Photodiode pd = c.receiver(en.getKey());
+                    if (pd == null) continue;
                     double[] gb = en.getValue();
                     double peak = 0;
                     for (int b = 0; b < nb; b++) peak = Math.max(peak, gb[b] * Photodiode.bandCurrent(b, tMax));

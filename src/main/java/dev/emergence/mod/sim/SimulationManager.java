@@ -197,7 +197,7 @@ public final class SimulationManager {
             bubbles(isl);
             ventPlumes(isl);
             if (tickCount % 20 == 0) daylight(isl);
-            if (tickCount % 400 == 0 && Boolean.getBoolean("emergence.debugIslands") && isl.compiled.sunlightAbsorbed() > 100) {
+            if (tickCount % 400 == 0 && Boolean.getBoolean("emergence.debugIslands") && (isl.compiled.sunlightAbsorbed() > 100 || isl.costMs > 1)) {
                 long hot = isl.partPos.keySet().stream().max(java.util.Comparator.comparingDouble(isl.compiled::temperature)).orElse(-1L);
                 EmergenceMod.LOG.info("Island at {}: t = {} s, time scale {}, {} ms/step, hottest {} at {} K", isl.blocks.iterator().next(),
                         Math.round(isl.compiled.time()), String.format("%.3f", isl.timeScale * scaleOf(isl)), String.format("%.1f", isl.costMs),

@@ -83,6 +83,13 @@ out of sight. In-world tests and demo generation lift both budgets (they test ti
   chosen: the gas engine went from ~12× slower than real time to real time over its first seconds (≈ 2.5–4× at
   1100–2000 rpm, ten combustion events a second).
 
+* Sparse LU pivot test, second half: the backstop against a pivot's own U row was still absolute (|d| > 10⁻¹⁴ of the
+  row's largest entry). Threshold pivoting chooses by column, so on the burner's mixed-unit rows Markowitz picked a
+  pivot ~10⁻¹⁵ of its row, the next refactorisation rejected it, and the fresh factorisation picked it again — 29 055
+  full factorisations against 63 083 refactorisations over 240 s of burner, almost all while heating and lighting.
+  The row share is now judged against its share when the order was chosen (a 10⁸-fold collapse fails, as for the
+  pivot itself): burner exhibit test 48 → 16 s for 240 simulated seconds (≈ 3 ms a 50 ms step).
+
 * Sunlight tracing (`DemoExhibitsTest.sunlightTracingCostPerExhibit`): 1–70 ms per exhibit, 158 ms for the solar
   furnace's 169 facets, 0.75 s for the whole gallery; repeated only when the sun moves half a degree (3 s of a
   Minecraft day) or a body carrying optics moves — never in the noon-fixed demo world. LED ray tubes at compile:

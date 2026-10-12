@@ -804,14 +804,16 @@ class DemoExhibitsTest {
         CompiledAssembly c = compile(e, b);
         var ch = dev.emergence.core.chem.Chemistry.standard();
         long chamber = b.id(e, "chamber"), top = b.id(e, "chimney");
-        // as a gas furnace lights: igniter first, then the gas, then the igniter off
+        // as the tour lights it: igniter and gas together, the igniter off after a minute
         c.toggleSwitch(b.id(e, "switch"));
-        for (int i = 0; i < 4800; i++) {
-            if (i == 1200) c.toggleSwitch(b.id(e, "valve"));  // fuel on after a minute
-            if (i == 2400) c.toggleSwitch(b.id(e, "switch")); // igniter off after 2
+        c.toggleSwitch(b.id(e, "valve"));
+        double litAt = -1;
+        for (int i = 0; i < 3600; i++) {
+            if (i == 1200) c.toggleSwitch(b.id(e, "switch"));
             var broken = c.step(0.05);
             assertTrue(broken.isEmpty(), "no part fails: " + broken);
-            if (i == 2300) {
+            if (litAt < 0 && c.gas(chamber).temperature(c.solverView()) > 1300) litAt = 0.05 * (i + 1);
+            if (i == 1100) {
                 for (var el : c.network().elements()) if (el instanceof dev.emergence.core.sim.elements.MixtureBranch mb)
                     System.out.printf("burner flow %s: %.3g mol/s%n", mb.label(), mb.molarFlow(c.solverView()));
                 for (var en : java.util.List.of("chamber", "chimney", "fuel")) {
@@ -819,7 +821,7 @@ class DemoExhibitsTest {
                     System.out.printf("burner gas %s: %.0f K, p %.1f Pa%n", en, gg.temperature(c.solverView()), gg.pressure(c.solverView()));
                 }
             }
-            if (i % 600 == 0 || i == 4799) {
+            if (i % 600 == 0 || i == 3599) {
                 var g = c.gas(chamber);
                 var s = c.solverView();
                 System.out.printf("burner t=%.0f s chamber %.0f K wall %.0f K, CH4 %.2f%% O2 %.1f%% CO2 %.1f%%; chimney top %.0f K CO2 %.1f%%, fuel %.1f bar%n",
@@ -829,6 +831,8 @@ class DemoExhibitsTest {
                         100 * c.gas(top).moleFraction(s, g.indexOf(ch.species("CO2"))), c.gas(b.id(e, "fuel")).pressure(s) / 1e5);
             }
         }
+        System.out.printf("burner lit at %.1f s%n", litAt);
+        assertTrue(litAt > 0 && litAt < 60, "lights within the minute the tour waits: " + litAt);
         var g = c.gas(chamber);
         assertTrue(g.temperature(c.solverView()) > 1100, "still burning with the heater off: " + g.temperature(c.solverView()));
         assertTrue(c.gas(top).moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))) > 0.02, "CO2 goes up the chimney");

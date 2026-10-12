@@ -153,9 +153,8 @@ public final class AutoShowcase {
                 }));
             }
             if (id.equals("burner")) {
-                // igniter and fuel together (the methane lights on the walls as they come up to temperature), the chamber
-                // on the logger; one shot when it burns, or after two minutes whatever the island's pace (it costs about
-                // its real-time budget, so in a busy gallery it runs in slow motion — the tour must not wait on it)
+                // igniter and fuel together (the methane lights on the walls as they come up to temperature, ~50 s), the
+                // chamber on the logger; one shot when it burns, or after two minutes whatever the server's pace
                 BlockPos chamberAt = DemoBuilder.partBlock(plot, e, "chamber");
                 STEPS.add(new Step(2400, () -> {
                     ServerPlayer p = server.getPlayerList().getPlayers().get(0);
@@ -415,6 +414,10 @@ public final class AutoShowcase {
 
     /** The burner chamber's wall (or, with {@code gas}, its gas) temperature, read from the integrated server. */
     private static double chamber(net.minecraft.server.MinecraftServer server, BlockPos at, boolean gas) {
+        return onServer(server, "chamber" + gas + at, () -> chamberNow(server, at, gas));
+    }
+
+    private static double chamberNow(net.minecraft.server.MinecraftServer server, BlockPos at, boolean gas) {
         if (!(server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be)) return 0;
         PlacedPart ch = find(be, PartKind.TANK);
         var c = ch == null ? null : SimulationManager.get(server.overworld()).compiledAt(at);
@@ -426,11 +429,36 @@ public final class AutoShowcase {
 
     /** Angular velocity of the body turning the shaft in this block, read from the integrated server [rad/s]. */
     private static double wheelSpeed(net.minecraft.server.MinecraftServer server, BlockPos at) {
+        return onServer(server, "wheel" + at, () -> wheelSpeedNow(server, at));
+    }
+
+    private static double wheelSpeedNow(net.minecraft.server.MinecraftServer server, BlockPos at) {
         if (!(server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be)) return 0;
         PlacedPart sh = find(be, PartKind.SHAFT);
         var c = sh == null ? null : SimulationManager.get(server.overworld()).compiledAt(at);
         if (c == null || c.bodyOf(sh.id) == null) return 0;
         return c.angularVelocity(c.bodyOf(sh.id));
+    }
+
+    private static final java.util.Map<String, Double> READINGS = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Set<String> PENDING = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * A reading of server state for a step's condition, which the tour checks on the client thread: a server level
+     * hands out no block entities off its own thread (they read as null — the burner's condition never held, and the
+     * tour sat out its whole wait), so the reading is taken on the server thread. Returns the latest finished reading
+     * (NaN before the first: no comparison holds) and queues a fresh one.
+     */
+    private static double onServer(net.minecraft.server.MinecraftServer server, String key, java.util.function.DoubleSupplier read) {
+        if (server.isSameThread()) return read.getAsDouble();
+        if (PENDING.add(key)) server.execute(() -> {
+            try {
+                READINGS.put(key, read.getAsDouble());
+            } finally {
+                PENDING.remove(key);
+            }
+        });
+        return READINGS.getOrDefault(key, Double.NaN);
     }
 
     /** True once the block's chunk section is drawn on the client and its machine is compiled on the server. */
@@ -493,6 +521,7 @@ public final class AutoShowcase {
             }
             index++;
             wait = -1;
+            READINGS.clear(); // a step's condition starts from fresh readings
         }
     }
 }

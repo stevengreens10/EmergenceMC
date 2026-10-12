@@ -500,3 +500,15 @@ Two more from the same pass: faces spanning a whole cell sampled one texel colum
 frac(x + ½), and frac(1) wraps to 0), streaking every flush face — the joined tanks showed it, one inset corner block
 looking lighter than the rest; and a tour jumping far (showcaseOnly) photographed exhibits before their chunks had
 drawn — the first look now waits for the section to be compiled and the island simulated.
+
+**The burner, again.** Still too slow in the tour. A profile put two thirds of its time in the full sparse
+factorisation (boxed hash maps), and counting showed why: the refactorisation's row-share backstop was absolute, so a
+pivot ~10⁻¹⁵ of its row — the best its column offered — failed every solve and was chosen again by the factorisation
+that followed. Judged relative to its share at factorisation, the burner runs 3× faster (whole suite unchanged). And
+it lights sooner: a 2 Ω element (4.6 kW from the bank, peaking near 1500 K) brings the walls to light-off in 48 s
+with igniter and gas switched on together, as the tour does; below 1.5 Ω its leads burn out. Its test now follows
+the tour's schedule and checks that it lights within the minute.
+The tour, meanwhile, had never seen it light: its conditions are checked on the client thread, and a server level hands
+out no block entities off its own thread — the burner's "chamber above 1300 K" (and the governor's wheel speeds) read 0
+until the step's cap ran out. They are now read on the server thread; the burner's shot comes 49 s after switch-on.
+

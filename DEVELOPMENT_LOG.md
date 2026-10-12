@@ -552,4 +552,6 @@ then showed what had been hidden: both stalled within a minute — the fire was 
 cylinder wall cooled below the steam's saturation temperature so each admission condensed. A heating element on mica
 under the boiler and a jacket element on the cylinder fixed both (the jacket's history is Watt's). The condensing
 engine now carries twice the atmospheric engine's brake at the same 107 rad/s.
+A feed pump to close the cycle did not converge yet (open elbow ends, a kinked check-valve lift, flow reversal in
+two-phase lines, a cavitating pump on 19 cm of suction head) — recorded in NEXT_STEPS item 6 and reverted.
 

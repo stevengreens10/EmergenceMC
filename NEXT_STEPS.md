@@ -22,7 +22,14 @@ regenerate the demo world → screenshot tour → docs → commit.
    event-driven simulation for large gate counts.
 6. **Steam and heat engines**: (a condensing engine is in — Watt's separate condenser; and the engines run on a
    sustained fire with a jacketed cylinder) a feed pump to return the condensate to the boiler (a crank-driven
-   plunger between check valves: the closed Rankine cycle), a water-cooled condenser (its copper blocks only soak up
+   plunger between check valves: the closed Rankine cycle). First try (a 6 mm plunger on its own eccentric under the
+   crankshaft, suction from the condenser's floor, delivery into the boiler's back): every elbow's straight-on end
+   vented to the air until capped (the boiler blew down through the feed line at 10 g/s); a check valve's lift had a
+   slope jump at the seat (a C¹ clamp helped); then the delivery line's flows two-cycled near zero flow — the upwind
+   density in the flow law switching between liquid and vapour where a line pipe beside the heater flashed — and the
+   pump cavitated: saturated 40 °C condensate at 7 kPa with 19 cm of head vapour-locks it (real condensate pumps have
+   metres of suction head, or the condensate is subcooled). Needs: a smooth density blend across flow reversal in
+   two-phase pipes, a subcooled hotwell below the condenser, and the pump well below it; a water-cooled condenser (its copper blocks only soak up
    the heat, so it warms over minutes); liquid level shown in tanks; multi-stage turbines and nozzles (a working
    Brayton cycle); the engines' cost (≈ 1.5× real time at ~110 rad/s, some 80 steps a revolution).
 7. **Chemical engineering**: (a still and a reflux column at total reflux are in — trays are tanks with a "weir")

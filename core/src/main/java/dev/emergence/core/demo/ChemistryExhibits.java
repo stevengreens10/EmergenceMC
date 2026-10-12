@@ -257,7 +257,7 @@ public final class ChemistryExhibits {
         r.pin("sw", 7, 0, 13).pin("sw", 4, 0, 8);
         r.pin("ret", 2, 0, 8).pin("ret", 2, 0, 13);
         r.route();
-        return e.view(6, 5, 15, 20);
+        return e.view(6, 7, 19, 18);
     }
 
     private static Object[] cat(Object[] a, Object[] b) {

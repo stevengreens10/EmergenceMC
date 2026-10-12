@@ -394,6 +394,15 @@ public final class AutoShowcase {
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-switching"));
             }
+            if (id.equals("hbridge")) {
+                // FORWARD, then REVERSE instead: the motor turns one way, then the other
+                STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "forward")),
+                        "showcase-" + (i + 1) + "-" + id + "-forward"));
+                STEPS.add(new Step(300, () -> {
+                    toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "forward"));
+                    toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "reverse"));
+                }, "showcase-" + (i + 1) + "-" + id + "-reverse"));
+            }
             if (id.equals("rectifier")) {
                 // the logger on the smoothing capacitor while the crank turns: a steady voltage, the LED lit; then let go
                 STEPS.add(new Step(160, () -> {

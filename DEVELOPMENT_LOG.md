@@ -571,3 +571,8 @@ time: the switch node rang at ~50 kHz between the coil and the semiconductors' p
 control duly resolved. An RC snubber (0.1 µF, 1.5 kΩ ≈ √(L/C)) — what a designer would fit — cut that threefold, and 26 Hz
 with a larger output capacitor another fourfold: ≈ 4× real time, in slow motion in game like the engines.
 
+**An H-bridge.** Two complementary MOSFET pairs, gates joined (each upright a CMOS inverter), the brushed motor across
+their outputs; switches pull the inputs up. FORWARD and REVERSE turn it opposite ways; both open shorts it through
+the P-channels and it brakes on its back-EMF. The first test expected the brake to stop it in a second and reverse to
+match forward's speed within eight — the rotor's 14 s time constant says otherwise; the test now follows it.
+

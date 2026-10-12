@@ -18,8 +18,9 @@ regenerate the demo world → screenshot tour → docs → commit.
 4. **Acoustics**: turning bodies (fans, gear whine, an unbalanced rotor) and vibrating structures as sources; baffles
    and enclosures (a speaker cabinet turns a dipole into a monopole); impulsive sounds (impacts) beyond tones;
    faster audio-rate machines (their fast partition's own cost).
-5a. **Power electronics**: (a bridge rectifier and a boost converter are in) a buck converter (a P-channel high-side
-   switch driven through an NPN level shifter), an H-bridge reversing the DC motor, an inverter feeding a transformer;
+5a. **Power electronics**: (a bridge rectifier, a boost converter and an H-bridge are in) a buck converter (a
+   P-channel high-side switch driven through an NPN level shifter), PWM speed control through the H-bridge (the EM-4
+   or an oscillator driving its inputs), an inverter feeding a transformer;
    the cost of switching edges (≈ 140 steps an edge: the gate capacitances and snubber set the step) — an averaged
    switch model for fast converters, with a detector for when its assumptions fail.
 5. **Computing**: (RAM chip in) the EM-4 using RAM (load/store), an in-game ROM programmer, instruction-set growth (load/store, branch on carry),

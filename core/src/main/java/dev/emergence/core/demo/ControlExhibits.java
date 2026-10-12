@@ -315,6 +315,69 @@ public final class ControlExhibits {
     }
 
     /**
+     * An H-bridge: four MOSFETs put the DC motor across its supply either way round. Each side of the bridge is a
+     * complementary pair (a P-channel to the supply, an N-channel to ground) with its gates joined, so its output is
+     * the opposite of its input; two switches pull the inputs up. Forward or reverse: one side low, the other high.
+     * Neither: both sides high, the motor shorted through the two P-channels — it brakes.
+     */
+    public static Exhibit hBridge() {
+        Exhibit e = new Exhibit("hbridge", "H-bridge",
+                List.of("H-BRIDGE", "FORWARD or REVERSE:", "four transistors swap", "the motor's leads"),
+                "The brushed DC motor, run both ways by four transistors in an H. Each upright of the H is a "
+                        + "complementary pair: a P-channel MOSFET from the 9.5 V supply and an N-channel one to ground, "
+                        + "their gates joined — whatever voltage the gates get, one conducts and the other blocks, so the "
+                        + "pair's output is the opposite of its input. The motor bridges the two outputs. Close FORWARD: "
+                        + "the left input goes high, its output low, and current runs right to left through the motor. "
+                        + "Close REVERSE instead and it runs the other way: the motor turns backwards — nothing but "
+                        + "the direction of the current through its coils has changed (F = I·L × B). Open both and "
+                        + "both outputs go high: the motor is shorted through the P-channels, and its own back-EMF drives a "
+                        + "current that brakes it (dynamic braking — it slows with the same time constant it spun up "
+                        + "with, J·R/K², far faster than friction alone would stop it). Close both and both go low — the "
+                        + "same brake. "
+                        + "Every electric car, drill and robot joint has bridges like this, switched thousands of times "
+                        + "a second to set speed as well as direction.");
+        e.plots = 2;
+        int shaft = brushedMotor(e, 12);
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 0, 0, 0.3)); // just past the dead point
+        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
+                {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
+        int f = 1;
+        int bat = e.add(CAPACITOR, "alumina", 16, f, 2, Dir.EAST, "capacitance", 3000);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 9.5));
+        Object[] power = {"transconductance", 5.0, "threshold", 2.0};
+        e.name("pA", e.add(TRANSISTOR, "silicon", 20, f, 5, Dir.EAST, with(power, "type", 3)));
+        e.name("nA", e.add(TRANSISTOR, "silicon", 22, f, 8, Dir.EAST, with(power, "type", 2)));
+        e.name("pB", e.add(TRANSISTOR, "silicon", 26, f, 5, Dir.EAST, with(power, "type", 3)));
+        e.name("nB", e.add(TRANSISTOR, "silicon", 28, f, 8, Dir.EAST, with(power, "type", 2)));
+        e.add(RESISTOR, "alumina", 18, f, 11, Dir.EAST, "resistance", 10_000); // input pull-downs
+        e.add(RESISTOR, "alumina", 24, f, 11, Dir.EAST, "resistance", 10_000);
+        e.name("forward", e.add(SWITCH, "brass", 18, f, 13, Dir.EAST));
+        e.name("reverse", e.add(SWITCH, "brass", 24, f, 13, Dir.EAST));
+        Router r = new Router(e, 0, 0, 0, 35, 18, 15);
+        r.pin("vdd", 17, f, 2).pin("vdd", 19, f, 5).pin("vdd", 25, f, 5).pin("vdd", 17, f, 13).pin("vdd", 23, f, 13);
+        r.pin("gnd", 15, f, 2).pin("gnd", 21, f, 8).pin("gnd", 27, f, 8).pin("gnd", 17, f, 11).pin("gnd", 23, f, 11);
+        r.pin("inA", 20, f, 4).pin("inA", 22, f, 7).pin("inA", 19, f, 11).pin("inA", 19, f, 13);
+        r.pin("inB", 26, f, 4).pin("inB", 28, f, 7).pin("inB", 25, f, 11).pin("inB", 25, f, 13);
+        r.pin("outA", 21, f, 5).pin("outA", 23, f, 8).pin("outA", 11, 8, 8);
+        r.pin("outB", 27, f, 5).pin("outB", 29, f, 8).pin("outB", 5, 8, 8);
+        // the rotor and its wiring sweep the cylinder round the shaft; no wire may touch the rotor's wiring
+        r.keepClear(4, 1, 3, 12, 7, 13);
+        r.keepClear(6, 8, 4, 10, 8, 12);
+        r.keepClear(11, 8, 9, 12, 8, 11);
+        r.keepClear(4, 8, 5, 5, 8, 7);
+        r.keepClear(5, 9, 4, 11, 13, 12);
+        r.route();
+        return e.view(17, 12, 24, 30);
+    }
+
+    private static Object[] with(Object[] base, Object... more) {
+        Object[] o = java.util.Arrays.copyOf(base, base.length + more.length);
+        System.arraycopy(more, 0, o, base.length, more.length);
+        return o;
+    }
+
+    /**
      * The DC motor exhibit's brushed motor (frame, magnets, rotor coils, commutator and brushes, coil B's wiring) with its
      * shaft running up to {@code top}; segment A's lead stops at 8, 9, 9 for the caller to take on to coil A's outer
      * lead (11, 5, 8). The brushes' supply leads are at 11, 8, 8 and 5, 8, 8. Returns the shaft's part index.

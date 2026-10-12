@@ -284,6 +284,12 @@ low the output sits below the supply (4.4 V through coil and diode) and the LEDs
 and they draw 4.6 mA. Cost: ≈ 7 300 steps a second (≈ 4× real time) — the gate's picofarads and the snubber resolve
 each switching edge; without the RC snubber the switch node rang with the coil at ~50 kHz and needed 80 000.
 
+H-bridge (`DemoExhibitsTest.hBridgeReversesTheMotor`): two complementary MOSFET pairs (K = 5 A/V², V_th 2 V) on
+9.5 V, the brushed motor across their outputs. FORWARD: 3.55 A from rest, −8.85 rad/s after 6 s; both switches open
+(both outputs high, the motor shorted through the P-channels) it slows to −7.26 rad/s in 6 s by its own back-EMF;
+REVERSE then drives it through zero to +3.04 rad/s within 10 s. The heavy rotor's time constant (J·R/K² ≈ 14 s
+spinning up) sets all three.
+
 Speed governor (`DemoExhibitsTest.governorHoldsItsSpeedUnderLoad`): a brushed DC motor whose shaft carries a
 two-magnet tachogenerator; a diode peak detector gives 0.17 V per rad/s, an op-amp PI loop (K_p 10, K_i 10 s⁻¹)
 drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor's speed after 10 s is within 0.5 % of

@@ -93,6 +93,31 @@ class DemoExhibitsTest {
         assertTrue(led[1] > 2e-3, "and the LEDs light: " + led[1]);
     }
 
+    /**
+     * H-bridge: FORWARD spins the motor up one way; with both switches open the bridge shorts it and its own back-EMF
+     * brakes it (decaying with the same time constant J·R/K² it spun up with); REVERSE then spins it the other way.
+     */
+    @Test
+    void hBridgeReversesTheMotor() {
+        Exhibit e = ControlExhibits.hBridge();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long rotor = b.id(e, "rotor");
+        c.toggleSwitch(b.id(e, "forward"));
+        run(c, 6);
+        double wf = c.probe(rotor).angularVelocity(), amps = Math.abs(c.probe(b.id(e, "battery")).current());
+        c.toggleSwitch(b.id(e, "forward"));
+        run(c, 6);
+        double braked = c.probe(rotor).angularVelocity();
+        c.toggleSwitch(b.id(e, "reverse"));
+        run(c, 10);
+        double wr = c.probe(rotor).angularVelocity();
+        System.out.printf("H-bridge: forward %.2f rad/s (%.2f A); 6 s shorted %.2f rad/s; then reverse %.2f rad/s%n", wf, amps, braked, wr);
+        assertTrue(Math.abs(wf) > 5, "forward turns it: " + wf);
+        assertTrue(braked * wf >= 0 && Math.abs(braked) < 0.9 * Math.abs(wf), "both open: shorted, it brakes: " + braked);
+        assertTrue(wr * wf < 0 && Math.abs(wr) > 2, "reverse turns it the other way: " + wf + " / " + wr);
+    }
+
     @Test
     void gearTrainReproducesToothRatios() {
         Exhibit e = Exhibits.gearTrain();

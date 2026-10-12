@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), Exhibits.rectifier(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), AeroExhibits.windTurbine(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), Exhibits.rectifier(), Exhibits.boost(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), AeroExhibits.windTurbine(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
                 miniatureGenerator());
     }
 
@@ -117,6 +117,68 @@ public final class Exhibits {
         r.keepClear(6, 6, 5, 10, 9, 11); // and nothing over the coils and their wiring
         r.route();
         return e.view(11, 8, 22, 34);
+    }
+
+    /**
+     * A boost converter: a 5 V supply lights four red LEDs in series (≈ 7.6 V) that it could not light directly. A
+     * Schmitt-trigger oscillator switches a MOSFET that shorts a coil across the supply; when it opens, the coil keeps its
+     * current flowing and its voltage rises until the diode conducts into the output capacitor.
+     */
+    public static Exhibit boost() {
+        return boost(true);
+    }
+
+    /** @param switching false: the MOSFET's gate tied low (the supply alone, through the coil and diode) */
+    public static Exhibit boost(boolean switching) {
+        Exhibit e = new Exhibit("boost", "Boost converter",
+                List.of("BOOST CONVERTER", "5 V lights four LEDs", "in series (7.6 V):", "a coil steps it up"),
+                "Four red LEDs in series need about 7.6 V before they light; the supply gives 5. A Schmitt-trigger "
+                        + "oscillator (47 kΩ, 1 µF: some 26 times a second) switches a MOSFET that connects a "
+                        + "2000-turn coil straight across the supply: the current in the coil grows (L·di/dt = V) and "
+                        + "its magnetic field stores energy (½LI²). When the MOSFET opens the coil will not let its "
+                        + "current stop — its voltage leaps to whatever it takes — and the current pours through the "
+                        + "diode into the output capacitor, charging it above the supply until the LEDs light. Each "
+                        + "cycle carries a parcel of energy from 5 V up to 7.6 V: power is conserved (minus the coil's "
+                        + "resistance and the diode's drop), so the LEDs' current is smaller than what the supply "
+                        + "gives. Meter the capacitor and the switch node: a square wave whose top stands above the "
+                        + "supply. The same trick powers LED torches from a single cell.");
+        e.plots = 2;
+        int f = 1;
+        int bat = e.add(CAPACITOR, "alumina", 2, f, 2, Dir.EAST, "capacitance", 50);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        // oscillator: Schmitt inverter, 47 kΩ feedback, 1 µF to ground (period 2RC·ln 1.5 ≈ 38 ms)
+        e.name("schmitt", e.add(LOGIC, "silicon", 6, f, 10, Dir.EAST, "function", 7));
+        e.add(RESISTOR, "alumina", 6, f, 13, Dir.EAST, "resistance", 47_000);
+        e.add(CAPACITOR, "alumina", 3, f, 10, Dir.EAST, "capacitance", 1e-6);
+        // the switch, the coil, the diode and the output capacitor
+        e.name("switch", e.add(TRANSISTOR, "silicon", 10, f, 6, Dir.EAST, "type", 2));
+        e.name("coil", e.add(COIL, "copper", 14, f, 6, Dir.UP, "turns", 2000, "wire_diameter", 0.5e-3));
+        e.name("diode", e.add(DIODE, "silicon", 11, f, 9, Dir.EAST));
+        e.name("cout", e.add(CAPACITOR, "alumina", 15, f, 9, Dir.EAST, "capacitance", 1000e-6));
+        // a snubber across the switch: 0.1 µF through 1.5 kΩ (≈ √(L/C)) damps the ring between the coil and the
+        // transistor's and diode's picofarads when both are off
+        e.add(CAPACITOR, "alumina", 19, f, 6, Dir.EAST, "capacitance", 0.1e-6);
+        e.add(RESISTOR, "alumina", 23, f, 6, Dir.EAST, "resistance", 1500);
+        // the load: four red LEDs and 100 Ω in series
+        for (int k = 0; k < 4; k++)
+            e.name("led" + (k + 1), e.add(LED, "silicon", 13 + 3 * k, f, 13, Dir.EAST, "wavelength", 630, "face", 3, "beam", 25));
+        e.name("load", e.add(RESISTOR, "alumina", 25, f, 13, Dir.EAST, "resistance", 100));
+        Router r = new Router(e, 0, 0, 0, 30, 3, 15);
+        r.pin("vin", 3, f, 2).pin("vin", 15, f, 6).pin("vin", 6, f, 11);
+        r.pin("gnd", 1, f, 2).pin("gnd", 9, f, 6).pin("gnd", 6, f, 9).pin("gnd", 2, f, 10).pin("gnd", 14, f, 9).pin("gnd", 26, f, 13);
+        r.pin("in", 5, f, 10).pin("in", 4, f, 10).pin("in", 5, f, 13);
+        r.pin("osc", 7, f, 10).pin("osc", 7, f, 13);
+        if (switching) r.pin("osc", 10, f, 5);
+        else r.pin("gnd", 10, f, 5);
+        r.pin("sw", 11, f, 6).pin("sw", 13, f, 6).pin("sw", 10, f, 9).pin("sw", 18, f, 6);
+        r.pin("snub", 20, f, 6).pin("snub", 22, f, 6);
+        r.pin("gnd", 24, f, 6);
+        r.pin("vout", 12, f, 9).pin("vout", 16, f, 9).pin("vout", 12, f, 13);
+        for (int k = 0; k < 3; k++) r.pin("s" + k, 14 + 3 * k, f, 13).pin("s" + k, 15 + 3 * k, f, 13);
+        r.pin("s3", 23, f, 13).pin("s3", 24, f, 13);
+        r.route();
+        return e.view(14, 8, 21, 40);
     }
 
     /** Three meshing spur gears (8 : 24 : 40 teeth) — speed ratios and direction reversal. */

@@ -278,6 +278,12 @@ middle, outer leads out) through four silicon diodes onto 10 mF, an LED on 470 �
 capacitor holds 3.02–3.05 V — the generator's peak less two diode drops — and the LED never draws under 2.6 mA; the
 diodes' reverse current stays below 10⁻¹⁴ A; 2 s after letting go the capacitor still lights it at 2.4 mA.
 
+Boost converter (`DemoExhibitsTest.boostConverterLightsLedsAboveItsSupply`): 5 V, a Schmitt RC oscillator (≈ 26 Hz)
+switching a MOSFET across a 2000-turn coil, a diode into 1000 µF, four red LEDs and 100 Ω in series. With the gate held
+low the output sits below the supply (4.4 V through coil and diode) and the LEDs draw nothing; switching, it holds 7.8 V
+and they draw 4.6 mA. Cost: ≈ 7 300 steps a second (≈ 4× real time) — the gate's picofarads and the snubber resolve
+each switching edge; without the RC snubber the switch node rang with the coil at ~50 kHz and needed 80 000.
+
 Speed governor (`DemoExhibitsTest.governorHoldsItsSpeedUnderLoad`): a brushed DC motor whose shaft carries a
 two-magnet tachogenerator; a diode peak detector gives 0.17 V per rad/s, an op-amp PI loop (K_p 10, K_i 10 s⁻¹)
 drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor's speed after 10 s is within 0.5 % of

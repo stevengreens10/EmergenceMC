@@ -379,6 +379,21 @@ public final class AutoShowcase {
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-scope"));
             }
+            if (id.equals("boost")) {
+                // the logger on the switch: a square wave whose top stands above the 5 V supply
+                STEPS.add(new Step(100, () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
+                    BlockPos at = DemoBuilder.partBlock(plot, e, "switch");
+                    if (server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+                        PlacedPart sw = find(be, PartKind.TRANSISTOR);
+                        if (sw != null) SimulationManager.get(server.overworld()).attachLogger(p, at, sw.id, "MOSFET (switch)");
+                    }
+                    SimulationManager.get(server.overworld()).showLogger(p, "voltage", 0);
+                    LoggerHud.showcase = true;
+                }, "showcase-" + (i + 1) + "-" + id + "-switching"));
+            }
             if (id.equals("rectifier")) {
                 // the logger on the smoothing capacitor while the crank turns: a steady voltage, the LED lit; then let go
                 STEPS.add(new Step(160, () -> {

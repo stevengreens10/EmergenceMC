@@ -564,3 +564,10 @@ router now takes the coil leads directly.
 (One tour hung at shutdown — the integrated server spinning in vanilla's chunk-unload loop for ten minutes — and the
 next run of the same tour closed normally: intermittent, not yet understood; kill only the showcase client if it recurs.)
 
+**A boost converter.** Four red LEDs in series (7.6 V) lit from 5 V: a Schmitt-trigger RC oscillator switches a small
+MOSFET across a 2000-turn coil; when it opens, the coil drives its current through a diode into the output capacitor.
+It worked at the first build (7.8 V, LEDs at 4.6 mA; 4.4 V and dark without switching), but at 100 Hz it cost 16× real
+time: the switch node rang at ~50 kHz between the coil and the semiconductors' picofarads, a real effect that the step
+control duly resolved. An RC snubber (0.1 µF, 1.5 kΩ ≈ √(L/C)) — what a designer would fit — cut that threefold, and 26 Hz
+with a larger output capacitor another fourfold: ≈ 4× real time, in slow motion in game like the engines.
+

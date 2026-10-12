@@ -73,8 +73,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ **Milestone: a programmable computer controls a physical machine** — the EM-4 (PC, ROM program,
    adder, accumulator; add / jump / jump-if-SENSE) drives an axial-flux stepper motor through MOSFETs
 ✅ RAM (16 × 4 static memory chip, memory exhibit); chip contents survive recompiling and saving
-🟡 Power electronics: a bridge rectifier with a smoothing capacitor on the hand generator ✅; switching converters
-   (buck, boost), inverters and H-bridges ⬜
+🟡 Power electronics: a bridge rectifier with a smoothing capacitor on the hand generator ✅; a boost converter
+   (Schmitt oscillator, MOSFET, 2000-turn coil, diode, RC snubber) lighting 7.6 V of LEDs from 5 V ✅; buck
+   converters, inverters and H-bridges ⬜
 ⬜ A richer instruction set (load/store to RAM), more sensors and actuators; event-driven simulation for thousands of gates
 
 ## Phase 5 — Chemistry and manufacturing

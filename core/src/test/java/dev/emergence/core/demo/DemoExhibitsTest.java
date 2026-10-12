@@ -72,6 +72,27 @@ class DemoExhibitsTest {
         assertTrue(after > 0.5e-3, "the capacitor keeps it lit after letting go: " + after);
     }
 
+    /**
+     * Boost converter: switching, the coil lifts the output above the 5 V supply until the four series LEDs (≈ 7.6 V)
+     * light; with the switch held off, the output only follows the supply through the coil and diode and they stay dark.
+     */
+    @Test
+    void boostConverterLightsLedsAboveItsSupply() {
+        double[] vout = new double[2], led = new double[2];
+        for (int m = 0; m < 2; m++) {
+            Exhibit e = Exhibits.boost(m == 1);
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = compile(e, b);
+            run(c, m == 1 ? 3 : 1);
+            vout[m] = Math.abs(c.probe(b.id(e, "cout")).voltage());
+            led[m] = Math.abs(c.probe(b.id(e, "led1")).current());
+        }
+        System.out.printf("boost: switch off %.2f V, LEDs %.3f mA; switching %.2f V, LEDs %.2f mA%n", vout[0], 1e3 * led[0], vout[1], 1e3 * led[1]);
+        assertTrue(vout[0] < 5.3 && led[0] < 1e-4, "without switching the LEDs stay dark");
+        assertTrue(vout[1] > 7.3, "switching lifts the output above the supply: " + vout[1]);
+        assertTrue(led[1] > 2e-3, "and the LEDs light: " + led[1]);
+    }
+
     @Test
     void gearTrainReproducesToothRatios() {
         Exhibit e = Exhibits.gearTrain();

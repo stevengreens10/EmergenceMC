@@ -18,9 +18,9 @@ import java.util.Map;
  */
 public final class SparseLinearSystem implements LinearSystem {
     private static final double PIVOT_THRESHOLD = 0.1;
-    private static final double REFACTOR_PIVOT_TOL = 1e-14, PIVOT_COLLAPSE = 1e-8;
-    /** Each pivot's value when the pivot order was last chosen (see refactor). */
-    private double[] pivotAtFactor;
+    private static final double PIVOT_COLLAPSE = 1e-8;
+    /** Each pivot's value, and its share of its U row (|d| / max(|d|, row's largest)), when the pivot order was last chosen (see refactor). */
+    private double[] pivotAtFactor, pivotShareAtFactor;
 
     private final int n;
     // Assembled matrix entries
@@ -373,6 +373,12 @@ public final class SparseLinearSystem implements LinearSystem {
             uVal[s] = uv;
         }
         pivotAtFactor = uDiag.clone();
+        pivotShareAtFactor = new double[n];
+        for (int s = 0; s < n; s++) {
+            double m = Math.abs(uDiag[s]);
+            for (double v : uVal[s]) m = Math.max(m, Math.abs(v));
+            pivotShareAtFactor[s] = Math.abs(uDiag[s]) / m;
+        }
         factored = true;
     }
 
@@ -408,11 +414,13 @@ public final class SparseLinearSystem implements LinearSystem {
                 w[up[t]] = 0;
             }
             // The pivot order stays good while no pivot collapses relative to what it was when the order was chosen
-            // (threshold pivoting chose it as large within its column). Rows mix units — a species balance carries a
-            // reaction rate's temperature slope many orders above its own diagonal — so the row's largest entry is
-            // only a far looser backstop.
+            // (threshold pivoting chose it as large within its column), neither alone nor against its own U row. Rows
+            // mix units — a species balance carries a reaction rate's temperature slope many orders above its own
+            // diagonal — so a pivot's share of its row is judged against its share then, not against 1: an absolute
+            // floor rejected, every solve, the very pivot that the fresh factorisation then chose again.
+            double share = Math.abs(d) / Math.max(rowMax, Math.abs(d));
             if (!Double.isFinite(d) || d == 0 || Math.abs(d) < PIVOT_COLLAPSE * Math.abs(pivotAtFactor[s])
-                    || !(Math.abs(d) > REFACTOR_PIVOT_TOL * Math.max(rowMax, Math.abs(d)))) {
+                    || !(share >= PIVOT_COLLAPSE * pivotShareAtFactor[s])) {
                 Arrays.fill(w, 0.0);
                 return false;
             }

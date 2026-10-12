@@ -543,3 +543,13 @@ the engine runs nearly three times as fast under the same brake (Watt's separate
 low-pressure steam volumes sit on the dry edge of the saturation dome, where Newton two-cycles: 12× real time. Recorded
 in NEXT_STEPS (item 6) with what was measured; the solver now reports its last non-converging unknown on request.
 
+**The condensing engine, unshelved.** TRACE and a scan of the steam tables near the dry edge found the cause: the
+C¹ join beyond the dome interpolated ρu and ρ separately from the edge, where u climbs steeply on the dome side and
+lies flat beyond; the cubic overshot — at 150 °C u rose 110 kJ/kg and fell back within s = 1.00–1.06 — so mass and
+energy had two states and Newton cycled between them. Straddling the edge and interpolating u itself made u monotone;
+the condensing engine's first five seconds went from 277 s of CPU (50 000 Newton failures) to 6 s (10). The engines
+then showed what had been hidden: both stalled within a minute — the fire was hot copper that cooled, and the
+cylinder wall cooled below the steam's saturation temperature so each admission condensed. A heating element on mica
+under the boiler and a jacket element on the cylinder fixed both (the jacket's history is Watt's). The condensing
+engine now carries twice the atmospheric engine's brake at the same 107 rad/s.
+

@@ -208,9 +208,14 @@ self-heating error appears naturally. A RESISTOR part with an `ntc_beta` paramet
   c_v = 1500 J/(kg·K)), L = ln(ρ'/ρ''). Mass and internal energy are the stored quantities, so boiling and
   condensation are not rules — they are what the balances do when heat or flow moves a volume across the
   dome. **C¹ joins**: dρ/ds is continuous at both dome boundaries by construction; the pressure's slope
-  jump is replaced by monotone cubic Hermite joins just outside the dome (1 < s < 1.06, steam superheated
-  by ≲ 10 K; −2·10⁻⁵ < s < 0), where the single-phase pressure deviates by a few per cent. Newton's method
-  cycles on the raw slope jump when a volume sits on the boundary (dry saturated steam).
+  jump is replaced by monotone cubic Hermite joins: across the dry edge (0.97 < s < 1.03, interpolating ρ, p and
+  the specific energy u — not ρu) and just outside the full edge (−2·10⁻⁵ < s < 0), where the states deviate by a few
+  per cent. Newton's method cycles on the raw slope jump when a volume sits on the boundary (dry saturated steam).
+  The dry join first lay wholly outside the dome (1 < s < 1.06) and interpolated ρu: leaving the edge with the
+  dome's steep slope of u, it overshot — u rose ~110 kJ/kg above the saturated vapour's and fell back — so a
+  volume's mass and energy had two states, and low-pressure steam (a condensing engine's cylinder) two-cycled Newton
+  ~50 000 times in five seconds. Straddling the edge, the secant slope is about half the steep one, inside the
+  cubic's monotone range (α² + β² ≤ 9), and u rises monotonically into the superheated region.
 * **Ports** (`FluidVolume.Port`): gravity-separated phases; a connection below the liquid level draws
   liquid, above it vapour, mixed within ±5 % of the height (homogeneous flow, McAdams viscosity).
 * **Wall heat transfer**: Rohsenow nucleate boiling (C_sf = 0.013) capped smoothly at Zuber's critical heat

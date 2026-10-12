@@ -123,7 +123,7 @@ public final class AutoShowcase {
                 STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "sense")),
                         "showcase-" + (i + 1) + "-" + id + "-reverse"));
             }
-            if (id.equals("steam")) {
+            if (id.equals("steam") || id.equals("condensing")) {
                 STEPS.add(new Step(80, () -> { }, "showcase-" + (i + 1) + "-" + id + "-running"));
                 STEPS.add(new Step(80, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "regulator")),
                         "showcase-" + (i + 1) + "-" + id + "-shut"));

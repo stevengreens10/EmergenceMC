@@ -23,7 +23,7 @@ public final class Exhibits {
 
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
-                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(),
+                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
                 OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), AeroExhibits.windTurbine(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
                 miniatureGenerator());
@@ -748,16 +748,46 @@ public final class Exhibits {
     }
 
     /**
-     * A single-acting steam engine from parts. A steel boiler, 60 % full of water at 145 °C, sits on a granite
-     * hearth over red-hot copper; a safety valve on its dome lifts at 4.5 bar. Steam goes through a hand regulator to an
+     * A single-acting steam engine from parts. A steel boiler, 60 % full of water at 145 °C, sits on a heating element
+     * (on an insulating mica block); a safety valve on its dome lifts at 4.5 bar. Steam goes through a hand regulator to an
      * inlet valve worked by a cam on the crankshaft, which admits it to the cylinder just after top dead centre
      * and cuts it off part way down the stroke; the steam then expands. A second cam opens the exhaust valve for
      * the return stroke and the steam puffs out to the air.
      */
     public static Exhibit steamEngine() {
-        Exhibit e = new Exhibit("steam", "Steam engine",
+        return steamEngine(false, 8);
+    }
+
+    /**
+     * The steam engine with its exhaust led into a sealed, cooled condenser instead of the air (Watt's separate
+     * condenser): the spent steam meets 7 kPa instead of 101, and the same engine carries twice the load.
+     */
+    public static Exhibit condensingEngine() {
+        return steamEngine(true, 16);
+    }
+
+    /**
+     * @param condensing the exhaust into a sealed, cooled condenser instead of the air
+     * @param brakeForce the Prony brake's spring force [N]
+     */
+    public static Exhibit steamEngine(boolean condensing, double brakeForce) {
+        Exhibit e = condensing ? new Exhibit("condensing", "Condensing steam engine",
+                List.of("CONDENSING ENGINE", "Exhaust into a", "vacuum: twice the", "load, same steam"),
+                "The steam engine next door again, with one change: the exhaust valve opens into a sealed copper "
+                        + "condenser instead of the air. The condenser holds only water and its own vapour, kept near 40 °C "
+                        + "by the copper blocks clasping it, so its pressure is water's vapour pressure there: 7 kPa, not "
+                        + "the atmosphere's 101. The spent steam rushes into it and condenses on the cold water, and the "
+                        + "piston's upward stroke pushes against almost nothing. Each stroke's steam does more work — "
+                        + "this engine carries a brake twice as hard as its neighbour's at about the same speed. That "
+                        + "was James Watt's improvement (1769): Newcomen's engines condensed in the cylinder itself and "
+                        + "wasted most of their heat re-warming it. Nothing here is told it is a condenser: steam "
+                        + "flows by pressure, condenses where it is colder than its saturation temperature, and the "
+                        + "condenser's pressure follows its temperature. Watch it warm, slowly — its blocks soak up the "
+                        + "heat (a real condenser is water-cooled) — and the water it collects is the boiler's, which "
+                        + "has no feed pump to return it.")
+                : new Exhibit("steam", "Steam engine",
                 List.of("STEAM ENGINE", "Boiler, cam valves,", "piston, flywheel.", "Shut the regulator"),
-                "Water boils in the steel boiler, heated through a granite hearth by red-hot copper; its pressure follows the "
+                "Water boils in the steel boiler, heated by a 600 W element under its floor; its pressure follows the "
                         + "saturation curve of water (4 bar at 145 °C) and a spring-loaded safety valve on top lifts "
                         + "if it climbs past 4.5 bar above the air. Through the open regulator steam flows to the inlet "
                         + "valve, which a cam on the crankshaft opens just after the piston passes the top of its "
@@ -767,7 +797,10 @@ public final class Exhibits {
                         + "the flywheel is the load: its friction turns the engine's work into heat (a Prony-brake "
                         + "dynamometer: torque μFr times speed). Shut the regulator and the engine "
                         + "coasts to a stop while the boiler pressure climbs until the safety valve blows; open it "
-                        + "and give the flywheel a turn to restart. Nothing here is a scripted "
+                        + "and give the flywheel a turn to restart. A second, smaller element against the cylinder is its "
+                        + "jacket: without it the cylinder wall cools below the steam's saturation temperature, each "
+                        + "admission condenses on it, and the engine slowly drowns and slows (Watt jacketed his). "
+                        + "Nothing here is a scripted "
                         + "'engine': boiling, valve flow, expansion work and friction are each computed.");
         String st = "steel_1045";
         int y = 3;
@@ -791,6 +824,16 @@ public final class Exhibits {
         e.add(BLOCK, st, 3, y + 3, 8, Dir.UP, "fill", 0.3);
         int exhaust = e.add(VALVE, "brass", 2, y + 2, 8, Dir.WEST, with(steam, "bore", 0.010));
         e.name("exhaust", exhaust);
+        if (condensing) {
+            // a sealed copper condenser on the exhaust seat, a quarter full of water at 40 °C (so 7.4 kPa), clasped
+            // by copper blocks that soak up the heat the steam gives up
+            int cnd = e.add(TANK, "copper", 1, y + 2, 8, Dir.UP, with(steam, "fill", 0.25, "wall", 0.002));
+            e.name("condenser", cnd);
+            e.init(cnd, new Exhibit.Initial(313, 0, 0));
+            for (int[] b : new int[][]{{1, y + 2, 7}, {1, y + 2, 9}, {0, y + 2, 8}, {1, y + 3, 8}, {0, y + 2, 7}, {0, y + 2, 9}}) {
+                e.init(e.add(BLOCK, "copper", b[0], b[1], b[2], Dir.UP), new Exhibit.Initial(300, 0, 0));
+            }
+        }
         int inlet = e.add(VALVE, "brass", 4, y + 2, 8, Dir.WEST, with(steam, "bore", 0.008, "lap", 0.7));
         e.name("inlet", inlet);
         // steam line: elbow, regulator, boiler riser
@@ -811,20 +854,31 @@ public final class Exhibits {
         for (int i : new int[]{cyl, exhaust, inlet, elbow, l1}) e.init(i, new Exhibit.Initial(warm, 0, 0));
         for (int i : new int[]{reg, l2, l3, riser, safety, boiler}) e.init(i, new Exhibit.Initial(418, 0, 0));
         // load: a Prony brake, an oak block sprung against the underside of the flywheel (a dynamometer)
-        int brake = e.add(BRAKE, "oak", 7, y - 2, 8, Dir.UP, "force", 8);
+        int brake = e.add(BRAKE, "oak", 7, y - 2, 8, Dir.UP, "force", brakeForce);
         e.name("brake", brake);
         e.latch(brake); // applied
         e.add(BLOCK, st, 7, 0, 8, Dir.UP);
-        // firebox: red-hot copper under a granite hearth slab, which passes ~150 W into the boiler's floor
-        int hearth = e.add(BLOCK, "granite", 5, y, 13, Dir.UP);
-        e.name("hearth", hearth);
-        e.init(hearth, new Exhibit.Initial(800, 0, 0));
-        for (int fy = y - 2; fy <= y - 1; fy++) {
-            int k = e.add(BLOCK, "copper", 5, fy, 13, Dir.UP);
-            e.init(k, new Exhibit.Initial(1200, 0, 0));
-            if (fy == y - 1) e.name("fire", k);
-        }
-        e.fill(BLOCK, st, 5, 0, 13, 5, y - 3, 13, Dir.UP);
+        // the fire: a heating element pressed under the boiler's floor, on a capacitor bank (600 W at first, 0.9 MJ in
+        // all: the boiler stays pressed for many minutes, its safety valve lifting while the engine idles)
+        e.fill(BLOCK, st, 5, 0, 13, 5, y - 2, 13, Dir.UP);
+        e.add(BLOCK, "mica", 5, y - 1, 13, Dir.UP); // insulating: the element's heat goes up into the boiler, not to the ground
+        int fire = e.add(RESISTOR, "alumina", 5, y, 13, Dir.EAST, "resistance", 6.0, "contact_area", 0.003,
+                "surface_area", 0.002, "mass", 0.1, "max_temperature", 1500);
+        e.name("fire", fire);
+        e.init(fire, new Exhibit.Initial(470, 0, 0)); // alight already
+        int bank = e.add(CAPACITOR, "alumina", 8, 0, 14, Dir.EAST, "capacitance", 500);
+        e.name("bank", bank);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 60));
+        // a jacket: a small element against the cylinder keeps its wall above the steam's saturation temperature, or each
+        // admission of steam condenses on it and the cylinder slowly fills with water (as Watt found, and jacketed his)
+        int jacket = e.add(RESISTOR, "alumina", 3, y + 2, 9, Dir.UP, "resistance", 30.0, "contact_area", 0.002,
+                "surface_area", 0.002, "mass", 0.05);
+        e.name("jacket", jacket);
+        e.init(jacket, new Exhibit.Initial(430, 0, 0));
+        Router r = new Router(e, 0, 0, 0, 15, y + 4, 15);
+        r.pin("f+", 6, y, 13).pin("f+", 9, 0, 14).pin("f+", 3, y + 3, 9);
+        r.pin("f-", 4, y, 13).pin("f-", 7, 0, 14).pin("f-", 3, y + 1, 9);
+        r.route();
         return e.view(4.5, 11, 18, 42);
     }
 

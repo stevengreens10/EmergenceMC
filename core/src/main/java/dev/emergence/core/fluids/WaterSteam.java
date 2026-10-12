@@ -176,9 +176,14 @@ public final class WaterSteam implements Fluid {
      * boundaries.
      * Fills {@code out} with [p, ρ (mixture), ρu (mixture, per volume), ρ_liquid, h_liquid, ρ_vapour, h_vapour,
      * vapour volume fraction, u_vapour]. The pressure, density and energy are continuous across the region
-     * boundaries, and continuously differentiable: just outside the dome (1 &lt; s &lt; 1.06, steam superheated by up to ~10 K, and −2·10⁻⁵ &lt; s &lt; 0)
-     * the single-phase state is replaced by a cubic Hermite join to the dome's slope (monotone there), so Newton's method does not cycle on the slope jump of
-     * the real saturation boundary when a volume sits exactly on it (a dry pipe of saturated steam).
+     * boundaries, and continuously differentiable: about the dry edge (0.97 &lt; s &lt; 1.03) the state is a cubic Hermite
+     * join from the dome's to the superheated region's, and just outside the full edge (−2·10⁻⁵ &lt; s &lt; 0) one to the
+     * compressed liquid's, so Newton's method does not cycle on the slope jump of the real saturation boundary when a
+     * volume sits on it (a dry pipe of saturated steam). The dry join straddles the edge and interpolates the specific
+     * energy u (not ρu): on the dome u climbs steeply with s, beyond it u is all but flat, and a join starting at the
+     * edge with the dome's slope overshot — u rose ~110 kJ/kg and fell back (at 150 °C), so a volume's mass and energy
+     * had two states, and the low-pressure steam of a condensing engine's cylinder two-cycled Newton by the ten thousand.
+     * Straddling, the secant slope is about half the steep one, inside the cubic's monotone range (α² + β² ≤ 9).
      */
     /** Half-widths of the Hermite joins at the dry (s = 1) and full (s = 0) ends; the latter is narrow because
      *  the compressed-liquid pressure rises by K·L ≈ 13 GPa per unit s. */
@@ -201,7 +206,7 @@ public final class WaterSteam implements Fluid {
 
     /** As {@link #state(double, double, double[])}, reusing the join ends in {@code cache} when T is unchanged. */
     public static void state(double t, double s, double[] out, JoinCache cache) {
-        if (s > 1 && s < 1 + 2 * BAND) {
+        if (s > 1 - BAND && s < 1 + BAND) {
             blend(t, s, 1, out, cache);
         } else if (s < 0 && s > -2 * BAND_LIQUID) {
             blend(t, s, 0, out, cache);
@@ -213,7 +218,7 @@ public final class WaterSteam implements Fluid {
     private static void blend(double t, double s, double c, double[] out, JoinCache cache) {
         // the join lies wholly in the single-phase region, so the two-phase states are exact
         double band = c == 1 ? BAND : BAND_LIQUID;
-        double a = c == 1 ? 1 : -2 * band, b = c == 1 ? 1 + 2 * band : 0, d = 1e-3 * band, h = b - a;
+        double a = c == 1 ? 1 - band : -2 * band, b = c == 1 ? 1 + band : 0, d = 1e-3 * band, h = b - a;
         JoinCache j = cache != null ? cache : new JoinCache();
         if (cache != null && (j.t != t || j.c != c)) {
             if (cache.other == null) cache.other = new JoinCache();
@@ -239,6 +244,12 @@ public final class WaterSteam implements Fluid {
         for (int k = 0; k < 9; k++) {
             double ma = (j.ya[k] - j.ya2[k]) / d, mb = (j.yb2[k] - j.yb[k]) / d;
             out[k] = h00 * j.ya[k] + h10 * h * ma + h01 * j.yb[k] + h11 * h * mb;
+        }
+        if (c == 1) {
+            // the energy per mass, u = ρu/ρ, joined monotonically, then ρu = ρ·u (see state)
+            double ua = j.ya[RHO_U] / j.ya[RHO], ua2 = j.ya2[RHO_U] / j.ya2[RHO], ub = j.yb[RHO_U] / j.yb[RHO], ub2 = j.yb2[RHO_U] / j.yb2[RHO];
+            double ma = (ua - ua2) / d, mb = (ub2 - ub) / d;
+            out[RHO_U] = out[RHO] * (h00 * ua + h10 * h * ma + h01 * ub + h11 * h * mb);
         }
     }
 

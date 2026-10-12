@@ -392,6 +392,35 @@ class DemoExhibitsTest {
         assertTrue(tMax - tMin > 5, "Schmitt hysteresis gives a temperature band: " + (tMax - tMin));
     }
 
+    /**
+     * Condensing engine: the same engine exhausting into a sealed 40 °C condenser carries twice the atmospheric engine's
+     * brake at nearly its speed (the atmospheric one runs ≈ 110–125 rad/s over the same seconds); the spent steam stays
+     * in the condenser, which stays near water's vapour pressure.
+     */
+    @Test
+    void condensingEngineCarriesTwiceTheLoad() {
+        Exhibit e = Exhibits.condensingEngine();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long shaft = b.id(e, "shaft"), cond = b.id(e, "condenser");
+        double sumW = 0, vent = 0;
+        int n = 0;
+        for (int i = 0; i < 500; i++) {
+            c.step(0.05);
+            if (i >= 300) {
+                sumW += c.probe(shaft).angularVelocity();
+                n++;
+            }
+            for (var v : c.vents()) vent += Math.max(0, c.ventOutflow(v)) * 0.05;
+        }
+        double mean = sumW / n, pc = c.fluid(cond)[0];
+        System.out.printf("condensing engine: mean %.1f rad/s under a 16 N brake; condenser %.1f kPa %.1f °C; vented %.2f g%n",
+                mean, pc / 1e3, c.fluid(cond)[1] - 273.15, vent * 1e3);
+        assertTrue(mean > 80, "twice the brake at nearly the atmospheric engine's speed: " + mean);
+        assertTrue(pc < 12e3, "the condenser holds a vacuum: " + pc);
+        assertTrue(vent < 1e-4, "no steam leaves: " + vent);
+    }
+
     @Test
     void steamEngineRunsOnBoilerSteam() {
         Exhibit e = Exhibits.steamEngine();

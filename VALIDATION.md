@@ -88,6 +88,13 @@ heat flux 1.26 MW/m² ± 5 %. Check valve: no reverse flow, closed below crackin
 Exhibit: the steam engine keeps running (mean ω > 5 rad/s), vents steam, delivers > 2 W to the brake,
 and coasts to rest within 20 s of shutting the regulator; in-world GameTest checks the boiler sits on
 the saturation curve and the engine turns.
+Its fire is now a 600 W element on a mica block (the hot copper it replaced cooled, and the engine stalled within a
+minute) and a 120 W jacket keeps its cylinder wall above the steam's saturation temperature (without it the wall
+cooled from 406 to 379 K and the speed fell from 109 to 19 rad/s over two minutes as each admission condensed): over
+15–30 s it averages 108 rad/s under its 8 N brake (32.5 W). The condensing engine
+(`DemoExhibitsTest.condensingEngineCarriesTwiceTheLoad`): the same engine exhausting into a sealed copper condenser a
+quarter full of water at 40 °C averages 107 rad/s under a 16 N brake (twice the load at the same speed); the condenser
+stays at 8.8 kPa (43 °C) and no steam leaves.
 
 ## Semiconductors and logic (`SemiconductorValidationTest`, `LogicValidationTest`)
 BJT collector current vs Ebers–Moll (0.1 %), gain with the Early factor, output conductance I_C/V_A; PNP;

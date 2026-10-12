@@ -201,21 +201,25 @@ public final class GasReactor implements Element {
     private double[] evaporation(double t, double[] n, double[] l, double vg) {
         int q = cond.length;
         double[] r = new double[q];
+        // (the pools enter smoothly floored at zero, ½(l + √(l² + ε²)), ε = 10⁻⁹ mol: a pool kept near empty — a
+        // condenser draining as fast as it fills — hovers about zero, and a kink there costs Newton dearly)
         double sumL = 0, sumN = 0;
+        double[] lp = new double[q];
         for (int k = 0; k < q; k++) {
-            sumL += Math.max(0, l[k]);
+            lp[k] = 0.5 * (l[k] + Math.sqrt(l[k] * l[k] + 1e-18));
+            sumL += lp[k];
             sumN += Math.max(0, n[cond[k]]);
         }
         double[] x = new double[q];
         for (int k = 0; k < q; k++) {
             double y = sumN > 0 ? Math.max(0, n[cond[k]]) / sumN : 1.0 / q;
-            x[k] = (Math.max(0, l[k]) + LIQ_EPS * y) / (sumL + LIQ_EPS);
+            x[k] = (lp[k] + LIQ_EPS * y) / (sumL + LIQ_EPS);
         }
         double[] g = VaporLiquid.activity(condIds, x);
         for (int k = 0; k < q; k++) {
             // the liquid's equilibrium pressure, present only as far as there is liquid (φ = l/(l + ε)): smooth through
             // equilibrium; a dry vessel's undersaturated vapour forms at most a dew film of order ε
-            double phi = Math.max(0, l[k]) / (Math.max(0, l[k]) + LIQ_EPS);
+            double phi = lp[k] / (lp[k] + LIQ_EPS);
             double pk = n[cond[k]] * R * t / vg, pStar = phi * x[k] * g[k] * cdata[k].psat(t);
             r[k] = kA * (pStar - pk) / (R * t);
         }

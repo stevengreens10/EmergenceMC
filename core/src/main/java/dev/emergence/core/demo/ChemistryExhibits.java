@@ -201,4 +201,68 @@ public final class ChemistryExhibits {
         r.route();
         return e.view(6, 5, 15, 20);
     }
+
+    /**
+     * A reflux column: the still's pot under three trays — stacked tanks whose liquid leaves over a weir — and a finned
+     * copper condenser on top that returns all it condenses (total reflux). Each tray's pool meets the vapour rising
+     * through it and approaches equilibrium with it; the condensate running back down strips the water from the vapour
+     * on its way up, so each tray up is richer in ethanol than the one below.
+     */
+    public static Exhibit column() {
+        Exhibit e = new Exhibit("column", "Reflux column",
+                List.of("REFLUX COLUMN", "Switch the heater on:", "each tray up holds", "richer ethanol"),
+                "The still's pot of dilute ethanol again, but its vapour must climb through three trays before it "
+                        + "reaches the condenser. Each tray is a vessel holding a shallow pool behind a 4 mm weir; the vapour "
+                        + "from below passes over it and the two exchange — water condenses into the pool, ethanol "
+                        + "evaporates from it — towards equilibrium (Raoult's law with ethanol–water activity coefficients). "
+                        + "The finned copper condenser at the top returns everything it condenses: the liquid spills back "
+                        + "down from tray to tray (total reflux), stripping the water from the vapour on its way up. "
+                        + "Switch the heater on and wait a few minutes: meter the pools — each tray up is richer in "
+                        + "ethanol than the one below, and the condensate reaches half ethanol and more while the pot "
+                        + "falls to a few percent. One still stage enriches about tenfold (in the ratio of ethanol to "
+                        + "water, distillate over pot); the column, some fifteen to fifty. Nothing here knows it is a "
+                        + "column: it is vessels, weirs, gravity and phase equilibrium.");
+        String st = "steel_1045";
+        Object[] mix = {"x_N2", 0.095, "x_O2", 0.025, "x_H2O", 0.42, "x_C2H5OH", 0.455};
+        int pot = e.add(TANK, st, 3, 1, 8, Dir.UP, cat(new Object[]{"wall", 0.002, "liquid_C2H5OH", 0.23, "liquid_H2O", 2.07}, mix));
+        e.name("pot", pot);
+        e.init(pot, new Exhibit.Initial(353.15, 0, 0));
+        for (int k = 0; k < 3; k++) {
+            int tray = e.add(TANK, st, 3, 2 + k, 8, Dir.UP, cat(new Object[]{"wall", 0.002, "weir", 0.004, "liquid_C2H5OH", 0.07,
+                    "liquid_H2O", 0.63}, mix));
+            e.name("tray" + (k + 1), tray);
+            e.init(tray, new Exhibit.Initial(353.15, 0, 0));
+        }
+        // the vapour line up to the condenser (a short pipe: the condenser's fins would otherwise chill the trays through
+        // the walls they share)
+        e.add(PIPE, st, 3, 5, 8, Dir.UP, "bore", 0.012);
+        // the condenser: two finned copper tanks; the lower one's lip keeps a little distillate to sample
+        int cond = e.add(TANK, "copper", 3, 6, 8, Dir.UP, cat(new Object[]{"wall", 0.002, "condenser", 1, "weir", 0.002}, mix));
+        e.name("condenser", cond);
+        e.init(cond, new Exhibit.Initial(330, 0, 0));
+        int cond2 = e.add(TANK, "copper", 3, 7, 8, Dir.UP, cat(new Object[]{"wall", 0.002, "condenser", 1}, mix));
+        e.init(cond2, new Exhibit.Initial(310, 0, 0));
+        for (int y = 6; y <= 7; y++)
+            for (int[] f : new int[][]{{2, 8}, {4, 8}, {1, 8}, {5, 8}}) e.add(BLOCK, "copper", f[0], y, f[1], Dir.EAST, "fill", 0.15);
+        for (int y = 6; y <= 7; y++)
+            for (int[] f : new int[][]{{3, 7}, {3, 9}, {3, 6}, {3, 10}}) e.add(BLOCK, "copper", f[0], y, f[1], Dir.SOUTH, "fill", 0.15);
+        e.add(PIPE, st, 3, 8, 8, Dir.UP, "bore", 0.006); // the vent, open at its top
+        e.name("heater", e.add(RESISTOR, "alumina", 3, 0, 8, Dir.EAST, "resistance", 4.5, "contact_area", 0.002,
+                "surface_area", 0.002, "mass", 0.05));
+        int bank = e.add(CAPACITOR, "alumina", 3, 0, 13, Dir.EAST, "capacitance", 400);
+        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 30));
+        e.name("switch", e.add(SWITCH, "brass", 6, 0, 13, Dir.EAST));
+        Router r = new Router(e, 0, 0, 0, 15, 2, 15);
+        r.pin("bat", 4, 0, 13).pin("bat", 5, 0, 13);
+        r.pin("sw", 7, 0, 13).pin("sw", 4, 0, 8);
+        r.pin("ret", 2, 0, 8).pin("ret", 2, 0, 13);
+        r.route();
+        return e.view(6, 5, 15, 20);
+    }
+
+    private static Object[] cat(Object[] a, Object[] b) {
+        Object[] o = java.util.Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, o, a.length, b.length);
+        return o;
+    }
 }

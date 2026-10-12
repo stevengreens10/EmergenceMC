@@ -314,7 +314,10 @@ at 25 °C, ethanol–water bubble points and vapour compositions within 0.2 °C 
 minimum-boiling azeotrope at 91.5 %; a closed litre of air over water settles at the water's vapour pressure (2330 vs
 2330 Pa) with hydrogen conserved to 10⁻⁹; an insulated vessel heated by 1 kJ warms by what is left after the latent
 heat of what evaporated, energy error 3·10⁻⁸ J. The still (`DemoExhibitsTest.stillConcentratesEthanol`): 10 % ethanol
-boiled for 300 s gives 0.18 mol of distillate at 48 % ethanol and leaves the pot at 6.5 %.
+boiled for 300 s gives 0.20 mol of distillate at 44 % ethanol and leaves the pot at 6.7 % (separation factor ≈ 11).
+The reflux column (`DemoExhibitsTest.columnSeparatesBeyondOneStage`): the same pot under three 4 mm-weir trays and a
+finned condenser at total reflux, 200 W; after 360 s the pools hold 6.0 / 5.2 / 9.0 / 21.9 % ethanol up the column and
+the condensate 51 % (separation factor 16.5; after 900 s, pot 3.1 %, condensate 63 %, factor ≈ 53).
 
 Forced convection (`JetConvectionTest`): jet velocity through the core and the 1/x decay beyond it; h at Re 19 000
 equal to the Churchill–Bernstein correlation evaluated by hand (31.4 vs 31.6 W/(m²·K)); none at rest or on suction.

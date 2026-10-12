@@ -62,7 +62,9 @@ public final class AutoShowcase {
                     (float) e.viewYaw, (float) e.viewPitch);
             // the first look: at least 50 ticks, and on until the exhibit is drawn and simulated (a tour jumping far, as
             // with showcaseOnly, otherwise photographs an empty plot)
-            long[] since = {0};
+            // (unset until the server has run the step's action: a busy server runs it a few ticks late, and the
+            // condition must not hold before the camera has even moved)
+            long[] since = {Long.MAX_VALUE / 2};
             var first = e.parts.get(0);
             BlockPos firstBlock = plot.offset(first.x0(), first.y0(), first.z0());
             STEPS.add(new Step(600, () -> {
@@ -309,6 +311,11 @@ public final class AutoShowcase {
                 STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "brake")),
                         "showcase-" + (i + 1) + "-" + id + "-braked"));
             }
+            if (id.equals("column")) {
+                // the heater on: the pot boils, the trays warm one by one and the condensate runs back down
+                STEPS.add(new Step(2400, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-refluxing"));
+            }
             if (id.equals("trembler")) {
                 // close the switch: the relay chatters, opening its own coil's circuit eight times a second
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");
@@ -459,6 +466,8 @@ public final class AutoShowcase {
         return c.angularVelocity(c.bodyOf(sh.id));
     }
 
+    /** Whether the server has run the current step's action yet. */
+    private static volatile boolean ran;
     private static final java.util.Map<String, Double> READINGS = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.Set<String> PENDING = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
@@ -528,15 +537,25 @@ public final class AutoShowcase {
         }
         Step s = STEPS.get(index);
         if (wait < 0) {
-            mc.getSingleplayerServer().execute(s.server);
+            ran = false;
+            mc.getSingleplayerServer().execute(() -> {
+                try {
+                    s.server.run();
+                } finally {
+                    ran = true;
+                }
+            });
             wait = s.delayTicks;
+        } else if (!ran) {
+            // a busy server runs the step's action some ticks late: its wait and condition start from the action
         } else if (s.ready != null && wait > 2 && wait < s.delayTicks - 1 && s.ready.getAsBoolean()) {
             wait = 2; // condition met: grab after a couple of frames have rendered the new state
         } else if (wait-- == 0) {
             if (mc.screen != null) mc.setScreen(null); // never photograph a menu
             if (s.shot != null) {
+                String at = String.format("%.1f %.1f %.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ());
                 Screenshot.grab(mc.gameDirectory, s.shot + ".png", mc.getMainRenderTarget(),
-                        msg -> EmergenceMod.LOG.info("Showcase screenshot: {}", msg.getString()));
+                        msg -> EmergenceMod.LOG.info("Showcase screenshot: {} (eye at {})", msg.getString(), at));
             }
             index++;
             wait = -1;

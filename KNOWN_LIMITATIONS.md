@@ -212,3 +212,7 @@ multimeter, oscilloscope/data logging.
   induction across their axis); blades on carried bodies and on the frame do nothing; blades do not shade each
   other or other parts; the wind is uniform over a machine, modelled (not Minecraft's), and does not blow on
   anything but blades (no drag on other parts, no wind loads on structures).
+* Column trays: the vapour from below mixes into a tray's gas space and exchanges with its pool at the lumped rate
+  κ = k_G·A (it does not bubble through the liquid), so a tray is somewhat less than an equilibrium stage. A passage
+  carries one gas flow, so two stacked vessels cannot exchange gas both ways at once (no counter-current convection
+  through a wide opening); a chilled vessel above a warm one just stratifies.

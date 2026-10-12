@@ -205,7 +205,11 @@ public final class MixtureBranch implements Element {
         // C¹ max(pLo, pc): exact unless pLo is within 1 % of the critical pressure
         double soft = 0.01 * pHi, d = pLo - pc;
         double pLoEff = pc + (d >= soft ? d : d <= -soft ? 0 : (d + soft) * (d + soft) / (4 * soft));
-        double dp = Math.signum(sa[0] - sb[0]) * (pHi - Math.min(pLoEff, pHi)) - rho * 9.80665 * dz;
+        // the weight of the gas standing in the passage: half of it from each end (the mean of their densities, not
+        // the upwind one — with heavier gas above lighter, an upwind head has no consistent flow near zero: flowing
+        // down it is heavy, flowing up light, and Newton chatters between them)
+        double rhoA = Math.max(sa[0], 1) * sa[2] / (R * sa[1]), rhoB = Math.max(sb[0], 1) * sb[2] / (R * sb[1]);
+        double dp = Math.signum(sa[0] - sb[0]) * (pHi - Math.min(pLoEff, pHi)) - 0.5 * (rhoA + rhoB) * 9.80665 * dz;
         f[0] = dp - k * mdot * Math.abs(mdot) / (2 * rho * aEff * aEff) - 32 * mu * length * mdot / (rho * aEff * diameter * diameter);
         double h = 0;
         double[] xu = new double[m];

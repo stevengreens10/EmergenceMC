@@ -2580,11 +2580,14 @@ public final class AssemblyCompiler {
                                     // the liquid pools pass the same way, by their levels and weights
                                     double[] sp = liquidSpace(p, gas.get(p.id())), sq = liquidSpace(q, gas.get(q.id()));
                                     double portP, portQ;
+                                    // (a tank's "weir" [m]: its outlet to the vessel below stands that high over its
+                                    // floor, so it holds a pool that deep — a column's tray, which the vapour from below
+                                    // passes through)
                                     if (d == Dir.UP) {
                                         portP = sp[0] + sp[2];
-                                        portQ = sq[0];
+                                        portQ = sq[0] + weir(q, sq);
                                     } else if (d == Dir.DOWN) {
-                                        portP = sp[0];
+                                        portP = sp[0] + weir(p, sp);
                                         portQ = sq[0] + sq[2];
                                     } else {
                                         portP = portQ = Math.max(y * CELL, Math.max(sp[0], sq[0]));
@@ -2615,6 +2618,11 @@ public final class AssemblyCompiler {
                 height = bore;
             }
             return new double[]{floor, g.volume() / height, height};
+        }
+
+        /** Height of a tank's liquid outlet to the vessel below over its floor [m] (at most 90 % of its liquid space). */
+        static double weir(Part p, double[] space) {
+            return p.kind() == PartKind.TANK ? Math.max(0, Math.min(p.param("weir", 0), 0.9 * space[2])) : 0;
         }
 
         /** Flow area through face d of part p in a mixture network (a valve's seat only on its +axis face). */

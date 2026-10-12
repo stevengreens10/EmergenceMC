@@ -18,16 +18,18 @@ import dev.emergence.core.units.PhysicalConstants;
  * independently, so a pressurised vessel vents its gas rather than pushing its liquid — and counting it would
  * couple the liquid to the gas's millisecond pressure swings in small pipes, stiffly, for no gain).
  * through the passage as through an orifice, Q = C_d·A_p·√(2|Δ|/ρ)·sgn Δ, joined smoothly to a laminar Q ∝ Δ below
- * Δ₀ = 1 Pa. It can only carry liquid that is there: Q is scaled by the upstream side's availability
- * φ = H/(H + 1 mm)·V_l/(V_l + 10 µL), H that side's depth above its port (smoothly floored), V_l its liquid: a port
- * above the liquid, or a dry vessel, passes nothing. The liquid carries
+ * Δ₀ = 30 Pa. It can only carry liquid that is there: the liquid reaches the port by spilling over its lip, which
+ * passes at most the weir flow Q_w = ⅔·C_d·b·√(2g)·H^{3/2} (Francis; b = 2√(πA_p) the port's rim, H the upstream depth
+ * above the port, smoothly floored), joined to the orifice flow as Q·Q_w/(|Q| + Q_w) — a pool just below its outlet
+ * keeps its liquid, as a column's tray holds its pool below the weir — and scaled by V_l/(V_l + 10 µL) (a dry vessel
+ * passes nothing). The liquid carries
  * its upstream pool's composition (each species' moles per volume) and internal energy — elements and energy are
  * conserved; the liquid's weight falling between ports is neither stored nor dissipated (ρgΔz is 10⁻⁵ of its
  * internal energy per metre). Quasi-steady: the liquid in the passage stores nothing; gas and liquid pass a shared
  * passage independently (a pipe full of liquid still lets gas through).
  */
 public final class LiquidDrain implements Element {
-    private static final double G = PhysicalConstants.STANDARD_GRAVITY, DP0 = 30.0, DEPTH = 1e-3, FLOOR = 1e-4, VOL0 = 1e-8;
+    private static final double G = PhysicalConstants.STANDARD_GRAVITY, DP0 = 30.0, FLOOR = 1e-5, VOL0 = 1e-8;
 
     private final GasReactor a, b;
     private final double floorA, sectionA, portA, floorB, sectionB, portB, area, cd;
@@ -117,14 +119,17 @@ public final class LiquidDrain implements Element {
         }
         double rhoA = (mA + 1000 * VOL0) / (vA + VOL0), rhoB = (mB + 1000 * VOL0) / (vB + VOL0);
         double hA = pos(floorA + vA / sectionA - portA), hB = pos(floorB + vB / sectionB - portB);
-        // what a side can give: liquid above its port, and liquid at all (a dry vessel gives nothing, whatever the
-        // smoothing of its depth)
-        double phiA = hA / (hA + DEPTH) * vA / (vA + VOL0), phiB = hB / (hB + DEPTH) * vB / (vB + VOL0);
+        // what a side can give: liquid at all (a dry vessel gives nothing, whatever the smoothing of its depth)
+        double phiA = vA / (vA + VOL0), phiB = vB / (vB + VOL0);
         double up = 0.5 * (1 + Math.tanh((rhoA * G * hA - rhoB * G * hB + 0.5 * (rhoA + rhoB) * G * (portA - portB)) / DP0));
         double rho = up * rhoA + (1 - up) * rhoB;
         double drive = rhoA * G * hA - rhoB * G * hB + rho * G * (portA - portB);
         double open = gate == null ? 1 : Math.max(gate.opening(), 1e-6);
         double q = cd * area * open * Math.sqrt(2 / rho) * drive / Math.pow(drive * drive + DP0 * DP0, 0.25);
+        // over the lip: the upstream depth above the port limits it (weir flow, ∝ H^{3/2})
+        double hUp = up * hA + (1 - up) * hB;
+        double qw = 2.0 / 3 * cd * 2 * Math.sqrt(Math.PI * area) * open * Math.sqrt(2 * G) * hUp * Math.sqrt(hUp);
+        q = q * qw / (Math.abs(q) + qw);
         q *= up * phiA + (1 - up) * phiB;
         double e = 0;
         for (int k = 0; k < n; k++) {

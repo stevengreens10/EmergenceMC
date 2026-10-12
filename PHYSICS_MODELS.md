@@ -383,7 +383,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * A `GasReactor` may carry a pressure unknown (p·V = ΣnRT) and a piston-driven volume V(θ); `PistonCoupling` then
   takes p·dV/dt from its energy and turns the crank, as for single fluids.
 * `MixtureBranch`: molar flow ṅ driven by Δp against K·ṁ|ṁ|/(2ρA²) + 32μLṁ/(ρAD²) (ρ, M, T, composition upstream,
-  blended smoothly through ṅ = 0), plus the gas column's weight ρgΔz (a hot chimney draws) and choking (the
+  blended smoothly through ṅ = 0), plus the weight of the gas standing in the passage, ½(ρ_a + ρ_b)·gΔz (a hot
+  chimney draws; the mean of the ends', not the upwind density — with heavy gas above light an upwind head has no
+  consistent flow near zero and Newton chatters), and choking (the
   downstream pressure felt is never below the critical ratio (2/(γ+1))^{γ/(γ−1)} of the upstream; with K ≈ 2 an
   orifice reproduces the isentropic choked mass flow within 0.5 %). It carries species ṅ·x_i and enthalpy ṅ·h(T_up)
   (formation enthalpy included); flow to or from a reservoir is the system's external power.
@@ -718,7 +720,10 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   part's floor, a side joint at the passage's bottom.
 * The liquid moves by its weight: Δ = ρ_a g H_a − ρ_b g H_b + ρg(z_a − z_b) (H the depth above a port, z the ports'
   heights), through the passage as an orifice, Q = 0.6·A·√(2|Δ|/ρ)·sgn Δ, joined to a laminar Q ∝ Δ below 30 Pa; only
-  what is there flows (scaled by H/(H + 1 mm)·V_l/(V_l + 10 µL) of the upstream side). It carries its pool's
+  what is there flows: the liquid reaches the port over its rim, at most the weir flow Q_w = ⅔·C_d·b·√(2g)·H^{3/2}
+  (Francis; b = 2√(πA) the rim, H the upstream depth above the port), combined as Q·Q_w/(|Q| + Q_w), and a dry vessel
+  passes nothing (× V_l/(V_l + 10 µL)). A tank's "weir" raises its outlet to the vessel below above its floor, so it
+  holds a pool that deep: a column's tray. It carries its pool's
   composition and internal energy (elements and energy conserved; its potential energy falling is not tracked). A
   shut valve stops it with the gas.
 * The gas pressure difference does not push the liquid: the gas passage sharing the way equalises it, and gas and

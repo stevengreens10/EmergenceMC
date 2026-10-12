@@ -522,3 +522,19 @@ rotor); one wire cell touching a frame post votes the whole wiring net onto the 
 It governs at 36.8 rad/s and holds within 0.3 % against a brake, drawing 0.4 → 5.9 A; the smooth 0.2 mm contact
 ramp makes it a proportional regulator rather than a chattering one (recorded as a limitation).
 
+**A reflux column, at last.** The first attempt (three wall-cooled stages) failed on near-empty pools; this one gives
+the trays something to hold. Tanks take a "weir": their outlet to the vessel below stands that high over the floor.
+Three things then had to change in the general models. (1) Liquid leaving over a port is weir flow, ∝ H^{3/2} over the
+port's rim: the old depth factor H/(H + 1 mm), linear near zero, let a full-face passage drain a tray at 5 mL/s from
+the 12 µm "depth" its smoothing left below the weir. (2) A pool's equilibrium pressure entered through max(0, l), a
+kink a near-empty condenser hovers on; it is now smoothly floored. (3) A gas passage's weight term used the upwind
+density: with a chilled condenser over a warm tray, flowing down the head is heavy and flowing up light — no
+consistent flow near zero, and the step size collapsed as the flow reversed; it is now the mean of the two ends'.
+Then two design lessons: the condenser's fins, sharing walls with the top tray, chilled the whole stack through the
+steel (the pot cooled at 150 W) — a short vapour line between them fixed it; and the trays need ~200 W to warm through.
+At 360 s the pools read 6 / 5 / 9 / 22 % ethanol up the column and the condensate 51 % (separation factor 16.5 against
+the still's 11; after 15 minutes, 53).
+The tour, too: its steps' conditions and waits started when the client asked the server to act, not when it had —
+in the busy gallery the burner's first shot was taken from the previous exhibit, and a later exhibit's shots before
+its own camera move (with the burner's logger still on screen). Each step's clock now starts once its action has run.
+

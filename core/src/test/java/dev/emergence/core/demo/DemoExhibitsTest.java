@@ -1762,6 +1762,40 @@ class DemoExhibitsTest {
     }
 
     /**
+     * Reflux column: after six minutes of boiling, each tray up is richer in ethanol, and the condensate is enriched over
+     * the pot far beyond one still stage (separation factor (x_D/(1 − x_D))/(x_W/(1 − x_W)) ≈ 11 for the still).
+     */
+    @Test
+    void columnSeparatesBeyondOneStage() {
+        Exhibit e = ChemistryExhibits.column();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var pot = c.gas(b.id(e, "pot"));
+        int iE = -1, iW = -1;
+        for (int i = 0; i < pot.species().size(); i++) {
+            if (pot.species().get(i).id().equals("C2H5OH")) iE = i;
+            if (pot.species().get(i).id().equals("H2O")) iW = i;
+        }
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 360);
+        var s = c.solverView();
+        String[] names = {"pot", "tray1", "tray2", "tray3", "condenser"};
+        double[] x = new double[names.length];
+        StringBuilder sb = new StringBuilder("column (liquid ethanol fractions):");
+        for (int k = 0; k < names.length; k++) {
+            var g = c.gas(b.id(e, names[k]));
+            double le = g.liquidMoles(s, iE), lw = g.liquidMoles(s, iW);
+            x[k] = le / (le + lw);
+            sb.append(String.format(" %s %.3f (%.0f °C)", names[k], x[k], g.temperature(s) - 273.15));
+        }
+        double sep = (x[4] / (1 - x[4])) / (x[0] / (1 - x[0]));
+        System.out.println(sb + String.format("; separation factor %.1f", sep));
+        assertTrue(x[3] > x[2] && x[2] > x[0], "richer up the column");
+        assertTrue(x[4] > 0.45, "the condensate is about half ethanol: " + x[4]);
+        assertTrue(sep > 14, "beyond one still stage (≈ 11): " + sep);
+    }
+
+    /**
      * Fan cooling: at rest the two warm plates cool alike (no draft through the idle duct); cranked, the fan's jet
      * carries off several times the heater's power and the plate in it falls well below its twin.
      */

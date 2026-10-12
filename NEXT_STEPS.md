@@ -22,14 +22,12 @@ regenerate the demo world → screenshot tour → docs → commit.
    event-driven simulation for large gate counts.
 6. **Steam and heat engines**: a condenser and feed pump so the boiler runs indefinitely; liquid level shown in
    tanks; multi-stage turbines and nozzles (a working Brayton cycle); the steam engine's cost (≈ 1.5× real time).
-7. **Chemical engineering**: a distillation column (stages, reflux; liquid drains between vessels are in). A first
-   try (three stacked wall-cooled stages over the still's pot) did not distil: with the mixture passages' reversal
-   blend at 10⁻⁵ mol/s it failed when the vapour front reached the cold line (3·10⁻⁵ got through); then the pot sat
-   above its bubble point without boiling while the lowest stage's gas overheated past 120 °C with its liquid pool
-   hovering just below zero — look at negative liquid pools (their energy l·u_l) and at what stalls the vapour path,
-   and make near-empty pools strictly non-negative. Then siphons and pressure-driven liquid transfer;
-   more condensables (methanol, acetone, …) and activity models (Wilson, NRTL) for any pair; solutions of solids,
-   crystallisation; a voltaic pile driving the DC motor. (Liquids, VLE and a still are in.)
+7. **Chemical engineering**: (a still and a reflux column at total reflux are in — trays are tanks with a "weir")
+   a distillate draw-off (a side outlet off the condenser, setting a reflux ratio) and a feed tray; tray efficiency
+   (the vapour passes over the pool, not through it — the exchange is κ·A only); counter-current gas exchange through
+   wide openings (one branch carries one flow: a cold vessel over a warm one cannot swap gas both ways); siphons and
+   pressure-driven liquid transfer; more condensables (methanol, acetone, …) and activity models (Wilson, NRTL) for
+   any pair; solutions of solids, crystallisation; a voltaic pile driving the DC motor.
 8. **Magnetics**: hysteresis (and core loss), saturation of armatures and magnet–iron pulls; a saturable-reactor
    timer (needs a high-permeability alloy such as 80 % permalloy in the database); hinged armatures and plungers; coils adding to a magnet's MMF
    (polarised relays, electro-permanent releases); relay logic (latching relays, relay gates); core losses; a

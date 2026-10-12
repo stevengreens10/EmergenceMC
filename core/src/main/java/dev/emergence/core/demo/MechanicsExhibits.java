@@ -309,9 +309,9 @@ public final class MechanicsExhibits {
         int shaft = e.fill(SHAFT, st, 7, 2, 8, 7, 4, 8, Dir.UP, "diameter", 0.015); // up past the bearing, clear of it
         e.name("shaft", shaft);
         // the beam: light aluminium plates through the shaft's top, risers to the bushings and the spring seats
-        e.fill(BLOCK, al, 1, 4, 8, 6, 4, 8, Dir.EAST, "fill", 0.25);
-        e.add(BLOCK, al, 7, 4, 8, Dir.EAST, "fill", 0.25);
-        e.fill(BLOCK, al, 8, 4, 8, 13, 4, 8, Dir.EAST, "fill", 0.25);
+        e.fill(BLOCK, al, 1, 4, 8, 6, 4, 8, Dir.UP, "fill", 0.25); // flat plates
+        e.add(BLOCK, al, 7, 4, 8, Dir.UP, "fill", 0.25);
+        e.fill(BLOCK, al, 8, 4, 8, 13, 4, 8, Dir.UP, "fill", 0.25);
         for (int x : new int[]{1, 5, 9, 13}) e.add(BLOCK, al, x, 5, 8, Dir.UP, "fill", 0.25);
         e.name("crank", e.add(CRANK, st, 7, 5, 8, Dir.UP, "radius", 0.2));
         // each weight on a rod in a bushing, a spring between it and the beam's end

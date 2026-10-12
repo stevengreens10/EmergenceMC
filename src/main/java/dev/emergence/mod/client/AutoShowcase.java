@@ -147,20 +147,20 @@ public final class AutoShowcase {
                 }));
             }
             if (id.equals("burner")) {
-                // igniter on; two minutes later the fuel; a minute later the burning chamber on the logger
+                // igniter and fuel together (the methane lights on the walls as they come up to temperature), the chamber
+                // on the logger; one shot when it burns, or after two minutes whatever the island's pace (it costs about
+                // its real-time budget, so in a busy gallery it runs in slow motion — the tour must not wait on it)
                 BlockPos chamberAt = DemoBuilder.partBlock(plot, e, "chamber");
-                STEPS.add(new Step(9000, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
-                        "showcase-" + (i + 1) + "-" + id + "-glowing", () -> chamber(server, chamberAt, false) > 1000));
-                STEPS.add(new Step(6000, () -> {
+                STEPS.add(new Step(2400, () -> {
                     ServerPlayer p = server.getPlayerList().getPlayers().get(0);
                     p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
                             new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
-                    BlockPos at = DemoBuilder.partBlock(plot, e, "chamber");
-                    if (server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+                    if (server.overworld().getBlockEntity(chamberAt) instanceof AssemblyBlockEntity be) {
                         PlacedPart ch = find(be, PartKind.TANK);
-                        if (ch != null) SimulationManager.get(server.overworld()).attachLogger(p, at, ch.id, "Combustion chamber");
+                        if (ch != null) SimulationManager.get(server.overworld()).attachLogger(p, chamberAt, ch.id, "Combustion chamber");
                     }
                     SimulationManager.get(server.overworld()).showLogger(p, "fluid temperature", 3);
+                    toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch"));
                     toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "valve"));
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-burning", () -> chamber(server, chamberAt, true) > 1300));

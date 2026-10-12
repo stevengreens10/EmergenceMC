@@ -106,8 +106,8 @@ public final class ChemistryExhibits {
     public static Exhibit gasBurner() {
         Exhibit e = new Exhibit("burner", "Gas burner",
                 List.of("GAS BURNER", "1. heater switch on", "2. open fuel valve", "3. heater off"),
-                "Light it the way a gas furnace does: switch the heating element on and let the chamber glow (about two "
-                        + "minutes), then open the fuel valve — the methane lights on the hot walls — then switch the heater "
+                "Light it the way a gas furnace does: switch the heating element on and let the chamber glow (about a "
+                        + "minute), then open the fuel valve — the methane lights on the hot walls — then switch the heater "
                         + "off: the flame keeps itself hot and burns on. The methane comes from a 200 bar cylinder through "
                         + "a needle valve so fine (40 µm) that the flow is choked: it depends only on the cylinder pressure. "
                         + "Nothing pumps the air: the hot gas in the chimney weighs less than the cold air outside, so it "
@@ -122,7 +122,7 @@ public final class ChemistryExhibits {
         int valve = e.add(VALVE, "brass", 4, 1, 8, Dir.EAST, "bore", 4e-5);
         e.name("valve", valve);
         e.add(PIPE, st, 5, 1, 8, Dir.EAST, "bore", 0.004);
-        int chamber = e.add(TANK, st, 6, 1, 8, Dir.UP, "wall", 0.002);
+        int chamber = e.add(TANK, st, 6, 1, 8, Dir.UP, "wall", 0.001); // thin: the igniter brings it to light-off in a minute
         e.name("chamber", chamber);
         e.add(PIPE, st, 6, 1, 9, Dir.SOUTH, "bore", 0.016);                // air inlet, open at its far end
         int chimney = e.fill(PIPE, st, 6, 2, 8, 6, 6, 8, Dir.UP, "bore", 0.04, "wall", 0.001); // chimney, open at the top

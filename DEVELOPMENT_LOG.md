@@ -486,3 +486,13 @@ into the still took three things: a dry pipe must pass nothing (its smoothed dep
 went negative); the gas pressure difference must not push the liquid (it coupled the liquid to millisecond gas swings
 in small pipes); and the gas passages' reversal blend, 10⁻⁶ mol/s, had to widen to 10⁻⁵ — the drains nudged the
 still's gas to and fro across zero, and Newton was flipping between the two ends' states (rejected steps 9451 → 18).
+
+**A rendering pass.** A screenshot tour of the gallery turned up: tanks built of several blocks drew a complete little
+tank (lid, rivets, gauge) in every block — the turbine's water tank was 48 gauges; joined tank blocks now draw one
+shell running flush through their shared faces, a rim strip on the outside top edge, and one gauge on the top row's
+west/north corner. A switch toggled before its island had compiled (just loaded) was forced open instead of flipped,
+so the click did nothing — it now flips the part, which the island compiles from. The gas burner took minutes to
+light: its chamber wall is now 1 mm (it lights about a minute after switch-on instead of two), and the tour no longer
+waits on it (the burner costs about its whole real-time budget, so in the busy gallery it runs in slow motion). The
+spinning-weights beam was made of upright slabs (a comb); its plates now lie flat. The "slanted" wires and posts in
+some shots are perspective (a close, high, wide-angle camera).

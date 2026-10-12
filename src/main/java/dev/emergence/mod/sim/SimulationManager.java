@@ -826,11 +826,13 @@ public final class SimulationManager {
 
     public boolean toggleSwitch(BlockPos pos, long partId) {
         Island isl = islandAt(pos);
-        boolean closed = false;
-        if (isl != null && isl.compiled != null) closed = isl.compiled.toggleSwitch(partId);
         AssemblyBlockEntity be = be(pos);
+        PlacedPart part = be == null ? null : be.byId(partId);
+        boolean compiled = isl != null && isl.compiled != null;
+        // not simulated yet (just loaded, or its build failed): flip the part itself; the island compiles from it
+        boolean closed = compiled ? isl.compiled.toggleSwitch(partId) : part != null && !part.closed;
         if (be != null) {
-            PlacedPart p = be.byId(partId);
+            PlacedPart p = part;
             if (p != null) {
                 p.closed = closed;
                 be.setChanged();

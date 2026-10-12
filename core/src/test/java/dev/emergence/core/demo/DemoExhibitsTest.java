@@ -806,12 +806,12 @@ class DemoExhibitsTest {
         long chamber = b.id(e, "chamber"), top = b.id(e, "chimney");
         // as a gas furnace lights: igniter first, then the gas, then the igniter off
         c.toggleSwitch(b.id(e, "switch"));
-        for (int i = 0; i < 7200; i++) {
-            if (i == 2400) c.toggleSwitch(b.id(e, "valve"));  // fuel on after 2 minutes
-            if (i == 4800) c.toggleSwitch(b.id(e, "switch")); // igniter off after 4
+        for (int i = 0; i < 4800; i++) {
+            if (i == 1200) c.toggleSwitch(b.id(e, "valve"));  // fuel on after a minute
+            if (i == 2400) c.toggleSwitch(b.id(e, "switch")); // igniter off after 2
             var broken = c.step(0.05);
             assertTrue(broken.isEmpty(), "no part fails: " + broken);
-            if (i == 3500) {
+            if (i == 2300) {
                 for (var el : c.network().elements()) if (el instanceof dev.emergence.core.sim.elements.MixtureBranch mb)
                     System.out.printf("burner flow %s: %.3g mol/s%n", mb.label(), mb.molarFlow(c.solverView()));
                 for (var en : java.util.List.of("chamber", "chimney", "fuel")) {
@@ -819,7 +819,7 @@ class DemoExhibitsTest {
                     System.out.printf("burner gas %s: %.0f K, p %.1f Pa%n", en, gg.temperature(c.solverView()), gg.pressure(c.solverView()));
                 }
             }
-            if (i % 1200 == 0 || i == 7199) {
+            if (i % 600 == 0 || i == 4799) {
                 var g = c.gas(chamber);
                 var s = c.solverView();
                 System.out.printf("burner t=%.0f s chamber %.0f K wall %.0f K, CH4 %.2f%% O2 %.1f%% CO2 %.1f%%; chimney top %.0f K CO2 %.1f%%, fuel %.1f bar%n",

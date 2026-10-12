@@ -10,6 +10,7 @@ import dev.emergence.core.materials.Material;
 import dev.emergence.mod.block.AssemblyBlockEntity;
 import dev.emergence.mod.client.model.ObjModel;
 import dev.emergence.mod.client.model.PartModels;
+import dev.emergence.mod.part.PartLinks;
 import dev.emergence.mod.part.PlacedPart;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -265,7 +266,12 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 // the jar's glass and liquid go in the translucent pass
             }
             case TANK -> {
-                if (!isFlask(p)) drawModel(c, "tank", p, ex, ey, ez, false);
+                if (isFlask(p)) break;
+                boolean[] joined = joinedTanks(be, p);
+                boolean any = false;
+                for (boolean j : joined) any |= j;
+                if (!any) drawModel(c, "tank", p, ex, ey, ez, false);
+                else drawTankSection(c, p, f, joined, ex, ey, ez);
             }
             case VALVE -> drawModel(c, "valve", p, 1, 1, ez, false);
             case PIPE -> drawPipe(c, be, p, f);
@@ -674,6 +680,57 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     }
 
     /** A glass tank: drawn see-through in the translucent pass, with its gas in the colour chemistry gives it. */
+    /** Faces (by Dir ordinal) where another metal tank cell of the same material adjoins: one vessel across them. */
+    private static boolean[] joinedTanks(AssemblyBlockEntity be, PlacedPart p) {
+        boolean[] j = new boolean[6];
+        for (Dir d : Dir.values()) {
+            for (PlacedPart q : PartLinks.across(be, p, d)) {
+                if (q != p && q.kind == PartKind.TANK && !isFlask(q) && q.spec.material().equals(p.spec.material())) j[d.ordinal()] = true;
+            }
+        }
+        return j;
+    }
+
+    /**
+     * One block of a tank made of several: a plain shell running flush through the faces it shares with the rest,
+     * a little inset only where it is outside; the pressure gauge once, on the top row's west/north corner of the face it
+     * looks out of.
+     */
+    private void drawTankSection(Ctx c, PlacedPart p, Frame f, boolean[] joined, float ex, float ey, float ez) {
+        // the gauge looks out of the model's −Y face: in the world, minus the frame's second column
+        org.joml.Vector3f gy = new org.joml.Vector3f();
+        f.m3.getColumn(1, gy);
+        Dir gauge = Dir.UP;
+        for (Dir d : Dir.values()) if (d.dx == -Math.round(gy.x) && d.dy == -Math.round(gy.y) && d.dz == -Math.round(gy.z)) gauge = d;
+        Dir side = gauge.axis() == 2 ? Dir.WEST : Dir.NORTH;
+        boolean showGauge = !joined[gauge.ordinal()] && (gauge == Dir.UP || !joined[Dir.UP.ordinal()]) && !joined[side.ordinal()];
+        float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
+        float[] lo = new float[3], hi = new float[3];
+        for (Dir d : Dir.values()) {
+            float h = ext[d.axis()] / 2 - (joined[d.ordinal()] ? 0 : 0.04f);
+            if (d.sign() > 0) hi[d.axis()] = h;
+            else lo[d.axis()] = -h;
+        }
+        TextureAtlasSprite s = PartModels.sprite("metal_cast");
+        int rgb = tintOf(c, c.materialRgb);
+        c.ps.pushPose();
+        c.ps.last().pose().mul(new Matrix4f(f.m4).transpose());
+        c.ps.last().normal().mul(new Matrix3f(f.m3).transpose());
+        box(c, s, rgb, lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
+        // a darker rolled rim round the top where the shell ends: a strip on each outside face, standing just proud of
+        // it (nothing coplanar with the shell's faces, which would flicker)
+        if (!joined[Dir.UP.ordinal()]) {
+            int rim = tintOf(c, darken(c.materialRgb, 0.75f));
+            float t = 0.012f, y0 = hi[1] - 0.06f, y1 = hi[1] - 0.004f;
+            if (!joined[Dir.WEST.ordinal()]) box(c, s, rim, lo[0] - t, y0, lo[2], lo[0], y1, hi[2]);
+            if (!joined[Dir.EAST.ordinal()]) box(c, s, rim, hi[0], y0, lo[2], hi[0] + t, y1, hi[2]);
+            if (!joined[Dir.NORTH.ordinal()]) box(c, s, rim, lo[0], y0, lo[2] - t, hi[0], y1, lo[2]);
+            if (!joined[Dir.SOUTH.ordinal()]) box(c, s, rim, lo[0], y0, hi[2], hi[0], y1, hi[2] + t);
+        }
+        c.ps.popPose();
+        if (showGauge) drawModelPieces(c, "tank", p, ex, ey, ez, n -> n.startsWith("tank_gauge") || n.equals("tank_needle"));
+    }
+
     private static boolean isFlask(PlacedPart p) {
         return p.kind == PartKind.TANK && p.spec.resolveMaterial().id().equals("glass");
     }
@@ -765,6 +822,16 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     }
 
     private void drawModel(Ctx c, String name, PlacedPart p, float sx, float sy, float sz, boolean translucentPass) {
+        drawModel(c, name, p, sx, sy, sz, translucentPass, n -> true);
+    }
+
+    /** Only the model's pieces whose names pass {@code which} (opaque pass). */
+    private void drawModelPieces(Ctx c, String name, PlacedPart p, float sx, float sy, float sz, java.util.function.Predicate<String> which) {
+        drawModel(c, name, p, sx, sy, sz, false, which);
+    }
+
+    private void drawModel(Ctx c, String name, PlacedPart p, float sx, float sy, float sz, boolean translucentPass,
+                           java.util.function.Predicate<String> which) {
         ObjModel model = PartModels.model(name);
         if (model == null) return;
         c.ps.pushPose();
@@ -772,6 +839,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         int[] bands = p.kind == PartKind.RESISTOR ? resistorBands(p.spec.params().getOrDefault("resistance", 10.0)) : null;
         double crankR = p.kind == PartKind.CRANK ? p.spec.params().getOrDefault("radius", 0.15) * 16.0 : 1;
         for (ObjModel.Piece piece : model.pieces) {
+            if (!which.test(piece.name())) continue;
             String[] mt = piece.material().split("__", 2);
             String flags = mt.length > 1 ? mt[1] : "";
             boolean glass = flags.contains("glass");

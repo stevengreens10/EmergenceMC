@@ -561,4 +561,6 @@ leads routed to a bench of four diodes, a smoothing capacitor and an LED. Two wi
 own nets, so its first try ran a wire over the coils' series link and shorted coil A; and an insulated segment is bare
 only at its own two ends, so a hand-laid stub and a routed wire that turned a corner beside it never touched — the
 router now takes the coil leads directly.
+(One tour hung at shutdown — the integrated server spinning in vanilla's chunk-unload loop for ten minutes — and the
+next run of the same tour closed normally: intermittent, not yet understood; kill only the showcase client if it recurs.)
 

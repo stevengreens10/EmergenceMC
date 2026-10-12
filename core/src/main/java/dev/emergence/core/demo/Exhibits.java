@@ -116,7 +116,7 @@ public final class Exhibits {
         r.keepClear(4, 2, 4, 12, 5, 12);
         r.keepClear(6, 6, 5, 10, 9, 11); // and nothing over the coils and their wiring
         r.route();
-        return e.view(13, 9, 22, 28);
+        return e.view(11, 8, 22, 34);
     }
 
     /** Three meshing spur gears (8 : 24 : 40 teeth) — speed ratios and direction reversal. */

@@ -60,10 +60,16 @@ public final class AutoShowcase {
             if (!only.isEmpty() && !only.contains(id)) continue;
             Runnable view = () -> look(server, plot.getX() + e.viewX, plot.getY() + e.viewHeight, plot.getZ() + e.viewZ,
                     (float) e.viewYaw, (float) e.viewPitch);
-            STEPS.add(new Step(50, () -> {
+            // the first look: at least 50 ticks, and on until the exhibit is drawn and simulated (a tour jumping far, as
+            // with showcaseOnly, otherwise photographs an empty plot)
+            long[] since = {0};
+            var first = e.parts.get(0);
+            BlockPos firstBlock = plot.offset(first.x0(), first.y0(), first.z0());
+            STEPS.add(new Step(600, () -> {
                 LoggerHud.showcase = false;
+                since[0] = server.overworld().getGameTime();
                 view.run();
-            }, "showcase-" + (i + 1) + "-" + id));
+            }, "showcase-" + (i + 1) + "-" + id, () -> server.overworld().getGameTime() - since[0] >= 50 && shown(server, firstBlock)));
             if (id.equals("glow") || id.equals("fuse")) {
                 BlockPos wire = DemoBuilder.partBlock(plot, e, "wire");
                 STEPS.add(new Step(40, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
@@ -425,6 +431,13 @@ public final class AutoShowcase {
         var c = sh == null ? null : SimulationManager.get(server.overworld()).compiledAt(at);
         if (c == null || c.bodyOf(sh.id) == null) return 0;
         return c.angularVelocity(c.bodyOf(sh.id));
+    }
+
+    /** True once the block's chunk section is drawn on the client and its machine is compiled on the server. */
+    private static boolean shown(net.minecraft.server.MinecraftServer server, BlockPos at) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || !mc.level.isLoaded(at) || !mc.levelRenderer.isSectionCompiled(at)) return false;
+        return SimulationManager.get(server.overworld()).compiledAt(at) != null;
     }
 
     private static double hottest(BlockPos at) {

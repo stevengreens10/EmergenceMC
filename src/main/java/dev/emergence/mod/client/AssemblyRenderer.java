@@ -1300,6 +1300,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
     }
 
     private static float frac(float x) {
+        // a face spanning a whole cell runs 0 → 1: keep the 1 (frac would wrap it to 0 and sample one texel column)
+        if (x >= 0 && x <= 1) return x;
         float f = x - (float) Math.floor(x);
         return Math.max(0, Math.min(1, f));
     }

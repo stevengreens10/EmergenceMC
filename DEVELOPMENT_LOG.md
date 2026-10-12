@@ -496,3 +496,7 @@ light: its chamber wall is now 1 mm (it lights about a minute after switch-on in
 waits on it (the burner costs about its whole real-time budget, so in the busy gallery it runs in slow motion). The
 spinning-weights beam was made of upright slabs (a comb); its plates now lie flat. The "slanted" wires and posts in
 some shots are perspective (a close, high, wide-angle camera).
+Two more from the same pass: faces spanning a whole cell sampled one texel column (texture coordinates were
+frac(x + ½), and frac(1) wraps to 0), streaking every flush face — the joined tanks showed it, one inset corner block
+looking lighter than the rest; and a tour jumping far (showcaseOnly) photographed exhibits before their chunks had
+drawn — the first look now waits for the section to be compiled and the island simulated.

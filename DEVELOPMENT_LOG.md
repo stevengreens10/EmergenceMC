@@ -538,3 +538,8 @@ The tour, too: its steps' conditions and waits started when the client asked the
 in the busy gallery the burner's first shot was taken from the previous exhibit, and a later exhibit's shots before
 its own camera move (with the burner's logger still on screen). Each step's clock now starts once its action has run.
 
+**A condensing steam engine, shelved.** Exhausting the steam engine into a sealed 40 °C condenser works physically —
+the engine runs nearly three times as fast under the same brake (Watt's separate condenser, unprogrammed) — but the
+low-pressure steam volumes sit on the dry edge of the saturation dome, where Newton two-cycles: 12× real time. Recorded
+in NEXT_STEPS (item 6) with what was measured; the solver now reports its last non-converging unknown on request.
+

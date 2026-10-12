@@ -670,6 +670,11 @@ public final class TransientSolver implements StateView {
         return limiterCounts;
     }
 
+    /** The unknown that last failed to converge in a Newton iteration, with its value and update (diagnostics). */
+    public String lastNewtonFailure() {
+        return worstNewtonDiagnostic();
+    }
+
     private String worstNewtonDiagnostic() {
         if (lastBadIndex >= 0) lastBadUnknown = net.unknownName(lastBadIndex) + " = " + lastBadX + " (step " + lastBadDx + ")";
         return "Last non-converging unknown: " + lastBadUnknown;

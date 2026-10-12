@@ -22,6 +22,14 @@ regenerate the demo world → screenshot tour → docs → commit.
    event-driven simulation for large gate counts.
 6. **Steam and heat engines**: a condenser and feed pump so the boiler runs indefinitely; liquid level shown in
    tanks; multi-stage turbines and nozzles (a working Brayton cycle); the steam engine's cost (≈ 1.5× real time).
+   A condensing engine was tried (the steam engine's exhaust seat opening into a sealed copper condenser a quarter
+   full of water at 40 °C, 7.4 kPa, clasped by copper blocks as a heat sink): Watt's separate condenser emerged — under
+   the same brake it ran at 160 rad/s against the atmospheric engine's ~60 — but it cost 12× real time: from 0.5 to 3.5 s
+   some 80 000 steps and 44 000 Newton failures, with low-pressure steam volumes (the exhaust valve at 7.8 kPa, the
+   cylinder) sitting just outside the dry saturation line, s ≈ 1.04–1.06, where Newton two-cycles (widening the Hermite
+   join to s < 1.1 only moved the point). At 40 °C ln(ρ'/ρ'') ≈ 10, so p = p_s·e^{−L(s−1)} is steep there: look at a
+   pressure-based phase coordinate at low pressure, or a C² join. `TransientSolver.lastNewtonFailure()` and TRACE find
+   such spots (the "last" unknown is the highest-index unconverged one, not the worst — read TRACE's ranking).
 7. **Chemical engineering**: (a still and a reflux column at total reflux are in — trays are tanks with a "weir")
    a distillate draw-off (a side outlet off the condenser, setting a reflux ratio) and a feed tray; tray efficiency
    (the vapour passes over the pool, not through it — the exchange is κ·A only); counter-current gas exchange through

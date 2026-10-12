@@ -1608,6 +1608,38 @@ class DemoExhibitsTest {
     }
 
     /**
+     * Contact governor: the weight lifts off its contact near √(F₀/(m r)) and the speed then holds — braked, the motor
+     * draws several times the current and keeps its speed within 2 %.
+     */
+    @Test
+    void contactGovernorHoldsItsSpeed() {
+        Exhibit e = ControlExhibits.contactGovernor();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long rotor = b.id(e, "rotor"), weight = b.id(e, "weight"), bat = b.id(e, "battery");
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 12);
+        double[] w = new double[2], amps = new double[2];
+        for (int m = 0; m < 2; m++) {
+            if (m == 1) {
+                c.toggleSwitch(b.id(e, "brake"));
+                run(c, 8);
+            }
+            int n = 100;
+            for (int k = 0; k < n; k++) {
+                c.step(0.05);
+                w[m] += c.probe(rotor).angularVelocity() / n;
+                amps[m] += Math.abs(c.probe(bat).current()) / n;
+            }
+        }
+        System.out.printf("contact governor: %.2f rad/s at %.2f A free, %.2f rad/s at %.2f A braked; weight off its stop by %.3f mm%n",
+                w[0], amps[0], w[1], amps[1], 1e3 * c.probe(weight).angle());
+        assertTrue(w[0] > 33 && w[0] < 40, "it governs near 37 rad/s: " + w[0]);
+        assertEquals(w[0], w[1], 0.02 * w[0], "braked, it keeps its speed");
+        assertTrue(amps[1] > 3 * amps[0], "by taking more current through the contact: " + amps[0] + " → " + amps[1]);
+    }
+
+    /**
      * Every exhibit stays on its plot: in front of the walkway (z < 16, where the signs stand) and clear of the 4-block
      * aisle that keeps neighbouring exhibits out of each other's interaction reach (x < 20·plots − 4).
      */

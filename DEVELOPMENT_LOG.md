@@ -512,3 +512,13 @@ The tour, meanwhile, had never seen it light: its conditions are checked on the 
 out no block entities off its own thread — the burner's "chamber above 1300 K" (and the governor's wheel speeds) read 0
 until the step's cap ran out. They are now read on the server thread; the burner's shot comes 49 s after switch-on.
 
+**A contact governor.** The first governor whose sensing is mechanical: a brass weight on a 2 mm slide on the DC
+motor's rotor, pressed against a contact wire by a preloaded spring, the contact in series with the coils and a 47 Ω
+resistor across it (the Teletype's motor governor). Two general additions made it: springs take a "preload" (fitted
+shorter than free), and a travel contact may close between a slide and the rotor that carries it. Building it found
+the usual traps of the grid: blocks beside a thin shaft do not grip it (a hub block on the shaft's cell does); a
+linear bearing touching the weight it guides is mounted on that weight (the joint collapses, the weight welds to the
+rotor); one wire cell touching a frame post votes the whole wiring net onto the frame (the circuit opens there).
+It governs at 36.8 rad/s and holds within 0.3 % against a brake, drawing 0.4 → 5.9 A; the smooth 0.2 mm contact
+ramp makes it a proportional regulator rather than a chattering one (recorded as a limitation).
+

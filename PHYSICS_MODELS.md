@@ -427,7 +427,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   bushings add rolling friction μ ≈ 0.003 of the transverse load and grease drag.
 * **Helical springs** join the bodies touching their end faces: k = G·d⁴/(8·D³·N) (wire d, coil diameter D, N
   active turns); the force acts on the ends' tracked positions (F = −k·e, energy ½k·e²), so a reloaded machine
-  resumes with the force its positions imply. The spring's own mass is neglected.
+  resumes with the force its positions imply. A spring fitted δ shorter than its free length ("preload") starts from
+  e = −δ: it presses its ends apart with kδ where they were placed — a governor's spring setting its lift-off speed.
+  The spring's own mass is neglected.
 * **Magnetics on slides**: couplings between a slide and the frame (coil flux linkage, mutual inductance, magnet
   energy) are tabulated over the travel (plus 10 %) and represented by a natural cubic spline; force = i·dΨ/dx etc.
 * **Pushing**: a hand on a slide follows the same force–speed–power limits as on a crank (200 N at rest, 3 m/s).
@@ -553,6 +555,8 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Travel contacts**: conductors on a slide and on another body touching across the slide's direction of travel
   meet only at the end of its travel towards one another: their conductance rises smoothly (smoothstep) from 1 nS to
   1/R_contact (0.02 Ω) over the last 0.2 mm — a relay's or limit switch's contacts; I²R heats the moving contact.
+  The other body may be the frame or the turning body a slide rides on: a centrifugal switch's weight against its
+  contact on the rotor (the travel is relative to the rotor, which carries both).
 * **Stops**: a slide's travel ends at its shaft's ends, or at stop collars ("travel" on a linear bearing, either way
   from where it was placed); the stop is a firm contact (150 Hz on the slide's mass, damping ratio 0.7, a quadratic
   onset over 2 % of the stroke up to 1 mm).

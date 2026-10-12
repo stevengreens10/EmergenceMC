@@ -510,6 +510,12 @@ public final class AssemblyCompiler {
         final Map<Long, WireRun> runOf = new HashMap<>();
 
         /** A flexible lead: a bare wire marked "flexible" (a moving coil's tinsel lead). */
+        /** True if body s is a slide whose travel carries its part to or from one on body o: o is the frame, or s's carrier. */
+        static boolean slideAgainst(CompiledAssembly.Body s, CompiledAssembly.Body o) {
+            if (s == null || !s.slider) return false;
+            return s.carrier == null ? o == null || o.isStatic : o == s.carrier;
+        }
+
         boolean isFlexibleLead(Part p) {
             return p.kind() == PartKind.WIRE && p.param("flexible", 0) > 0.5;
         }
@@ -874,6 +880,17 @@ public final class AssemblyCompiler {
                     c.warnings.add("Spring #" + sp.id() + " joins a body riding on a turning one to something it moves past (not modelled)");
                     continue;
                 }
+                // the spring rides with the frame its ends move in (a slide's turning carrier, or a rotor it joins):
+                // it joins no rigid group, so it would otherwise stand still on the ground while the rotor turns
+                CompiledAssembly.Body frame = null;
+                for (CompiledAssembly.Body eb : end) if (eb != null && !eb.slider) frame = eb;
+                if (frame == null) for (CompiledAssembly.Body eb : end) if (eb != null && eb.carrier != null) frame = eb.carrier;
+                CompiledAssembly.Body was = c.bodyOfPart.get(sp.id());
+                if (frame != null && was != null && frame != was) {
+                    was.parts.remove(Long.valueOf(sp.id()));
+                    frame.parts.add(sp.id());
+                    c.bodyOfPart.put(sp.id(), frame);
+                }
                 double k = PartGeometry.springRate(sp);
                 // extension = (end b's displacement − end a's) along the spring axis; a slider moving along its
                 // (positive) axis moves that end by x·(axis·spring axis)
@@ -891,7 +908,9 @@ public final class AssemblyCompiler {
                     sb_ = end[1].axis.dot(sa);
                 }
                 if (na == null && nb == null) continue; // both ends fixed: it just sits there
-                c.network.add(new PositionSpring(na, ta, sa_, nb, tb, sb_, k));
+                // "preload" [m]: how much shorter than its free length it was fitted (it pushes its ends apart by k·preload
+                // where it was placed — a governor's spring setting the speed its weights lift at)
+                c.network.add(new PositionSpring(na, ta, sa_, nb, tb, sb_, k, sp.param("preload", 0)));
                 c.springs.put(sp.id(), new double[]{k});
                 c.springEnds.put(sp.id(), new Object[]{ta, -sa_, tb, sb_});
             }
@@ -1265,8 +1284,9 @@ public final class AssemblyCompiler {
                                         // only a brush may conduct across a moving joint, through its contact face —
                                         // or contacts a slide brings together across its direction of travel
                                         Part brush = p.kind() == PartKind.BRUSH ? p : q.kind() == PartKind.BRUSH ? q : null;
-                                        CompiledAssembly.Body sp = bp != null && bp.slider && bp.carrier == null && (bq == null || bq.isStatic) ? bp
-                                                : bq != null && bq.slider && bq.carrier == null && (bp == null || bp.isStatic) ? bq : null;
+                                        // (a slide on a turning body against that body: a governor's or a motor's
+                                        // centrifugal switch — the contacts turn together, the slide's travel is relative)
+                                        CompiledAssembly.Body sp = slideAgainst(bp, bq) ? bp : slideAgainst(bq, bp) ? bq : null;
                                         if (brush == null && sp != null && Math.abs(Math.abs(sp.axis.dot(d.vec())) - 1) < 1e-9
                                                 && !isJournal(p) && !isJournal(q)) {
                                             // the slide's part moves towards the other along +sense·axis

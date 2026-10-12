@@ -153,41 +153,11 @@ public final class ControlExhibits {
         e.plots = 2;
         String st = "steel_1045", ny = "nylon_66";
         // ---- the brushed DC motor (as in the DC motor exhibit), its shaft continuing above the frame
-        e.fill(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
-        e.fill(BLOCK, st, 7, 0, 8, 7, 1, 8, Dir.UP);
-        e.fill(BLOCK, st, 11, 0, 12, 11, 11, 12, Dir.UP);
-        e.fill(BLOCK, st, 5, 0, 12, 5, 11, 12, Dir.UP);
-        e.fill(BLOCK, st, 9, 12, 8, 11, 12, 8, Dir.UP);
-        e.fill(BLOCK, st, 11, 12, 9, 11, 12, 12, Dir.UP);
-        e.fill(BLOCK, st, 5, 12, 8, 7, 12, 8, Dir.UP);
-        e.fill(BLOCK, st, 5, 12, 9, 5, 12, 12, Dir.UP);
-        e.fill(BLOCK, st, 10, 3, 8, 10, 3, 12, Dir.UP);
-        e.fill(BLOCK, st, 6, 3, 8, 6, 3, 12, Dir.UP);
-        e.add(MAGNET, "ndfeb_n42", 10, 4, 8, Dir.UP);
-        e.add(MAGNET, "ndfeb_n42", 6, 4, 8, Dir.DOWN);
-        int shaft = e.fill(SHAFT, st, 8, 1, 8, 8, 14, 8, Dir.UP, "diameter", 0.02);
-        e.name("rotor", shaft);
+        int shaft = brushedMotor(e, 14);
         // it starts at its governed speed, the tacho and integrator capacitors charged to match (as if it had been running)
         e.init(shaft, new Exhibit.Initial(Double.NaN, 25.5, 0, 0.3));
-        e.add(BEARING, st, 8, 1, 8, Dir.UP);
-        e.add(BEARING, st, 8, 12, 8, Dir.UP);
-        e.fill(BLOCK, ny, 6, 6, 6, 10, 6, 10, Dir.UP, "fill", 0.3);
-        e.add(COIL, "copper", 10, 5, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
-        e.add(COIL, "copper", 6, 5, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3, "lead_axis", 2);
-        e.add(BLOCK, ny, 8, 8, 8, Dir.UP);
-        e.fill(BLOCK, "copper", 7, 8, 9, 9, 8, 9, Dir.UP, "fill", 0.6);
-        e.fill(BLOCK, "copper", 7, 8, 7, 9, 8, 7, Dir.UP, "fill", 0.6);
-        e.add(WIRE, "copper", 8, 9, 9, Dir.UP);
         e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
                 {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
-        e.path(INSULATED_WIRE, "copper", new int[][]{{9, 5, 8}, {9, 5, 7}, {8, 5, 7}, {7, 5, 7}, {6, 5, 7}});
-        e.add(WIRE, "copper", 8, 9, 7, Dir.UP);
-        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 6}, {8, 8, 6}, {8, 7, 6}, {7, 7, 6}, {6, 7, 6}, {5, 7, 6},
-                {5, 6, 6}, {5, 6, 7}, {5, 6, 8}, {5, 6, 9}, {5, 5, 9}, {6, 5, 9}});
-        e.add(BRUSH, "graphite", 10, 8, 8, Dir.WEST);
-        e.fill(BLOCK, ny, 10, 9, 8, 10, 11, 8, Dir.UP);
-        e.add(BRUSH, "graphite", 6, 8, 8, Dir.EAST);
-        e.fill(BLOCK, ny, 6, 9, 8, 6, 11, 8, Dir.UP);
         // ---- above the frame: the tacho disc with two magnets of opposite polarity, the fixed tacho coil over their
         // path, and the brake pad against the disc's edge
         e.fill(BLOCK, "aluminium_6061", 7, 14, 7, 9, 14, 9, Dir.UP, "fill", 0.15);
@@ -259,5 +229,129 @@ public final class ControlExhibits {
         r.keepClear(5, 9, 4, 11, 15, 12);
         r.route();
         return e.view(18, 15, 33, 22, 180);
+    }
+    /**
+     * A contact governor (the Teletype's and the gramophone motor's): a weight on a short slide on the motor's own
+     * rotor, held in against a contact by a preloaded spring, the contact in series with the rotor's coils. Above the
+     * speed at which m·ω²·r beats the spring's preload the weight lifts off and the coils' current must pass a resistor
+     * across the contact instead; the motor slows, the weight falls back, the contact closes: the speed hunts in a narrow
+     * band about the set speed, whatever the supply.
+     *
+     * @param preload the spring's preload [m] (it sets the speed)
+     */
+    public static Exhibit contactGovernor(double preload) {
+        return contactGovernor(preload, 10);
+    }
+
+    static Exhibit contactGovernor(double preload, double brakeForce) {
+        Exhibit e = new Exhibit("contactgov", "Contact governor",
+                List.of("CONTACT GOVERNOR", "Close the switch, then", "brake it: the speed", "holds"),
+                "The DC motor again, on a full 24 V, with a centrifugal switch riding on its rotor (top). A brass weight "
+                        + "slides on a short rod, pressed inwards against a contact wire by a spring fitted 8.7 mm shorter "
+                        + "than it would like to be. The contact is in series with the rotor's coils. Close the switch: "
+                        + "the motor speeds up until the weight's need for a force towards the axis, m·ω²·r, outgrows "
+                        + "what the spring gives — near 37 radians a second — and the weight eases off its contact. The "
+                        + "coils' current must then pass a 47 Ω resistor across the contact; the torque collapses and the "
+                        + "speed can rise no further. Apply the brake (right-click the pad): the speed sags a hair, the "
+                        + "weight sinks back onto the contact and the motor takes the current it needs — the speed holds "
+                        + "within a fraction of a percent. Without the switch the same motor would race on past 70 rad/s. "
+                        + "This is the governor of the Teletype and of clockwork gramophone motors (the resistor spares the "
+                        + "contacts the spark of cutting the coils' current); a stiffer preload sets a higher speed, "
+                        + "as its square root.");
+        e.plots = 2;
+        String st = "steel_1045", ny = "nylon_66";
+        int shaft = brushedMotor(e, 16);
+        // turning already (a coasting start, so the visit need not wait half a minute for it to come up to speed)
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 30, 0, 0.3));
+        // ---- the centrifugal switch on the rotor, above the frame: a nylon beam (y = 14) clear of the frame below
+        e.add(BLOCK, ny, 8, 14, 8, Dir.UP, "fill", 0.5);                                   // the hub, on the shaft
+        e.add(BLOCK, ny, 8, 14, 9, Dir.UP, "fill", 0.5);
+        e.fill(BLOCK, ny, 9, 14, 9, 9, 14, 13, Dir.UP, "fill", 0.5);
+        e.fill(BLOCK, ny, 7, 14, 13, 8, 14, 13, Dir.UP, "fill", 0.5);
+        e.add(BLOCK, ny, 8, 15, 9, Dir.UP);                                                  // spacer at the hub
+        e.name("contact", e.add(WIRE, "copper", 8, 15, 10, Dir.UP, "diameter", 0.003));     // the fixed contact
+        e.name("weight", e.add(BLOCK, "brass", 8, 15, 11, Dir.UP, "fill", 0.3));             // ~0.6 kg at 19 cm
+        // (the bushing a cell clear of the weight: touching it, it would be mounted on the slide it guides)
+        e.name("rod", e.fill(SHAFT, st, 8, 15, 11, 8, 15, 13, Dir.SOUTH, "diameter", 0.008));
+        e.add(LINEAR_BEARING, st, 8, 15, 13, Dir.SOUTH, "travel", 0.002);
+        e.add(BLOCK, ny, 7, 15, 11, Dir.UP, "fill", 0.5);                                   // an arm off the weight
+        e.name("spring", e.add(SPRING, st, 7, 15, 12, Dir.SOUTH, "wire", 0.006, "turns", 10, "preload", preload));
+        e.add(BLOCK, ny, 7, 15, 13, Dir.UP);                                                 // its seat
+        e.add(WIRE, "copper", 8, 16, 11, Dir.UP, "flexible", 1);                             // a pigtail off the weight
+        // segment A → up the rotor to the contact; the weight's pigtail → down the rotor to coil A
+        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 10, 10}, {8, 11, 10}, {8, 12, 10}, {8, 13, 10}, {8, 14, 10}});
+        e.path(INSULATED_WIRE, "copper", new int[][]{{9, 16, 11}, {10, 16, 11}, {10, 15, 11}, {10, 14, 11}, {10, 13, 11}, {9, 13, 11},
+                {9, 12, 11}, {9, 11, 11}, {9, 10, 11}, {9, 9, 11}, {9, 8, 11}, {9, 7, 11}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
+                {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
+        // the resistor across the contact, on the beam
+        e.name("shunt", e.add(RESISTOR, "alumina", 9, 15, 10, Dir.EAST, "resistance", 47));
+        e.add(INSULATED_WIRE, "copper", 10, 15, 10, Dir.UP);
+        // ---- a brake: an aluminium disc on the shaft's top, a bronze pad on a post from the frame
+        e.fill(BLOCK, "aluminium_6061", 7, 16, 7, 9, 16, 9, Dir.UP, "fill", 0.15);
+        e.fill(BLOCK, st, 6, 13, 8, 6, 15, 8, Dir.UP);
+        e.name("brake", e.add(BRAKE, "bronze", 6, 16, 8, Dir.EAST, "force", brakeForce));
+        // ---- supply: a 24 V bank and a switch to the brushes
+        int f = 1;
+        int bat = e.add(CAPACITOR, "alumina", 16, f, 4, Dir.EAST, "capacitance", 3000);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 24));
+        e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
+        Router r = new Router(e, 0, 0, 0, 22, 18, 15);
+        r.pin("vb", 17, f, 4).pin("vb", 18, f, 4);
+        r.pin("vp", 20, f, 4).pin("vp", 11, 8, 8);
+        r.pin("gnd", 15, f, 4).pin("gnd", 5, 8, 8);
+        // the rotor, its wiring and the switch on top sweep the cylinder round the shaft
+        r.keepClear(4, 1, 3, 12, 7, 13);
+        r.keepClear(6, 8, 4, 10, 8, 12);
+        r.keepClear(11, 8, 9, 12, 8, 11);
+        r.keepClear(4, 8, 5, 5, 8, 7);
+        r.keepClear(4, 9, 4, 12, 17, 13);
+        r.route();
+        return e.view(8.5, 19, 17, 40);
+    }
+
+    public static Exhibit contactGovernor() {
+        return contactGovernor(0.0087);
+    }
+
+    /**
+     * The DC motor exhibit's brushed motor (frame, magnets, rotor coils, commutator and brushes, coil B's wiring) with its
+     * shaft running up to {@code top}; segment A's lead stops at 8, 9, 9 for the caller to take on to coil A's outer
+     * lead (11, 5, 8). The brushes' supply leads are at 11, 8, 8 and 5, 8, 8. Returns the shaft's part index.
+     */
+    static int brushedMotor(Exhibit e, int top) {
+        String st = "steel_1045", ny = "nylon_66";
+        e.fill(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 7, 0, 8, 7, 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 11, 0, 12, 11, 11, 12, Dir.UP);
+        e.fill(BLOCK, st, 5, 0, 12, 5, 11, 12, Dir.UP);
+        e.fill(BLOCK, st, 9, 12, 8, 11, 12, 8, Dir.UP);
+        e.fill(BLOCK, st, 11, 12, 9, 11, 12, 12, Dir.UP);
+        e.fill(BLOCK, st, 5, 12, 8, 7, 12, 8, Dir.UP);
+        e.fill(BLOCK, st, 5, 12, 9, 5, 12, 12, Dir.UP);
+        e.fill(BLOCK, st, 10, 3, 8, 10, 3, 12, Dir.UP);
+        e.fill(BLOCK, st, 6, 3, 8, 6, 3, 12, Dir.UP);
+        e.add(MAGNET, "ndfeb_n42", 10, 4, 8, Dir.UP);
+        e.add(MAGNET, "ndfeb_n42", 6, 4, 8, Dir.DOWN);
+        int shaft = e.fill(SHAFT, st, 8, 1, 8, 8, top, 8, Dir.UP, "diameter", 0.02);
+        e.name("rotor", shaft);
+        e.add(BEARING, st, 8, 1, 8, Dir.UP);
+        e.add(BEARING, st, 8, 12, 8, Dir.UP);
+        e.fill(BLOCK, ny, 6, 6, 6, 10, 6, 10, Dir.UP, "fill", 0.3);
+        e.add(COIL, "copper", 10, 5, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3);
+        e.add(COIL, "copper", 6, 5, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3, "lead_axis", 2);
+        e.add(BLOCK, ny, 8, 8, 8, Dir.UP);
+        e.fill(BLOCK, "copper", 7, 8, 9, 9, 8, 9, Dir.UP, "fill", 0.6);
+        e.fill(BLOCK, "copper", 7, 8, 7, 9, 8, 7, Dir.UP, "fill", 0.6);
+        e.add(WIRE, "copper", 8, 9, 9, Dir.UP); // segment A's lead (the caller takes it on to coil A's outer lead at 11, 5, 8)
+        e.path(INSULATED_WIRE, "copper", new int[][]{{9, 5, 8}, {9, 5, 7}, {8, 5, 7}, {7, 5, 7}, {6, 5, 7}});
+        e.add(WIRE, "copper", 8, 9, 7, Dir.UP);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 6}, {8, 8, 6}, {8, 7, 6}, {7, 7, 6}, {6, 7, 6}, {5, 7, 6},
+                {5, 6, 6}, {5, 6, 7}, {5, 6, 8}, {5, 6, 9}, {5, 5, 9}, {6, 5, 9}});
+        e.add(BRUSH, "graphite", 10, 8, 8, Dir.WEST);
+        e.fill(BLOCK, ny, 10, 9, 8, 10, 11, 8, Dir.UP);
+        e.add(BRUSH, "graphite", 6, 8, 8, Dir.EAST);
+        e.fill(BLOCK, ny, 6, 9, 8, 6, 11, 8, Dir.UP);
+        return shaft;
     }
 }

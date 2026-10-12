@@ -290,6 +290,25 @@ public final class AutoShowcase {
                 BlockPos brake = DemoBuilder.partBlock(plot, e, "brake");
                 STEPS.add(new Step(200, () -> toggle(server.overworld(), brake), "showcase-" + (i + 1) + "-" + id + "-braked"));
             }
+            if (id.equals("contactgov")) {
+                // the rotor's speed on the logger; close the switch (it comes up to its governed speed and holds), then
+                // brake it: the speed holds while the current rises
+                BlockPos rotorAt = DemoBuilder.partBlock(plot, e, "rotor");
+                STEPS.add(new Step(240, () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
+                    if (server.overworld().getBlockEntity(rotorAt) instanceof AssemblyBlockEntity be) {
+                        PlacedPart sh = find(be, PartKind.SHAFT);
+                        if (sh != null) SimulationManager.get(server.overworld()).attachLogger(p, rotorAt, sh.id, "Motor shaft");
+                    }
+                    SimulationManager.get(server.overworld()).showLogger(p, "angular velocity", 2);
+                    toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch"));
+                    LoggerHud.showcase = true;
+                }, "showcase-" + (i + 1) + "-" + id + "-governing"));
+                STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "brake")),
+                        "showcase-" + (i + 1) + "-" + id + "-braked"));
+            }
             if (id.equals("trembler")) {
                 // close the switch: the relay chatters, opening its own coil's circuit eight times a second
                 BlockPos sw = DemoBuilder.partBlock(plot, e, "switch");

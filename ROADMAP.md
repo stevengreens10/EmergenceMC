@@ -93,7 +93,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Multirate stepping: the thermal network apart from the electrical/mechanical/fluid partition, energy-exact coupling
 ✅ Control parts: potentiometers (angle sensors/knobs with end stops), op-amps (single pole, slew, rails),
    gravity torque on unbalanced rotating bodies; a servo arm exhibit (PID position control); an electronic speed
-   governor (tachogenerator, PI op-amp loop, Darlington drive) holding a brushed motor's speed against a brake
+   governor (tachogenerator, PI op-amp loop, Darlington drive) holding a brushed motor's speed against a brake; a
+   contact governor (a centrifugal switch on the rotor — a preloaded spring sets the speed)
 🟡 Aerodynamics: blades (flat-plate blade elements, all quadrants) on rotors and slides, momentum-theory inflow
    (Glauert/Buhl; the Betz limit emerges), a modelled wind from the weather ✅; a wind turbine exhibit; wings on free
    bodies, finite-span effects, cambered aerofoils, propeller thrust on vehicles ⬜

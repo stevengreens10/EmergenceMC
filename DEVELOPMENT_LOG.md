@@ -555,3 +555,10 @@ engine now carries twice the atmospheric engine's brake at the same 107 rad/s.
 A feed pump to close the cycle did not converge yet (open elbow ends, a kinked check-valve lift, flow reversal in
 two-phase lines, a cavitating pump on 19 cm of suction head) — recorded in NEXT_STEPS item 6 and reverted.
 
+**Power electronics begins: a bridge rectifier.** No AC source part exists (by design: alternating current comes from
+machines), so the rectifier hangs off the hand generator, whose coils are now joined across the middle and their outer
+leads routed to a bench of four diodes, a smoothing capacitor and an LED. Two wiring lessons: the router avoids only its
+own nets, so its first try ran a wire over the coils' series link and shorted coil A; and an insulated segment is bare
+only at its own two ends, so a hand-laid stub and a routed wire that turned a corner beside it never touched — the
+router now takes the coil leads directly.
+

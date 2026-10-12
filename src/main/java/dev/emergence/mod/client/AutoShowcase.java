@@ -379,6 +379,24 @@ public final class AutoShowcase {
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-scope"));
             }
+            if (id.equals("rectifier")) {
+                // the logger on the smoothing capacitor while the crank turns: a steady voltage, the LED lit; then let go
+                STEPS.add(new Step(160, () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
+                    BlockPos at = DemoBuilder.partBlock(plot, e, "cap");
+                    if (server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+                        PlacedPart cap = find(be, PartKind.CAPACITOR);
+                        if (cap != null) SimulationManager.get(server.overworld()).attachLogger(p, at, cap.id, "Smoothing capacitor");
+                    }
+                    SimulationManager.get(server.overworld()).showLogger(p, "voltage", 1);
+                    crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank"));
+                    LoggerHud.showcase = true;
+                }, "showcase-" + (i + 1) + "-" + id + "-smoothed"));
+                STEPS.add(new Step(40, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank"), 0),
+                        "showcase-" + (i + 1) + "-" + id + "-let-go"));
+            }
             if (id.equals("generator") || id.equals("gears") || id.equals("miniature") || id.equals("fan") || id.equals("lightbarrier")) {
                 STEPS.add(new Step(40, () -> crank(server.overworld(), DemoBuilder.partBlock(plot, e, "crank")),
                         "showcase-" + (i + 1) + "-" + id + "-cranked"));

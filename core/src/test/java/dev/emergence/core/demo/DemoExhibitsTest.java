@@ -37,6 +37,41 @@ class DemoExhibitsTest {
         assertTrue(peak > 5e-3, "peak current " + peak);
     }
 
+    /**
+     * Bridge rectifier: cranked, the generator's alternating EMF charges the capacitor one way only and the LED lights
+     * steadily (a small ripple); let go, the capacitor keeps it lit a while.
+     */
+    @Test
+    void rectifierLightsTheLedSteadily() {
+        Exhibit e = Exhibits.rectifier();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long cap = b.id(e, "cap"), led = b.id(e, "led"), d1 = b.id(e, "d1");
+        double vMin = 1e9, vMax = -1e9, iMin = 1e9, d1Rev = 0;
+        c.setCrankEffort(b.id(e, "crank"), 1, false);
+        for (int i = 0; i < 160; i++) {
+            var broken = c.step(0.05);
+            assertTrue(broken.isEmpty(), "nothing burns out: " + broken);
+            if (i >= 100) {
+                double v = c.probe(cap).voltage(), il = Math.abs(c.probe(led).current());
+                vMin = Math.min(vMin, v);
+                vMax = Math.max(vMax, v);
+                iMin = Math.min(iMin, il);
+                d1Rev = Math.min(d1Rev, c.probe(d1).current());
+            }
+        }
+        double w = c.probe(b.id(e, "crank")).angularVelocity();
+        c.setCrankEffort(b.id(e, "crank"), 0, false);
+        run(c, 2);
+        double after = Math.abs(c.probe(led).current());
+        System.out.printf("rectifier: crank %.1f rad/s; capacitor %.2f–%.2f V; LED ≥ %.2f mA; D1 reverse ≥ %.2g A; 2 s after letting go %.2f mA%n",
+                w, Math.abs(vMin), Math.abs(vMax), 1e3 * iMin, d1Rev, 1e3 * after);
+        assertTrue(Math.min(Math.abs(vMin), Math.abs(vMax)) > 2.2, "a steady DC voltage across the capacitor");
+        assertTrue(Math.signum(vMin) == Math.signum(vMax), "it never reverses");
+        assertTrue(iMin > 1e-3, "the LED never goes out while cranked: " + iMin);
+        assertTrue(after > 0.5e-3, "the capacitor keeps it lit after letting go: " + after);
+    }
+
     @Test
     void gearTrainReproducesToothRatios() {
         Exhibit e = Exhibits.gearTrain();

@@ -18,6 +18,9 @@ regenerate the demo world → screenshot tour → docs → commit.
 4. **Acoustics**: turning bodies (fans, gear whine, an unbalanced rotor) and vibrating structures as sources; baffles
    and enclosures (a speaker cabinet turns a dipole into a monopole); impulsive sounds (impacts) beyond tones;
    faster audio-rate machines (their fast partition's own cost).
+5a. **Power electronics**: (a bridge rectifier is in) a buck converter — a transistor oscillator or op-amp
+   relaxation oscillator switching a MOSFET into a coil, a freewheel diode and a capacitor, stepping the bank down
+   for a load — then a boost converter, an H-bridge reversing the DC motor, and an inverter feeding a transformer.
 5. **Computing**: (RAM chip in) the EM-4 using RAM (load/store), an in-game ROM programmer, instruction-set growth (load/store, branch on carry),
    event-driven simulation for large gate counts.
 6. **Steam and heat engines**: (a condensing engine is in — Watt's separate condenser; and the engines run on a

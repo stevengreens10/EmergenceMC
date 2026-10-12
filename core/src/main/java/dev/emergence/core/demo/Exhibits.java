@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), AeroExhibits.windTurbine(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), Exhibits.rectifier(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), AeroExhibits.windTurbine(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
                 miniatureGenerator());
     }
 
@@ -37,6 +37,19 @@ public final class Exhibits {
                         + "linkage induces an EMF (Faraday), current flows through the 20 Ω resistor and heats it, "
                         + "and the current's magnetic field brakes the rotor (Lenz). Use the multimeter on the "
                         + "resistor and on the rotor.");
+        generatorBody(e, false);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{9, 6, 8}, {9, 6, 9}, {7, 6, 9}, {7, 6, 8}}, "diameter", 1.5e-3);
+        e.name("load", e.add(RESISTOR, "alumina", 8, 6, 9, Dir.EAST, "resistance", 20));
+        return e.view(8.5, 10.5, 21, 22);
+    }
+
+    /**
+     * The hand generator's machine: frame, rotor (disk, two magnets, crank) and two coils in series. With
+     * {@code outward} the coils' inner leads are joined across the middle and their outer leads are free (wire them at
+     * 11, 6, 8 and 5, 6, 8); otherwise the outer leads are joined round the outside and the free ends are
+     * the inner leads (9, 6, 8 and 7, 6, 8, beside the shaft).
+     */
+    static void generatorBody(Exhibit e, boolean outward) {
         String st = "steel_1045";
         // frame: base pillars holding the lower bearing, two posts and top bars holding the upper one
         e.fill(BLOCK, st, 9, 0, 8, 9, 2, 8, Dir.UP);
@@ -59,12 +72,51 @@ public final class Exhibits {
         // magnets of opposite polarity) add in series
         e.name("coil", e.add(COIL, "copper", 10, 6, 8, Dir.UP, "turns", 300, "wire_diameter", 0.8e-3));
         e.add(COIL, "copper", 6, 6, 8, Dir.DOWN, "turns", 300, "wire_diameter", 0.8e-3);
+        if (outward) {
+            // A− → B+ across the middle; A+ and B− out through the sides
+            e.path(INSULATED_WIRE, "copper", new int[][]{{9, 6, 8}, {9, 6, 9}, {8, 6, 9}, {7, 6, 9}, {7, 6, 8}}, "diameter", 1.5e-3);
+            return;
+        }
         // A+ → B− around the outside; B+ → resistor → A− across the middle
         e.path(INSULATED_WIRE, "copper", new int[][]{{11, 6, 8}, {11, 6, 9}, {11, 6, 10}, {11, 6, 11}, {10, 6, 11},
                 {9, 6, 11}, {8, 6, 11}, {7, 6, 11}, {6, 6, 11}, {5, 6, 11}, {5, 6, 10}, {5, 6, 9}, {5, 6, 8}}, "diameter", 1.5e-3);
-        e.path(INSULATED_WIRE, "copper", new int[][]{{9, 6, 8}, {9, 6, 9}, {7, 6, 9}, {7, 6, 8}}, "diameter", 1.5e-3);
-        e.name("load", e.add(RESISTOR, "alumina", 8, 6, 9, Dir.EAST, "resistance", 20));
-        return e.view(8.5, 10.5, 21, 22);
+    }
+
+    /**
+     * A bridge rectifier: the hand generator's alternating EMF through four silicon diodes onto a smoothing capacitor
+     * that lights an LED steadily through its resistor — the first stage of every mains power supply.
+     */
+    public static Exhibit rectifier() {
+        Exhibit e = new Exhibit("rectifier", "Bridge rectifier",
+                List.of("RECTIFIER", "Crank the generator:", "four diodes turn its", "AC into steady DC"),
+                "The hand generator again — its coils' EMF reverses each time a magnet passes — but its current goes "
+                        + "through four silicon diodes arranged as a bridge. Whichever way the EMF points, two of the "
+                        + "diodes conduct and two block, so current always leaves by the same terminal: the bridge turns "
+                        + "the alternating voltage into one that only ever pushes one way (each diode costs about 0.6 V). "
+                        + "A 10 mF capacitor fills on each peak and feeds the LED between them, so it glows steadily "
+                        + "instead of flickering at the magnets' rate. Meter the capacitor: a steady voltage with a "
+                        + "small sawtooth ripple — larger the harder the LED pulls and the slower you crank. Stop "
+                        + "cranking and the capacitor alone keeps the LED lit for a few seconds while it drains.");
+        e.plots = 2;
+        generatorBody(e, true);
+        int f = 1;
+        // the bridge (current flows west → east through each diode): AC1 → D1 → DC+, AC2 → D2 → DC+, DC− → D3 → AC1,
+        // DC− → D4 → AC2
+        for (int k = 0; k < 4; k++) e.name("d" + (k + 1), e.add(DIODE, "silicon", 15, f, 4 + 2 * k, Dir.EAST));
+        e.name("cap", e.add(CAPACITOR, "alumina", 19, f, 4, Dir.EAST, "capacitance", 0.01));
+        e.name("resistor", e.add(RESISTOR, "alumina", 19, f, 6, Dir.EAST, "resistance", 470));
+        e.name("led", e.add(LED, "silicon", 19, f, 8, Dir.EAST, "wavelength", 625, "face", 3, "beam", 20));
+        Router r = new Router(e, 0, 0, 0, 23, 12, 15);
+        r.pin("ac1", 11, 6, 8).pin("ac1", 14, f, 4).pin("ac1", 16, f, 8);
+        r.pin("ac2", 5, 6, 8).pin("ac2", 14, f, 6).pin("ac2", 16, f, 10);
+        r.pin("dc+", 16, f, 4).pin("dc+", 16, f, 6).pin("dc+", 18, f, 4).pin("dc+", 18, f, 6);
+        r.pin("dc-", 14, f, 8).pin("dc-", 14, f, 10).pin("dc-", 20, f, 4).pin("dc-", 20, f, 8);
+        r.pin("mid", 20, f, 6).pin("mid", 18, f, 8);
+        // the rotor sweeps the cylinder round the shaft; the coils' wiring and the frame stay untouched
+        r.keepClear(4, 2, 4, 12, 5, 12);
+        r.keepClear(6, 6, 5, 10, 9, 11); // and nothing over the coils and their wiring
+        r.route();
+        return e.view(13, 9, 22, 28);
     }
 
     /** Three meshing spur gears (8 : 24 : 40 teeth) — speed ratios and direction reversal. */

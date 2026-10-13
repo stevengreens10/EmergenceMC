@@ -92,7 +92,7 @@ public final class AeroExhibits {
         e.name("rail", e.fill(SHAFT, st, 2, y, 8, 31, y, 8, Dir.EAST, "diameter", 0.012));
         // the cart: an aluminium deck on the rod and a bracket up to the propeller's bearing
         e.name("cart", e.fill(BLOCK, al, 4, y, 8, 6, y, 8, Dir.EAST, "fill", 0.3));
-        e.fill(BLOCK, al, 5, y + 1, 8, 5, ya - 1, 8, Dir.UP, "fill", 0.3);
+        e.fill(BLOCK, al, 5, y + 1, 8, 5, ya - 1, 8, Dir.EAST, "fill", 0.3); // upright plates: one strip
         e.add(BEARING, st, 5, ya, 8, Dir.EAST);
         int shaft = e.fill(SHAFT, st, 3, ya, 8, 8, ya, 8, Dir.EAST, "diameter", 0.01);
         e.name("shaft", shaft);

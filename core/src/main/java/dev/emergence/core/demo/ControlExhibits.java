@@ -454,7 +454,9 @@ public final class ControlExhibits {
                         + "between the reversals (V = N·dΦ/dt), and the 1000-turn secondary carries five times the "
                         + "voltage, reversing with it: two LEDs back to back take turns to light, one for each direction. "
                         + "The flux must turn round before the iron saturates — at a lower frequency it would ramp past "
-                        + "the steel's 2 tesla; that is why mains transformers are built for their frequency. Every "
+                        + "the steel's 2 tesla; that is why mains transformers are built for their frequency. Each trip round "
+                        + "the steel's hysteresis loop costs it about 0.4 J — the core warms — which is why transformer "
+                        + "iron is a soft, low-coercivity steel. Every "
                         + "solar inverter and laptop charger does this, a thousand times faster, with a far smaller core.");
         e.plots = 2;
         String core = "electrical_steel";

@@ -494,7 +494,9 @@ public final class Exhibits {
                         + "the red LED flashes. Without the iron, the coils would barely notice each other. The iron has a "
                         + "limit: the 3 A the bank drives would push the ring's flux density past the steel's 2 tesla, so "
                         + "the core saturates — its flux stops growing early, and the make pulse is cut short. Saturated "
-                        + "iron is little better than air; transformers are designed never to reach it.");
+                        + "iron is little better than air; transformers are designed never to reach it. And the steel remembers: "
+                        + "switched off, it keeps part of its flux (remanence) — its domains stay where the current left them "
+                        + "until a reverse field of its coercivity moves them back.");
         String core = "electrical_steel";
         // the ring, flat at y = 1 on oak corner blocks (non-magnetic, so they do not short the ring)
         for (int i = 4; i <= 10; i++) {

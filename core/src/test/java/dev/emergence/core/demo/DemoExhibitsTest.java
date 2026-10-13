@@ -1378,6 +1378,86 @@ class DemoExhibitsTest {
         assertTrue(Math.abs(c.energyError()) < 1e-3 * 360, "energy conserved through the saturating core");
     }
 
+    /**
+     * Hysteresis in Faraday's ring: switched on and off again, the core keeps a remanent flux — its state stays a
+     * coercive width w from zero, so the linkage ψ(w) remains with no current flowing — and the iron took heat.
+     */
+    @Test
+    void faradayRingKeepsRemanentFlux() {
+        Exhibit e = Exhibits.faradayRing();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var ms = c.magnetics();
+        double[] w = ms.coerciveWidths();
+        int core = 0;
+        for (int k = 1; k < w.length; k++) if (ms.saturationModes().get(k)[1] > ms.saturationModes().get(core)[1]) core = k;
+        assertTrue(w[core] > 0, "electrical steel's coercivity gives the core a coercive width");
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 1);
+        c.toggleSwitch(b.id(e, "switch"));
+        double heat = 0;
+        for (int i = 0; i < 40; i++) {
+            c.step(0.05);
+            heat += ms.hysteresisLoss(c.solverView()) * 0.05;
+        }
+        double[] st = ms.modeState(core, c.solverView());
+        double[] mode = ms.saturationModes().get(core);
+        double expect = mode[0] * Math.tanh(mode[1] * w[core] / mode[0]);
+        System.out.printf("remanence: coercive width %.4g A, after switching off m = %.3g A, p = %.4g A, ψ %.4g Wb (ψ(w) %.4g); hysteresis heat %.3g J; energy error %.3g J%n",
+                w[core], st[0], st[1], st[2], expect, heat, c.energyError());
+        assertEquals(0, st[0], 1e-3 * w[core] + 1e-6, "no current flows");
+        assertEquals(expect, Math.abs(st[2]), 0.05 * expect, "the flux of p = ±w stays: remanence");
+        assertTrue(Math.abs(c.energyError()) < 1e-3 * 360, "energy conserved, the loss in the iron");
+    }
+
+    /**
+     * Hysteresis loss on alternating current: driven round its loop by the inverter, the ring's core dissipates per
+     * cycle the loop's area, 2w·Δψ (a parallelogram of width 2w over the flux swing Δψ).
+     */
+    @Test
+    void inverterCoreLosesTheLoopAreaEachCycle() {
+        Exhibit e = ControlExhibits.inverter();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        var ms = c.magnetics();
+        double[] w = ms.coerciveWidths();
+        int core = 0;
+        for (int k = 1; k < w.length; k++) if (ms.saturationModes().get(k)[1] > ms.saturationModes().get(core)[1]) core = k;
+        run(c, 1); // past the inrush
+        double heat = 0, psiMin = 1e9, psiMax = -1e9, t = 0;
+        int crossings = 0;
+        double prevP = ms.modeState(core, c.solverView())[1];
+        double[] prev = ms.modeState(core, c.solverView());
+        double work = 0, maxLag = 0;
+        // the loss the solver put into the iron, integrated over its own steps (it comes in bursts)
+        double[] acc = {0, c.solverView().time(), 0};
+        final int coreMode = core;
+        c.solverView().addStepListener(sv -> {
+            acc[0] += ms.modeLoss(coreMode) * (sv.time() - acc[1]);
+            acc[2] += ms.hysteresisLoss(sv) * (sv.time() - acc[1]);
+            acc[1] = sv.time();
+        });
+        double dt = 0.0025;
+        for (int i = 0; i < 1600; i++) {
+            c.step(dt);
+            t += dt;
+            double[] st = ms.modeState(core, c.solverView());
+            work += 0.5 * ((st[0] - st[1]) + (prev[0] - prev[1])) * (st[2] - prev[2]);
+            maxLag = Math.max(maxLag, Math.abs(st[0] - st[1]));
+            prev = st;
+            psiMin = Math.min(psiMin, st[2]);
+            psiMax = Math.max(psiMax, st[2]);
+            if (Math.signum(st[1]) != Math.signum(prevP) && st[1] != 0) crossings++;
+            prevP = st[1];
+        }
+        heat = acc[0];
+        double cycles = crossings / 2.0, loop = 2 * w[core] * (psiMax - psiMin);
+        System.out.printf("loop loss: %.1f cycles in %.0f s, flux %.4g … %.4g Wb, w %.4g A: %.4g J per cycle (loop area 2w·Δψ %.4g J; ∮(m−p)dψ %.4g J; max lag %.3g A); all modes %.4g J per cycle%n",
+                cycles, t, psiMin, psiMax, w[core], heat / cycles, loop, work / cycles, maxLag, acc[2] / cycles);
+        assertTrue(cycles >= 8, "it alternates: " + cycles);
+        assertEquals(loop, heat / cycles, 0.1 * loop, "each cycle dissipates the loop's area");
+    }
+
     /** Buckling: the loaded short strip stands below its Euler load; the same lead block on the tall strip buckles it. */
     @Test
     void tallStripBucklesUnderTheBlockTheShortOneCarries() {

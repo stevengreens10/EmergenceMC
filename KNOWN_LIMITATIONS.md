@@ -14,8 +14,10 @@ behaviour; where physics is missing the effect is simply absent.
 * No electric field / capacitance from geometry yet: capacitors are manufactured parts with a parameter.
 
 ## Electrical
-* Ferromagnetic cores saturate (each eigenmode of the iron's inductance by a tanh curve: no hysteresis, remanence or
-  core loss, modes saturating independently, not the material's B–H knee) and are resolved at the cell scale; iron only
+* Ferromagnetic cores saturate (each eigenmode of the iron's inductance by a tanh curve: modes saturating
+  independently, not the material's B–H knee) and show hysteresis only in the dominant mode, as a parallelogram loop
+  (play operator: remanence and loop loss, no minor-loop shape, no eddy loss), and not in cores pulling armatures
+  (whose pull is computed from the current, not the flux) and are resolved at the cell scale; iron only
   affects coils on the same rigid body (no reluctance torque, no magnet–iron attraction, no eddy currents in iron).
 * Lumped circuits only (no transmission-line effects); no skin effect.
 * Capacitors have no ESR, leakage or dielectric breakdown; diodes have no junction capacitance, series

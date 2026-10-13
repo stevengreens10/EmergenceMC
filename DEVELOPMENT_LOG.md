@@ -602,3 +602,15 @@ Newton's third law holds to 10⁻⁹ and the cart's momentum matches its impulse
 a two-bladed propeller on a light cart along a two-metre rail — it creeps off and runs the rail's length in about seven
 seconds. (Earlier probes, in passing: the power-electronics edge cost is now profiled in NEXT_STEPS.)
 
+**Hysteresis.** A play operator on each body's dominant iron mode: the flux follows a state that lags the
+magnetising current by a coercive width, so cores keep remanence and lose their loop's area each cycle, as heat in
+the iron. Getting it right took several corrections, each found by a test: the smoothed dead zone had a slope inside
+and the remanence crept away (now flat inside); at τ = 0.1 ms a saturating core's state raced the current and lost
+several times its loop (now 1 µs); a loop on every eigenmode counted the same iron's loss tenfold (now the dominant
+mode only); and the coercive width, first taken from the iron's field per ampere at saturation, made an open relay
+core's coercive current as large as its working current — at the coercive point the flux is zero and a gap takes no
+mmf, so it is now ∮H_c dl per turn, Σ H_c·V·|B|/μ from the lattice's field. (A suspicion that g/τ amplified Newton's
+residual was wrong — the test had sampled a bursty loss; it now integrates over the solver's steps.) The trembler
+showed a model inconsistency: armature pull is computed from current, so a hysteretic relay core let go early; relay
+cores stay anhysteretic until the pull is flux-based. Faraday's ring now keeps 0.69 Wb of remanence; the inverter's
+core loses 0.39 J a cycle, matching its loop area to 1.5 %.

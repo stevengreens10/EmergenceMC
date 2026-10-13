@@ -473,7 +473,20 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   ψ_s = μ_k/r_k where r_k is the lattice's peak |B|/B_sat per ampere of the pattern (a part-filled cell — a shaft,
   a thin plate, a coil's core — saturating at fill·B_sat, its iron carrying the cell's mean flux alone). The coils'
   linkage is the gradient of the co-energy Σ ∫ψ_k dm: dλ/di symmetric, field energy
-  Σ (m ψ − (ψ_s²/μ) ln cosh(μm/ψ_s)) exact. No hysteresis (soft iron: no remanence, no loop loss).
+  Σ (m ψ − (ψ_s²/μ) ln cosh(μm/ψ_s)) exact.
+* **Hysteresis** (iron with a coercive field H_c: electrical steel 40 A/m, iron 80, nickel 100, 1045 steel 800): the
+  dominant mode's flux follows a state p that lags its magnetising current m by at most w (a play operator — domain
+  walls pinned until the field moves them by H_c), ψ = ψ_s·tanh(μp/ψ_s). w is the iron's coercive mmf per turn,
+  ∮H_c dl/N = Σ H_c·V·|B| / μ_k over the lattice's iron cells (B, μ_k per ampere of the pattern); at the coercive point
+  the flux is zero, so an air gap takes none of it — a gapped core's loop is sheared, its remanence small. The
+  electrical work m·dψ splits exactly into the stored energy's change (the same ln cosh expression in p) and
+  (m − p)·ψ'(p)·ṗ ≥ 0, the loss — the loop's area 2w·Δψ per cycle — which heats the iron (computed with the
+  integrator's own ṗ). The play's corners are rounded over ±2 % of w (flat inside, or the remanence would creep away);
+  p relaxes to it with τ = 1 µs (at 0.1 ms a saturating core's p lagged far behind and lost several times its loop).
+  Only each body's dominant mode is hysteretic (the minor modes correct the same iron's linkage; a loop on each
+  counted its loss again), and not a core that pulls an armature (the pull is ½i²·dL/dx, from the current: a core
+  holding remanence as the current died let its relay drop early). Not modelled: the loop's real shape (a
+  parallelogram in m), minor-loop accommodation, rate-dependent eddy losses in the iron.
 * **Inconsistent coil currents on restart**: if the first step of a newly compiled assembly fails, the restored coil
   currents could not flow in the circuit as built (its loop was broken — a chunk loaded without the rest of the
   circuit); they start from rest, everything else kept, as an inductor's current collapses when its circuit opens.

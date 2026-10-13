@@ -67,7 +67,7 @@
         "thermal_conductivity": "25 W/(m*K)", "specific_heat": "490 J/(kg*K)", "thermal_expansion": "12e-6 1/K",
         "melting_point": "1773 K", "latent_heat_fusion": "260 kJ/kg",
         "electrical_resistivity": "5.2e-7 ohm*m", "resistivity_temperature_coefficient": "0.001 1/K",
-        "relative_permeability": 5000, "saturation_flux_density": "2.0 T", "curie_temperature": "1013 K",
+        "relative_permeability": 5000, "saturation_flux_density": "2.0 T", "curie_temperature": "1013 K", "coercivity": "40 A/m",
         "emissivity": 0.4
       },
       "sources": ["AK Steel M19 datasheet", "COEY ch.13"]

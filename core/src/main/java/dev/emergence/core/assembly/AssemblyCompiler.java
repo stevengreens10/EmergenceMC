@@ -1764,7 +1764,7 @@ public final class AssemblyCompiler {
                 Material es = MaterialDatabase.standard().get("electrical_steel");
                 double steel = es.get(MaterialProperty.RELATIVE_PERMEABILITY, 5000);
                 for (Part p : parts) {
-                    double muR, fill, bSat;
+                    double muR, fill, bSat, hc;
                     if (p.kind() == PartKind.COIL) {
                         if (p.param("core", 0) <= 0) continue;
                         CoilGeometry g = PartGeometry.coil(p);
@@ -1772,11 +1772,13 @@ public final class AssemblyCompiler {
                         fill = Math.min(1, Math.PI * rIn * rIn / (CELL * CELL));
                         muR = 1 + fill * (steel - 1);
                         bSat = es.get(MaterialProperty.SATURATION_FLUX_DENSITY, 2.0);
+                        hc = es.get(MaterialProperty.COERCIVITY, 0);
                     } else if (p.kind() == PartKind.MAGNET || isWire(p)) {
                         continue;
                     } else {
                         muR = p.material().get(MaterialProperty.RELATIVE_PERMEABILITY, 1);
                         bSat = p.material().get(MaterialProperty.SATURATION_FLUX_DENSITY, Double.POSITIVE_INFINITY);
+                        hc = p.material().get(MaterialProperty.COERCIVITY, 0);
                         fill = 1;
                         if (p.kind() == PartKind.SHAFT) {
                             double d = PartGeometry.shaftDiameter(p);
@@ -1794,7 +1796,8 @@ public final class AssemblyCompiler {
                     // a part-filled cell carries the cell's mean flux in its iron alone: it saturates at fill·B_sat
                     for (int x = p.minX(); x <= p.maxX(); x++)
                         for (int y = p.minY(); y <= p.maxY(); y++)
-                            for (int z = p.minZ(); z <= p.maxZ(); z++) ms.addIronCell(body, x, y, z, muR, CELL, fill * bSat);
+                            for (int z = p.minZ(); z <= p.maxZ(); z++)
+                                ms.addIronCell(body, x, y, z, muR, CELL, fill * bSat, hc, c.thermalOfPart.get(p.id()));
                 }
             }
             c.magnetics = c.network.add(ms);

@@ -311,6 +311,13 @@ on the air; after 4 s the cart's momentum (−1.39935 N·s) matches the impulse 
 to 0.3408 N. The exhibit (`DemoExhibitsTest.propellerDrivesTheCartAlongItsRail`): a flywheel-driven propeller (70 rad/s,
 blades pitched 8°) on an aluminium cart pushes it 0.48 m along its rail in 5 s (0.77 N at rest, 0.66 N at 0.17 m/s).
 
+Hysteresis (`DemoExhibitsTest.faradayRingKeepsRemanentFlux`, `inverterCoreLosesTheLoopAreaEachCycle`): Faraday's
+ring (electrical steel, H_c = 40 A/m) has a coercive width of 0.0545 A in its core mode's current; switched on and off
+it keeps a remanent linkage of 0.69 Wb (ψ(w) = 0.70 Wb: p rests at w less the corner rounding) with no current
+flowing. Driven round its loop by the inverter (±1.83 Wb, saturating each half-cycle), the iron dissipates 0.393 J per
+cycle against a loop area 2w·Δψ = 0.399 J (the directly integrated ∮(m − p)dψ: 0.396 J). The trembler, whose relay
+core pulls an armature, keeps its anhysteretic core and buzzes as before (32 pull-ins in 4 s).
+
 Speed governor (`DemoExhibitsTest.governorHoldsItsSpeedUnderLoad`): a brushed DC motor whose shaft carries a
 two-magnet tachogenerator; a diode peak detector gives 0.17 V per rad/s, an op-amp PI loop (K_p 10, K_i 10 s⁻¹)
 drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor's speed after 10 s is within 0.5 % of

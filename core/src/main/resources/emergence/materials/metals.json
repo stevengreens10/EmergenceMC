@@ -68,7 +68,7 @@
         "thermal_conductivity": "80.2 W/(m*K)", "specific_heat": "447 J/(kg*K)", "thermal_expansion": "11.8e-6 1/K",
         "melting_point": "1811 K", "boiling_point": "3134 K", "latent_heat_fusion": "247 kJ/kg",
         "electrical_resistivity": "9.71e-8 ohm*m", "resistivity_temperature_coefficient": "0.00651 1/K",
-        "relative_permeability": 2000, "saturation_flux_density": "2.15 T", "curie_temperature": "1043 K",
+        "relative_permeability": 2000, "saturation_flux_density": "2.15 T", "curie_temperature": "1043 K", "coercivity": "80 A/m",
         "emissivity": 0.3, "reflectance": 0.57, "reflectance_ir": 0.65, "seebeck_coefficient": "12.8e-6 V/K", "friction_coefficient": 0.4,
         "standard_electrode_potential": "-0.44 V", "molar_mass": "55.845 g/mol"
       },
@@ -85,7 +85,7 @@
         "thermal_conductivity": "49.8 W/(m*K)", "specific_heat": "486 J/(kg*K)", "thermal_expansion": "11.5e-6 1/K",
         "melting_point": "1700 K", "latent_heat_fusion": "250 kJ/kg",
         "electrical_resistivity": "1.62e-7 ohm*m", "resistivity_temperature_coefficient": "0.0030 1/K",
-        "relative_permeability": 100, "saturation_flux_density": "1.8 T", "curie_temperature": "1043 K",
+        "relative_permeability": 100, "saturation_flux_density": "1.8 T", "curie_temperature": "1043 K", "coercivity": "800 A/m",
         "emissivity": 0.35, "reflectance": 0.57, "reflectance_ir": 0.65, "friction_coefficient": 0.42,
         "standard_electrode_potential": "-0.44 V", "molar_mass": "55.845 g/mol"
       },
@@ -185,7 +185,7 @@
         "thermal_conductivity": "90.9 W/(m*K)", "specific_heat": "444 J/(kg*K)", "thermal_expansion": "13.4e-6 1/K",
         "melting_point": "1728 K", "boiling_point": "3186 K", "latent_heat_fusion": "297.9 kJ/kg",
         "electrical_resistivity": "6.99e-8 ohm*m", "resistivity_temperature_coefficient": "0.006 1/K",
-        "relative_permeability": 300, "saturation_flux_density": "0.61 T", "curie_temperature": "627 K",
+        "relative_permeability": 300, "saturation_flux_density": "0.61 T", "curie_temperature": "627 K", "coercivity": "100 A/m",
         "emissivity": 0.1, "reflectance": 0.64, "reflectance_ir": 0.73, "seebeck_coefficient": "-19.5e-6 V/K",
         "standard_electrode_potential": "-0.257 V", "molar_mass": "58.693 g/mol"
       },

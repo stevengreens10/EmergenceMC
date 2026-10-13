@@ -124,6 +124,35 @@ public final class ReluctanceLattice {
         return worst;
     }
 
+    /**
+     * Σ w·V·|B| over the given cells (V = h³, B the cell's mean flux density) for the coils carrying {@code currents} —
+     * with w = H_c, the coercive mmf of the iron along the flux's path times the flux: ∫H_c|B| dV = H_c·l·Φ for a
+     * uniform path, whatever the path's cross-section.
+     */
+    public double weightedFluxVolume(List<Cut> cuts, double[] currents, Map<Long, Double> weights) {
+        double[] psi = new double[mu.length];
+        for (int j = 0; j < cuts.size(); j++) {
+            if (currents[j] == 0) continue;
+            double[] pj = solve(mu, cuts.get(j));
+            for (int i = 0; i < psi.length; i++) psi[i] += currents[j] * pj[i];
+        }
+        double sum = 0;
+        for (var e : weights.entrySet()) {
+            int[] c = unkey(e.getKey());
+            if (c[0] <= x0 || c[1] <= y0 || c[2] <= z0 || c[0] >= x0 + nx - 1 || c[1] >= y0 + ny - 1 || c[2] >= z0 + nz - 1) continue;
+            double b2 = 0;
+            for (int ax = 0; ax < 3; ax++) {
+                int[] d = step(ax);
+                double lo = faceFlux(psi, cuts, currents, c[0] - d[0], c[1] - d[1], c[2] - d[2], ax);
+                double hi = faceFlux(psi, cuts, currents, c[0], c[1], c[2], ax);
+                double bAx = 0.5 * (lo + hi) / (h * h);
+                b2 += bAx * bAx;
+            }
+            sum += e.getValue() * h * h * h * Math.sqrt(b2);
+        }
+        return sum;
+    }
+
     /** Flux through the face between cell (x, y, z) and its +axis neighbour, with the coils' MMF on their cuts. */
     private double faceFlux(double[] psi, List<Cut> cuts, double[] currents, int x, int y, int z, int axis) {
         int[] d = step(axis);

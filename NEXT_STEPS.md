@@ -54,7 +54,9 @@ regenerate the demo world → screenshot tour → docs → commit.
    wide openings (one branch carries one flow: a cold vessel over a warm one cannot swap gas both ways); siphons and
    pressure-driven liquid transfer; more condensables (methanol, acetone, …) and activity models (Wilson, NRTL) for
    any pair; solutions of solids, crystallisation; a voltaic pile driving the DC motor.
-8. **Magnetics**: hysteresis (and core loss), saturation of armatures and magnet–iron pulls; a saturable-reactor
+8. **Magnetics**: (hysteresis is in: remanence and loop loss in the dominant mode) a flux-based armature force (so
+   relays' cores can be hysteretic: residual flux holding them in), saturation of armatures and magnet–iron pulls;
+   eddy-current core loss; a saturable-reactor
    timer (needs a high-permeability alloy such as 80 % permalloy in the database); hinged armatures and plungers; coils adding to a magnet's MMF
    (polarised relays, electro-permanent releases); relay logic (latching relays, relay gates); core losses; a
    drag-cup speedometer. (Magnets attract iron on slides now.)

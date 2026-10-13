@@ -66,3 +66,7 @@ GM tube gamma efficiency 0.5/1.0/1.2 % at those energies; background 0.3 counts/
 α_max at every wavelength. Clear glasses have none. RG630: α_max 4000 /m, λ_c 605 nm, w 9 nm (3 mm passes 0.50 at
 630 nm, 6·10⁻⁶ at 530 nm; the catalogue gives 0.5 and < 10⁻⁵). BG39: 3000 /m, 680 nm, −15 nm (3 mm passes > 0.99 at
 500 nm, 1.2·10⁻⁴ at 800 nm). Fits of the edge only: no UV edge, no secondary bands.
+
+**Coercivity of soft iron** (A/m, for the hysteresis model): electrical steel M19 40 (AK Steel datasheet range
+30–50), commercially pure iron, annealed 80, nickel 100 (annealed, 60–100), 1045 carbon steel, normalised 800
+(medium-carbon steels 0.5–1.5 kA/m). Permanent magnets keep their (intrinsic) coercivity for the magnet model.

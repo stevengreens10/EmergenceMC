@@ -120,9 +120,13 @@ public final class MagneticSystem implements Element {
      * A saturating mode of the iron's inductance: coils {@code idx}, unit current pattern u, linear inductance mu [H],
      * saturation flux linkage psiSat [Wb]: psi = psiSat * tanh(mu * m / psiSat), m = u . i.
      */
-    record SatMode(int[] idx, double[] u, double mu, double psiSat) {}
+    record SatMode(int[] idx, double[] u, double mu, double psiSat, double w, Node thermal) {}
 
     private final List<SatMode> modes = new ArrayList<>();
+    /** Hysteresis: each mode's lagging magnetisation state p (unknown index, history slot; −1 without coercivity). */
+    private int[] hIdx = new int[0], hSlot = new int[0];
+    /** Relaxation time of the magnetisation state towards the play band [s] (see addIronInductance). */
+    static final double TAU_H = 1e-6;
 
     /** A ferromagnetic cell (relative permeability μr) of a part on {@code body}, at integer cell (x, y, z). */
     public void addIronCell(EmBody body, int x, int y, int z, double muR, double cellSize) {
@@ -131,7 +135,15 @@ public final class MagneticSystem implements Element {
 
     /** As {@link #addIronCell(EmBody, int, int, int, double, double)}, saturating at mean flux density bSat [T]. */
     public void addIronCell(EmBody body, int x, int y, int z, double muR, double cellSize, double bSat) {
-        iron.add(new Object[]{body, new int[]{x, y, z}, muR, bSat});
+        addIronCell(body, x, y, z, muR, cellSize, bSat, 0, null);
+    }
+
+    /**
+     * As {@link #addIronCell(EmBody, int, int, int, double, double, double)}, with the material's coercive field hc
+     * [A/m] (0: no hysteresis) and the part's thermal node, where its hysteresis loss is dissipated (null: lost).
+     */
+    public void addIronCell(EmBody body, int x, int y, int z, double muR, double cellSize, double bSat, double hc, Node thermal) {
+        iron.add(new Object[]{body, new int[]{x, y, z}, muR, bSat, hc, thermal});
         cell = cellSize;
         if (!body.isStatic()) registerBody(body); // moving iron (an armature) is pulled
     }
@@ -139,7 +151,8 @@ public final class MagneticSystem implements Element {
 
     // work arrays
     private double[] lambda, tau, th, cur;
-    private double[][] dLdI, dLdTh, dTdI, dTdTh;
+    private double[][] dLdI, dLdTh, dTdI, dTdTh, dLdP;
+    private double[] mDrive, pState, lastLoss = new double[0];
 
     public MagneticSystem tableResolution(int n) {
         this.samples = n;
@@ -190,9 +203,21 @@ public final class MagneticSystem implements Element {
      * the iron's most loaded cell reaches its saturation flux density — ψ_s = μ_k/r_k, r_k the peak |B|/B_sat per
      * ampere of the pattern, from the lattice. Saturated iron's incremental permeability is ~μ0, so its added
      * inductance vanishes, as tanh's slope does. The coils' linkage is the gradient of a co-energy (Σ ∫ψ_k dm), so
-     * dλ/di stays symmetric and the field energy, Σ (m_k ψ_k − (ψ_s²/μ_k) ln cosh(μ_k m_k/ψ_s)), is exact. Not
-     * modelled: hysteresis (no remanence in soft iron, no loop loss), modes saturating each other, the curve's shape
-     * (tanh rather than the material's B–H knee).
+     * dλ/di stays symmetric and the field energy, Σ (m_k ψ_k − (ψ_s²/μ_k) ln cosh(μ_k m_k/ψ_s)), is exact.
+     * <p>
+     * <b>Hysteresis</b> (iron with a coercive field H_c; the dominant mode — the core's flux — only: the minor modes
+     * correct the same iron's linkage, and a loop on each would count its loss again): its flux follows not its magnetising current m but a
+     * state p that lags it by at most w — a play operator, the simplest model of domain walls pinned until the field
+     * moves them by H_c: p stays put while |m − p| < w and is dragged along at m ∓ w beyond. In current terms w is the
+     * iron's coercive mmf per turn, ∮H_c dl / N = Σ H_c·V·|B| / μ_k over the lattice's iron cells (B, μ_k per ampere of
+     * the pattern; an air gap takes no mmf at the coercive point, where the flux is zero). So ψ_k = ψ_s tanh(μ_k p/ψ_s): switched off, the core keeps the flux of p = ±w — B_r ≈ μ0μr·H_c in a
+     * closed core, the sheared μ0·H_c·l/g across a gap g; driven round a cycle it traces a loop of area 2w·Δψ, at most
+     * 4·H_c·B_sat·V. The electrical work m·dψ splits exactly into the stored energy's change (the
+     * same ln cosh expression in p) and (m − p)·ψ'(p)·ṗ ≥ 0 — the hysteresis loss, the loop's area per cycle — which
+     * heats the iron. The play's corners are rounded (quadratic joins over ±2 % of w; flat inside, or the remanence would
+     * creep away) and p relaxes to it with τ = 1 µs — short enough that even in saturation, where p must race the
+     * current, its lag beyond w stays small (at 0.1 ms a saturating transformer lost several times its loop area). Not modelled: the loop's shape beyond a parallelogram
+     * (no rectangularity, no minor-loop accommodation), modes saturating each other, the material's B–H knee.
      */
     private void addIronInductance() {
         for (EmBody body : bodies) {
@@ -233,6 +258,23 @@ public final class MagneticSystem implements Element {
                 long key = ReluctanceLattice.key(w[0] - o[0], w[1] - o[1], w[2] - o[2]);
                 if (mu.containsKey(key)) bSat.merge(key, (Double) f[3], Math::min);
             }
+            // the iron's coercivity cell by cell, and the thermal node of the most permeable iron (the core), where the
+            // loss goes
+            double muCore = 0;
+            java.util.Map<Long, Double> hcCells = new java.util.HashMap<>();
+            Node coreThermal = null;
+            for (Object[] f : iron) {
+                if (f[0] != body) continue;
+                int[] w = (int[]) f[1];
+                long key = ReluctanceLattice.key(w[0] - o[0], w[1] - o[1], w[2] - o[2]);
+                if (!mu.containsKey(key)) continue;
+                double m = (Double) f[2], hcCell = f.length > 4 ? (Double) f[4] : 0;
+                if (hcCell > 0) hcCells.merge(key, hcCell, Math::max);
+                if (m > muCore) {
+                    muCore = m;
+                    coreThermal = f.length > 5 ? (Node) f[5] : null;
+                }
+            }
             double[][] vec = new double[n][n];
             double[] val = symmetricEigen(dl, vec);
             double top = 0;
@@ -243,7 +285,17 @@ public final class MagneticSystem implements Element {
                 for (int a = 0; a < n; a++) u[a] = vec[a][k];
                 double ratio = val[k] > 1e-9 * top && !bSat.isEmpty() ? lattice.peakSaturation(cuts, u, bSat) : 0;
                 if (ratio > 0) {
-                    modes.add(new SatMode(ids, u, val[k], val[k] / ratio));
+                    // the coercive width in this pattern's current: the iron's own coercive mmf ∮H_c dl — at the coercive
+                    // point the flux is zero, so an air gap in the path takes none of it — per turn of the pattern:
+                    // w = Σ H_c·V·|B| / μ_k, B and μ_k per ampere of the pattern (∫|B|dV = Φ·l, μ_k = N·Φ). For the
+                    // body's dominant mode only (the core's flux path): the minor modes are corrections to the same
+                    // iron's linkage, and a loop on each counted that iron's loss again (tenfold, in Faraday's ring).
+                    // (First forms — H_c over the iron's field per ampere at the most loaded cell; Σ H_c·B_sat·V/ψ_s —
+                    // made an open relay core's coercive current as large as its working current, or assumed one cross-
+                    // section along the path.)
+                    boolean dominant = val[k] >= top * (1 - 1e-9) && !Boolean.getBoolean("diag.noHysteresis");
+                    double w = dominant && !hcCells.isEmpty() ? lattice.weightedFluxVolume(cuts, u, hcCells) / val[k] : 0;
+                    modes.add(new SatMode(ids, u, val[k], val[k] / ratio, w, coreThermal));
                 } else {
                     for (int a = 0; a < n; a++)
                         for (int b = 0; b < n; b++) lConst[ids[a]][ids[b]] += val[k] * u[a] * u[b];
@@ -527,6 +579,21 @@ public final class MagneticSystem implements Element {
         if (!iron.isEmpty()) {
             addIronInductance();
             addArmatures();
+            // no hysteresis in a core that pulls an armature: the pull here is ½i²·dL/dx, from the current, and a core
+            // whose flux lags the current (holding remanence as the current dies) would have it let go early — a relay
+            // whose residual flux should make it hold longer dropped out sooner. (Flux-based armature force: NEXT_STEPS.)
+            java.util.Set<Integer> pulling = new java.util.HashSet<>();
+            for (Term t : terms) if (t.kind == Kind.SELF) pulling.add(t.j);
+            for (int k = 0; k < modes.size(); k++) {
+                SatMode md = modes.get(k);
+                if (md.w <= 0) continue;
+                for (int j : md.idx) {
+                    if (pulling.contains(j)) {
+                        modes.set(k, new SatMode(md.idx, md.u, md.mu, md.psiSat, 0, md.thermal));
+                        break;
+                    }
+                }
+            }
             addMagnetArmatures();
         }
         // coil ↔ magnet flux linkage (only bodies different from the coil's: same-body flux is constant)
@@ -580,6 +647,10 @@ public final class MagneticSystem implements Element {
         dLdTh = new double[nc][nb];
         dTdI = new double[nb][nc];
         dTdTh = new double[nb][nb];
+        dLdP = new double[nc][modes.size()];
+        mDrive = new double[modes.size()];
+        pState = new double[modes.size()];
+        lastLoss = new double[modes.size()];
         built = true;
     }
 
@@ -696,6 +767,17 @@ public final class MagneticSystem implements Element {
             for (Term t : terms) if (t.kind == Kind.FLUX && t.j == j) swing = Math.max(swing, t.spline.range());
             c.slot = ctx.allocState(Math.max(Math.max(l * 1e-6, 1e-4 * swing), 1e-12));
         }
+        hIdx = new int[modes.size()];
+        hSlot = new int[modes.size()];
+        for (int k = 0; k < modes.size(); k++) {
+            SatMode md = modes.get(k);
+            if (md.w <= 0) {
+                hIdx[k] = -1;
+                continue;
+            }
+            hIdx[k] = ctx.allocUnknown("magnetisation" + k, 1e-6 * md.w + 1e-9);
+            hSlot[k] = ctx.allocState(1e-4 * md.w + 1e-9);
+        }
     }
 
     private void readAngles(StateView s) {
@@ -718,16 +800,24 @@ public final class MagneticSystem implements Element {
             java.util.Arrays.fill(dTdTh[b], 0);
         }
         double energy = 0; // stored field energy W = ½ i·L·i + U_mm (+ the saturating iron's)
-        for (SatMode md : modes) {
+        for (int k = 0; k < modes.size(); k++) {
+            SatMode md = modes.get(k);
             double m = 0;
             for (int a = 0; a < md.idx.length; a++) m += md.u[a] * cur[md.idx[a]];
-            double x = md.mu * m / md.psiSat, t = Math.tanh(x), psi = md.psiSat * t, slope = md.mu * (1 - t * t);
+            for (int j = 0; j < nc; j++) dLdP[j][k] = 0;
+            boolean hyst = hIdx.length > k && hIdx[k] >= 0;
+            // a hysteretic mode's flux follows its lagging state p; otherwise the current itself
+            double q = hyst ? s.x(hIdx[k]) : m;
+            mDrive[k] = m;
+            pState[k] = q;
+            double x = md.mu * q / md.psiSat, t = Math.tanh(x), psi = md.psiSat * t, slope = md.mu * (1 - t * t);
             for (int a = 0; a < md.idx.length; a++) {
                 lambda[md.idx[a]] += psi * md.u[a];
-                for (int b = 0; b < md.idx.length; b++) dLdI[md.idx[a]][md.idx[b]] += slope * md.u[a] * md.u[b];
+                if (hyst) dLdP[md.idx[a]][k] += slope * md.u[a];
+                else for (int b = 0; b < md.idx.length; b++) dLdI[md.idx[a]][md.idx[b]] += slope * md.u[a] * md.u[b];
             }
             double ax = Math.abs(x), lnCosh = ax + Math.log1p(Math.exp(-2 * ax)) - Math.log(2);
-            energy += m * psi - md.psiSat * md.psiSat / md.mu * lnCosh;
+            energy += q * psi - md.psiSat * md.psiSat / md.mu * lnCosh;
         }
         for (int j = 0; j < nc; j++) {
             for (int k = 0; k < nc; k++) {
@@ -849,6 +939,34 @@ public final class MagneticSystem implements Element {
                 ctx.addJ(t, t, -drdT * i * i);
             }
         }
+        for (int k = 0; k < modes.size(); k++) {
+            if (hIdx[k] < 0) continue;
+            SatMode md = modes.get(k);
+            int ip = hIdx[k];
+            for (int a = 0; a < md.idx.length; a++) {
+                int j = md.idx[a];
+                if (dLdP[j][k] != 0) ctx.addJ(coils.get(j).iIdx, ip, -alpha * dLdP[j][k]);
+            }
+            // the play: τ·ṗ = g(m − p), g a dead zone of half-width w
+            double m = mDrive[k], p = pState[k], d = m - p;
+            double[] g = deadZone(d, md.w);
+            double pdot = ctx.ddt(hSlot[k], p);
+            ctx.addF(ip, TAU_H * pdot - g[0]);
+            ctx.addJ(ip, ip, TAU_H * alpha + g[1]);
+            for (int a = 0; a < md.idx.length; a++) ctx.addJ(ip, coils.get(md.idx[a]).iIdx, -g[1] * md.u[a]);
+            // the loss (m − p)·ψ'(p)·ṗ into the iron, with the integrator's own ṗ (g/τ would multiply Newton's residual
+            // in p's equation by 1/τ — a million — and heat the core several times over)
+            double x = md.mu * p / md.psiSat, t = Math.tanh(x), dpsi = md.mu * (1 - t * t), d2psi = -2 * t * dpsi * md.mu / md.psiSat;
+            double loss = d * dpsi * pdot;
+            lastLoss[k] = loss;
+            if (md.thermal != null) {
+                int it = md.thermal.index();
+                double dLp = -dpsi * pdot + d * d2psi * pdot + d * dpsi * alpha, dLm = dpsi * pdot;
+                ctx.addF(it, -loss);
+                ctx.addJ(it, ip, -dLp);
+                for (int a = 0; a < md.idx.length; a++) ctx.addJ(it, coils.get(md.idx[a]).iIdx, -dLm * md.u[a]);
+            }
+        }
         for (int b = 0; b < nb; b++) {
             EmBody body = bodies.get(b);
             if (body.isStatic()) continue;
@@ -866,9 +984,50 @@ public final class MagneticSystem implements Element {
         return evaluate(s);
     }
 
+    /**
+     * A dead zone of half-width w, exactly flat inside |d| < 0.98w (a slope there, however small, lets the state creep
+     * towards the current and the remanence leak away) and joined to the lines d ∓ w by quadratics over ±2 % of w (C¹):
+     * [g(d), g'(d)].
+     */
+    static double[] deadZone(double d, double w) {
+        double e = 0.02 * w, a = Math.abs(d), sg = Math.signum(d);
+        if (a <= w - e) return new double[]{0, 0};
+        if (a >= w + e) return new double[]{sg * (a - w), 1};
+        double x = a - (w - e);
+        return new double[]{sg * x * x / (4 * e), x / (2 * e)};
+    }
+
+    /** Mode k's hysteresis loss over the last step [W]. */
+    public double modeLoss(int k) {
+        return lastLoss.length > k ? lastLoss[k] : 0;
+    }
+
+    /** Hysteresis loss dissipated in the iron over the last step [W] (as the solver last evaluated it). */
+    public double hysteresisLoss(StateView s) {
+        double sum = 0;
+        for (double l : lastLoss) sum += l;
+        return sum;
+    }
+
+    /** Mode k's state: [magnetising current m, lagging state p, flux linkage ψ(p)] (p = m without hysteresis). */
+    public double[] modeState(int k, StateView s) {
+        evaluate(s);
+        SatMode md = modes.get(k);
+        return new double[]{mDrive[k], pState[k], md.psiSat * Math.tanh(md.mu * pState[k] / md.psiSat)};
+    }
+
+    /** Each hysteretic mode's coercive width w in its current pattern [A] (0 without hysteresis). */
+    public double[] coerciveWidths() {
+        build();
+        double[] w = new double[modes.size()];
+        for (int k = 0; k < w.length; k++) w[k] = modes.get(k).w;
+        return w;
+    }
+
     @Override
     public double untrackedLoss(StateView s) {
         double p = 0;
+        for (int k = 0; k < modes.size(); k++) if (modes.get(k).thermal == null) p += lastLoss[k];
         for (Coil c : coils) {
             if (c.thermal != null) continue;
             double i = s.x(c.iIdx);

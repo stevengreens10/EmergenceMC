@@ -562,7 +562,7 @@ own nets, so its first try ran a wire over the coils' series link and shorted co
 only at its own two ends, so a hand-laid stub and a routed wire that turned a corner beside it never touched — the
 router now takes the coil leads directly.
 (One tour hung at shutdown — the integrated server spinning in vanilla's chunk-unload loop for ten minutes — and the
-next run of the same tour closed normally: intermittent, not yet understood; kill only the showcase client if it recurs.)
+next run of the same tour closed normally: intermittent. Found after a second hang: see "Shutdown hang" below.)
 
 **A boost converter.** Four red LEDs in series (7.6 V) lit from 5 V: a Schmitt-trigger RC oscillator switches a small
 MOSFET across a 2000-turn coil; when it opens, the coil drives its current through a diode into the output capacitor.
@@ -581,4 +581,12 @@ oscillator (charge through one side of the pot, discharge through the other) wor
 failing at its reverse-biased diode nodes; a ramp-and-comparator design (Schmitt RC ramp, op-amp against a knob
 divider) failed far less, and at 5.6 Hz — the heavy rotor averages anyway — it runs at 2–3× real time. Knob down: −1.6
 rad/s after 4 s; up: −5.9.
+
+**Shutdown hang.** Twice a tour's integrated server spun forever in ChunkMap.processUnloads while stopping. The stack
+showed scheduleUnload rescheduling itself — a chunk's save future kept being replaced, i.e. something kept requesting
+chunks that were unloading. The level's save event (fired by the shutdown's own save) ran saveAll, which called
+setChanged() on every assembly block entity; setChanged also updates comparator outputs, reading neighbours' block
+states, and next to a chunk border that requests the neighbouring chunk — mid-unload. The periodic save now marks the
+chunk unsaved directly, only if it is loaded (getChunkNow → setUnsaved). Three tours in a row closed cleanly after.
+This could also have hung a player's quit-to-title.
 

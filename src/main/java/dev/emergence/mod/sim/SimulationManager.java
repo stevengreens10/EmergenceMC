@@ -994,8 +994,19 @@ public final class SimulationManager {
                         s.coilCurrents().getOrDefault(p.id, 0.0), s.capacitorVoltages().getOrDefault(p.id, 0.0), fl[0], fl[1],
                         s.damage().getOrDefault(p.id, 0.0)});
             }
-            if (markChanged) be.setChanged();
+            if (markChanged) markUnsaved(b);
         }
+    }
+
+    /**
+     * Marks the chunk holding {@code pos} for saving, if it is loaded — and never more. A block entity's setChanged()
+     * also updates comparator outputs, reading the neighbours' block states: next to a chunk border that requests the
+     * neighbouring chunk, and at server shutdown (the level's save event runs while chunks unload) a chunk requested
+     * mid-unload has its unload rescheduled, forever — the server spun in ChunkMap.processUnloads.
+     */
+    private void markUnsaved(BlockPos pos) {
+        var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+        if (chunk != null) chunk.setUnsaved(true);
     }
 
     public void saveAll() {

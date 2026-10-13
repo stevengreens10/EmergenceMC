@@ -206,7 +206,9 @@ public final class EmergenceGameTests {
         BlockPos pcAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "pc");
         BlockPos accAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "acc");
         PlacedPart pc = only(h, pcAt, PartKind.CHIP), acc = only(h, accAt, PartKind.CHIP);
-        h.runAtTickTime(300, () -> {
+        // from tick 300, checked every tick until it holds: a single sample can land while the accumulator's adder is
+        // still rippling (ACC 6 = 0110 between 4 and 8 was once read at PC 4, in the busy demo world)
+        h.runAtTickTime(300, () -> h.succeedWhen(() -> {
             var c = sim.compiledAt(pcAt);
             h.assertTrue(c != null && c.warnings().isEmpty(), "computer compiles without warnings: " + (c == null ? "-" : c.warnings()));
             double[] q = c.chipState(pc.id), a = sim.compiledAt(accAt).chipState(acc.id);
@@ -218,8 +220,7 @@ public final class EmergenceGameTests {
             h.assertTrue(pcv >= 1, "the program counter advanced: " + pcv);
             h.assertTrue(accv == java.util.List.of(0, 1, 2, 4, 8, 8, 1).get(Math.min(pcv, 6)) || pcv > 6,
                     "ACC follows the program: PC " + pcv + ", ACC " + accv);
-            h.succeed();
-        });
+        }));
     }
 
     /** Structures in the world: the shelves hold their lead blocks; a second block breaks the steel shelf. */

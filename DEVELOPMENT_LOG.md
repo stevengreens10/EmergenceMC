@@ -614,3 +614,9 @@ residual was wrong — the test had sampled a bursty loss; it now integrates ove
 showed a model inconsistency: armature pull is computed from current, so a hysteretic relay core let go early; relay
 cores stay anhysteretic until the pull is flux-based. Faraday's ring now keeps 0.69 Wb of remanence; the inverter's
 core loses 0.39 J a cycle, matching its loop area to 1.5 %.
+
+**A flaky in-world test, explained.** computerRunsItsProgramInWorld failed once in the busy demo world with ACC = 6 at
+PC 4 — neither the 4 before nor the 8 after: the adder's carry still rippling at the single tick the test sampled. It
+now checks every tick from 300 until the state holds (succeedWhen), as a logic analyser would wait for the bus to
+settle.
+

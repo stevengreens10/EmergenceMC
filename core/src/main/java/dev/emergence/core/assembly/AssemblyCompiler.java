@@ -787,7 +787,8 @@ public final class AssemblyCompiler {
         /**
          * Blades: each moving body's blade cells become blade elements of one {@link Aerofoils} element (on a turning
          * body with momentum-theory inflow through the disc its blades sweep). Blades on the frame feel the wind but
-         * move nothing; blades riding on a carried body are not modelled (a warning).
+         * move nothing; a rotor riding a slide (a propeller on a cart) pushes its slide; blades on a slide riding a
+         * rotor are not modelled (a warning).
          */
         void buildAero() {
             double rho = dev.emergence.core.fluids.Air.density(ambientT, a.ambientPressure());
@@ -798,8 +799,9 @@ public final class AssemblyCompiler {
                 for (long id : b.parts) {
                     Part p = a.get(id);
                     if (p.kind() != PartKind.BLADE) continue;
-                    if (b.carrier != null) {
-                        c.warnings.add("Blade #" + p.id() + " rides on a carried body: its aerodynamics are not modelled");
+                    // a rotor riding a slide (a propeller on a cart) is modelled; a slide riding a rotor is not
+                    if (b.carrier != null && (b.slider || !b.carrier.slider)) {
+                        c.warnings.add("Blade #" + p.id() + " rides on a slide on a turning body: its aerodynamics are not modelled");
                         continue;
                     }
                     Vec3 s = p.axis().vec(), ch = PartGeometry.bladeChordDirection(p);
@@ -816,8 +818,10 @@ public final class AssemblyCompiler {
                             }
                 }
                 if (foils.isEmpty()) continue;
-                Aerofoils af = c.network.add(new Aerofoils(b.node, b.tracker, !b.slider, b.axis, b.pivot, foils,
-                        b.slider ? 0 : Math.PI * tip * tip, rho, a.ambientWind()));
+                Aerofoils af = new Aerofoils(b.node, b.tracker, !b.slider, b.axis, b.pivot, foils,
+                        b.slider ? 0 : Math.PI * tip * tip, rho, a.ambientWind());
+                if (b.carrier != null) af.carriedBy(b.carrier.node, b.carrier.axis);
+                c.network.add(af);
                 c.aerofoils.add(af);
                 c.aeroOfBody.put(b, af);
             }

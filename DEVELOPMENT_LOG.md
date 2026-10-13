@@ -596,3 +596,9 @@ first half-cycle, starting at zero flux, saturates the core (8.9 A). Halving the
 Newton keeps failing at the logic chip's output whether or not it is switching, which is now the main open cost of the
 power-electronics exhibits (recorded in NEXT_STEPS).
 
+**A propeller cart.** Blade elements on a rotor that rides a slide: the element velocity gains the slide's, the force
+splits into the rotor's torque and the slide's push, and the momentum-theory disc meets the air at the cart's speed.
+Newton's third law holds to 10⁻⁹ and the cart's momentum matches its impulse to 2·10⁻⁵. The exhibit: a flywheel and
+a two-bladed propeller on a light cart along a two-metre rail — it creeps off and runs the rail's length in about seven
+seconds. (Earlier probes, in passing: the power-electronics edge cost is now profiled in NEXT_STEPS.)
+

@@ -102,8 +102,9 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    governor (tachogenerator, PI op-amp loop, Darlington drive) holding a brushed motor's speed against a brake; a
    contact governor (a centrifugal switch on the rotor — a preloaded spring sets the speed)
 🟡 Aerodynamics: blades (flat-plate blade elements, all quadrants) on rotors and slides, momentum-theory inflow
-   (Glauert/Buhl; the Betz limit emerges), a modelled wind from the weather ✅; a wind turbine exhibit; wings on free
-   bodies, finite-span effects, cambered aerofoils, propeller thrust on vehicles ⬜
+   (Glauert/Buhl; the Betz limit emerges), a modelled wind from the weather ✅; a wind turbine exhibit; propellers on
+   carts (a rotor riding a slide: thrust pushes the slide, the disc meets the air at the cart's speed) ✅; wings on free
+   bodies, finite-span effects, cambered aerofoils ⬜
 🟡 Joints on moving bodies (a rotor on a slide, a slide on a rotor) ✅; multi-joint robots, linkages ⬜; state-space
    control ⬜; advanced EM ⬜
 

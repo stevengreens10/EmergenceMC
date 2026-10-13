@@ -305,6 +305,12 @@ reach 9.3 mA in their half-cycle. The first half-cycle draws 8.9 A: switched on 
 far and saturates (inrush). Cost ≈ 3 000 steps a second (≈ 4× real time), insensitive to frequency: Newton keeps
 failing at the logic chip's output and state (≈ 700 a second) — a cost shared with the boost and PWM exhibits.
 
+Propeller on a cart (`AerofoilsTest.propellerDrivesItsCartWithTheThrustItGivesTheAir`): two blades held at
+120 rad/s on a 2 kg cart sliding along the axis: at rest the push on the cart is −0.3574 N against 0.3574 N of thrust
+on the air; after 4 s the cart's momentum (−1.39935 N·s) matches the impulse (−1.39932 N·s), and the thrust has fallen
+to 0.3408 N. The exhibit (`DemoExhibitsTest.propellerDrivesTheCartAlongItsRail`): a flywheel-driven propeller (70 rad/s,
+blades pitched 8°) on an aluminium cart pushes it 0.48 m along its rail in 5 s (0.77 N at rest, 0.66 N at 0.17 m/s).
+
 Speed governor (`DemoExhibitsTest.governorHoldsItsSpeedUnderLoad`): a brushed DC motor whose shaft carries a
 two-magnet tachogenerator; a diode peak detector gives 0.17 V per rad/s, an op-amp PI loop (K_p 10, K_i 10 s⁻¹)
 drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor's speed after 10 s is within 0.5 % of

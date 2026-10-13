@@ -58,8 +58,8 @@ regenerate the demo world → screenshot tour → docs → commit.
    timer (needs a high-permeability alloy such as 80 % permalloy in the database); hinged armatures and plungers; coils adding to a magnet's MMF
    (polarised relays, electro-permanent releases); relay logic (latching relays, relay gates); core losses; a
    drag-cup speedometer. (Magnets attract iron on slides now.)
-9. **Aerodynamics next**: twisted and cambered blades, wings on free bodies (gliders need free rigid bodies),
-   propellers driving carts on slides, wind loads on structures.
+9. **Aerodynamics next**: (propellers on carts are in) twisted and cambered blades, wings on free bodies (gliders
+   need free rigid bodies), a motor-driven propeller (magnetics on carried rotors), wind loads on structures.
 10. **Performance**: async island compilation, factorisation reuse for linear islands, cheaper conductor loads (most
    of a circuit island's fast-step time); multirate is in (thermal apart);
    the steam engine and gas engine run slower than real time at speed.

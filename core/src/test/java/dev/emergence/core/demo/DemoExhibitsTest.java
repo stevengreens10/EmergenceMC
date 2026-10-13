@@ -161,6 +161,28 @@ class DemoExhibitsTest {
         assertTrue(g > 5e-3 && r > 5e-3, "each LED lights in its half-cycle");
     }
 
+    /**
+     * Propeller cart: the spun propeller throws air back along the rail and the cart, touched by nothing else, runs the
+     * other way; the thrust falls as it gathers speed (and the flywheel slows).
+     */
+    @Test
+    void propellerDrivesTheCartAlongItsRail() {
+        Exhibit e = AeroExhibits.propellerCart();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertTrue(c.warnings().stream().noneMatch(w -> w.contains("Blade")), "the propeller's blades are modelled: " + c.warnings());
+        var cart = c.bodyOf(b.id(e, "cart"));
+        var af = c.aerofoils(c.bodyOf(b.id(e, "shaft")));
+        c.step(0.05);
+        double thrust0 = af.thrust(c.solverView());
+        run(c, 5);
+        double x = c.angle(cart), v = c.angularVelocity(cart), thrust = af.thrust(c.solverView());
+        System.out.printf("propeller cart: thrust on the air %.3f N at rest; after 5 s the cart %.3f m along at %.3f m/s, thrust %.3f N%n",
+                thrust0, x, v, thrust);
+        assertTrue(x * thrust0 < 0 && Math.abs(x) > 0.3, "the cart runs the opposite way to the air it throws: " + x);
+        assertTrue(Math.abs(thrust) < Math.abs(thrust0), "the thrust falls as it goes");
+    }
+
     @Test
     void gearTrainReproducesToothRatios() {
         Exhibit e = Exhibits.gearTrain();

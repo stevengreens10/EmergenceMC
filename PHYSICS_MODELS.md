@@ -694,6 +694,10 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   Drag-free, the shaft power is −T(u_n + v_i): C_p = 4a(1 − a)² ≤ 16/27, the Betz limit. Neglected: wake rotation,
   tip loss, radial variation of the inflow, induction across the axis (a rotor edge-on to the wind, a vertical-axis
   turbine, gets none: overpredicted), and blades shading each other.
+* **A propeller on a cart** (a rotor riding a slide along its axis): each element moves at ω n × (r − p) + v_s·a,
+  so the air's force is a torque on the rotor and a force a·F on the slide; the disc meets the axial wind less the
+  cart's own speed. At rest the cart's push equals the thrust given to the air (to 10⁻⁹); the cart's momentum equals
+  the impulse it received (2·10⁻⁵); the thrust falls with the advance ratio.
 * **Energy**: the air is an outside reservoir; the work it does on the body (torque × ω, force × v) is external
   power in the ledger.
 * **The wind** (`Assembly.ambientWind`, uniform over a machine). In the world (Minecraft has none) it is modelled:

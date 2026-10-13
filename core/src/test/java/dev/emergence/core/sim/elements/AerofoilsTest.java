@@ -133,4 +133,51 @@ class AerofoilsTest {
         assertTrue(s.x(w.index()) > 20, "it spins up");
         assertTrue(Math.abs(s.energyError()) < 1e-4 * s.externalEnergyIn(), "the ledger closes");
     }
+
+    /**
+     * A propeller on a cart (a rotor riding a slide along its own axis), held at its speed: at rest the cart is pushed
+     * with exactly the thrust the blades put into the air, the other way (Newton's third law); it runs the opposite way
+     * to the air it blows, its momentum the impulse it was given; and as it gathers speed the thrust falls (its own
+     * motion eats into the blades' angle of attack — the advance ratio).
+     */
+    @Test
+    void propellerDrivesItsCartWithTheThrustItGivesTheAir() {
+        Network net = new Network();
+        double mass = 2, omega = 120, radius = 0.15;
+        Node v = net.node(Domain.TRANSLATIONAL, "v", 0);
+        net.add(new Inertia(v, mass));
+        AngleTracker x = net.add(new AngleTracker(v, 0));
+        Node w = net.node(Domain.ROTATIONAL, "w", omega);
+        net.add(new Inertia(w, 1e9)); // held at its speed (a motor)
+        AngleTracker th = net.add(new AngleTracker(w, 0));
+        List<Aerofoils.Foil> foils = new ArrayList<>();
+        int n = 12;
+        for (int b = 0; b < 2; b++) {
+            Vec3 radial = Y.rotateAbout(X, Math.PI * b), tangential = X.cross(radial);
+            for (int k = 0; k < n; k++) {
+                double r = radius * (0.1 + 0.9 * (k + 0.5) / n), dr = 0.9 * radius / n, b0 = Math.toRadians(20);
+                Vec3 chord = tangential.mul(-Math.cos(b0)).add(X.mul(Math.sin(b0)));
+                foils.add(new Aerofoils.Foil(radial.mul(r), radial, chord, 0.15 * radius * dr, 0.02));
+            }
+        }
+        Aerofoils af = net.add(new Aerofoils(w, th, true, X, Vec3.ZERO, foils, Math.PI * radius * radius, RHO, Vec3.ZERO)
+                .carriedBy(v, X));
+        TransientSolver s = new TransientSolver(net);
+        s.advance(1e-4);
+        double thrust0 = af.thrust(s), push0 = af.carrierForce(s);
+        double impulse = 0;
+        for (int i = 0; i < 400; i++) {
+            double f0 = af.carrierForce(s);
+            s.advance(0.01);
+            impulse += 0.5 * (f0 + af.carrierForce(s)) * 0.01;
+        }
+        double speed = s.x(v.index()), thrust = af.thrust(s);
+        System.out.printf("propeller cart: thrust on the air %.4f N, push on the cart %.4f N at rest; after 4 s the cart at %.3f m/s "
+                + "(momentum %.5f vs impulse %.5f N·s), thrust %.4f N%n", thrust0, push0, speed, mass * speed, impulse, thrust);
+        assertTrue(thrust0 > 0, "it blows the air along +x");
+        assertEquals(-thrust0, push0, 1e-9 * Math.abs(thrust0), "the cart is pushed back with the same force");
+        assertTrue(speed < 0, "the cart runs the other way to the air it blows");
+        assertEquals(impulse, mass * speed, 0.01 * Math.abs(impulse), "its momentum is the impulse the air gave it");
+        assertTrue(Math.abs(thrust) < thrust0, "moving, the thrust falls (advance ratio)");
+    }
 }

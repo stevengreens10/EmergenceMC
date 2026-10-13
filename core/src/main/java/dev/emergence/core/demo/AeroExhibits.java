@@ -60,4 +60,50 @@ public final class AeroExhibits {
         r.route();
         return e.view(6, 6, 20, 24);
     }
+
+    /**
+     * A propeller cart: a two-bladed propeller with a flywheel, on a bracket on a light cart that slides along a rail.
+     * Spun, the propeller throws air one way and the cart is pushed the other (the air is the "something to push
+     * against"); its thrust falls as the cart picks up speed, and as the flywheel runs down.
+     */
+    public static Exhibit propellerCart() {
+        return propellerCart(8);
+    }
+
+    static Exhibit propellerCart(double pitch) {
+        Exhibit e = new Exhibit("propcart", "Propeller cart",
+                List.of("PROPELLER CART", "The spinning propeller", "throws air back:", "the cart goes forward"),
+                "A light aluminium cart runs on a two-metre rail through two bushings. On it, a flywheel and a two-bladed "
+                        + "propeller turn on one shaft, along the rail. Each blade, set at an angle to its path, deflects "
+                        + "the air it meets (lift and drag from its angle of attack, element by element), and together "
+                        + "they drive a stream of air through the disc they sweep — momentum theory sets how fast. The "
+                        + "air pushed one way, the propeller is pushed the other with the same force, and the cart with "
+                        + "it: nothing else touches the cart. The faster the cart goes, the less its blades bite (they "
+                        + "meet the air already moving towards them) and the thrust falls; the flywheel runs down as "
+                        + "the air takes its energy. Crank the flywheel to spin it up again. Aircraft propellers, "
+                        + "airboats and the fans of a hovercraft all push this way.");
+        e.plots = 2;
+        String st = "steel_1045", al = "aluminium_6061";
+        int y = 3, ya = y + 5;
+        // the rail: a rod through two bushings on posts, nearly two metres long
+        e.fill(BLOCK, st, 16, 0, 8, 17, y - 1, 8, Dir.UP);
+        e.add(LINEAR_BEARING, st, 16, y, 8, Dir.EAST, "viscosity", 0.5);
+        e.add(LINEAR_BEARING, st, 17, y, 8, Dir.EAST, "viscosity", 0.5);
+        e.name("rail", e.fill(SHAFT, st, 2, y, 8, 31, y, 8, Dir.EAST, "diameter", 0.012));
+        // the cart: an aluminium deck on the rod and a bracket up to the propeller's bearing
+        e.name("cart", e.fill(BLOCK, al, 4, y, 8, 6, y, 8, Dir.EAST, "fill", 0.3));
+        e.fill(BLOCK, al, 5, y + 1, 8, 5, ya - 1, 8, Dir.UP, "fill", 0.3);
+        e.add(BEARING, st, 5, ya, 8, Dir.EAST);
+        int shaft = e.fill(SHAFT, st, 3, ya, 8, 8, ya, 8, Dir.EAST, "diameter", 0.01);
+        e.name("shaft", shaft);
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 70, 0)); // spun up
+        // the propeller: two blades across the shaft's end, pitched into the turn
+        e.add(BLOCK, al, 3, ya, 8, Dir.UP, "fill", 0.5);
+        e.fill(BLADE, al, 3, ya, 4, 3, ya, 7, Dir.NORTH, "face", Dir.UP.ordinal(), "pitch", pitch);
+        e.fill(BLADE, al, 3, ya, 9, 3, ya, 12, Dir.SOUTH, "face", Dir.UP.ordinal(), "pitch", pitch);
+        // the flywheel, and a crank to spin it up
+        e.name("flywheel", e.fill(BLOCK, "brass", 7, ya - 1, 7, 7, ya + 1, 9, Dir.EAST, "fill", 0.3));
+        e.name("crank", e.add(CRANK, st, 8, ya, 8, Dir.EAST, "radius", 0.1));
+        return e.view(17, 9, 24, 25);
+    }
 }

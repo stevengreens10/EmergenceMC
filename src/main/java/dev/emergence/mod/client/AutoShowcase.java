@@ -409,6 +409,9 @@ public final class AutoShowcase {
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-alternating"));
             }
+            if (id.equals("propcart")) {
+                STEPS.add(new Step(120, () -> { }, "showcase-" + (i + 1) + "-" + id + "-moving"));
+            }
             if (id.equals("pwm")) {
                 // the logger on the bridge's lower left transistor: the drive pulses, the motor running at their average
                 STEPS.add(new Step(160, () -> {

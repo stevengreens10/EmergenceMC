@@ -118,6 +118,26 @@ class DemoExhibitsTest {
         assertTrue(wr * wf < 0 && Math.abs(wr) > 2, "reverse turns it the other way: " + wf + " / " + wr);
     }
 
+    /**
+     * PWM speed control: the knob turned up widens the pulses, and the motor, from rest, runs several times faster than
+     * with the knob turned down (the same way round).
+     */
+    @Test
+    void pwmKnobSetsTheMotorSpeed() {
+        double[] w = new double[2];
+        for (int m = 0; m < 2; m++) {
+            Exhibit e = ControlExhibits.pwmMotor(m == 0 ? -1.2 : 1.2);
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = compile(e, b);
+            run(c, 4);
+            w[m] = c.probe(b.id(e, "rotor")).angularVelocity();
+        }
+        System.out.printf("PWM: knob down %.2f rad/s, knob up %.2f rad/s after 4 s%n", w[0], w[1]);
+        assertTrue(w[0] * w[1] > 0, "the same way round");
+        assertTrue(Math.abs(w[0]) > 0.3, "narrow pulses still turn it: " + w[0]);
+        assertTrue(Math.abs(w[1]) > 2.5 * Math.abs(w[0]), "wide pulses turn it several times faster: " + w[0] + " / " + w[1]);
+    }
+
     @Test
     void gearTrainReproducesToothRatios() {
         Exhibit e = Exhibits.gearTrain();

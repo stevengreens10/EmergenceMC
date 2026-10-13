@@ -321,7 +321,37 @@ public final class ControlExhibits {
      * Neither: both sides high, the motor shorted through the two P-channels — it brakes.
      */
     public static Exhibit hBridge() {
-        Exhibit e = new Exhibit("hbridge", "H-bridge",
+        return hBridge(false, 0);
+    }
+
+    /**
+     * The H-bridge under PWM speed control: a Schmitt-trigger oscillator drives the bridge's left input; its timing
+     * capacitor charges through one side of a knob potentiometer and discharges through the other (each through its own
+     * diode), so the knob sets the fraction of each 40 ms period the motor is driven — and so its speed.
+     *
+     * @param knobAngle the knob's starting angle [rad] (0 = mid-travel)
+     */
+    public static Exhibit pwmMotor(double knobAngle) {
+        return hBridge(true, knobAngle);
+    }
+
+    public static Exhibit pwmMotor() {
+        return pwmMotor(0.4);
+    }
+
+    static Exhibit hBridge(boolean pwm, double knobAngle) {
+        Exhibit e = pwm ? new Exhibit("pwm", "PWM speed control",
+                List.of("PWM SPEED CONTROL", "Turn the knob: the", "pulses widen and", "the motor speeds up"),
+                "The H-bridge again, but its left input is driven by pulses instead of a switch, about six times a "
+                        + "second. A Schmitt-trigger oscillator's timing capacitor ramps up and down between 40 and 60 % "
+                        + "of the supply; an op-amp compares that ramp with the knob's voltage and drives the bridge while "
+                        + "the ramp is below it. Turning the knob raises or lowers the line the ramp is cut at, so the "
+                        + "pulses widen or narrow while their rate stays the same. The motor is either on full or off — "
+                        + "the transistors waste almost nothing — but its heavy rotor cannot follow the pulses, so it settles at "
+                        + "the speed the average voltage (supply × fraction on) would give. Meter the bridge's output for "
+                        + "the pulses, the rotor for its speed. This is how nearly every modern motor, LED and heater "
+                        + "is dimmed: not by burning the difference in a resistor, but by switching.")
+                : new Exhibit("hbridge", "H-bridge",
                 List.of("H-BRIDGE", "FORWARD or REVERSE:", "four transistors swap", "the motor's leads"),
                 "The brushed DC motor, run both ways by four transistors in an H. Each upright of the H is a "
                         + "complementary pair: a P-channel MOSFET from the 9.5 V supply and an N-channel one to ground, "
@@ -352,12 +382,49 @@ public final class ControlExhibits {
         e.name("nB", e.add(TRANSISTOR, "silicon", 28, f, 8, Dir.EAST, with(power, "type", 2)));
         e.add(RESISTOR, "alumina", 18, f, 11, Dir.EAST, "resistance", 10_000); // input pull-downs
         e.add(RESISTOR, "alumina", 24, f, 11, Dir.EAST, "resistance", 10_000);
-        e.name("forward", e.add(SWITCH, "brass", 18, f, 13, Dir.EAST));
+        if (!pwm) e.name("forward", e.add(SWITCH, "brass", 18, f, 13, Dir.EAST));
         e.name("reverse", e.add(SWITCH, "brass", 24, f, 13, Dir.EAST));
+        if (pwm) {
+            // the oscillator: a Schmitt inverter with 220 kΩ feedback onto 1 µF (≈ 5.6 Hz — the heavy rotor averages far
+            // slower; each switching edge costs the solver ~130 small steps, so slower is cheaper): its capacitor ramps between 0.4
+            // and 0.6 of the supply. An op-amp compares the ramp with the knob's voltage: its output is high while the
+            // ramp is below the knob, so the knob sets how much of each period the bridge drives the motor
+            e.name("osc", e.add(LOGIC, "silicon", 32, f, 4, Dir.EAST, "function", 7));
+            e.add(RESISTOR, "alumina", 32, f, 1, Dir.EAST, "resistance", 220_000);
+            e.add(CAPACITOR, "alumina", 34, f, 7, Dir.SOUTH, "capacitance", 1e-6);
+            e.name("comparator", e.add(OPAMP, "silicon", 32, f, 11, Dir.EAST));
+            // the knob's 10 kΩ track between 15 kΩ to the supply and 15 kΩ to ground: it spans 0.375 … 0.625 of the supply
+            e.add(RESISTOR, "alumina", 34, f, 13, Dir.EAST, "resistance", 15_000);
+            e.add(RESISTOR, "alumina", 34, f, 15, Dir.EAST, "resistance", 15_000);
+            int ky = 3, kz = 14;
+            String st = "steel_1045";
+            int knob = e.fill(SHAFT, st, 30, ky, kz, 33, ky, kz, Dir.EAST, "diameter", 0.012);
+            e.name("knob", knob);
+            e.init(knob, new Exhibit.Initial(Double.NaN, 0, 0, knobAngle));
+            e.add(BEARING, "bronze", 30, ky, kz, Dir.EAST, "type", 2, "viscosity", 2000); // damped: it stays where it is left
+            e.fill(BLOCK, st, 30, 0, kz, 30, ky - 1, kz, Dir.UP);
+            e.name("pot", e.add(POTENTIOMETER, "nylon_66", 31, ky, kz, Dir.EAST, "lead_axis", 1, "resistance", 10_000));
+            e.fill(BLOCK, st, 31, 0, kz + 1, 31, ky, kz + 1, Dir.UP);
+            e.name("crank", e.add(CRANK, st, 33, ky, kz, Dir.EAST, "radius", 0.06));
+        }
         Router r = new Router(e, 0, 0, 0, 35, 18, 15);
-        r.pin("vdd", 17, f, 2).pin("vdd", 19, f, 5).pin("vdd", 25, f, 5).pin("vdd", 17, f, 13).pin("vdd", 23, f, 13);
+        r.pin("vdd", 17, f, 2).pin("vdd", 19, f, 5).pin("vdd", 25, f, 5).pin("vdd", 23, f, 13);
         r.pin("gnd", 15, f, 2).pin("gnd", 21, f, 8).pin("gnd", 27, f, 8).pin("gnd", 17, f, 11).pin("gnd", 23, f, 11);
-        r.pin("inA", 20, f, 4).pin("inA", 22, f, 7).pin("inA", 19, f, 11).pin("inA", 19, f, 13);
+        r.pin("inA", 20, f, 4).pin("inA", 22, f, 7).pin("inA", 19, f, 11);
+        if (pwm) {
+            r.pin("vdd", 32, f, 5).pin("gnd", 32, f, 3);                       // the Schmitt's supply
+            r.pin("ct", 31, f, 4).pin("ct", 31, f, 1).pin("ct", 34, f, 6).pin("ct", 32, 0, 11);
+            r.pin("osc", 33, f, 4).pin("osc", 33, f, 1);
+            r.pin("gnd", 34, f, 8);
+            r.pin("vdd", 32, f, 12).pin("gnd", 32, f, 10);                     // the op-amp's supply
+            r.pin("knob", 31, f, 11).pin("knob", 31, 3, 13);                  // wiper → in+
+            r.pin("inA", 33, f, 11);
+            r.pin("trackP", 31, 4, 14).pin("trackP", 33, f, 13).pin("vdd", 35, f, 13);
+            r.pin("trackN", 31, 2, 14).pin("trackN", 33, f, 15).pin("gnd", 35, f, 15);
+            r.keepClear(32, 2, 13, 33, 4, 15); // the knob's crank turns there
+        } else {
+            r.pin("vdd", 17, f, 13).pin("inA", 19, f, 13);
+        }
         r.pin("inB", 26, f, 4).pin("inB", 28, f, 7).pin("inB", 25, f, 11).pin("inB", 25, f, 13);
         r.pin("outA", 21, f, 5).pin("outA", 23, f, 8).pin("outA", 11, 8, 8);
         r.pin("outB", 27, f, 5).pin("outB", 29, f, 8).pin("outB", 5, 8, 8);

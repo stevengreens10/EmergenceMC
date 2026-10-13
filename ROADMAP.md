@@ -75,7 +75,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ RAM (16 × 4 static memory chip, memory exhibit); chip contents survive recompiling and saving
 🟡 Power electronics: a bridge rectifier with a smoothing capacitor on the hand generator ✅; a boost converter
    (Schmitt oscillator, MOSFET, 2000-turn coil, diode, RC snubber) lighting 7.6 V of LEDs from 5 V ✅; an H-bridge of
-   complementary MOSFET pairs reversing (and dynamically braking) the DC motor ✅; buck converters, inverters ⬜
+   complementary MOSFET pairs reversing (and dynamically braking) the DC motor ✅; PWM speed control through it (a
+   Schmitt ramp and an op-amp comparator against a knob) ✅; buck converters, inverters ⬜
 ⬜ A richer instruction set (load/store to RAM), more sensors and actuators; event-driven simulation for thousands of gates
 
 ## Phase 5 — Chemistry and manufacturing

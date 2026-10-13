@@ -576,3 +576,9 @@ their outputs; switches pull the inputs up. FORWARD and REVERSE turn it opposite
 the P-channels and it brakes on its back-EMF. The first test expected the brake to stop it in a second and reverse to
 match forward's speed within eight — the rotor's 14 s time constant says otherwise; the test now follows it.
 
+**PWM speed control.** The H-bridge's input driven by pulses whose width a knob sets. The textbook diode-steered
+oscillator (charge through one side of the pot, discharge through the other) worked but cost 12–20× real time, Newton
+failing at its reverse-biased diode nodes; a ramp-and-comparator design (Schmitt RC ramp, op-amp against a knob
+divider) failed far less, and at 5.6 Hz — the heavy rotor averages anyway — it runs at 2–3× real time. Knob down: −1.6
+rad/s after 4 s; up: −5.9.
+

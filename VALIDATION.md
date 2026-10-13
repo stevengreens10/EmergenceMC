@@ -290,6 +290,14 @@ H-bridge (`DemoExhibitsTest.hBridgeReversesTheMotor`): two complementary MOSFET 
 REVERSE then drives it through zero to +3.04 rad/s within 10 s. The heavy rotor's time constant (J·R/K² ≈ 14 s
 spinning up) sets all three.
 
+PWM speed control (`DemoExhibitsTest.pwmKnobSetsTheMotorSpeed`): the H-bridge's left input driven by an op-amp
+comparing a Schmitt RC ramp (≈ 5.6 Hz, 0.4–0.6 of 9.5 V) with a knob divider (0.375–0.625 of the supply); from rest the
+motor reaches −1.58 rad/s in 4 s with the knob down and −5.92 rad/s with it up (the rotor's 14 s time constant
+averages the pulses). Cost ≈ 1 700 steps a second (2–3× real time): each switching edge of the inductive load takes
+~130 steps; a first, diode-steered oscillator (the knob's track splitting charge and discharge paths) cost 12–20× real
+time — its reverse-biased diode nodes kept Newton failing ~1 500 times a second — and at 26 Hz the comparator version
+still cost 9×.
+
 Speed governor (`DemoExhibitsTest.governorHoldsItsSpeedUnderLoad`): a brushed DC motor whose shaft carries a
 two-magnet tachogenerator; a diode peak detector gives 0.17 V per rad/s, an op-amp PI loop (K_p 10, K_i 10 s⁻¹)
 drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor's speed after 10 s is within 0.5 % of

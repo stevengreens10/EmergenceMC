@@ -19,8 +19,9 @@ regenerate the demo world → screenshot tour → docs → commit.
    and enclosures (a speaker cabinet turns a dipole into a monopole); impulsive sounds (impacts) beyond tones;
    faster audio-rate machines (their fast partition's own cost).
 5a. **Power electronics**: (a bridge rectifier, a boost converter and an H-bridge are in) a buck converter (a
-   P-channel high-side switch driven through an NPN level shifter), PWM speed control through the H-bridge (the EM-4
-   or an oscillator driving its inputs), an inverter feeding a transformer;
+   P-channel high-side switch driven through an NPN level shifter), an inverter feeding a transformer; the EM-4
+   setting the PWM duty (a DAC from resistors) for closed-loop speed control; why a diode-steered RC oscillator
+   (reverse-biased diode nodes) fails Newton ~1 500 times a second;
    the cost of switching edges (≈ 140 steps an edge: the gate capacitances and snubber set the step) — an averaged
    switch model for fast converters, with a detector for when its assumptions fail.
 5. **Computing**: (RAM chip in) the EM-4 using RAM (load/store), an in-game ROM programmer, instruction-set growth (load/store, branch on carry),

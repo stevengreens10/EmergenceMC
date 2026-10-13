@@ -13,3 +13,4 @@ run/
 .claude/next-build-summary.txt
 run-gametest/
 run-demo/
+__pycache__/

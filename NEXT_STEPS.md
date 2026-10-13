@@ -19,7 +19,11 @@ regenerate the demo world → screenshot tour → docs → commit.
    and enclosures (a speaker cabinet turns a dipole into a monopole); impulsive sounds (impacts) beyond tones;
    faster audio-rate machines (their fast partition's own cost).
 5a. **Power electronics**: (a bridge rectifier, a boost converter and an H-bridge are in) a buck converter (a
-   P-channel high-side switch driven through an NPN level shifter), an inverter feeding a transformer; the EM-4
+   P-channel high-side switch driven through an NPN level shifter); why chip-level logic fails Newton hundreds of times a
+   second (the boost, PWM and inverter exhibits all pay 2–6× real time for it): probably each Schmitt edge — a fold in
+   the hysteresis, resolved by a 10 ns relaxation — halving the step from milliseconds to nanoseconds, a Newton failure
+   per halving (the boost's oscillator failed so even with nothing on its output); an event-aware step at logic edges
+   (predict the threshold crossing, step to it, restart) would make an edge cost a handful of steps; the EM-4
    setting the PWM duty (a DAC from resistors) for closed-loop speed control; why a diode-steered RC oscillator
    (reverse-biased diode nodes) fails Newton ~1 500 times a second;
    the cost of switching edges (≈ 140 steps an edge: the gate capacitances and snubber set the step) — an averaged

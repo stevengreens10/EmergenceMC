@@ -298,6 +298,13 @@ averages the pulses). Cost ≈ 1 700 steps a second (2–3× real time): each sw
 time — its reverse-biased diode nodes kept Newton failing ~1 500 times a second — and at 26 Hz the comparator version
 still cost 9×.
 
+Inverter (`DemoExhibitsTest.inverterSteppedUpAcLightsBothLeds`): the H-bridge's two sides driven in antiphase (a
+Schmitt RC oscillator at ≈ 2.6 Hz and a second inverter) across the 200-turn primary of the electrical-steel ring
+(9.5 V); the 1000-turn secondary swings −45.8 … +45.8 V (5 × 9.5 less losses) and the back-to-back LEDs on 4.7 kΩ each
+reach 9.3 mA in their half-cycle. The first half-cycle draws 8.9 A: switched on at zero flux, the core swings twice as
+far and saturates (inrush). Cost ≈ 3 000 steps a second (≈ 4× real time), insensitive to frequency: Newton keeps
+failing at the logic chip's output and state (≈ 700 a second) — a cost shared with the boost and PWM exhibits.
+
 Speed governor (`DemoExhibitsTest.governorHoldsItsSpeedUnderLoad`): a brushed DC motor whose shaft carries a
 two-magnet tachogenerator; a diode peak detector gives 0.17 V per rad/s, an op-amp PI loop (K_p 10, K_i 10 s⁻¹)
 drives a Darlington emitter follower. Braked (≈ 0.3 N·m), the governed motor's speed after 10 s is within 0.5 % of

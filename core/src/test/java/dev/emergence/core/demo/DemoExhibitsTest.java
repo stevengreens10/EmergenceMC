@@ -138,6 +138,29 @@ class DemoExhibitsTest {
         assertTrue(Math.abs(w[1]) > 2.5 * Math.abs(w[0]), "wide pulses turn it several times faster: " + w[0] + " / " + w[1]);
     }
 
+    /**
+     * Inverter: the bridge alternates the 9.5 V supply across the ring's 200-turn primary; the 1000-turn secondary swings
+     * about five times as far both ways, and each LED lights in its own half-cycle.
+     */
+    @Test
+    void inverterSteppedUpAcLightsBothLeds() {
+        Exhibit e = ControlExhibits.inverter();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        double vmin = 0, vmax = 0, g = 0, r = 0;
+        for (int i = 0; i < 800; i++) {
+            c.step(0.0025);
+            double v = c.probe(b.id(e, "secondary")).voltage();
+            vmin = Math.min(vmin, v);
+            vmax = Math.max(vmax, v);
+            g = Math.max(g, Math.abs(c.probe(b.id(e, "green")).current()));
+            r = Math.max(r, Math.abs(c.probe(b.id(e, "red")).current()));
+        }
+        System.out.printf("inverter: secondary %.1f … %.1f V; LEDs green %.1f mA, red %.1f mA%n", vmin, vmax, 1e3 * g, 1e3 * r);
+        assertTrue(vmax > 35 && vmin < -35, "about five times the 9.5 V supply, both ways");
+        assertTrue(g > 5e-3 && r > 5e-3, "each LED lights in its half-cycle");
+    }
+
     @Test
     void gearTrainReproducesToothRatios() {
         Exhibit e = Exhibits.gearTrain();

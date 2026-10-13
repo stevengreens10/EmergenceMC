@@ -438,6 +438,73 @@ public final class ControlExhibits {
         return e.view(17, 12, 24, 30);
     }
 
+    /**
+     * An inverter: the H-bridge driven from both sides in turn by an oscillator and its inverse makes the 9.5 V supply
+     * into a square alternating voltage across the primary of Faraday's ring; the 1000-turn secondary steps it up five
+     * times, and two LEDs back to back on it light in turn, one for each half-cycle.
+     */
+    public static Exhibit inverter() {
+        Exhibit e = new Exhibit("inverter", "Inverter and transformer",
+                List.of("INVERTER", "DC in, AC out: the", "ring steps it up,", "the LEDs take turns"),
+                "A transformer needs alternating current — a steady current makes a steady flux, and only a changing "
+                        + "flux induces anything (Faraday's ring, next door, shows it with a switch). Here an H-bridge makes "
+                        + "the alternation: an oscillator drives one side of the bridge and, through a second inverter, "
+                        + "the other side the opposite way, so the 9.5 V supply is put across the ring's 200-turn primary "
+                        + "first one way, then the other, two or three times a second. The flux in the iron ramps up and down "
+                        + "between the reversals (V = N·dΦ/dt), and the 1000-turn secondary carries five times the "
+                        + "voltage, reversing with it: two LEDs back to back take turns to light, one for each direction. "
+                        + "The flux must turn round before the iron saturates — at a lower frequency it would ramp past "
+                        + "the steel's 2 tesla; that is why mains transformers are built for their frequency. Every "
+                        + "solar inverter and laptop charger does this, a thousand times faster, with a far smaller core.");
+        e.plots = 2;
+        String core = "electrical_steel";
+        for (int i = 4; i <= 10; i++) {
+            e.add(BLOCK, core, i, 1, 5, Dir.UP);
+            e.add(BLOCK, core, i, 1, 11, Dir.UP);
+        }
+        for (int z = 6; z <= 10; z++) {
+            if (z == 8) continue;
+            e.add(BLOCK, core, 4, 1, z, Dir.UP);
+            e.add(BLOCK, core, 10, 1, z, Dir.UP);
+        }
+        for (int[] c : new int[][]{{4, 5}, {10, 5}, {4, 11}, {10, 11}}) e.add(BLOCK, "oak", c[0], 0, c[1], Dir.UP);
+        e.name("primary", e.add(COIL, "copper", 4, 1, 8, Dir.SOUTH, "turns", 200, "wire_diameter", 0.8e-3, "core", 1,
+                "bore_fraction", 0.6, "lead_axis", 1));
+        e.name("secondary", e.add(COIL, "copper", 10, 1, 8, Dir.SOUTH, "turns", 1000, "wire_diameter", 0.3e-3, "core", 1,
+                "bore_fraction", 0.6, "lead_axis", 1));
+        e.name("green", e.add(LED, "silicon", 13, 0, 6, Dir.EAST, "wavelength", 530));
+        e.name("red", e.add(LED, "silicon", 13, 0, 10, Dir.WEST, "wavelength", 630));
+        e.add(RESISTOR, "alumina", 13, 0, 13, Dir.EAST, "resistance", 4700);
+        int f = 1;
+        int bat = e.add(CAPACITOR, "alumina", 16, f, 2, Dir.EAST, "capacitance", 3000);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 9.5));
+        Object[] power = {"transconductance", 5.0, "threshold", 2.0};
+        e.add(TRANSISTOR, "silicon", 20, f, 5, Dir.EAST, with(power, "type", 3));
+        e.add(TRANSISTOR, "silicon", 22, f, 8, Dir.EAST, with(power, "type", 2));
+        e.add(TRANSISTOR, "silicon", 26, f, 5, Dir.EAST, with(power, "type", 3));
+        e.add(TRANSISTOR, "silicon", 28, f, 8, Dir.EAST, with(power, "type", 2));
+        // the oscillator (Schmitt inverter, 470 kΩ onto 1 µF: ≈ 2.6 Hz, the core's flux swinging ±1.1 T — and each switching
+        // edge costs the solver dearly) and a second inverter for the other side
+        e.name("osc", e.add(LOGIC, "silicon", 32, f, 4, Dir.EAST, "function", 7));
+        e.add(RESISTOR, "alumina", 32, f, 1, Dir.EAST, "resistance", 470_000);
+        e.add(CAPACITOR, "alumina", 34, f, 7, Dir.SOUTH, "capacitance", 1e-6);
+        e.add(LOGIC, "silicon", 32, f, 10, Dir.EAST, "function", 7);
+        Router r = new Router(e, 0, 0, 0, 35, 4, 15);
+        r.pin("vdd", 17, f, 2).pin("vdd", 19, f, 5).pin("vdd", 25, f, 5).pin("vdd", 32, f, 5).pin("vdd", 32, f, 11);
+        r.pin("gnd", 15, f, 2).pin("gnd", 21, f, 8).pin("gnd", 27, f, 8).pin("gnd", 32, f, 3).pin("gnd", 34, f, 8).pin("gnd", 32, f, 9);
+        r.pin("ct", 31, f, 4).pin("ct", 31, f, 1).pin("ct", 34, f, 6);
+        r.pin("inA", 33, f, 4).pin("inA", 33, f, 1).pin("inA", 31, f, 10).pin("inA", 20, f, 4).pin("inA", 22, f, 7);
+        r.pin("inB", 33, f, 10).pin("inB", 26, f, 4).pin("inB", 28, f, 7);
+        r.pin("outA", 21, f, 5).pin("outA", 23, f, 8).pin("outA", 4, 2, 8);
+        r.pin("outB", 27, f, 5).pin("outB", 29, f, 8).pin("outB", 4, 0, 8);
+        r.pin("s1", 10, 2, 8).pin("s1", 12, 0, 6).pin("s1", 12, 0, 10);
+        r.pin("s2", 14, 0, 6).pin("s2", 14, 0, 10).pin("s2", 14, 0, 13);
+        r.pin("s3", 12, 0, 13).pin("s3", 10, 0, 8);
+        r.route();
+        return e.view(16, 9, 22, 40);
+    }
+
     private static Object[] with(Object[] base, Object... more) {
         Object[] o = java.util.Arrays.copyOf(base, base.length + more.length);
         System.arraycopy(more, 0, o, base.length, more.length);

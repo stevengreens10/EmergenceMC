@@ -590,3 +590,9 @@ states, and next to a chunk border that requests the neighbouring chunk — mid-
 chunk unsaved directly, only if it is loaded (getChunkNow → setUnsaved). Three tours in a row closed cleanly after.
 This could also have hung a player's quit-to-title.
 
+**An inverter.** The H-bridge driven in antiphase by an oscillator and a second inverter alternates 9.5 V across the
+primary of Faraday's ring: the secondary swings ±46 V and two LEDs back to back take turns. It also shows inrush — the
+first half-cycle, starting at zero flux, saturates the core (8.9 A). Halving the frequency did not halve the cost:
+Newton keeps failing at the logic chip's output whether or not it is switching, which is now the main open cost of the
+power-electronics exhibits (recorded in NEXT_STEPS).
+

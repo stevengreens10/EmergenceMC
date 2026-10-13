@@ -394,6 +394,21 @@ public final class AutoShowcase {
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-switching"));
             }
+            if (id.equals("inverter")) {
+                // the logger on the secondary: a square wave five times the supply, reversing each half-cycle
+                STEPS.add(new Step(120, () -> {
+                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.item.ItemStack(dev.emergence.mod.registry.ModRegistries.DATA_LOGGER.get()));
+                    BlockPos at = DemoBuilder.partBlock(plot, e, "secondary");
+                    if (server.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+                        PlacedPart coil = find(be, PartKind.COIL);
+                        if (coil != null) SimulationManager.get(server.overworld()).attachLogger(p, at, coil.id, "Secondary (1000 turns)");
+                    }
+                    SimulationManager.get(server.overworld()).showLogger(p, "voltage", 1);
+                    LoggerHud.showcase = true;
+                }, "showcase-" + (i + 1) + "-" + id + "-alternating"));
+            }
             if (id.equals("pwm")) {
                 // the logger on the bridge's lower left transistor: the drive pulses, the motor running at their average
                 STEPS.add(new Step(160, () -> {

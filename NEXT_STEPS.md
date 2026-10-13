@@ -67,3 +67,7 @@ regenerate the demo world → screenshot tour → docs → commit.
    the steam engine and gas engine run slower than real time at speed.
 11. **Broader science**: geology (ores, strata), environmental processes, biology — each connected to the existing
     chemistry, thermodynamics and fluids.
+
+**Flaky:** the in-world GameTest computerRunsItsProgramInWorld failed once during demo-world generation (the gallery
+sharing the server; "ACC follows the program: PC 4, ACC 6") and passed on the rerun and in the isolated GameTest
+server (15/15). Look for a timing or chunk-loading dependence of that test in the busy world.

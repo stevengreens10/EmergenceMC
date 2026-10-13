@@ -348,15 +348,16 @@ public final class MechanicsExhibits {
                         + "windscreen wipers, sewing machines, pumpjacks and the legs of walking toys.");
         String st = "steel_1045";
         e.fill(BLOCK, st, 2, 0, 4, 11, 0, 9, Dir.UP);
-        // the crank: a shaft along z in a bearing on a post, a flywheel and a handle at the front, an arm up at the back
+        // the crank: a shaft along z in a bearing on a post, a flywheel behind it, a handle at the front, an arm between
         e.fill(BLOCK, st, 4, 1, 5, 4, 3, 5, Dir.UP);
         e.add(BEARING, st, 4, 4, 5, Dir.SOUTH);
-        int shaft = e.fill(SHAFT, st, 4, 4, 5, 4, 4, 10, Dir.SOUTH, "diameter", 0.02);
+        int shaft = e.fill(SHAFT, st, 4, 4, 3, 4, 4, 10, Dir.SOUTH, "diameter", 0.02);
         e.name("crankShaft", shaft);
-        e.fill(BLOCK, st, 3, 3, 9, 5, 5, 9, Dir.SOUTH, "fill", 0.3);                       // the flywheel
+        e.fill(BLOCK, st, 3, 3, 3, 5, 5, 3, Dir.SOUTH, "fill", 0.3);                       // the flywheel
         e.name("crank", e.add(CRANK, st, 4, 4, 11, Dir.SOUTH, "radius", 0.15));
-        e.add(BLOCK, st, 4, 4, 7, Dir.UP, "fill", 0.5);                                  // the crank arm's hub
-        e.name("crankArm", e.add(BLOCK, st, 4, 5, 7, Dir.UP, "fill", 0.5));
+        // (plates thin along z: flat in the plane they turn in)
+        e.add(BLOCK, st, 4, 4, 7, Dir.SOUTH, "fill", 0.5);                               // the crank arm's hub
+        e.name("crankArm", e.add(BLOCK, st, 4, 5, 7, Dir.SOUTH, "fill", 0.5));
         // the coupler: pinned to the crank arm at its left end and to the rocker's top at its right
         e.name("coupler", e.fill(LINK, st, 5, 5, 7, 8, 5, 7, Dir.EAST));
         // the rocker: three cells up from a hub on the second shaft, in its bearing on a post
@@ -364,8 +365,8 @@ public final class MechanicsExhibits {
         e.add(BEARING, st, 9, 2, 5, Dir.SOUTH);
         int rockerShaft = e.fill(SHAFT, st, 9, 2, 5, 9, 2, 7, Dir.SOUTH, "diameter", 0.02);
         e.name("rockerShaft", rockerShaft);
-        e.add(BLOCK, st, 9, 2, 7, Dir.UP, "fill", 0.5);
-        e.name("rocker", e.fill(BLOCK, st, 9, 3, 7, 9, 5, 7, Dir.UP, "fill", 0.5));
+        e.add(BLOCK, st, 9, 2, 7, Dir.SOUTH, "fill", 0.5);
+        e.name("rocker", e.fill(BLOCK, st, 9, 3, 7, 9, 5, 7, Dir.SOUTH, "fill", 0.5));
         // turning already, the rocker moving as the coupler makes it (its pin a third as far from the coupler's line
         // as the crank's, it turns a third as fast)
         e.init(shaft, new Exhibit.Initial(Double.NaN, 6, 0));

@@ -388,10 +388,11 @@ public final class ControlExhibits {
         e.name("pushRod", e.fill(LINK, st, 8, 23, 8, 8, 24, 8, Dir.UP));
         e.add(BLOCK, ny, 8, 25, 8, Dir.UP, "fill", 0.5);                                      // the crank's arm
         e.add(BLOCK, ny, 9, 25, 8, Dir.UP, "fill", 0.5);                                      // its hub
-        e.name("crankShaft", e.fill(SHAFT, st, 9, 25, 8, 9, 25, 10, Dir.SOUTH, "diameter", 0.01));
-        e.name("rheostat", e.add(POTENTIOMETER, ny, 9, 25, 10, Dir.SOUTH, "resistance", 6, "travel", 15, "wiper", 0));
-        e.fill(BLOCK, st, 9, 26, 10, 9, 26, 14, Dir.UP);                                      // its bracket
-        e.fill(BLOCK, st, 9, 0, 15, 9, 26, 15, Dir.UP);                                       // and post
+        // (the rheostat and its post behind the governor, out of the way of the view)
+        e.name("crankShaft", e.fill(SHAFT, st, 9, 25, 6, 9, 25, 8, Dir.SOUTH, "diameter", 0.01));
+        e.name("rheostat", e.add(POTENTIOMETER, ny, 9, 25, 6, Dir.SOUTH, "resistance", 6, "travel", 15, "wiper", 0));
+        e.fill(BLOCK, st, 9, 26, 1, 9, 26, 6, Dir.UP);                                        // its bracket
+        e.fill(BLOCK, st, 9, 0, 0, 9, 26, 0, Dir.UP);                                         // and post
         // ---- supply: a 24 V bank and a switch, through the rheostat (end A to the wiper) to the brushes
         int f = 1;
         int bat = e.add(CAPACITOR, "alumina", 16, f, 4, Dir.EAST, "capacitance", 3000);
@@ -400,8 +401,8 @@ public final class ControlExhibits {
         e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 22, 27, 15);
         r.pin("vb", 17, f, 4).pin("vb", 18, f, 4);
-        r.pin("vp", 20, f, 4).pin("vp", 8, 25, 10);
-        r.pin("vm", 9, 24, 10).pin("vm", 11, 8, 8);
+        r.pin("vp", 20, f, 4).pin("vp", 8, 25, 6);
+        r.pin("vm", 9, 24, 6).pin("vm", 11, 8, 8);
         r.pin("gnd", 15, f, 4).pin("gnd", 5, 8, 8);
         // the rotor and its wiring sweep the cylinder round the spindle; the governor sweeps a wider one above
         r.keepClear(4, 1, 3, 12, 7, 13);
@@ -412,7 +413,7 @@ public final class ControlExhibits {
         r.keepClear(1, 14, 1, 15, 23, 15);
         r.keepClear(7, 23, 7, 9, 25, 9);
         r.route();
-        return e.view(8.5, 20, 22, 30);
+        return e.view(8.5, 21, 25, 22);
     }
 
     /**

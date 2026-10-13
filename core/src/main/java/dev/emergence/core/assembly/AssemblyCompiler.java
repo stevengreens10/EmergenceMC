@@ -187,6 +187,7 @@ public final class AssemblyCompiler {
                     if (p.kind() == PartKind.BRUSH || q.kind() == PartKind.BRUSH) continue;
                     if (p.kind() == PartKind.BRAKE || q.kind() == PartKind.BRAKE) continue; // a pad presses, it does not weld
                     if (p.kind() == PartKind.SPRING || q.kind() == PartKind.SPRING) continue; // a spring yields, it does not weld
+                    if (p.kind() == PartKind.LINK || q.kind() == PartKind.LINK) continue; // a link's ends are pins
                     joinedPairs.add(pairKey(p.id(), q.id()));
                     if (p.kind().structural && q.kind().structural) union(idx.get(p.id()), idx.get(q.id()));
                     else mounts.computeIfAbsent(p.kind().structural ? q : p, k -> new ArrayList<>()).add(p.kind().structural ? p : q);
@@ -421,6 +422,18 @@ public final class AssemblyCompiler {
                     double t = Math.max(0, b.param("travel", 0));
                     hi = Math.min(hi, t);
                     lo = Math.max(lo, -t);
+                }
+                // or one on either side: "travel_fwd" [m] along the bushing's own axis, "travel_back" against it
+                int sg = (int) Math.signum(s.axis.dot(b.axis().vec()));
+                if (b.params().containsKey("travel_fwd")) {
+                    double t = Math.max(0, b.param("travel_fwd", 0));
+                    if (sg > 0) hi = Math.min(hi, t);
+                    else lo = Math.max(lo, -t);
+                }
+                if (b.params().containsKey("travel_back")) {
+                    double t = Math.max(0, b.param("travel_back", 0));
+                    if (sg > 0) lo = Math.max(lo, -t);
+                    else hi = Math.min(hi, t);
                 }
             }
             s.strokeLo = lo == -Double.MAX_VALUE ? 0 : lo;
@@ -772,6 +785,7 @@ public final class AssemblyCompiler {
                 }
             }
             buildSprings();
+            buildLinks();
             // cranks are where a person can put work in
             for (Part p : parts) {
                 if (p.kind() != PartKind.CRANK) continue;
@@ -862,23 +876,8 @@ public final class AssemblyCompiler {
         void buildSprings() {
             for (Part sp : parts) {
                 if (sp.kind() != PartKind.SPRING) continue;
-                Dir ax = sp.axis();
-                Vec3 sa = ax.vec();
-                CompiledAssembly.Body[] end = new CompiledAssembly.Body[2];
-                for (int side = 0; side < 2; side++) {
-                    Dir d = side == 0 ? ax.opposite() : ax;
-                    for (int x = sp.minX(); x <= sp.maxX(); x++)
-                        for (int y = sp.minY(); y <= sp.maxY(); y++)
-                            for (int z = sp.minZ(); z <= sp.maxZ(); z++) {
-                                int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
-                                if (sp.containsCell(nx, ny, nz)) continue;
-                                for (Part q : a.at(nx, ny, nz)) {
-                                    if (isWire(q) || q == sp) continue;
-                                    CompiledAssembly.Body b = c.bodyOfPart.get(q.id());
-                                    if (b != null && (end[side] == null || end[side].isStatic)) end[side] = b;
-                                }
-                            }
-                }
+                Vec3 sa = sp.axis().vec();
+                CompiledAssembly.Body[] end = endBodies(sp);
                 CompiledAssembly.Body ground = c.bodies.get(0);
                 if (!sameFrame(end[0] == null ? ground : end[0], end[1] == null ? ground : end[1])) {
                     c.warnings.add("Spring #" + sp.id() + " joins a body riding on a turning one to something it moves past (not modelled)");
@@ -917,6 +916,152 @@ public final class AssemblyCompiler {
                 c.network.add(new PositionSpring(na, ta, sa_, nb, tb, sb_, k, sp.param("preload", 0)));
                 c.springs.put(sp.id(), new double[]{k});
                 c.springEnds.put(sp.id(), new Object[]{ta, -sa_, tb, sb_});
+            }
+        }
+
+        /**
+         * The bodies touching a part's two end faces ({−axis face, +axis face}): a moving one if any does, else the
+         * frame's; null where nothing does.
+         */
+        CompiledAssembly.Body[] endBodies(Part sp) {
+            return new CompiledAssembly.Body[]{faceBody(sp, sp.axis().opposite()), faceBody(sp, sp.axis())};
+        }
+
+        /** The body touching face d of part p: a moving one if any does, else the frame's; null if nothing does. */
+        CompiledAssembly.Body faceBody(Part sp, Dir d) {
+            CompiledAssembly.Body found = null;
+            for (int x = sp.minX(); x <= sp.maxX(); x++)
+                for (int y = sp.minY(); y <= sp.maxY(); y++)
+                    for (int z = sp.minZ(); z <= sp.maxZ(); z++) {
+                        int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
+                        if (sp.containsCell(nx, ny, nz)) continue;
+                        for (Part q : a.at(nx, ny, nz)) {
+                            if (isWire(q) || q == sp || q.kind() == PartKind.LINK || q.kind() == PartKind.SPRING) continue;
+                            CompiledAssembly.Body b = c.bodyOfPart.get(q.id());
+                            if (b != null && (found == null || found.isStatic)) found = b;
+                        }
+                    }
+            return found;
+        }
+
+        /** True if b is a slide carried by a turning body along its axis line, and point p lies on that line. */
+        static boolean onSpinAxis(CompiledAssembly.Body b, Vec3 p) {
+            CompiledAssembly.Body r = b.carrier;
+            if (!b.slider || r == null || r.slider || Math.abs(Math.abs(b.axis.dot(r.axis)) - 1) > 1e-9) return false;
+            Vec3 off = p.sub(r.pivot);
+            return off.sub(r.axis.mul(off.dot(r.axis))).length() < 1e-6;
+        }
+
+        /** The link parts touching link l, by id. */
+        List<Part> linkNeighbours(Part l) {
+            List<Part> out = new ArrayList<>();
+            for (Part q : a.neighbors(l)) if (q.kind() == PartKind.LINK) out.add(q);
+            out.sort(Comparator.comparingLong(Part::id));
+            return out;
+        }
+
+        /** The face of part p that faces part q (by the larger offset between their centres). */
+        static Dir faceToward(Part p, Part q) {
+            Vec3 d = q.center().sub(p.center());
+            double[] c = {d.x(), d.y(), d.z()};
+            int ax = Math.abs(c[0]) >= Math.abs(c[1]) && Math.abs(c[0]) >= Math.abs(c[2]) ? 0 : Math.abs(c[1]) >= Math.abs(c[2]) ? 1 : 2;
+            return Dir.fromAxis(ax, c[ax] > 0);
+        }
+
+        /** Centre of face d of part p [m]. */
+        static Vec3 faceCentre(Part p, Dir d) {
+            return p.center().add(d.vec().mul(0.5 * p.boxSize(d.axis())));
+        }
+
+        /**
+         * Links: a path of link parts, face to face, is one bar running straight between its two ends — a straight row
+         * along its length, or a path laid round to an end off that line (the bar then runs across it, at a slant).
+         * It is a {@link RigidLink} between the bodies at the path's two outer faces, pinned at their centres (a single
+         * link part: its two axis faces). Both must move in one frame — the ground, or a turning body (a governor's
+         * weights on its spindle) or slide that carries them (or is one of them); each end's body is then fixed in that
+         * frame, turns in it about a fixed axis, or slides along one.
+         */
+        void buildLinks() {
+            CompiledAssembly.Body ground = c.bodies.get(0);
+            Set<Long> done = new HashSet<>();
+            for (Part lk : parts) {
+                if (lk.kind() != PartKind.LINK || done.contains(lk.id())) continue;
+                // the connected link parts; a bar is a simple path
+                List<Part> comp = new ArrayList<>();
+                Deque<Part> todo = new ArrayDeque<>(List.of(lk));
+                done.add(lk.id());
+                boolean branched = false;
+                while (!todo.isEmpty()) {
+                    Part p = todo.poll();
+                    comp.add(p);
+                    List<Part> nb = linkNeighbours(p);
+                    if (nb.size() > 2) branched = true;
+                    for (Part q : nb) if (done.add(q.id())) todo.add(q);
+                }
+                Part first = null;
+                for (Part p : comp) if (linkNeighbours(p).size() <= 1 && (first == null || p.id() < first.id())) first = p;
+                if (branched || first == null) {
+                    c.warnings.add("Link #" + lk.id() + ": link parts touching each other form one bar, a single path from end to end (this one branches or closes)");
+                    continue;
+                }
+                List<Part> run = new ArrayList<>(List.of(first));
+                for (Part prev = null, cur = first; ; ) {
+                    Part next = null;
+                    for (Part q : linkNeighbours(cur)) if (q != prev) next = q;
+                    if (next == null) break;
+                    run.add(next);
+                    prev = cur;
+                    cur = next;
+                }
+                Part last = run.get(run.size() - 1);
+                Dir outA, outB;
+                if (run.size() == 1) {
+                    outA = Dir.fromAxis(first.axis().axis(), false);
+                    outB = outA.opposite();
+                } else {
+                    outA = faceToward(first, run.get(1)).opposite();
+                    outB = faceToward(last, run.get(run.size() - 2)).opposite();
+                }
+                Vec3 pinA = faceCentre(first, outA), pinB = faceCentre(last, outB);
+                CompiledAssembly.Body[] end = {faceBody(first, outA), faceBody(last, outB)};
+                for (int s = 0; s < 2; s++) if (end[s] == null) end[s] = ground;
+                if (end[0] == end[1]) continue; // both pins on one body: it holds them anyway
+                Vec3[] pin = {pinA, pinB};
+                // the frame each end moves in: its carrier's — but a sleeve sliding along the axis of the spindle that
+                // carries it, pinned on that axis, moves only along it as the spindle turns, as if it slid on the frame
+                // (the pin rides in a groove round it: a thrust collar)
+                CompiledAssembly.Body[] in = new CompiledAssembly.Body[2];
+                for (int s = 0; s < 2; s++) in[s] = onSpinAxis(end[s], pin[s]) ? null : end[s].carrier;
+                boolean together = (in[0] == null && in[1] == null) || in[0] == in[1] || in[0] == end[1] || in[1] == end[0];
+                if (!together) {
+                    c.warnings.add("Link #" + lk.id() + " joins a body riding on a moving one to something it moves past (not modelled)");
+                    continue;
+                }
+                CompiledAssembly.Body frame = in[0] != null ? in[0] : in[1];
+                RigidLink.End[] e = new RigidLink.End[2];
+                boolean ok = true;
+                for (int s = 0; s < 2; s++) {
+                    CompiledAssembly.Body b = end[s];
+                    if (b.isStatic || b == frame) e[s] = RigidLink.End.fixed(pin[s]);
+                    else if (b.slider) e[s] = RigidLink.End.slide(b.node, b.tracker, b.axis, pin[s]);
+                    else if (b.tracker != null) e[s] = RigidLink.End.rotor(b.node, b.tracker, b.axis, b.pivot, pin[s]);
+                    else ok = false;
+                }
+                if (!ok || (e[0].kind() == RigidLink.Kind.FIXED && e[1].kind() == RigidLink.Kind.FIXED)) continue;
+                RigidLink link = c.network.add(new RigidLink(e[0], e[1]));
+                CompiledAssembly.Body home = frame == null ? ground : frame;
+                for (int k = 0; k < run.size(); k++) {
+                    // the bar is drawn in the frame its pins move in (it would otherwise stay behind on the ground while
+                    // a carrying spindle turns), each piece of the path drawing its share of it
+                    Part p = run.get(k);
+                    CompiledAssembly.Body was = c.bodyOfPart.get(p.id());
+                    if (was != null && was != home) {
+                        was.parts.remove(Long.valueOf(p.id()));
+                        home.parts.add(p.id());
+                        c.bodyOfPart.put(p.id(), home);
+                    }
+                    c.links.put(p.id(), new CompiledAssembly.LinkPiece(link, (double) k / run.size(), (k + 1.0) / run.size(), p.center()));
+                }
             }
         }
 
@@ -1442,7 +1587,7 @@ public final class AssemblyCompiler {
                         // end-stop stiffness scales with the size of the part (≈ 20 N·m/rad for a 25 mm body)
                         double size = PartGeometry.transverseSize(p) / 0.025;
                         c.deviceOfPart.put(p.id(), c.network.add(new Potentiometer(l[0], l[1], w, tr, sense,
-                                p.param("resistance", 10_000), Math.toRadians(p.param("travel", 270)),
+                                p.param("resistance", 10_000), Math.toRadians(p.param("travel", 270)), p.param("wiper", 0.5),
                                 p.param("stop_stiffness", 20) * size * size * size, th)));
                         c.network.add(new Capacitor(w, l[0], 5e-12));
                     }

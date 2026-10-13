@@ -394,6 +394,19 @@ in gravity conserves energy to 10⁻⁸ (and angular momentum without gravity, 1
 (`DemoExhibitsTest.spinningWeightsGoOutUntilTheirSpringsHoldThem`): cranked to 15 rad/s, the weights go out 48.9 mm,
 spring force 193.3 N = m·ω²·r 193.3 N.
 
+Link bars (`RigidLinkTest`): a four-bar's rocker (crank 0.1, coupler 0.3, rocker 0.25, frame 0.3 m) follows the
+closed-form circle-intersection angle to 3.6·10⁻⁵ rad over 1.6 crank turns, the link length held to 6.9·10⁻⁶ m; a
+slider-crank's slide follows r cos θ + √(l² − r² sin² θ) to 7.4·10⁻⁶ m and its rod's peak force (2.09 N) is
+m·r·ω²·(1 + r/l) = 2.00 N within the second-harmonic approximation. Four-bar exhibit
+(`DemoExhibitsTest.fourBarRockerSwingsBetweenTheToggleAngles`): the rocker swings 44.5°, the angle between the two
+toggle positions (crank and coupler in line) by the law of cosines, 44.5°; energy error 6·10⁻⁴ J of 0.69 J over 3 s.
+
+Flyball governor (`DemoExhibitsTest.flyballGovernorReinsTheMotorIn`): the weights (springs preloaded 16 mm, lift-off
+near 25 rad/s) ride 15 mm out at 30.3 rad/s; through their slanting bars the sleeve is drawn 9.6 mm down and the push
+rod turns the 6 Ω, 15° rheostat 11.4°. Braked (0.3 N·m), the speed sags 2.6 % to 29.6 rad/s: the weights sink to
+12.6 mm, the rheostat backs off to 9.3° and the current rises from 2.77 to 3.12 A. Without the push rod the same motor
+creeps on past 75 rad/s.
+
 Aerodynamics (`AerofoilsTest`): a flat plate at 5° in a 10 m/s wind is lifted by exactly ½ρV²A·C_L (C_L 0.503 against
 the thin-aerofoil 2πα 0.548); a windmill swept over tip-speed ratios 3–12 and pitches −6…6° never exceeds the
 momentum bound C_p ≤ 4a(1 − a)² ≤ 16/27 at its own induction, the best C_p 0.483 at λ 8 (Betz 0.593, less the flat

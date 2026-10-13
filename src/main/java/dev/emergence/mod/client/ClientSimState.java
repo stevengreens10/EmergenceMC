@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * Client-side cache of the latest server snapshots, used only for rendering. Moving things (body angles and slide
- * positions, pistons, springs) are drawn by snapshot interpolation: each keeps its last few values stamped with the
+ * positions, pistons, springs, link bars) are drawn by snapshot interpolation: each keeps its last few values stamped with the
  * client's own arrival time, and is drawn about 1.5 packet intervals in the past on a smooth curve through them.
  * That is independent of the client's and server's game clocks (which drift apart by many ticks) and of an island
  * running in slow motion, and never overshoots. Extrapolating with the synced velocity did both, and made moving
@@ -30,7 +30,9 @@ public final class ClientSimState {
     private static final Map<Long, float[]> PISTON = new HashMap<>();
     private static final Map<Long, float[]> SPRING = new HashMap<>();
     private static final Map<Long, float[]> BEAM = new HashMap<>();
-    private static final Map<Long, Track> BODY_TRACK = new HashMap<>(), PISTON_TRACK = new HashMap<>(), SPRING_TRACK = new HashMap<>();
+    private static final Map<Long, float[]> LINK = new HashMap<>();
+    private static final Map<Long, Track> BODY_TRACK = new HashMap<>(), PISTON_TRACK = new HashMap<>(), SPRING_TRACK = new HashMap<>(),
+            LINK_TRACK = new HashMap<>();
     private static long lastPurge;
 
     /** Recent values of a synced quantity with their arrival times (chronological, newest last). */
@@ -98,6 +100,7 @@ public final class ClientSimState {
             PISTON.remove(id);
             SPRING.remove(id);
             BEAM.remove(id);
+            LINK.remove(id);
         }
         double s = p.worldScale();
         long now = System.nanoTime();
@@ -129,9 +132,16 @@ public final class ClientSimState {
             SPRING.put(p.springIds()[i], se);
             record(SPRING_TRACK, p.springIds()[i], now, new double[]{se[0], se[1]}, -1);
         }
+        for (int i = 0; i < p.linkIds().length; i++) {
+            float[] lp = java.util.Arrays.copyOfRange(p.links(), 6 * i, 6 * i + 6);
+            LINK.put(p.linkIds()[i], lp);
+            double[] d = new double[6];
+            for (int k = 0; k < 6; k++) d[k] = lp[k];
+            record(LINK_TRACK, p.linkIds()[i], now, d, -1);
+        }
         if (now - lastPurge > 5_000_000_000L) {
             lastPurge = now;
-            for (Map<Long, Track> m : java.util.List.of(BODY_TRACK, PISTON_TRACK, SPRING_TRACK)) {
+            for (Map<Long, Track> m : java.util.List.of(BODY_TRACK, PISTON_TRACK, SPRING_TRACK, LINK_TRACK)) {
                 m.values().removeIf(tr -> now - tr.seen > 10_000_000_000L);
             }
         }
@@ -177,6 +187,17 @@ public final class ClientSimState {
         return new float[]{(float) v[0], (float) v[1]};
     }
 
+    /** Where a link piece's share of its bar runs from the piece's centre [blocks]: {x, y, z of its start, of its end}, or null. */
+    public static synchronized float[] link(long partId) {
+        float[] latest = LINK.get(partId);
+        Track tr = LINK_TRACK.get(partId);
+        if (latest == null || tr == null) return latest;
+        double[] v = tr.at(frame);
+        float[] out = new float[6];
+        for (int i = 0; i < 6; i++) out[i] = (float) v[i];
+        return out;
+    }
+
     public static synchronized float[] piston(long partId) {
         float[] latest = PISTON.get(partId);
         Track tr = PISTON_TRACK.get(partId);
@@ -206,8 +227,10 @@ public final class ClientSimState {
         GAUGE.clear();
         PISTON.clear();
         SPRING.clear();
+        LINK.clear();
         BODY_TRACK.clear();
         PISTON_TRACK.clear();
         SPRING_TRACK.clear();
+        LINK_TRACK.clear();
     }
 }

@@ -327,4 +327,50 @@ public final class MechanicsExhibits {
         }
         return e.view(7, 4, 16, 14);
     }
+
+    /**
+     * A four-bar linkage: a crank on a flywheel shaft turns a short arm; a bar pinned to it and to the top of a longer
+     * rocker on a second shaft makes the rocker swing to and fro — a crank-rocker, because the shortest link (the
+     * crank) plus the longest (the frame between the shafts) is less than the other two (Grashof's condition).
+     */
+    public static Exhibit fourBar() {
+        Exhibit e = new Exhibit("fourbar", "Four-bar linkage",
+                List.of("FOUR-BAR LINKAGE", "The crank turns round;", "the rocker only", "swings to and fro"),
+                "Four bars pinned in a loop: the frame between the two shafts (34 cm), the crank arm on the flywheel "
+                        + "shaft (7 cm), the long coupler bar (25 cm) and the rocker on the right-hand shaft (19 cm). The "
+                        + "coupler keeps its two pins exactly its length apart, so wherever the crank is, the rocker can only "
+                        + "be where a circle round the crank pin meets the circle its own pin moves on — turning the crank "
+                        + "round and round, the rocker swings through 44.5° and back each turn. Whether a crank can turn "
+                        + "fully is Grashof's rule: the shortest bar plus the longest must be less than the other two "
+                        + "(7 + 34 < 25 + 19 cm). Its swing ends where crank and coupler lie in one line, stretched out or "
+                        + "folded back. The rocker stops and reverses twice a turn and is lifted and let down as it "
+                        + "leans; the flywheel gives it that energy and takes it back, so its speed rises and falls. Linkages like this are in "
+                        + "windscreen wipers, sewing machines, pumpjacks and the legs of walking toys.");
+        String st = "steel_1045";
+        e.fill(BLOCK, st, 2, 0, 4, 11, 0, 9, Dir.UP);
+        // the crank: a shaft along z in a bearing on a post, a flywheel and a handle at the front, an arm up at the back
+        e.fill(BLOCK, st, 4, 1, 5, 4, 3, 5, Dir.UP);
+        e.add(BEARING, st, 4, 4, 5, Dir.SOUTH);
+        int shaft = e.fill(SHAFT, st, 4, 4, 5, 4, 4, 10, Dir.SOUTH, "diameter", 0.02);
+        e.name("crankShaft", shaft);
+        e.fill(BLOCK, st, 3, 3, 9, 5, 5, 9, Dir.SOUTH, "fill", 0.3);                       // the flywheel
+        e.name("crank", e.add(CRANK, st, 4, 4, 11, Dir.SOUTH, "radius", 0.15));
+        e.add(BLOCK, st, 4, 4, 7, Dir.UP, "fill", 0.5);                                  // the crank arm's hub
+        e.name("crankArm", e.add(BLOCK, st, 4, 5, 7, Dir.UP, "fill", 0.5));
+        // the coupler: pinned to the crank arm at its left end and to the rocker's top at its right
+        e.name("coupler", e.fill(LINK, st, 5, 5, 7, 8, 5, 7, Dir.EAST));
+        // the rocker: three cells up from a hub on the second shaft, in its bearing on a post
+        e.fill(BLOCK, st, 9, 1, 5, 9, 1, 5, Dir.UP);
+        e.add(BEARING, st, 9, 2, 5, Dir.SOUTH);
+        int rockerShaft = e.fill(SHAFT, st, 9, 2, 5, 9, 2, 7, Dir.SOUTH, "diameter", 0.02);
+        e.name("rockerShaft", rockerShaft);
+        e.add(BLOCK, st, 9, 2, 7, Dir.UP, "fill", 0.5);
+        e.name("rocker", e.fill(BLOCK, st, 9, 3, 7, 9, 5, 7, Dir.UP, "fill", 0.5));
+        // turning already, the rocker moving as the coupler makes it (its pin a third as far from the coupler's line
+        // as the crank's, it turns a third as fast)
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 6, 0));
+        e.init(rockerShaft, new Exhibit.Initial(Double.NaN, 2, 0));
+        return e.view(6.5, 4, 20, 10);
+    }
 }
+

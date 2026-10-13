@@ -1895,6 +1895,42 @@ class DemoExhibitsTest {
     }
 
     /**
+     * Flyball governor: the weights fly out, their bars draw the sleeve down and the push rod turns the rheostat in;
+     * braked, the speed sags a little, the weights sink in, the rheostat backs off and the motor takes more current.
+     */
+    @Test
+    void flyballGovernorReinsTheMotorIn() {
+        Exhibit e = ControlExhibits.flyball();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long rotor = b.id(e, "rotor"), bat = b.id(e, "battery"), crank = b.id(e, "crankShaft"), rod = b.id(e, "rodA");
+        assertFalse(Double.isNaN(c.linkTension(b.id(e, "barA"))), "the weights' bars work");
+        assertFalse(Double.isNaN(c.linkTension(b.id(e, "pushRod"))), "the push rod works");
+        c.toggleSwitch(b.id(e, "switch"));
+        double[] w = new double[2], amps = new double[2], turn = new double[2], out = new double[2];
+        for (int m = 0; m < 2; m++) {
+            if (m == 1) c.toggleSwitch(b.id(e, "brake"));
+            run(c, 8);
+            int n = 40;
+            for (int k = 0; k < n; k++) {
+                c.step(0.05);
+                w[m] += c.probe(rotor).angularVelocity() / n;
+                amps[m] += Math.abs(c.probe(bat).current()) / n;
+            }
+            turn[m] = c.probe(crank).angle();
+            out[m] = -c.probe(rod).angle();
+        }
+        System.out.printf("flyball: %.2f rad/s at %.2f A, weights out %.1f mm, rheostat turned %.1f°; braked %.2f rad/s at %.2f A, "
+                        + "out %.1f mm, %.1f°; sleeve %.2f mm; energy error %.3g J%n", w[0], amps[0], 1e3 * out[0], Math.toDegrees(turn[0]),
+                w[1], amps[1], 1e3 * out[1], Math.toDegrees(turn[1]), 1e3 * c.probe(b.id(e, "sleeve")).angle(), c.energyError());
+        assertTrue(out[0] > 0.003 && out[0] < 0.027, "the weights ride out between their stops: " + out[0]);
+        assertTrue(turn[0] > Math.toRadians(2), "the push rod has turned the rheostat in: " + turn[0]);
+        assertTrue(Math.abs(w[1] - w[0]) < 0.04 * w[0], "braked, it keeps its speed within a few percent: " + w[0] + " → " + w[1]);
+        assertTrue(turn[1] < turn[0] && out[1] < out[0], "the weights sink in and the rheostat backs off");
+        assertTrue(amps[1] > 1.08 * amps[0], "so the motor takes more current: " + amps[0] + " → " + amps[1]);
+    }
+
+    /**
      * Every exhibit stays on its plot: in front of the walkway (z < 16, where the signs stand) and clear of the 4-block
      * aisle that keeps neighbouring exhibits out of each other's interaction reach (x < 20·plots − 4).
      */
@@ -2126,6 +2162,43 @@ class DemoExhibitsTest {
         assertTrue(peakSpeed > 0.6 * wn && peakSpeed < 1.1 * wn, "it peaks as the wheel passes the natural frequency √(k/M)");
         assertTrue(last < 0.2 * peak, "below resonance it calms again");
         assertTrue(Math.abs(c.energyError()) < 0.01 * e0, "energy ledger closes (to 1 % of the wheel's energy)");
+    }
+
+    /**
+     * Four-bar linkage: the coupler keeps its length; the rocker swings between the angles where crank and coupler lie
+     * in line (the triangle frame–rocker–(coupler ± crank)), and the flywheel's speed ripples as it swings it.
+     */
+    @Test
+    void fourBarRockerSwingsBetweenTheToggleAngles() {
+        Exhibit e = MechanicsExhibits.fourBar();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long coupler = b.id(e, "coupler"), rocker = b.id(e, "rocker"), crank = b.id(e, "crankShaft");
+        assertFalse(Double.isNaN(c.linkTension(coupler)), "the coupler is a working link");
+        double cell = dev.emergence.core.assembly.Part.CELL;
+        // pins: crank (4.5, 4.5) → (5, 5.5); rocker (9.5, 2.5) → (9, 5.5), in cells
+        double a = Math.hypot(0.5, 1) * cell, bb = 4 * cell, cc = Math.hypot(0.5, 3) * cell, d = Math.hypot(5, 2) * cell;
+        double far = Math.acos((d * d + cc * cc - (bb + a) * (bb + a)) / (2 * d * cc)),
+                near = Math.acos((d * d + cc * cc - (bb - a) * (bb - a)) / (2 * d * cc));
+        double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE, wLo = Double.MAX_VALUE, wHi = 0, ke0 = 0;
+        for (int i = 0; i < 160; i++) {
+            c.step(0.02);
+            double q = c.probe(rocker).angle(), w = c.probe(crank).angularVelocity();
+            if (i == 0) ke0 = 0.5 * c.bodyOf(crank).inertia() * w * w;
+            lo = Math.min(lo, q);
+            hi = Math.max(hi, q);
+            wLo = Math.min(wLo, w);
+            wHi = Math.max(wHi, w);
+        }
+        double[] pins = c.linkPins(coupler);
+        System.out.printf("four-bar: rocker swings %.1f° (toggle positions %.1f°); flywheel %.2f–%.2f rad/s; crank turned %.1f turns; "
+                        + "tension now %.1f N; energy error %.2g J of %.2f J%n", Math.toDegrees(hi - lo), Math.toDegrees(far - near),
+                wLo, wHi, c.probe(crank).angle() / (2 * Math.PI), c.linkTension(coupler), c.energyError(), ke0);
+        assertEquals(far - near, hi - lo, Math.toRadians(1), "the rocker swings between the toggle angles");
+        assertTrue(c.probe(crank).angle() > 2 * 2 * Math.PI, "the crank turns right round");
+        assertTrue(wHi - wLo > 0.05 && wLo > 3, "the flywheel's speed ripples as it swings the rocker: " + wLo + " – " + wHi);
+        assertTrue(pins != null && pins.length == 6, "the coupler's pieces know where they are");
+        assertTrue(Math.abs(c.energyError()) < 0.02 * ke0, "energy ledger closes: " + c.energyError());
     }
 
     /**

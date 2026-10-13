@@ -134,6 +134,12 @@ public final class RigidLink implements Element {
         return a.at(a.pose(s)).sub(b.at(b.pose(s))).length();
     }
 
+    /** Where the pins are now [m]: {end A (x, y, z), end B}. */
+    public double[] pins(StateView s) {
+        Vec3 pa = a.at(a.pose(s)), pb = b.at(b.pose(s));
+        return new double[]{pa.x(), pa.y(), pa.z(), pb.x(), pb.y(), pb.z()};
+    }
+
     public double builtLength() {
         return length;
     }

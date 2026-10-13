@@ -73,6 +73,8 @@
   "tooltip.emergence.lens": "A disc of glass with spherical faces: refraction at each face (Snell's law) brings light to a focus, f from the lensmaker's equation. Blue focuses nearer than red; each face reflects about 4 %.",
   "item.emergence.nut": "Lead Screw Nut",
   "tooltip.emergence.nut": "Place it on a shaft: turning the shaft (the screw) moves the nut one lead per turn. Fix the nut to a slide. A fine thread holds its load when let go; a steep one runs back.",
+  "item.emergence.link": "Link Bar",
+  "tooltip.emergence.link": "A rigid bar pinned at its two ends to whatever touches them — a crank arm, a rocker, a slide or the frame. A straight row of link bars is one bar. It keeps its pins its length apart, pushing or pulling along itself: connecting rods, four-bar linkages, governor arms.",
   "item.emergence.spring": "Spring",
   "tooltip.emergence.spring": "A helical spring joining whatever touches its two ends: k = G·d⁴/(8·D³·N). Place it between a slide and the frame.",
   "item.emergence.source": "Radioactive Check Source",

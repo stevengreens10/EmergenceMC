@@ -87,6 +87,7 @@ public final class PartItem extends Item {
             case LENS -> PartSpec.of("glass_bk7", 1, 1);
             case PRISM -> PartSpec.of("glass_sf11", 1, 1, "apex", 45);
             case BLADE -> PartSpec.of("aluminium_6061", 1, 1, "pitch", -10);
+            case LINK -> PartSpec.of("steel_1045", 1, 1);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }

@@ -373,6 +373,7 @@ public final class PartGeometry {
             case BEARING -> 0.4 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2) * 0.3;
             case RACK -> 0.7 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // bar, half its tooth depth empty
             case NUT -> 0.5 * p.boxSize(0) * p.boxSize(1) * p.boxSize(2); // hexagon less the threaded bore
+            case LINK -> axialLength(p) * linkWidth(p) * linkThickness(p);
             case BLADE -> axialLength(p) * bladeChord(p) * bladeThickness(p) * 0.7; // an aerofoil fills ~70 % of its chord × thickness
             case MIRROR -> {
                 int ax = p.axis().axis();
@@ -555,6 +556,15 @@ public final class PartGeometry {
     }
 
     /** Helical spring rate k = G·d⁴/(8·D³·N) [N/m]. */
+    /** A link bar's width [m] (default 30 % of the cell across) and thickness (default half its width). */
+    public static double linkWidth(Part p) {
+        return p.param("width", 0.3 * transverseSize(p));
+    }
+
+    public static double linkThickness(Part p) {
+        return p.param("thickness", 0.5 * linkWidth(p));
+    }
+
     public static double springRate(Part p) {
         double d = p.param("wire", 0.002), dc = p.param("coil", 0.6 * transverseSize(p)), n = p.param("turns", 10);
         double g = p.material().get(dev.emergence.core.materials.MaterialProperty.SHEAR_MODULUS, 79e9);

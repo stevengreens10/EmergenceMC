@@ -129,6 +129,37 @@ public final class CompiledAssembly {
         return new double[]{da, db};
     }
 
+    /**
+     * A piece of a link bar: the bar, the share of it the piece draws (from, to: 0 at the bar's first pin, 1 at its
+     * second) and the piece's centre [m].
+     */
+    record LinkPiece(dev.emergence.core.sim.elements.RigidLink link, double from, double to, Vec3 centre) {}
+
+    /** Link pieces by part id. */
+    final Map<Long, LinkPiece> links = new HashMap<>();
+
+    /**
+     * Where the share of its bar a link piece draws now runs, from its centre [m], in the frame the bar moves in (the
+     * ground, or the body carrying it): {x, y, z of its start, of its end}. Null if not part of a working link.
+     */
+    public double[] linkPins(long partId) {
+        LinkPiece l = links.get(partId);
+        if (l == null) return null;
+        double[] d = l.link().pins(solver), out = new double[6];
+        double[] o = {l.centre().x(), l.centre().y(), l.centre().z()};
+        for (int k = 0; k < 3; k++) {
+            out[k] = d[k] + (d[k + 3] - d[k]) * l.from() - o[k];
+            out[k + 3] = d[k] + (d[k + 3] - d[k]) * l.to() - o[k];
+        }
+        return out;
+    }
+
+    /** A link's tension [N] (negative: it is pushing). NaN if not part of a working link. */
+    public double linkTension(long partId) {
+        LinkPiece l = links.get(partId);
+        return l == null ? Double.NaN : l.link().tension(solver);
+    }
+
     /** Sealed vessels of reacting gas, by part id. */
     final Map<Long, dev.emergence.core.sim.elements.GasReactor> gasOfPart = new HashMap<>();
     final Map<Long, FluidVolume> fluidOfPart = new HashMap<>();

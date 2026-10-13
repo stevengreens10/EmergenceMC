@@ -140,6 +140,7 @@ public final class PartPresets {
         // slides: linear bearings and springs
         l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1)));
         l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1, "travel", 0.0015))); // stop collars: ±1.5 mm
+        l.add(stack(PartKind.LINK, PartSpec.of("steel_1045", 1, 1)));
         l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.002)));
         l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.003)));
         // stiff and preloaded (fitted 8.7 mm short): a governor's spring, pressing ~210 N before it gives

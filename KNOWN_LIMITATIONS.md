@@ -30,8 +30,11 @@ behaviour; where physics is missing the effect is simply absent.
 * Rigid bodies rotate about fixed axes (bearing joints) or slide along them (linear bearings on the frame); a rotor
   may ride on a slide, or a slide on a rotor (two degrees of freedom each), but no deeper chains (no slide on a rotor
   on a slide). A carried slide's bushings feel only its weight, not the centrifugal and Coriolis loads. A carried slide can close a
-  contact on its rotor (a centrifugal switch), but no linkage yet joins it to anything off the rotor (a flyball
-  governor's sleeve working a valve). A travel contact's conductance is a smooth ramp over 0.2 mm, so a contact governor
+  contact on its rotor (a centrifugal switch) and be linked by link bars to other bodies on that rotor, and reach off it only
+  from a sleeve pinned on the spin axis (a thrust collar, frictionless). Link bars have frictionless
+  pins and no mass of their own at their ends (the bar's mass rides with the frame), and do not bend, buckle or break;
+  a linkage driven through a dead point (crank and coupler in line with nothing to carry it through) can lock or jump
+  branch. A travel contact's conductance is a smooth ramp over 0.2 mm, so a contact governor
   modulates like a variable resistor rather than chattering on and off (no contact bounce or arcing). No free 6-DOF bodies, no collisions. A rotor riding a slide is coupled only to that slide and what
   rides on it: frame-mounted gears, brushes, cams, cylinders, light barriers, coils and magnets ignore it (gears,
   coils, magnets, cylinders and fan blades warn). Gravity acts on each rotating body about its own axis only (no

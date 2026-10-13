@@ -236,6 +236,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                     Math.min(ex, ey), Math.min(ex, ey), ez, false);
             case LINEAR_BEARING -> drawModel(c, "bearing", p, Math.min(ex, ey), Math.min(ex, ey), ez * 1.2f, false);
             case SPRING -> drawSpring(c, be, p, ez);
+            case LINK -> drawLink(c, be, p, f);
             case RACK -> drawRack(c, p, f, ex, ey, ez);
             case MIRROR -> drawMirror(c, p, f, ex, ey, ez);
             case BLADE -> drawBlade(c, p, f, ez);
@@ -414,6 +415,42 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             py = y;
             pz = z;
         }
+    }
+
+    /**
+     * A piece of a link bar: a flat steel bar along the piece's share of the bar, where the synced pin positions put it
+     * (before the first packet: along the part's own length).
+     */
+    private void drawLink(Ctx c, AssemblyBlockEntity be, PlacedPart p, Frame f) {
+        int ax = p.axis.axis();
+        float[] ext = {p.x1 - p.x0 + 1, p.y1 - p.y0 + 1, p.z1 - p.z0 + 1};
+        // the share's ends relative to the part's centre, in world-axis cells
+        Vector3f lo = new Vector3f(), hi = new Vector3f();
+        float[] d = ClientSimState.link(p.id);
+        if (d != null) {
+            float k = be.resolution(); // world blocks → cells
+            lo.set(d[0] * k, d[1] * k, d[2] * k);
+            hi.set(d[3] * k, d[4] * k, d[5] * k);
+        } else {
+            lo.setComponent(ax, -ext[ax] / 2);
+            hi.setComponent(ax, ext[ax] / 2);
+        }
+        // into the part's model frame (its rotation is orthonormal: the transpose undoes it)
+        Matrix3f toModel = new Matrix3f(f.m3).transpose();
+        toModel.transform(lo);
+        toModel.transform(hi);
+        Vector3f dir = new Vector3f(hi).sub(lo);
+        float len = dir.length();
+        if (len < 1e-5f) return;
+        double width = p.spec.params().getOrDefault("width", 0.3 / 16) * 16;
+        float w = (float) Math.max(0.06, Math.min(0.45, width / 2)), t = (float) Math.max(0.04,
+                Math.min(w, p.spec.params().getOrDefault("thickness", width / 2 / 16) * 16 / 2));
+        c.ps.pushPose();
+        c.ps.translate(lo.x, lo.y, lo.z);
+        c.ps.mulPose(new Quaternionf().rotationTo(new Vector3f(0, 0, 1), dir.normalize()));
+        TextureAtlasSprite s = PartModels.sprite("metal_smooth");
+        box(c, s, tintOf(c, c.materialRgb), -w, -t, -0.01f, w, t, len + 0.01f);
+        c.ps.popPose();
     }
 
     /** A round rod of radius w from point a to point b (model units), slightly overrunning to close the joints. */

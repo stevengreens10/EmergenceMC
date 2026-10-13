@@ -192,6 +192,14 @@ def icon_brush():
     return c
 
 
+def icon_link():
+    c = Canvas()
+    c.line(3, 12, 12, 3, STEEL, 3)
+    c.disk(3.5, 12.5, 2.4, hexc(0xB8BEC4), 1.0, DARK)
+    c.disk(12.5, 3.5, 2.4, hexc(0xB8BEC4), 1.0, DARK)
+    return c
+
+
 def icon_multimeter():
     c = Canvas()
     c.rect(3, 1, 12, 14, hexc(0xE8B92E), hexc(0x9C7A15))
@@ -207,7 +215,7 @@ ICONS = {
     "block": icon_block, "shaft": icon_shaft, "bearing": icon_bearing, "gear": icon_gear, "crank": icon_crank,
     "magnet": icon_magnet, "coil": icon_coil, "wire": icon_wire, "insulated_wire": icon_insulated_wire,
     "resistor": icon_resistor, "capacitor": icon_capacitor, "diode": icon_diode, "switch": icon_switch,
-    "brush": icon_brush, "multimeter": icon_multimeter,
+    "brush": icon_brush, "multimeter": icon_multimeter, "link": icon_link,
 }
 
 if __name__ == "__main__":

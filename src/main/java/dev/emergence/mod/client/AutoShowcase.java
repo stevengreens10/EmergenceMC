@@ -270,6 +270,10 @@ public final class AutoShowcase {
                         () -> Math.abs(wheelSpeed(server, shaftAt)) > 13));
                 STEPS.add(new Step(1, () -> crank(server.overworld(), crankAt, 0), null));
             }
+            if (id.equals("fourbar")) {
+                // the flywheel turns the crank round; the coupler swings the rocker one way, then the other
+                for (String when : new String[]{"a", "b", "c"}) STEPS.add(new Step(6, () -> { }, "showcase-" + (i + 1) + "-" + id + "-" + when));
+            }
             if (id.equals("unbalance")) {
                 // the lopsided wheel coasts down: a little shaking at speed, hard shaking at resonance, calm below
                 BlockPos shaftAt = DemoBuilder.partBlock(plot, e, "shaft");
@@ -308,6 +312,13 @@ public final class AutoShowcase {
                     toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch"));
                     LoggerHud.showcase = true;
                 }, "showcase-" + (i + 1) + "-" + id + "-governing"));
+                STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "brake")),
+                        "showcase-" + (i + 1) + "-" + id + "-braked"));
+            }
+            if (id.equals("flyball")) {
+                // close the switch: the weights fly out and the push rod turns the rheostat in; then brake it
+                STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "switch")),
+                        "showcase-" + (i + 1) + "-" + id + "-governing"));
                 STEPS.add(new Step(200, () -> toggle(server.overworld(), DemoBuilder.partBlock(plot, e, "brake")),
                         "showcase-" + (i + 1) + "-" + id + "-braked"));
             }

@@ -3,10 +3,8 @@
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →
 regenerate the demo world → screenshot tour → docs → commit.
 
-1. **Control**: a centrifugal (flyball) governor on an engine — the weights on the spinning arms are in (slides on
-   rotors), and a weight can work a contact on its rotor (the contact governor); it needs their travel to work a
-   valve off the rotor (a sleeve sliding along the shaft: a slide on the rotor coupled to one on the frame by a thrust
-   collar); contact bounce and arcing for the travel contacts; the EM-4
+1. **Control**: (the flyball governor is in, working a rheostat through link bars) a governor on a steam engine's
+   throttle (a valve whose plug is a slide: its opening from the plug's travel, the steam's force on it); contact bounce and arcing for the travel contacts; the EM-4
    closing a loop through a light-barrier encoder; integrator wind-up limits. (The servo is a PID loop, the
    electronic speed governor a PI loop.)
 2. **Dynamics of structures**: (an unbalanced rotor on a sprung platform is in) a motor driving it (coils and magnets

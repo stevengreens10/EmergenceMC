@@ -1119,11 +1119,22 @@ public final class SimulationManager {
         }
         float[] ba = new float[bData.size()];
         for (int i = 0; i < ba.length; i++) ba[i] = bData.get(i);
+        // link bars: where each piece's share of its bar runs from the piece's centre, in world blocks
+        List<Long> lIds = new ArrayList<>();
+        List<Float> lData = new ArrayList<>();
+        for (long id : isl.partPos.keySet()) {
+            double[] lp = c.linkPins(id);
+            if (lp == null) continue;
+            lIds.add(id);
+            for (double v : lp) lData.add((float) (v * scale));
+        }
+        float[] la = new float[lData.size()];
+        for (int i = 0; i < la.length; i++) la[i] = lData.get(i);
         IslandSyncPayload payload = new IslandSyncPayload(all, bodies, hid, ht, level.getGameTime(), scale,
                 tintIds.stream().mapToLong(Long::longValue).toArray(), tints.stream().mapToInt(Integer::intValue).toArray(),
                 fIds.stream().mapToLong(Long::longValue).toArray(), ga, pIds.stream().mapToLong(Long::longValue).toArray(), pa,
                 sIds.stream().mapToLong(Long::longValue).toArray(), sa, (float) (isl.timeScale * scaleOf(isl)),
-                bIds.stream().mapToLong(Long::longValue).toArray(), ba);
+                bIds.stream().mapToLong(Long::longValue).toArray(), ba, lIds.stream().mapToLong(Long::longValue).toArray(), la);
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
         syncSounds(isl, scale, any);

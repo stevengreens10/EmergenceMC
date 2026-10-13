@@ -620,3 +620,19 @@ PC 4 — neither the 4 before nor the 8 after: the adder's carry still rippling 
 now checks every tick from 300 until the state holds (succeedWhen), as a logic analyser would wait for the bus to
 settle.
 
+**Link bars.** A new part, LINK: a rigid bar pinned at its end faces to whatever bodies touch them (a straight row of
+link cells is one bar), enforced as a holonomic distance constraint with a Lagrange multiplier at velocity level and
+Baumgarte drift correction. Ends may be fixed, turning or sliding, in the ground frame or on a carrying body. Tested
+against a four-bar's and a slider-crank's closed-form kinematics; the four-bar exhibit's rocker swings exactly between
+its toggle angles. The exhibit first showed a 0.095 J energy error that turned out to be physics: the rocker started
+at rest while the crank turned, and the bar's first step is an inelastic impulse; started consistently, the error is
+6·10⁻⁴ J. Rendered as a bar between the pins' synced positions, each cell drawing its share.
+
+**Flyball governor.** Link bars became paths: link cells face to face make one bar running straight between the
+path's outer faces, so slanting bars can be built from block-sized parts (every straight bar between a radial
+weight and an axial sleeve sits at a dead point). A sleeve pinned on its spindle's axis may be linked off the
+spindle (a thrust collar). With one-sided stop collars on linear bearings and a potentiometer fitted with its wiper
+anywhere on the track (a rheostat starting at zero), Watt's governor is built from parts on the DC motor: weights out,
+sleeve down, push rod up to a bell crank on the rheostat's shaft. It holds 30 rad/s within 2.6 % under the brake. Two
+layout traps on the way: bushings touching their weights weld them to the spindle, and a commutator at angle 0 puts the
+brushes in a gap.

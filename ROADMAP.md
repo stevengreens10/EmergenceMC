@@ -105,7 +105,7 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    (Glauert/Buhl; the Betz limit emerges), a modelled wind from the weather ✅; a wind turbine exhibit; propellers on
    carts (a rotor riding a slide: thrust pushes the slide, the disc meets the air at the cart's speed) ✅; wings on free
    bodies, finite-span effects, cambered aerofoils ⬜
-🟡 Joints on moving bodies (a rotor on a slide, a slide on a rotor) ✅; multi-joint robots, linkages ⬜; state-space
+🟡 Joints on moving bodies (a rotor on a slide, a slide on a rotor) ✅; link bars, four-bar linkages and a flyball governor ✅; multi-joint robots ⬜; state-space
    control ⬜; advanced EM ⬜
 
 ## Phase 7–8 — Broad scientific expansion, continuous expansion

@@ -105,8 +105,8 @@ public enum PartKind {
      * Rotary potentiometer (manufactured): a housing that a shaft passes through along its axis, like a bearing;
      * the shaft turns a wiper on a resistive track ("resistance", default 10 kΩ; "travel" electrical angle, default
      * 270°). Track end A on the −lead-axis side, end B on the +lead-axis side, the wiper on the −side of the
-     * remaining axis. The wiper is at the middle of the track when the shaft is at its placed orientation and moves
-     * towards B as the shaft turns positively about the axis.
+     * remaining axis. The wiper is at the middle of the track when the shaft is at its placed orientation ("wiper": its
+     * place then, 0 at A … 1 at B) and moves towards B as the shaft turns positively about the axis.
      */
     POTENTIOMETER(true, true),
     /**
@@ -129,7 +129,9 @@ public enum PartKind {
     GM_TUBE(false, true),
     /**
      * Linear bearing (ball bushing): a shaft passing along its axis slides through it but cannot turn in it. The
-     * shaft and what is fixed to it form a slider whose travel ends where the bearing reaches the shaft's ends.
+     * shaft and what is fixed to it form a slider whose travel ends where the bearing reaches the shaft's ends, or at
+     * stop collars on the shaft: "travel" [m] either way from where it was placed, or "travel_fwd" along the bushing's
+     * axis and "travel_back" against it (0: a collar against the bushing, holding the slide on that side).
      */
     LINEAR_BEARING(true, false),
     /**
@@ -179,7 +181,16 @@ public enum PartKind {
      * it; on a turning body a set of blades is a propeller, fan or windmill — momentum theory gives their inflow.
      * "drag": its profile drag coefficient at zero incidence (default 0.02).
      */
-    BLADE(true, false);
+    BLADE(true, false),
+    /**
+     * Link: a rigid bar along its axis, pinned at its two end faces to whatever touches each — a crank arm, a
+     * rocker, a slide, or the frame (if nothing that moves does). Link parts laid face to face make one bar: a path
+     * from one pin to the other, the bar running straight between the path's two outer faces (a slanting bar is laid
+     * as a path round to its far end). Whatever the two bodies do, the bar keeps the pins its built length apart,
+     * pushing or pulling along itself: a connecting rod, a four-bar linkage's coupler, a governor's arm. "width" [m] (default 30 % of the cell across) and "thickness" (default half the width) size the
+     * bar (its mass is carried by the bodies it joins, its pins are frictionless).
+     */
+    LINK(false, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

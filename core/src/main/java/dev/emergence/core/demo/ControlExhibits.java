@@ -315,6 +315,107 @@ public final class ControlExhibits {
     }
 
     /**
+     * Watt's flyball governor on the DC motor: two brass weights on radial slides of a cross on the motor's spindle,
+     * held in by springs; slanting link bars from each weight to a sleeve that slides along the spindle's axis; a push
+     * rod from the sleeve's top (pinned on the axis, so it need not turn with it) up to a bell crank on the shaft of a
+     * rheostat in series with the motor. As the weights fly out the sleeve is drawn down, the bell crank turns and the
+     * rheostat puts more resistance in the motor's way.
+     */
+    public static Exhibit flyball() {
+        Exhibit e = new Exhibit("flyball", "Flyball governor",
+                List.of("FLYBALL GOVERNOR", "Close the switch: the", "weights fly out and", "rein the motor in"),
+                "James Watt's governor, built from parts. The DC motor's spindle carries a cross; on each arm a brass "
+                        + "weight slides on a rod, held in towards the axis by a spring. Slanting bars link each weight "
+                        + "to a sleeve that slides up and down the spindle's axis, and from the top of the sleeve a push "
+                        + "rod rises to a bell crank — the rod's foot rides in a groove round the sleeve, on the axis, so "
+                        + "the sleeve can turn under it. The bell crank turns the shaft of a rheostat in series with the "
+                        + "motor. Close the switch: the motor speeds up; the weights, needing m·ω²·r towards the axis that "
+                        + "only their springs can give, slide out, pull the sleeve down through their bars, and the push "
+                        + "rod turns the rheostat towards more resistance — the motor's current and torque fall, and its "
+                        + "speed settles where the two agree, near 30 radians a second with the weights 15 mm out. Brake it "
+                        + "(right-click the pad): the weights sink in, the resistance falls and the motor takes more "
+                        + "current, and the speed sags by only a few percent. (Below about 25 rad/s the springs, fitted "
+                        + "16 mm short, hold the weights against their stops.) Unlike the electronic governor this one "
+                        + "has no integrator: it holds the speed only roughly, a little lower under load (droop) — "
+                        + "the price Watt's engines paid, and why later governors added a reset.");
+        e.plots = 2;
+        String st = "steel_1045", al = "aluminium_6061", ny = "nylon_66";
+        int shaft = brushedMotor(e, 16);
+        // turning already (a coasting start: the heavy rotor would take half a minute to come up to speed), just past
+        // the dead point
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 28, 0, 0.3));
+        e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
+                {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
+        // ---- a brake: an aluminium disc on the spindle above the frame, a bronze pad on a post
+        e.add(BLOCK, al, 8, 14, 8, Dir.UP, "fill", 0.15);
+        e.fill(BLOCK, al, 7, 14, 7, 9, 14, 7, Dir.UP, "fill", 0.15);
+        e.fill(BLOCK, al, 7, 14, 9, 9, 14, 9, Dir.UP, "fill", 0.15);
+        e.add(BLOCK, al, 7, 14, 8, Dir.UP, "fill", 0.15);
+        e.add(BLOCK, al, 9, 14, 8, Dir.UP, "fill", 0.15);
+        e.fill(BLOCK, st, 5, 13, 8, 5, 14, 8, Dir.UP);
+        e.name("brake", e.add(BRAKE, "bronze", 6, 14, 8, Dir.EAST, "force", 10));
+        // ---- the governor on the spindle: a cross at y = 16, risers, the weights on their rods at y = 18
+        e.add(BLOCK, al, 8, 16, 8, Dir.UP, "fill", 0.5);                                     // the hub
+        e.fill(BLOCK, al, 2, 16, 8, 7, 16, 8, Dir.UP, "fill", 0.12);
+        e.fill(BLOCK, al, 9, 16, 8, 14, 16, 8, Dir.UP, "fill", 0.12);
+        for (int side = 0; side < 2; side++) {
+            int s = side == 0 ? 1 : -1;                                                        // +1: the left arm
+            // (the bushing a cell clear of the weight: touching it, it would be mounted on the slide it guides)
+            int seat = 8 - 6 * s, spring = 8 - 5 * s, weight = 8 - 4 * s, bush = 8 - 2 * s;
+            e.add(BLOCK, al, seat, 17, 8, Dir.UP, "fill", 0.12);
+            e.add(BLOCK, al, seat, 18, 8, Dir.UP, "fill", 0.12);
+            e.add(BLOCK, al, bush, 17, 8, Dir.UP, "fill", 0.12);
+            // stop collars: none outwards for 30 mm, one against the bushing inwards — the spring holds the weight there
+            e.add(LINEAR_BEARING, st, bush, 18, 8, s > 0 ? Dir.EAST : Dir.WEST, "travel_fwd", 0, "travel_back", 0.03);
+            int rod = s > 0 ? e.fill(SHAFT, st, weight, 18, 8, 7, 18, 8, Dir.EAST, "diameter", 0.008)
+                    : e.fill(SHAFT, st, 9, 18, 8, weight, 18, 8, Dir.EAST, "diameter", 0.008);
+            e.name(side == 0 ? "rodA" : "rodB", rod);
+            e.name(side == 0 ? "weightA" : "weightB", e.add(BLOCK, "brass", weight, 18, 8, Dir.UP, "fill", 0.3));
+            e.name(side == 0 ? "springA" : "springB", e.add(SPRING, st, spring, 18, 8, Dir.EAST, "wire", 0.0037, "turns", 6,
+                    "preload", 0.016));
+            // the bar up from the weight's top and across to the sleeve's arm: it runs straight, at a slant
+            e.name(side == 0 ? "barA" : "barB", e.fill(LINK, st, weight, 19, 8, weight, 22, 8, Dir.UP));
+            e.fill(LINK, st, 8 - 3 * s, 22, 8, 8 - 2 * s, 22, 8, Dir.EAST);
+        }
+        // the sleeve: a rod on the axis sliding in a bushing held up from the hub by a bracket, a collar with two arms
+        e.fill(BLOCK, al, 8, 16, 9, 8, 20, 9, Dir.UP, "fill", 0.5);
+        e.add(LINEAR_BEARING, st, 8, 20, 8, Dir.UP, "travel", 0.03);
+        e.name("sleeve", e.fill(SHAFT, st, 8, 19, 8, 8, 22, 8, Dir.UP, "diameter", 0.01));
+        e.add(BLOCK, st, 8, 22, 8, Dir.UP, "fill", 0.5);
+        e.fill(BLOCK, st, 7, 22, 8, 7, 22, 8, Dir.UP, "fill", 0.5);
+        e.fill(BLOCK, st, 9, 22, 8, 9, 22, 8, Dir.UP, "fill", 0.5);
+        // ---- off the spindle: the push rod up the axis to the bell crank on the rheostat's shaft
+        e.name("pushRod", e.fill(LINK, st, 8, 23, 8, 8, 24, 8, Dir.UP));
+        e.add(BLOCK, ny, 8, 25, 8, Dir.UP, "fill", 0.5);                                      // the crank's arm
+        e.add(BLOCK, ny, 9, 25, 8, Dir.UP, "fill", 0.5);                                      // its hub
+        e.name("crankShaft", e.fill(SHAFT, st, 9, 25, 8, 9, 25, 10, Dir.SOUTH, "diameter", 0.01));
+        e.name("rheostat", e.add(POTENTIOMETER, ny, 9, 25, 10, Dir.SOUTH, "resistance", 6, "travel", 15, "wiper", 0));
+        e.fill(BLOCK, st, 9, 26, 10, 9, 26, 14, Dir.UP);                                      // its bracket
+        e.fill(BLOCK, st, 9, 0, 15, 9, 26, 15, Dir.UP);                                       // and post
+        // ---- supply: a 24 V bank and a switch, through the rheostat (end A to the wiper) to the brushes
+        int f = 1;
+        int bat = e.add(CAPACITOR, "alumina", 16, f, 4, Dir.EAST, "capacitance", 3000);
+        e.name("battery", bat);
+        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 24));
+        e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
+        Router r = new Router(e, 0, 0, 0, 22, 27, 15);
+        r.pin("vb", 17, f, 4).pin("vb", 18, f, 4);
+        r.pin("vp", 20, f, 4).pin("vp", 8, 25, 10);
+        r.pin("vm", 9, 24, 10).pin("vm", 11, 8, 8);
+        r.pin("gnd", 15, f, 4).pin("gnd", 5, 8, 8);
+        // the rotor and its wiring sweep the cylinder round the spindle; the governor sweeps a wider one above
+        r.keepClear(4, 1, 3, 12, 7, 13);
+        r.keepClear(6, 8, 4, 10, 8, 12);
+        r.keepClear(11, 8, 9, 12, 8, 11);
+        r.keepClear(4, 8, 5, 5, 8, 7);
+        r.keepClear(4, 9, 4, 12, 13, 13);
+        r.keepClear(1, 14, 1, 15, 23, 15);
+        r.keepClear(7, 23, 7, 9, 25, 9);
+        r.route();
+        return e.view(8.5, 20, 22, 30);
+    }
+
+    /**
      * An H-bridge: four MOSFETs put the DC motor across its supply either way round. Each side of the bridge is a
      * complementary pair (a P-channel to the supply, an N-channel to ground) with its gates joined, so its output is
      * the opposite of its input; two switches pull the inputs up. Forward or reverse: one side low, the other high.

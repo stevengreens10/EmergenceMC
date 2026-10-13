@@ -334,9 +334,10 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   feels τ = n·(r(θ) × m g), r(θ) the centre-of-mass offset rotated by θ (Rodrigues). It derives from U = −m g·r(θ),
   reported as stored energy, so pendulums conserve energy and levers, unbalanced wheels and robot arms carry
   their weight. Vertical axes feel none (gravity is parallel to them).
-* **Potentiometer**: a resistive track R between ends A and B with a wiper at fraction f = ½ + φ/travel of it
-  (R_AW = R·f + 1 Ω, R_WB = R·(1 − f) + 1 Ω), φ the angle of the shaft through it relative to its housing;
-  f is smoothly clamped at the track ends. End stops 15° past them (300° of rotation) push back with a C¹ spring
+* **Potentiometer**: a resistive track R between ends A and B with a wiper at fraction f = f₀ + φ/travel of it
+  (f₀ = ½ unless fitted elsewhere: a rheostat starting at zero; R_AW = R·f + r₀, R_WB = R·(1 − f) + r₀, contact
+  resistance r₀ = 1 Ω or 0.2 % of R if less), φ the angle of the shaft through it relative to its housing;
+  f is smoothly clamped at the track ends. End stops 15° past them push back with a C¹ spring
   (quadratic over the first degree, then linear; ≈ 20 N·m/rad × (size/25 mm)³) and contact damping. The housing
   is a journal for the shaft, with wiper/bushing drag 2 mN·m × (size/25 mm)³. Joule and stop heat go to the part.
 * **Op-amp**: single-pole, slew-limited, rail-clamped. Internal voltage s (about mid-supply):
@@ -437,6 +438,21 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   resumes with the force its positions imply. A spring fitted δ shorter than its free length ("preload") starts from
   e = −δ: it presses its ends apart with kδ where they were placed — a governor's spring setting its lift-off speed.
   The spring's own mass is neglected.
+* **Link bars** (`RigidLink`, part LINK; a straight run of link cells is one bar): pinned at its end faces' centres to
+  the bodies touching them — fixed, turning about a fixed axis (pin at P(θ) = p + R(n, θ)(P₀ − p)) or sliding
+  (P(x) = P₀ + x·a), all in one frame (the ground, or a turning body or slide carrying both). The holonomic constraint
+  |P_A − P_B| = L is enforced at velocity level with Baumgarte stabilisation, ċ + c/τ = 0 (τ = 10 ms), by a
+  Lagrange multiplier λ, the bar's tension: generalised forces Q_A = −λ d̂·∂P_A/∂q_A, Q_B = +λ d̂·∂P_B/∂q_B. The bar
+  does no work (its power −λċ = λc/τ vanishes with the drift), so it passes power exactly from one body to the
+  other. Pins are frictionless; the bar's own mass is carried by the frame it is drawn in, not by its ends. A
+  mechanism started with inconsistent speeds takes the impulse of an inelastic collision in its first step (the
+  ledger books that loss as error; exhibits start consistently). Link cells laid face to face make one bar, a path
+  whose two outer faces are the pins: a bar can be built at a slant. A sleeve sliding along the axis of the spindle
+  that carries it, pinned on that axis, moves only along the axis however the spindle turns, so a bar from it may
+  reach a body off the spindle (its pin rides in a groove: a thrust collar; the force on it has no moment about the
+  axis).
+* **Stop collars** on a linear bearing's shaft: "travel" either way, or "travel_fwd"/"travel_back" on one side (0: a
+  collar against the bushing, which a preloaded spring can hold the slide against).
 * **Magnetics on slides**: couplings between a slide and the frame (coil flux linkage, mutual inductance, magnet
   energy) are tabulated over the travel (plus 10 %) and represented by a natural cubic spline; force = i·dΨ/dx etc.
 * **Pushing**: a hand on a slide follows the same force–speed–power limits as on a crank (200 N at rest, 3 m/s).

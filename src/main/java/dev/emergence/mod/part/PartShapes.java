@@ -82,6 +82,11 @@ public final class PartShapes {
                 float r = (float) Math.min(0.48, coil / 2) + 0.03f;
                 model(out, be, p, -r, r, -r, r, -ez / 2, ez / 2);
             }
+            case LINK -> {
+                // the bar where it was built (it moves; the outline is for aiming at it)
+                float w = (float) Math.max(0.06, Math.min(0.45, prm.getOrDefault("width", 0.3 / 16) * 8)) + 0.03f;
+                model(out, be, p, -w, w, -w, w, -ez / 2, ez / 2);
+            }
             case BEARING -> model(out, be, p, -0.48f * m, 0.48f * m, -0.48f * m, 0.48f * m, -0.21f * ez, 0.21f * ez);
             case LINEAR_BEARING -> model(out, be, p, -0.48f * m, 0.48f * m, -0.48f * m, 0.48f * m, -0.25f * ez, 0.25f * ez);
             case BRUSH -> model(out, be, p, -0.45f * m, 0.45f * m, -0.23f * m, 0.23f * m, -0.5f * ez, 0.48f * ez);

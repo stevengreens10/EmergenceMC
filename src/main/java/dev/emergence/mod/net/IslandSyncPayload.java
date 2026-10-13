@@ -18,7 +18,7 @@ import java.util.List;
 public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] hotIds, float[] hotTemps, long gameTime,
                                 float worldScale, long[] tintIds, int[] tints, long[] fluidIds, float[] gauges,
                                 long[] pistonIds, float[] pistons, long[] springIds, float[] springEnds, float simRate,
-                                long[] beamIds, float[] beams)
+                                long[] beamIds, float[] beams, long[] linkIds, float[] links)
         implements CustomPacketPayload {
 
     /**
@@ -70,6 +70,9 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         buf.writeLongArray(p.beamIds);
         buf.writeVarInt(p.beams.length);
         for (float g : p.beams) buf.writeFloat(g);
+        buf.writeLongArray(p.linkIds);
+        buf.writeVarInt(p.links.length);
+        for (float g : p.links) buf.writeFloat(g);
     }
 
     private static IslandSyncPayload read(FriendlyByteBuf buf) {
@@ -101,8 +104,11 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         long[] beamIds = buf.readLongArray();
         float[] beams = new float[buf.readVarInt()];
         for (int i = 0; i < beams.length; i++) beams[i] = buf.readFloat();
+        long[] linkIds = buf.readLongArray();
+        float[] links = new float[buf.readVarInt()];
+        for (int i = 0; i < links.length; i++) links[i] = buf.readFloat();
         return new IslandSyncPayload(all, bodies, hot, temps, time, scale, tintIds, tints, fluidIds, gauges, pistonIds, pistons,
-                springIds, springEnds, simRate, beamIds, beams);
+                springIds, springEnds, simRate, beamIds, beams, linkIds, links);
     }
 
     @Override

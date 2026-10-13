@@ -23,7 +23,13 @@ regenerate the demo world → screenshot tour → docs → commit.
    second (the boost, PWM and inverter exhibits all pay 2–6× real time for it): probably each Schmitt edge — a fold in
    the hysteresis, resolved by a 10 ns relaxation — halving the step from milliseconds to nanoseconds, a Newton failure
    per halving (the boost's oscillator failed so even with nothing on its output); an event-aware step at logic edges
-   (predict the threshold crossing, step to it, restart) would make an edge cost a handful of steps; the EM-4
+   (predict the threshold crossing, step to it, restart) would make an edge cost a handful of steps. Profiled on the
+   inverter: a logic delay of 100 µs instead of 10 ns cuts its Newton failures 402 → 21 and its CPU time in half,
+   but an edge still costs ~250 steps — ~30 shrinking as the oscillator's input nears its threshold (the solver cannot
+   see the edge coming), ~100 at ~10⁻⁷ s through the switching itself (gate charges, the LEDs' 20 pF, the transformer),
+   ~100 growing back at ×1.2 a step through transients spanning decades. The fidelity hierarchy CLAUDE.md asks for
+   (§6.4) is the real answer: an ideal-switch or averaged model of a bridge, used while its edges are fast compared
+   with the load, with a detector for when they are not; the EM-4
    setting the PWM duty (a DAC from resistors) for closed-loop speed control; why a diode-steered RC oscillator
    (reverse-biased diode nodes) fails Newton ~1 500 times a second;
    the cost of switching edges (≈ 140 steps an edge: the gate capacitances and snubber set the step) — an averaged

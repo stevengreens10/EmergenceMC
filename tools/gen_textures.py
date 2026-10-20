@@ -200,6 +200,17 @@ def icon_link():
     return c
 
 
+def icon_battery():
+    c = Canvas()
+    c.rect(2, 5, 13, 13, hexc(0x2A2C2E), hexc(0x101112))
+    for x in (4, 7, 10):
+        c.rect(x, 4, x + 1, 4, hexc(0x4A4D50))
+    c.rect(3, 2, 4, 4, hexc(0xC03028))
+    c.rect(11, 2, 12, 4, hexc(0x505050))
+    c.rect(5, 8, 10, 9, hexc(0xE0C030))
+    return c
+
+
 def icon_multimeter():
     c = Canvas()
     c.rect(3, 1, 12, 14, hexc(0xE8B92E), hexc(0x9C7A15))
@@ -215,7 +226,7 @@ ICONS = {
     "block": icon_block, "shaft": icon_shaft, "bearing": icon_bearing, "gear": icon_gear, "crank": icon_crank,
     "magnet": icon_magnet, "coil": icon_coil, "wire": icon_wire, "insulated_wire": icon_insulated_wire,
     "resistor": icon_resistor, "capacitor": icon_capacitor, "diode": icon_diode, "switch": icon_switch,
-    "brush": icon_brush, "multimeter": icon_multimeter, "link": icon_link,
+    "brush": icon_brush, "multimeter": icon_multimeter, "link": icon_link, "battery": icon_battery,
 }
 
 if __name__ == "__main__":

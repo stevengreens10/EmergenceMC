@@ -88,6 +88,7 @@ public final class PartItem extends Item {
             case PRISM -> PartSpec.of("glass_sf11", 1, 1, "apex", 45);
             case BLADE -> PartSpec.of("aluminium_6061", 1, 1, "pitch", -10);
             case LINK -> PartSpec.of("steel_1045", 1, 1);
+            case BATTERY -> PartSpec.of("pvc", 1, 1, "cells", 6, "capacity", 7);
             default -> PartSpec.of("steel_1045", 1, 1);
         };
     }
@@ -118,6 +119,7 @@ public final class PartItem extends Item {
             case RESISTOR -> ", " + Units.formatSI(p.getOrDefault("resistance", 10.0), "Ω")
                     + (p.getOrDefault("ntc_beta", 0.0) > 0 ? String.format(" NTC thermistor, β %.0f K", p.get("ntc_beta")) : "");
             case CAPACITOR -> ", " + Units.formatSI(p.getOrDefault("capacitance", 1e-4), "F");
+            case BATTERY -> String.format(", %.0f V, %.1f Ah", 2 * p.getOrDefault("cells", 6.0), p.getOrDefault("capacity", 7.0));
             case GEAR -> ", " + p.getOrDefault("teeth", 24.0).intValue() + " teeth";
             case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m")
                     + (p.getOrDefault("flexible", 0.0) > 0.5 ? ", flexible lead" : "");

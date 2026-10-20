@@ -1,8 +1,9 @@
 # Next steps (priority order)
 
 0. **The demo as a player plays it** (tour with hands and checks, world built by placement are in):
-   - a battery part (an electrochemical stack set in the part editor: EMF from its chemistry, internal resistance,
-     capacity) to replace the pre-charged capacitor banks a player cannot charge;
+   - (the BATTERY part is in) replace the pre-charged capacitor banks with batteries, exhibit by exhibit (the
+     electronic governor first: its bank sags in the world and it droops 9 % braked); a nickel–metal-hydride or
+     alkaline chemistry for 5 V logic supplies (lead–acid comes in 2.1 V steps);
    - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
      keep only boilers, fires and furnaces pre-started;
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);

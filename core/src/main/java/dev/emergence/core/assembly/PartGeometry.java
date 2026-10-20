@@ -404,6 +404,8 @@ public final class PartGeometry {
             }
             case WIRE, INSULATED_WIRE -> wireArea(p) * CELL * Math.max(p.extent(0), Math.max(p.extent(1), p.extent(2)));
             case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP -> p.param("mass", 0.002) / p.material().density();
+            // lead, acid and case: about 55 g per cell per ampere-hour (a 12 V 7 Ah battery: 2.3 kg)
+            case BATTERY -> 0.055 * p.param("cells", 6) * p.param("capacity", 7) / p.material().density();
             case SOURCE -> p.param("mass", 0.005) / p.material().density();
             case GM_TUBE -> p.param("mass", 0.01) / p.material().density();
             case POTENTIOMETER -> p.param("mass", 0.03) / p.material().density();
@@ -501,6 +503,7 @@ public final class PartGeometry {
                 yield 2 * (s[0] * s[1] + s[1] * s[2] + s[0] * s[2]);
             }
             case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP, SOURCE, GM_TUBE -> p.param("surface_area", 3e-4);
+            case BATTERY -> p.param("surface_area", 0.02);
             case PIPE -> Math.PI * (pipeBore(p) + 2 * wallThickness(p)) * axialLength(p);
             case VALVE -> 2 * Math.PI * (pipeBore(p) + 2 * wallThickness(p)) * axialLength(p);
             case ROTOR -> 1e-6; // inside its housing
@@ -523,7 +526,7 @@ public final class PartGeometry {
             case SHAFT -> Math.PI * Math.pow(shaftDiameter(p) / 2, 2);
             case WIRE, INSULATED_WIRE -> wireArea(p);
             case COIL -> 1e-5;
-            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP, SOURCE, GM_TUBE -> 1e-6;
+            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP, SOURCE, GM_TUBE, BATTERY -> 1e-6;
             case BLOCK -> CELL * CELL * p.param("fill", 1.0);
             case PIPE, VALVE -> tubeWall(p);
             case CYLINDER -> Math.PI * (cylinderBore(p) + wallThickness(p)) * Math.max(wallThickness(p), 0.003);
@@ -551,6 +554,7 @@ public final class PartGeometry {
             case DIODE, TRANSISTOR, LOGIC -> p.param("max_temperature", 448);    // 175 °C junction
             case LED -> p.param("max_temperature", 398);
             case CAPACITOR -> p.param("max_temperature", 398);
+            case BATTERY -> p.param("max_temperature", 333); // 60 °C: the case and plates suffer beyond
             default -> melt;
         };
     }

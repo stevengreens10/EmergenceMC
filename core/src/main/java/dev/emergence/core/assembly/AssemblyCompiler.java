@@ -1301,7 +1301,7 @@ public final class AssemblyCompiler {
                 case SOURCE -> {
                     return null; // a sealed capsule: no electrical contact
                 }
-                case RESISTOR, CAPACITOR, DIODE, LED, PHOTODIODE, GM_TUBE, SWITCH, COIL, BRUSH -> {
+                case RESISTOR, CAPACITOR, BATTERY, DIODE, LED, PHOTODIODE, GM_TUBE, SWITCH, COIL, BRUSH -> {
                     Dir ax = p.axis();
                     int a0 = ax.axis();
                     int[] cell = {x, y, z};
@@ -1662,6 +1662,13 @@ public final class AssemblyCompiler {
                         Node[] l = leads(p);
                         c.deviceOfPart.put(p.id(), c.network.add(new Capacitor(l[1], l[0], p.param("capacitance", 1e-4))));
                     }
+                    case BATTERY -> {
+                        Node[] l = leads(p);
+                        // its charge carries over from the running state (kept with the capacitors' voltages)
+                        Double held = prev.capacitorVoltages().get(p.id());
+                        c.deviceOfPart.put(p.id(), c.network.add(new LeadAcidBattery(l[1], l[0], (int) Math.round(p.param("cells", 6)),
+                                p.param("capacity", 7), held != null ? held : p.param("charge", 1), c.thermalOfPart.get(p.id()))));
+                    }
                     case WIRE, INSULATED_WIRE -> c.leadsOfPart.put(p.id(), new Node[]{enode("p" + p.id())});
                     default -> {
                         if (conductive(p) && enodes.containsKey(eroot("p" + p.id()))) c.leadsOfPart.put(p.id(), new Node[]{enode("p" + p.id())});
@@ -1840,7 +1847,7 @@ public final class AssemblyCompiler {
                 case WIRE, INSULATED_WIRE -> PartGeometry.wireArea(p);
                 case SHAFT -> Math.PI * Math.pow(PartGeometry.shaftDiameter(p) / 2, 2);
                 case COIL -> Math.PI * Math.pow(PartGeometry.coilWireDiameter(p) / 2, 2);
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, BRUSH -> 1e-6;
+                case RESISTOR, CAPACITOR, BATTERY, DIODE, SWITCH, BRUSH -> 1e-6;
                 default -> CELL * CELL;
             };
         }
@@ -1853,7 +1860,7 @@ public final class AssemblyCompiler {
         static Material conductorMaterial(Part p) {
             return switch (p.kind()) {
                 // manufactured components carry (tinned) copper leads, whatever their body is made of
-                case RESISTOR, CAPACITOR, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, POTENTIOMETER, OPAMP, GM_TUBE -> MaterialDatabase.standard().get("copper");
+                case RESISTOR, CAPACITOR, BATTERY, DIODE, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, POTENTIOMETER, OPAMP, GM_TUBE -> MaterialDatabase.standard().get("copper");
                 default -> p.material();
             };
         }

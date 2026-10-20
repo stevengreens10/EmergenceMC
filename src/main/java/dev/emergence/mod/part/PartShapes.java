@@ -92,6 +92,7 @@ public final class PartShapes {
             case BRUSH -> model(out, be, p, -0.45f * m, 0.45f * m, -0.23f * m, 0.23f * m, -0.5f * ez, 0.48f * ez);
             case RESISTOR -> model(out, be, p, -0.14f * m, 0.14f * m, -0.14f * m, 0.14f * m, -0.5f * ez, 0.5f * ez);
             case CAPACITOR -> model(out, be, p, -0.27f * m, 0.27f * m, -0.27f * m, 0.27f * m, -0.5f * ez, 0.5f * ez);
+            case BATTERY -> model(out, be, p, -0.42f * m, 0.42f * m, -0.36f * m, 0.36f * m, -0.45f * ez, 0.45f * ez);
             case DIODE -> model(out, be, p, -0.12f * m, 0.12f * m, -0.12f * m, 0.12f * m, -0.48f * ez, 0.48f * ez);
             case SWITCH -> model(out, be, p, -0.21f, 0.21f, -0.46f, 0.01f, -0.5f * ez, 0.5f * ez);
             case VALVE -> model(out, be, p, -0.21f, 0.21f, -0.2f, 0.5f, -0.485f * ez, 0.485f * ez);

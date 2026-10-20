@@ -850,6 +850,9 @@ public final class CompiledAssembly {
         } else if (d instanceof Capacitor c) {
             i = c.current(solver);
             pw = 0;
+        } else if (d instanceof dev.emergence.core.sim.elements.LeadAcidBattery bt) {
+            i = bt.current(solver);
+            pw = Math.abs(i * v);
         } else if (d instanceof dev.emergence.core.sim.elements.Led led) {
             i = led.current(solver);
             pw = Math.abs(i * v);
@@ -980,6 +983,8 @@ public final class CompiledAssembly {
         for (var e : deviceOfPart.entrySet()) {
             if (e.getValue() instanceof MagneticSystem.Coil c) s.coilCurrents().put(e.getKey(), magnetics.current(c, solver));
             if (e.getValue() instanceof Capacitor c) s.capacitorVoltages().put(e.getKey(), c.voltage(solver));
+            // a battery's state of charge travels with the capacitors' voltages
+            if (e.getValue() instanceof dev.emergence.core.sim.elements.LeadAcidBattery bt) s.capacitorVoltages().put(e.getKey(), bt.stateOfCharge(solver));
         }
         for (var e : fluidOfPart.entrySet()) {
             FluidVolume v = e.getValue();

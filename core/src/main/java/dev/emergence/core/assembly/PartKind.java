@@ -190,7 +190,13 @@ public enum PartKind {
      * pushing or pulling along itself: a connecting rod, a four-bar linkage's coupler, a governor's arm. "width" [m] (default 30 % of the cell across) and "thickness" (default half the width) size the
      * bar (its mass is carried by the bodies it joins, its pins are frictionless).
      */
-    LINK(false, false);
+    LINK(false, false),
+    /**
+     * Lead–acid battery (manufactured): "cells" in series (default 6: 12 V), "capacity" [A·h] (default 7), "charge" as
+     * delivered (default 1: full). Positive terminal on the +axis face, negative on the −axis face. Its voltage follows
+     * its acid's strength, which falls as charge is drawn; its internal resistance warms it.
+     */
+    BATTERY(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

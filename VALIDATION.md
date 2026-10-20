@@ -449,6 +449,13 @@ Hand-cranked generator inside a real world heats its resistor; part persistence 
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the
 block-scale gear train meshes across air gaps (island reach) with the 8:40 ratio within 1 %.
 
+## Battery (`LeadAcidBatteryTest`, `BatteryPartTest`)
+A full six-cell battery reads 12.753 V open circuit (Vinal: 12.75 V). Run down 300 s through 12 Ω, the state of charge
+counted (0.841) equals 1 − ∫i dt / capacity to 10⁻³, the terminal voltage sags 11.57 → 11.31 V as the acid thins,
+the battery warms by its i²r, and the energy ledger closes to 10⁻⁷ J. Charged at 14.4 V through 2 Ω it takes charge
+back in (0.50 → 0.533 in 100 s at 0.6 A). As a part wired to a 10 Ω load it delivers 0.976 A (12.75 V over 13 Ω:
+0.981 A), and its state of charge carries through a recompile.
+
 ## In the world, as a player (`generateDemoWorld`, `runShowcaseClient`)
 The demo world is built by player placement (`PlayerBuilder`): all 72 exhibits come out exactly as defined (0 build
 problems). Building them so found exhibits a player could not have built — linear bearings, lead-screw nuts and

@@ -57,6 +57,9 @@ final class PlayerHand {
     /** A player's eye heights [blocks] and how far a creative player reaches (a little short of its 5 blocks). */
     static final double EYE_STANDING = 1.62, EYE_CROUCHING = 1.27, REACH = 4.5;
 
+    /** How long the hands rest on a part before acting on it [ns of real time]: a second, to follow what happens. */
+    static final long PAUSE_NS = 1_000_000_000L;
+
     /** Problems the hands met, for the report. */
     static final List<String> FAILURES = new ArrayList<>();
 
@@ -173,7 +176,7 @@ final class PlayerHand {
             if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.MISS) return false; // the view not yet up
             KeyMapping.click(mc.options.keyUse.getKey());
             clicks[0]++;
-            pause[0] = 6; // the server's answer comes back before the next click
+            pause[0] = 10; // the server's answer comes back before the next click
             return false;
         });
     }
@@ -207,6 +210,15 @@ final class PlayerHand {
             }
         }
         return best;
+    }
+
+    /** Waits a while of real time (so someone watching can read the results). */
+    static Act pauseFor(String what, long nanos) {
+        long[] since = {0};
+        return named(what, mc -> {
+            if (since[0] == 0) since[0] = System.nanoTime();
+            return System.nanoTime() - since[0] >= nanos;
+        });
     }
 
     /** An act with a description for the caption. */
@@ -266,6 +278,8 @@ final class PlayerHand {
         private long partId;
         private boolean wasClosed;
         private int attempts, since, waited, waitedForServer;
+        /** When the crosshair first settled on the part [System.nanoTime()], 0 until then. */
+        private long aimedAt;
         /** Set once the server has moved the player (a busy server runs the move late; the waiting starts after it). */
         private final java.util.concurrent.atomic.AtomicBoolean moved = new java.util.concurrent.atomic.AtomicBoolean();
 
@@ -368,7 +382,10 @@ final class PlayerHand {
                 PlacedPart p = partHit(mc, bh);
                 boolean itemReady = ItemStack.isSameItemSameComponents(mc.player.getMainHandItem(), item)
                         && mc.gameMode.getPlayerMode() == GameType.CREATIVE;
-                if (p != null && p.kind == t.kind && itemReady && ticks > 3) {
+                // a second's pause with the crosshair on it before acting, so someone watching sees what is about to happen
+                if (p != null && p.kind == t.kind && itemReady && aimedAt == 0) aimedAt = System.nanoTime();
+                if (p != null && p.kind == t.kind && itemReady && ticks > 3 && System.nanoTime() - aimedAt >= PAUSE_NS) {
+                    EmergenceMod.LOG.info("Showcase act: {} ({} ticks from the start of the reach)", what, ticks);
                     partId = p.id;
                     wasClosed = p.closed;
                     attempts = 1;

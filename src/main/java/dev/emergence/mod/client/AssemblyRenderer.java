@@ -236,6 +236,17 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                     Math.min(ex, ey), Math.min(ex, ey), ez, false);
             case LINEAR_BEARING -> drawModel(c, "bearing", p, Math.min(ex, ey), Math.min(ex, ey), ez * 1.2f, false);
             case SPRING -> drawSpring(c, be, p, ez);
+            case BATTERY -> {
+                // a black case, its cell caps along the top, a red + and a black − terminal post on its end faces
+                box(c, PartModels.sprite("plastic"), tintOf(c, 0x202224), -0.42f * ex, -0.36f * ey, -0.45f * ez, 0.42f * ex, 0.36f * ey, 0.45f * ez);
+                int cells = (int) Math.max(1, Math.min(12, Math.round(p.spec.params().getOrDefault("cells", 6.0))));
+                for (int k = 0; k < cells; k++) {
+                    float z0 = -0.4f * ez + 0.8f * ez * k / cells, z1 = z0 + 0.8f * ez / cells - 0.03f;
+                    box(c, PartModels.sprite("plastic"), tintOf(c, 0x3A3D40), -0.3f * ex, 0.36f * ey, z0, 0.3f * ex, 0.4f * ey, z1);
+                }
+                box(c, PartModels.sprite("tinned"), tintOf(c, 0xC03028), -0.06f, -0.06f, 0.45f * ez, 0.06f, 0.06f, 0.5f * ez);
+                box(c, PartModels.sprite("tinned"), tintOf(c, 0x303030), -0.06f, -0.06f, -0.5f * ez, 0.06f, 0.06f, -0.45f * ez);
+            }
             case LINK -> drawLink(c, be, p, f);
             case RACK -> drawRack(c, p, f, ex, ey, ez);
             case MIRROR -> drawMirror(c, p, f, ex, ey, ez);

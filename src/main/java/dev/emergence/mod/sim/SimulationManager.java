@@ -78,6 +78,7 @@ public final class SimulationManager {
         final Map<Long, BlockPos> partPos = new HashMap<>();
         CompiledAssembly compiled;
         final Map<Long, Integer> crankTicks = new HashMap<>();
+        final Map<Long, Integer> turnTicks = new HashMap<>();
         final Map<Long, Integer> pushTicks = new HashMap<>();
         final Map<BlockPos, Integer> light = new HashMap<>();
         double ambient;
@@ -294,6 +295,24 @@ public final class SimulationManager {
         var ch = s.log.channels();
         for (int c = 0; c < ch.size(); c++) if (ch.get(c).name().equals(channel)) s.channel = c;
         s.span = Math.max(0, Math.min(LOGGER_SPANS.length - 1, spanIndex));
+    }
+
+    /** The largest magnitude across a player's logger screen: its shown channel over its time base (NaN if none). */
+    public double loggerPeak(ServerPlayer player) {
+        LoggerSession s = loggers.get(player.getUUID());
+        if (s == null || s.log.size() == 0) return Double.NaN;
+        double tEnd = s.log.time(s.log.size() - 1), peak = 0;
+        for (int i = s.log.size() - 1; i >= 0 && s.log.time(i) >= tEnd - LOGGER_SPANS[s.span]; i--) {
+            double v = s.log.value(s.channel, i);
+            if (!Double.isNaN(v)) peak = Math.max(peak, Math.abs(v));
+        }
+        return peak;
+    }
+
+    /** What a player's logger screen shows: its channel's name and time-base index (null if it is not clipped on). */
+    public String[] loggerShowing(ServerPlayer player) {
+        LoggerSession s = loggers.get(player.getUUID());
+        return s == null ? null : new String[]{s.log.channels().get(s.channel).name(), String.valueOf(s.span)};
     }
 
     /** The newest value of a player's logger on its shown channel (NaN if none). */
@@ -746,6 +765,15 @@ public final class SimulationManager {
         isl.crankTicks.put(partId, 6); // right-click repeats every 4 ticks while held
     }
 
+    /** A player grips a part and turns the body it is fixed to (sneaking: the other way) while holding use. */
+    public boolean turnBody(BlockPos pos, long partId, Player player) {
+        Island isl = islandAt(pos);
+        if (isl == null || isl.compiled == null) return false;
+        if (!isl.compiled.setTurnEffort(partId, player.isShiftKeyDown() ? -1 : 1, player.isSprinting())) return false;
+        isl.turnTicks.put(partId, 6);
+        return true;
+    }
+
     /** A player pushes a slide along its axis (sneaking: the other way) while holding use. */
     public boolean pushSlider(BlockPos pos, long partId, Player player) {
         Island isl = islandAt(pos);
@@ -803,6 +831,16 @@ public final class SimulationManager {
                 e.setValue(left);
             }
         }
+        for (var it = isl.turnTicks.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            int left = e.getValue() - 1;
+            if (left <= 0) {
+                isl.compiled.setTurnEffort(e.getKey(), 0, false);
+                it.remove();
+            } else {
+                e.setValue(left);
+            }
+        }
         Iterator<Map.Entry<Long, Integer>> it = isl.crankTicks.entrySet().iterator();
         while (it.hasNext()) {
             var e = it.next();
@@ -826,10 +864,12 @@ public final class SimulationManager {
 
     public boolean toggleSwitch(BlockPos pos, long partId) {
         Island isl = islandAt(pos);
-        AssemblyBlockEntity be = be(pos);
+        // (a block placed this tick is not registered yet: take it from the world)
+        AssemblyBlockEntity be = be(pos) != null ? be(pos) : level.getBlockEntity(pos) instanceof AssemblyBlockEntity w ? w : null;
         PlacedPart part = be == null ? null : be.byId(partId);
-        boolean compiled = isl != null && isl.compiled != null;
-        // not simulated yet (just loaded, or its build failed): flip the part itself; the island compiles from it
+        // compiled with it in (an island compiled before the part was placed does not know it yet)
+        boolean compiled = isl != null && isl.compiled != null && isl.compiled.assembly().get(partId) != null;
+        // not simulated yet (just placed or loaded, or its build failed): flip the part itself; the island compiles from it
         boolean closed = compiled ? isl.compiled.toggleSwitch(partId) : part != null && !part.closed;
         if (be != null) {
             PlacedPart p = part;

@@ -44,6 +44,9 @@ public final class DemoBuilder {
     /** Depth of a plot (z) and the row (relative to the plot origin) where the signs and the walkway are. */
     public static final int PLOT_DEPTH = 16, SIGN_Z = 16;
 
+    /** What the last build could not do as a player would (see {@link PlayerBuilder}). */
+    public static final List<String> LAST_PROBLEMS = new java.util.ArrayList<>();
+
     /** Builds all exhibits with the first plot at {@code origin} (the block above the gallery floor). */
     public static BlockPos build(ServerLevel level, BlockPos origin) {
         List<Exhibit> exhibits = Exhibits.all();
@@ -60,13 +63,19 @@ public final class DemoBuilder {
             }
         }
         sign(level, origin.offset(-2, 0, SIGN_Z + 1), List.of("EMERGENCE", "Engineering from", "first principles", "exhibits ->"));
+        List<String> problems = new java.util.ArrayList<>();
         for (int i = 0; i < exhibits.size(); i++) {
             Exhibit e = exhibits.get(i);
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
-            place(level, plot, e);
+            // as a player builds it: each part made in the part editor and placed with a click
+            if (e.miniature) place(level, plot, e);
+            else problems.addAll(PlayerBuilder.build(level, plot, e));
             sign(level, plot.offset(8, 0, SIGN_Z), e.sign);
         }
-        EmergenceMod.LOG.info("Built {} demo exhibits at {}", exhibits.size(), origin);
+        for (String pr : problems) EmergenceMod.LOG.error("Demo build: {}", pr);
+        EmergenceMod.LOG.info("Built {} demo exhibits at {} by player placement ({} problems)", exhibits.size(), origin, problems.size());
+        LAST_PROBLEMS.clear();
+        LAST_PROBLEMS.addAll(problems);
         return origin.offset(8, 0, SIGN_Z + 3);
     }
 

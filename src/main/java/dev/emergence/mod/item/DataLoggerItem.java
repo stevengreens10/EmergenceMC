@@ -39,8 +39,7 @@ public final class DataLoggerItem extends Item {
     @Override
     public InteractionResult useOn(UseOnContext ctx) {
         if (!(ctx.getLevel().getBlockEntity(ctx.getClickedPos()) instanceof AssemblyBlockEntity be)) return InteractionResult.PASS;
-        int[] c = AssemblyBlock.cellAt(be, ctx.getClickLocation(), ctx.getClickedFace());
-        PlacedPart part = be.partAt(c[0], c[1], c[2]);
+        PlacedPart part = be.partHit(ctx.getClickLocation(), ctx.getClickedFace());
         if (part == null) return InteractionResult.PASS;
         if (ctx.getLevel() instanceof ServerLevel sl && ctx.getPlayer() instanceof ServerPlayer sp) {
             String title = Component.translatable("item.emergence." + part.kind.name().toLowerCase()).getString()

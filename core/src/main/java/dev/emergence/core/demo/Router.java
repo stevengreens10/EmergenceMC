@@ -29,6 +29,11 @@ public final class Router {
         this.x1 = x1;
         this.y1 = y1;
         this.z1 = z1;
+        scan();
+    }
+
+    /** Marks every part's cells (and the cells by component leads) as taken. */
+    private void scan() {
         for (Exhibit.PartDef d : e.parts) {
             for (int x = d.x0(); x <= d.x1(); x++)
                 for (int y = d.y0(); y <= d.y1(); y++)
@@ -117,6 +122,7 @@ public final class Router {
 
     /** Routes every declared net, colours the insulation, and adds the wires to the exhibit. */
     public void route() {
+        scan(); // parts added since the router was made (a receiver's components) are in the way too
         // route net by net; a net that cannot be routed moves to the front and everything is routed again
         List<String> order = new ArrayList<>(pins.keySet());
         String failed = null;

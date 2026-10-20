@@ -787,7 +787,9 @@ public final class Exhibits {
         e.add(BLOCK, st, 10, 0, 8, Dir.UP);
         e.name("short", e.fill(BLOCK, st, 4, 1, 8, 4, 4, 8, Dir.SOUTH, "fill", 0.02));
         e.name("shortLoad", e.add(BLOCK, "lead", 4, 5, 8, Dir.UP));
-        e.name("tall", e.fill(BLOCK, st, 10, 1, 8, 10, 8, 8, Dir.SOUTH, "fill", 0.02));
+        int tall = e.fill(BLOCK, st, 10, 1, 8, 10, 8, 8, Dir.SOUTH, "fill", 0.02);
+        e.name("tall", tall);
+        e.name("tallTop", tall + 7); // where the block goes
         return e.view(7, 6, 23, 8);
     }
 

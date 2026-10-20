@@ -1,5 +1,16 @@
 # Next steps (priority order)
 
+0. **The demo as a player plays it** (tour with hands and checks, world built by placement are in):
+   - a battery part (an electrochemical stack set in the part editor: EMF from its chemistry, internal resistance,
+     capacity) to replace the pre-charged capacitor banks a player cannot charge;
+   - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
+     keep only boilers, fires and furnaces pre-started;
+   - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
+   - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;
+   - the electronic governor droops 9 % under the brake in the world (the core test holds it);
+   - the miniature exhibit is still placed directly (tweezers placement);
+   - the full tour, then every exhibit's checks green.
+
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →
 regenerate the demo world → screenshot tour → docs → commit.
 

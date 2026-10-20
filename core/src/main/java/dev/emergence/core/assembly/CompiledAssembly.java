@@ -99,6 +99,27 @@ public final class CompiledAssembly {
         return tubeOfPart.get(partId);
     }
 
+    /** A hand that can grip each turning body and turn it (same force–speed–power limits as on a crank). */
+    final Map<Body, dev.emergence.core.sim.elements.HumanCrank> turners = new HashMap<>();
+
+    /**
+     * A person grips the part and turns the body it is fixed to about its axis (+1, −1) or lets go (0): the hand
+     * pushes at the part's distance from the axis (at least 3 cm — fingers round a shaft). Returns false if the part
+     * does not turn.
+     */
+    public boolean setTurnEffort(long partId, int direction, boolean sprint) {
+        Body b = bodyOfPart.get(partId);
+        var h = b == null ? null : turners.get(b);
+        Part p = assembly.get(partId);
+        if (h == null || p == null) return false;
+        Vec3 rel = p.center().sub(b.pivot);
+        double r = rel.sub(b.axis.mul(rel.dot(b.axis))).length();
+        h.setRadius(Math.max(r, 0.03));
+        if (h.direction() != Integer.signum(direction)) solver.markDiscontinuity();
+        h.set(direction, sprint);
+        return true;
+    }
+
     /** A hand pushing each slide (same force–speed–power limits as on a crank, at 1 m "radius"). */
     final Map<Body, dev.emergence.core.sim.elements.HumanCrank> pushers = new HashMap<>();
 

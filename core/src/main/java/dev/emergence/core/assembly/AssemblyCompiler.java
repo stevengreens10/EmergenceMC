@@ -692,6 +692,8 @@ public final class AssemblyCompiler {
                 c.network.add(new Inertia(b.node, b.inertia));
                 b.tracker = c.network.add(new AngleTracker(b.node, motion == null ? 0 : motion[1]));
                 b.drive = c.network.add(new FlowSource(refR, b.node, 0.0));
+                // a hand that may grip any part of it and turn it (a flywheel given a turn, a motor nudged off its dead point)
+                c.turners.put(b, c.network.add(new HumanCrank(b.node, refR, 0.1)));
                 // gravity on an off-centre mass (a lever, a pendulum, an unbalanced wheel)
                 Vec3 offset = moment.mul(1 / Math.max(m, 1e-12));
                 Vec3 perp = offset.sub(b.axis.mul(offset.dot(b.axis)));

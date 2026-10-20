@@ -449,9 +449,16 @@ Hand-cranked generator inside a real world heats its resistor; part persistence 
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the
 block-scale gear train meshes across air gaps (island reach) with the 8:40 ratio within 1 %.
 
-## Visual (`runShowcaseClient`)
-Automated tour of the demo world saving screenshots of every exhibit (including discharge and cranked
-states) to `run/screenshots/showcase-*.png` for review.
+## In the world, as a player (`generateDemoWorld`, `runShowcaseClient`)
+The demo world is built by player placement (`PlayerBuilder`): all 72 exhibits come out exactly as defined (0 build
+problems). Building them so found exhibits a player could not have built — linear bearings, lead-screw nuts and
+coils could not share a shaft's cell, a crank could only face along its shaft one way, parts with nothing to click
+against, the wire router laying wire through the cells of components added after it was set up, a press column inside
+its pipe — all fixed. The tour then works every exhibit with real clicks of the use and attack keys and checks what
+should follow (speeds, temperatures, lit LEDs, broken parts, logger readings), writing `showcase-report.txt`. Its first
+run found that a crank sharing its cell with its shaft could not be turned by a player (a click picked the part by
+cell, not by the outline hit), that a switch clicked as soon as it was placed did not latch, and that brakes were never
+applied by the old tour (its toggle found no switch in the brake's block).
 
 ## Known validation gaps
 No tests yet for: diode temperature dependence, brush/commutator contacts, multi-coil mutual coupling on

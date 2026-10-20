@@ -94,11 +94,12 @@ public final class AssemblyBlock extends BaseEntityBlock {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!(level.getBlockEntity(pos) instanceof AssemblyBlockEntity be)) return InteractionResult.PASS;
-        int[] c = cellAt(be, hit.getLocation(), hit.getDirection());
-        PlacedPart part = be.partAt(c[0], c[1], c[2]);
+        PlacedPart part = be.partHit(hit.getLocation(), hit.getDirection());
         if (part == null) return InteractionResult.PASS;
-        // a part on a slide: push it along its guide (sneak to push it back)
-        if (level instanceof ServerLevel sl0 && SimulationManager.get(sl0).pushSlider(pos, part.id, player)) {
+        // with an empty hand, a part on a slide is pushed along its guide, a part on a turning body turns it (sneak:
+        // the other way); with something in hand the click is the item's (a logger clipped on, a meter's probe)
+        boolean bare = player.getMainHandItem().isEmpty();
+        if (bare && level instanceof ServerLevel sl0 && SimulationManager.get(sl0).pushSlider(pos, part.id, player)) {
             return InteractionResult.SUCCESS;
         }
         if (part.kind == PartKind.CRANK || part.kind == PartKind.SWITCH || part.kind == PartKind.VALVE || part.kind == PartKind.BRAKE) {
@@ -116,6 +117,9 @@ public final class AssemblyBlock extends BaseEntityBlock {
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
+        if (bare && level instanceof ServerLevel sl1 && SimulationManager.get(sl1).turnBody(pos, part.id, player)) {
+            return InteractionResult.SUCCESS;
+        }
         return InteractionResult.PASS;
     }
 
@@ -123,10 +127,12 @@ public final class AssemblyBlock extends BaseEntityBlock {
     public static boolean removeTargetedPart(Level level, BlockPos pos, Player player) {
         if (!(level.getBlockEntity(pos) instanceof AssemblyBlockEntity be)) return false;
         var hr = player.pick(player.blockInteractionRange() + 1, 1.0f, false);
+        if (Boolean.getBoolean("emergence.autoShowcase")) dev.emergence.mod.EmergenceMod.LOG.info("left click at {}: the server's pick from {} is on {}",
+                pos, player.getEyePosition(), hr instanceof BlockHitResult b ? b.getBlockPos() + " " + b.getDirection() + " " + b.getLocation() : hr.getType());
         if (!(hr instanceof BlockHitResult bhr) || !bhr.getBlockPos().equals(pos)) return false;
-        int[] c = cellAt(be, bhr.getLocation(), bhr.getDirection());
-        PlacedPart part = be.partAt(c[0], c[1], c[2]);
+        PlacedPart part = be.partHit(bhr.getLocation(), bhr.getDirection());
         if (part == null) return false;
+        if (Boolean.getBoolean("emergence.autoShowcase")) dev.emergence.mod.EmergenceMod.LOG.info("{} took the {} out of {}", player.getName().getString(), part.kind, pos);
         be.removePart(part.id);
         if (!player.getAbilities().instabuild) {
             ItemStack drop = PartPresets.stack(part.kind, part.spec);

@@ -82,7 +82,9 @@ compiler recognises machines. See PHYSICS_MODELS.md §Assembly.
 | `part.PartLinks` / `part.PartShapes` | What a placed part meets across block boundaries (wires to terminals — the compiler's own `hasElectricalPort` — pipes to vessels, plates to what they are fixed to), shared by the renderer and the block shapes: hitboxes follow the drawn geometry (thin shafts, wires and pipes; plates as thick as their fill; models' bounds). |
 | `AssemblyRenderer`, `GearPhasing`, `model.ObjModel`/`PartModels` | Part meshes authored in Blender (`tools/blender/build_parts.py` → `assets/emergence/models/part/*.obj`, textures in `textures/block/part/`) plus procedural gears (from tooth count and pitch radius), shafts and wires at their physical dimensions; rigid-body rotation; black-body glow; resistor colour codes; switch state; tooth phasing of meshing gears. Works at both resolutions. |
 | `MultimeterItem` | Instrument reading probes from simulated state. |
-| `DemoBuilder`, `AutoShowcase` | Demo-world gallery and automated visual verification. |
+| `DemoBuilder`, `PlayerBuilder` | Demo-world gallery, built as a player builds: every part taken from the creative tab, set up through the part editor's server path (`PartSpecEdits`) and placed by a click through `ServerPlayerGameMode.useItemOn` (sneaking and looking along its axis; mounted parts on their shaft's side; dirt scaffolding where nothing is in reach, removed after); latched switches clicked closed. Anything that does not come out as defined is a build problem (logged; the generator reports the count). |
+| `AutoShowcase`, `PlayerHand`, `ShowcaseHud` | The automated tour: works every exhibit as a player does — the hands stand within reach on the ground (creative flight only where no footing has a view), aim the client's crosshair at the part and press or hold the use/attack keys (in-game key state, no OS input); a click whose effect does not show is repeated as a player would, only on the same part. Each step checks the physics it should cause (read from the server) and the report `screenshots/showcase-report.txt` lists PASS/FAIL with the measured values. The caption (`ShowcaseHud`) shows the exhibit, what it demonstrates, what the player is doing, and each check's live reading and verdict. |
+| `PartEditorScreen`, `PartSpecEditPayload`, `PartSpecEdits` | The part editor: right-click the air with a part to set its material and parameters (validated on the server). |
 
 ## Build & run tasks
 
@@ -92,7 +94,7 @@ compiler recognises machines. See PHYSICS_MODELS.md §Assembly.
 | `./gradlew runGameTestServer` | In-world integration tests (headless, `run-gametest/`). |
 | `./gradlew generateDemoWorld` | Builds the showcase world into `run/saves/Emergence Demo`. |
 | `./gradlew runDemoClient` | Client that opens the demo world directly. |
-| `./gradlew runShowcaseClient` | Automated tour that saves screenshots to `run/screenshots/`. |
+| `./gradlew runShowcaseClient` | Automated tour, worked as a player would, with physics checks: screenshots and `showcase-report.txt` in `run/screenshots/` (`-Demergence.showcaseOnly=a,b` for some exhibits). |
 | `./gradlew build` | Mod jar in `build/libs/`. |
 
 ## Multirate stepping (`TransientSolver.multirate`)

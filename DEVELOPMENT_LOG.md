@@ -636,3 +636,15 @@ anywhere on the track (a rheostat starting at zero), Watt's governor is built fr
 sleeve down, push rod up to a bell crank on the rheostat's shaft. It holds 30 rad/s within 2.6 % under the brake. Two
 layout traps on the way: bushings touching their weights weld them to the spindle, and a commutator at angle 0 puts the
 brushes in a gap.
+
+**The demo as a player plays it.** The tour used the simulation's own API: switches toggled, cranks given a force
+that never let go, parts placed and removed by block edits, the data logger attached by a call. It now has hands: it
+stands within reach, aims the real crosshair at the part and presses or holds the in-game keys, so every click
+travels a player's road. At once it found a crank a player could not turn — clicks were resolved by the cell, and a
+crank sharing its cell with its shaft gave the shaft — and the clicked part is now the one whose outline is hit.
+Each step now checks the physics it should cause, shown live on a caption (exhibit, purpose, action, measured
+values, PASS/FAIL) and written to a report. The world itself is now built by player placement through a new part
+editor (material and parameters set in game), which flushed out what a player could not build: linear bearings,
+nuts and coils on shafts, a crank's facing, unreachable parts, and the wire router routing through components added
+after it was made. A player can also now grip any turning body and turn it by hand (a flywheel given a turn, a motor
+nudged off its dead point), and a held item takes the click instead of the machine.

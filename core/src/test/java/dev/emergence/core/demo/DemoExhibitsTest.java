@@ -1515,13 +1515,17 @@ class DemoExhibitsTest {
         long pd = b.id(e, "pd"), led = b.id(e, "led"), lit = b.id(e, "lit");
         run(c, 0.3);
         double out = c.lightOutput(led), in = c.lightInput(pd);
-        // a 30-beam LED's axial intensity (m + 1)/2π, over the 16.2 cells of folded path, on 1 cm², two 92 % mirrors
-        double path = 16.2 / 16, expect = out * 31 / (2 * Math.PI) * 1e-4 / (path * path) * 0.92 * 0.92;
+        // a 30-beam LED's axial intensity (m + 1)/2π, over the folded path (the traced beam's length), on 1 cm², two
+        // 92 % mirrors
+        var axis = c.beams(led).get(0);
+        double path = 0;
+        for (int k = 1; k < axis.size(); k++) path += axis.get(k).sub(axis.get(k - 1)).length();
+        double expect = out * 31 / (2 * Math.PI) * 1e-4 / (path * path) * 0.92 * 0.92;
         System.out.printf("periscope: LED %.2f mW, photodiode %.3f µW (on-axis estimate %.3f µW), green LED %.2f mA%n",
                 1e3 * out, 1e6 * in, 1e6 * expect, 1e3 * c.probe(lit).current());
         assertEquals(expect, in, 0.03 * expect, "the folded beam's irradiance");
         assertTrue(c.probe(lit).current() > 2e-3, "the green LED lights");
-        // the beam drawn for it: up, east over the wall, down onto the photodiode's face
+        // the beam drawn for it: east, up, east over the wall onto the photodiode's face
         var rays = c.beams(led);
         assertEquals(7, rays.size(), "the axis and a ring of six");
         var chief = rays.get(0);
@@ -1529,13 +1533,17 @@ class DemoExhibitsTest {
         var end = chief.get(chief.size() - 1);
         System.out.println("  beam axis: " + chief);
         assertEquals(4, chief.size(), "LED, two mirrors, photodiode");
-        assertEquals(pdPart.center().x(), end.x(), 1e-9);
-        assertEquals(pdPart.center().y() + 0.5 / 16, end.y(), 1e-9, "on the photodiode's top face");
+        assertEquals(pdPart.center().y(), end.y(), 1e-9);
+        assertEquals(pdPart.center().x() - 0.5 / 16, end.x(), 1e-9, "on the photodiode's west face");
+        // taken away while it runs, as in the world (the circuit carrying on from its running state), at noon: the
+        // photodiode looks sideways, and the sun overhead does not light it
         b.assembly().remove(b.id(e, "mirrorB"));
-        CompiledAssembly c2 = AssemblyCompiler.compile(b.assembly(), b.state());
+        CompiledAssembly c2 = AssemblyCompiler.compile(b.assembly(), c.exportState());
+        c2.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
         run(c2, 0.3);
         System.out.printf("  without the second mirror: %.3g µW, green LED %.3g mA%n", 1e6 * c2.lightInput(pd), 1e3 * c2.probe(lit).current());
-        assertTrue(c2.lightInput(pd) < 0.01 * in, "the beam goes on into the sky");
+        assertTrue(c2.lightInput(pd) < 0.05 * in, "the beam goes on into the sky (the sideways photodiode catches a little daylight): "
+                + c2.lightInput(pd) / in);
         assertTrue(c2.probe(lit).current() < 1e-4, "dark");
     }
 
@@ -1551,8 +1559,9 @@ class DemoExhibitsTest {
         System.out.printf("lens: LED %.2f mW, photodiode %.3f µW (%.3g of the LED's light), green LED %.2f mA%n",
                 1e3 * out, 1e6 * in, in / out, 1e3 * c.probe(lit).current());
         assertTrue(c.probe(lit).current() > 2e-3, "the green LED lights");
+        // taken away while it runs, as in the world: the circuit carries on from its running state
         b.assembly().remove(b.id(e, "lens"));
-        CompiledAssembly c2 = AssemblyCompiler.compile(b.assembly(), b.state());
+        CompiledAssembly c2 = AssemblyCompiler.compile(b.assembly(), c.exportState());
         run(c2, 0.3);
         double bare = c2.lightInput(pd);
         // without the lens: the axial intensity on the 7.5 mm² junction 0.638 m from the LED

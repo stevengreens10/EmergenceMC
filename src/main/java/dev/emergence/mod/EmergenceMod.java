@@ -52,6 +52,13 @@ public final class EmergenceMod {
                 (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.ClientSounds.apply(payload)));
         reg.playToClient(dev.emergence.mod.net.LoggerSyncPayload.TYPE, dev.emergence.mod.net.LoggerSyncPayload.STREAM_CODEC,
                 (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.LoggerHud.apply(payload)));
+        reg.playToServer(dev.emergence.mod.net.PartSpecEditPayload.TYPE, dev.emergence.mod.net.PartSpecEditPayload.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    if (!(ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
+                    String why = dev.emergence.mod.part.PartSpecEdits.apply(sp, payload.offhand()
+                            ? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND, payload.spec());
+                    if (why != null) sp.displayClientMessage(net.minecraft.network.chat.Component.literal(why), true);
+                }));
     }
 
     private static void handleSync(IslandSyncPayload payload, IPayloadContext ctx) {

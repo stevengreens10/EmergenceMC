@@ -16,6 +16,8 @@ public final class ClientSetup {
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> ClientSimState.clear());
         modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) -> e.registerAboveAll(
                 net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.emergence.mod.EmergenceMod.MODID, "logger"), LoggerHud::render));
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) -> e.registerAboveAll(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.emergence.mod.EmergenceMod.MODID, "showcase"), ShowcaseHud::render));
         AutoShowcase.init();
     }
 

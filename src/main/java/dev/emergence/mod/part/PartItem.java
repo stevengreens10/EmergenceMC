@@ -209,6 +209,14 @@ public final class PartItem extends Item {
         tooltip.add(Component.translatable("tooltip.emergence.place_hint").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
     }
 
+    /** Right-clicking the air with a part opens the part editor: its material, dimensions and ratings. */
+    @Override
+    public net.minecraft.world.InteractionResultHolder<ItemStack> use(Level level, Player player, net.minecraft.world.InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (level.isClientSide) dev.emergence.mod.client.ClientHooks.openPartEditor(kind, hand == net.minecraft.world.InteractionHand.OFF_HAND, spec(stack));
+        return net.minecraft.world.InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+    }
+
     @Override
     public InteractionResult useOn(UseOnContext ctx) {
         Level level = ctx.getLevel();
@@ -303,7 +311,8 @@ public final class PartItem extends Item {
 
     private boolean mountable(PartSpec spec) {
         return kind == PartKind.BEARING || kind == PartKind.POTENTIOMETER || kind == PartKind.MAGNET || kind == PartKind.GEAR
-                || kind == PartKind.CRANK || kind == PartKind.BLOCK || kind == PartKind.ROTOR || kind == PartKind.ECCENTRIC;
+                || kind == PartKind.CRANK || kind == PartKind.BLOCK || kind == PartKind.ROTOR || kind == PartKind.ECCENTRIC
+                || kind == PartKind.LINEAR_BEARING || kind == PartKind.NUT || kind == PartKind.COIL;
     }
 
     /** Block-scale placement: one part per block. */
@@ -319,7 +328,11 @@ public final class PartItem extends Item {
                 && mountable(spec)) {
             PlacedPart shaft = cbe.parts().stream().filter(p -> p.kind == PartKind.SHAFT).findFirst().orElse(null);
             if (shaft != null && face.getAxis().ordinal() != shaft.axis.axis() && cbe.canPlace(kind, 0, 0, 0, 0, 0, 0)) {
-                return finishBlockScale(level, player, stack, spec, clicked, cbe, kind == PartKind.MAGNET ? axis : shaft.axis);
+                // a magnet's poles, and (sneaking) a plate's face, point where chosen; anything else lies along the shaft,
+                // facing whichever way along it the player looks (sneaking: a crank's handle on this side or that)
+                boolean free = kind == PartKind.MAGNET || (kind == PartKind.BLOCK && player != null && player.isShiftKeyDown());
+                Dir along = player != null && player.isShiftKeyDown() && axis.axis() == shaft.axis.axis() ? axis : shaft.axis;
+                return finishBlockScale(level, player, stack, spec, clicked, cbe, free ? axis : along);
             }
         }
         target = level.getBlockState(clicked).canBeReplaced() && !(level.getBlockEntity(clicked) instanceof AssemblyBlockEntity)

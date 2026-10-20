@@ -196,6 +196,33 @@ public final class EmergenceGameTests {
         });
     }
 
+    /** The condensing engine runs in the world as in the core tests: its exhaust into a cold condenser holding a vacuum. */
+    @GameTest(template = "arena", timeoutTicks = 300, batch = "condensing")
+    public static void condensingEngineRunsInWorld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.Exhibits.condensingEngine();
+        placeExhibit(h, plot, ex);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos shaftAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "shaft");
+        BlockPos condAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "condenser");
+        PlacedPart shaft = only(h, shaftAt, PartKind.SHAFT), cond = only(h, condAt, PartKind.TANK);
+        for (int tick : new int[]{20, 60, 100, 140, 180}) {
+            h.runAtTickTime(tick, () -> {
+                Probe ps = sim.probe(shaftAt, shaft.id);
+                double[] f = sim.compiledAt(condAt) == null ? null : sim.compiledAt(condAt).fluid(cond.id);
+                dev.emergence.mod.EmergenceMod.LOG.info("condensing engine at tick {}: ω {} rad/s, condenser {}", tick,
+                        ps == null ? "-" : ps.angularVelocity(), f == null ? "-" : java.util.Arrays.toString(f));
+            });
+        }
+        h.runAtTickTime(200, () -> {
+            Probe ps = sim.probe(shaftAt, shaft.id);
+            double[] f = sim.compiledAt(condAt).fluid(cond.id);
+            h.assertTrue(ps != null && Math.abs(ps.angularVelocity()) > 20, "the engine runs: ω " + (ps == null ? "-" : ps.angularVelocity()));
+            h.assertTrue(f[0] < 20e3, "the condenser holds a vacuum: " + f[0] + " Pa");
+            h.succeed();
+        });
+    }
+
     /** Phase 4 in the world: the EM-4 computer's chips run the ROM program (PC advances, ACC follows it). */
     @GameTest(template = "arena", timeoutTicks = 400, batch = "computer")
     public static void computerRunsItsProgramInWorld(GameTestHelper h) {

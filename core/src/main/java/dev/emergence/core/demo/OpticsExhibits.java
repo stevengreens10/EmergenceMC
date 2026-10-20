@@ -121,34 +121,39 @@ public final class OpticsExhibits {
     }
 
     /**
-     * A periscope: a red LED shines straight up; a mirror leaning 45° over it turns the beam east, over a wall, onto a
-     * second 45° mirror that turns it down onto a photodiode. The receiver lights its green LED while the beam arrives.
+     * A periscope: a red LED shines east, low down; a mirror leaning 45° turns its beam straight up, a second, above the
+     * wall's height, turns it east again over the wall onto a photodiode facing back along it. The receiver lights its
+     * green LED while the beam arrives. The photodiode looks sideways, so the noon sun (straight overhead) never reaches
+     * it: take a mirror away and it goes dark even in daylight.
      */
     public static Exhibit periscope() {
         Exhibit e = new Exhibit("periscope", "Periscope",
                 List.of("PERISCOPE", "Two 45° mirrors", "carry the light", "over the wall"),
                 "Light leaves a mirror at the angle it arrived (the law of reflection): a mirror leaning at 45° turns a "
-                        + "beam through a right angle. The red LED shines straight up; the first mirror sends its light "
-                        + "east, over the wall; the second sends it down onto the photodiode, which lights the green LED "
-                        + "through a Schmitt trigger. Polished aluminium reflects about 92 % of red light and warms with "
-                        + "the rest. Take a mirror away and the light goes on up into the sky: the green LED goes out.");
+                        + "beam through a right angle. The red LED shines east, low down; the first mirror sends its "
+                        + "light straight up, the second, above the wall, sends it east again, over the wall, onto the "
+                        + "photodiode, which lights the green LED through a Schmitt trigger. Polished aluminium reflects "
+                        + "about 92 % of red light and warms with the rest. Take the upper mirror away and the light goes "
+                        + "on up into the sky; take the lower one and it hits the wall: the green LED goes out. The "
+                        + "photodiode faces sideways, so even the noon sun, straight overhead, does not light it.");
         String st = "steel_1045";
         e.fill(BLOCK, "oak", 5, 0, 7, 6, 4, 9, Dir.UP);                               // the wall
         e.fill(BLOCK, st, 2, 0, 7, 2, 6, 7, Dir.UP);                                  // columns holding the mirrors
         e.fill(BLOCK, st, 9, 0, 7, 9, 6, 7, Dir.UP);
-        e.name("led", e.add(LED, "silicon", 2, 1, 8, Dir.EAST, "wavelength", 630, "efficiency", 0.25, "beam", 30, "face", 1));
-        e.name("mirrorA", e.add(MIRROR, "aluminium", 2, 6, 8, Dir.DOWN, "tilt", 45, "tilt_toward", Dir.EAST.ordinal()));
-        e.name("mirrorB", e.add(MIRROR, "aluminium", 9, 6, 8, Dir.DOWN, "tilt", 45, "tilt_toward", Dir.WEST.ordinal()));
-        e.name("pd", e.add(PHOTODIODE, "silicon", 9, 1, 8, Dir.EAST, "face", 1, "area", 1e-4));
+        e.name("led", e.add(LED, "silicon", 1, 1, 8, Dir.SOUTH, "wavelength", 630, "efficiency", 0.25, "beam", 30, "face", 5));
+        e.name("mirrorA", e.add(MIRROR, "aluminium", 2, 1, 8, Dir.UP, "tilt", 45, "tilt_toward", Dir.WEST.ordinal()));
+        e.name("mirrorB", e.add(MIRROR, "aluminium", 2, 6, 8, Dir.DOWN, "tilt", 45, "tilt_toward", Dir.EAST.ordinal()));
+        e.name("pd", e.add(PHOTODIODE, "silicon", 9, 6, 8, Dir.UP, "face", 4, "area", 1e-4));
         int bat = e.add(CAPACITOR, "alumina", 14, 1, 12, Dir.EAST, "capacitance", 10);
         e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         e.add(RESISTOR, "alumina", 14, 1, 10, Dir.EAST, "resistance", 150);         // the red LED's current
-        Router r = new Router(e, 0, 0, 7, 17, 7, 15);
-        r.keepClear(2, 2, 8, 2, 5, 8).keepClear(3, 6, 8, 8, 6, 8).keepClear(9, 2, 8, 9, 5, 8);
+        Router r = new Router(e, 0, 0, 7, 17, 8, 15);
+        // the beam's path: up from the lower mirror, east over the wall
+        r.keepClear(2, 2, 8, 2, 5, 8).keepClear(3, 6, 8, 8, 6, 8);
         r.pin("vdd", 15, 1, 12).pin("vdd", 15, 1, 10);
-        r.pin("gnd", 13, 1, 12).pin("gnd", 3, 1, 8);
-        r.pin("ledA", 13, 1, 10).pin("ledA", 1, 1, 8);
-        receiver(e, r, 3, 11, 2.2e6, new int[]{8, 1, 8}, new int[]{10, 1, 8});
+        r.pin("gnd", 13, 1, 12).pin("gnd", 1, 1, 9);
+        r.pin("ledA", 13, 1, 10).pin("ledA", 1, 1, 7);
+        receiver(e, r, 3, 11, 2.2e6, new int[]{9, 5, 8}, new int[]{9, 7, 8});
         r.route();
         return e.view(6, 6, 22, 15);
     }

@@ -14,13 +14,18 @@ import dev.emergence.core.sim.StateView;
  */
 public final class HumanCrank implements Element {
     private final Node node, ref;
-    private final double radius;
+    private double radius;
     private int direction; // +1, −1 or 0 (not cranking)
     private boolean sprint;
 
     public HumanCrank(Node node, Node ref, double radius) {
         this.node = node;
         this.ref = ref;
+        this.radius = radius;
+    }
+
+    /** Where the hand pushes [m from the axis]: a crank's radius, or where a person grips a wheel. */
+    public void setRadius(double radius) {
         this.radius = radius;
     }
 

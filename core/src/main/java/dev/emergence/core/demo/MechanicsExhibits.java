@@ -107,14 +107,14 @@ public final class MechanicsExhibits {
         int prod = e.fill(SHAFT, st, 4, 3, 8, 4, 6, 8, Dir.UP, "diameter", 0.01);
         e.name("pumpRod", prod);
         e.add(LINEAR_BEARING, st, 4, 5, 8, Dir.UP);
-        e.fill(BLOCK, st, 5, 1, 8, 5, 5, 8, Dir.UP);
+        e.fill(BLOCK, st, 5, 2, 8, 5, 5, 8, Dir.UP);              // a column standing on the pipe
         e.name("handle", e.add(BLOCK, "oak", 4, 7, 8, Dir.UP, "fill", 0.3));
         // the ram: 5 cm bore, carrying a lead weight
         e.name("ram", e.add(CYLINDER, st, 10, 2, 8, Dir.UP, "bore", 0.05, "fluid", 1));
         int rrod = e.fill(SHAFT, st, 10, 3, 8, 10, 6, 8, Dir.UP, "diameter", 0.02);
         e.name("ramRod", rrod);
         e.add(LINEAR_BEARING, st, 10, 5, 8, Dir.UP);
-        e.fill(BLOCK, st, 9, 1, 8, 9, 5, 8, Dir.UP);
+        e.fill(BLOCK, st, 9, 2, 8, 9, 5, 8, Dir.UP);
         e.name("weight", e.add(BLOCK, "lead", 10, 7, 8, Dir.UP));
         return e.view(7, 5, 15, 12);
     }

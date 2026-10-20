@@ -86,6 +86,33 @@ public final class AssemblyBlockEntity extends BlockEntity {
         return (p.x1 - p.x0 + 1) * (p.y1 - p.y0 + 1) * (p.z1 - p.z0 + 1);
     }
 
+    /**
+     * The part a player is pointing at: the one whose outline the hit point lies on (a crank sharing its cell with the
+     * shaft end it is fixed to is the crank where its handle is hit, the shaft where the shaft is) — else the part in
+     * that cell. {@code hit} is in world coordinates.
+     */
+    public PlacedPart partHit(net.minecraft.world.phys.Vec3 hit, net.minecraft.core.Direction face) {
+        net.minecraft.world.phys.Vec3 local = hit.subtract(worldPosition.getX(), worldPosition.getY(), worldPosition.getZ());
+        PlacedPart best = null;
+        double bestGap = 2e-3;
+        for (PlacedPart p : parts) {
+            for (net.minecraft.world.phys.AABB b : dev.emergence.mod.part.PartShapes.boxes(this, p)) {
+                if (!b.inflate(2e-3).contains(local)) continue;
+                // how far the point is from the box's surface: the box that was hit has it on its surface
+                double gap = Math.min(Math.min(Math.min(Math.abs(local.x - b.minX), Math.abs(local.x - b.maxX)),
+                                Math.min(Math.abs(local.y - b.minY), Math.abs(local.y - b.maxY))),
+                        Math.min(Math.abs(local.z - b.minZ), Math.abs(local.z - b.maxZ)));
+                if (gap < bestGap) {
+                    bestGap = gap;
+                    best = p;
+                }
+            }
+        }
+        if (best != null) return best;
+        int[] c = dev.emergence.mod.block.AssemblyBlock.cellAt(this, hit, face);
+        return partAt(c[0], c[1], c[2]);
+    }
+
     public PlacedPart byId(long id) {
         for (PlacedPart p : parts) if (p.id == id) return p;
         return null;
@@ -98,7 +125,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
     public static boolean mayOverlap(PartKind a, PartKind b) {
         if (a == PartKind.SHAFT) return b == PartKind.BEARING || b == PartKind.POTENTIOMETER || b == PartKind.MAGNET
                 || b == PartKind.GEAR || b == PartKind.BLOCK || b == PartKind.CRANK
-                || b == PartKind.ECCENTRIC || (b.holdsFluid() && b != PartKind.CYLINDER);
+                || b == PartKind.ECCENTRIC || b == PartKind.LINEAR_BEARING || b == PartKind.NUT || b == PartKind.COIL || (b.holdsFluid() && b != PartKind.CYLINDER);
         if (b == PartKind.SHAFT) return mayOverlap(b, a);
         return false;
     }

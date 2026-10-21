@@ -716,9 +716,10 @@ public final class Exhibits {
 
     /**
      * Wöhler's axles: two shafts the same size, each in two bearings with the same lead disc overhung beyond the outer
-     * one, spun up and left to turn. The disc's weight bends each shaft at its outer bearing; as it turns, the bending
-     * reverses every revolution (rotating bending, ~260 MPa). The steel shaft is below its endurance limit and turns
-     * for ever; the aluminium one, at the same stress, cracks through after about two thousand turns and drops its disc.
+     * one, spun up by hand through a 5 : 1 step-up gear pair and left to turn. The disc's weight bends each shaft at its
+     * outer bearing; as it turns, the bending reverses every revolution (rotating bending, ~260 MPa). The steel shaft is
+     * below its endurance limit and turns for ever; the aluminium one, at the same stress, cracks through after about
+     * two thousand turns and drops its disc.
      */
     public static Exhibit fatigue() {
         Exhibit e = new Exhibit("fatigue", "Metal fatigue",
@@ -730,32 +731,41 @@ public final class Exhibits {
                         + "axles, 1860s) that metal cracks under a stress repeated often enough, the more readily the "
                         + "higher it is. Steel has an endurance limit (here 280 MPa): below it, it lasts for ever. "
                         + "Aluminium has none: at this stress the left shaft cracks after about two thousand turns and its "
-                        + "disc falls. This is why aircraft are inspected and retired by flight hours.");
+                        + "disc falls. This is why aircraft are inspected and retired by flight hours. Spin each shaft up "
+                        + "with its crank: a 40-tooth gear drives an 8-tooth pinion on the shaft, five turns for one.");
         String st = "steel_1045";
         String[] shaft = {"aluminium_6061", st};
         String[] name = {"aluminium", "steel"};
         for (int k = 0; k < 2; k++) {
             int z = 4 + 6 * k;
             // the frame: two columns carrying the bearings
-            e.fill(BLOCK, st, 2, 0, z, 2, 2, z, Dir.UP);
-            e.fill(BLOCK, st, 4, 0, z, 4, 2, z, Dir.UP);
-            e.add(BEARING, st, 2, 3, z, Dir.EAST);
-            e.add(BEARING, st, 4, 3, z, Dir.EAST);
-            int s = e.fill(SHAFT, shaft[k], 1, 3, z, 6, 3, z, Dir.EAST, "diameter", 0.0084);
+            e.fill(BLOCK, st, 6, 0, z, 6, 2, z, Dir.UP);
+            e.fill(BLOCK, st, 8, 0, z, 8, 2, z, Dir.UP);
+            e.add(BEARING, st, 6, 3, z, Dir.EAST);
+            e.add(BEARING, st, 8, 3, z, Dir.EAST);
+            int s = e.fill(SHAFT, shaft[k], 4, 3, z, 10, 3, z, Dir.EAST, "diameter", 0.0084);
             e.name(name[k] + "Shaft", s);
-            e.name(name[k] + "Root", s + 3); // the shaft in its outer bearing, where it bends most
-            e.init(s, new Exhibit.Initial(Double.NaN, 150, 0));
-            e.add(CRANK, st, 0, 3, z, Dir.EAST, "radius", 0.1);
+            e.name(name[k] + "Root", s + 4); // the shaft in its outer bearing, where it bends most
+            // the drive: an 8-tooth pinion on the shaft's inner end, a 40-tooth gear above it on a countershaft (their
+            // pitch circles touch: 3 blocks between centres), and a crank on that. A hand turns a crank some 37 rad/s
+            // at most; geared up five times, the shaft some 190. (A bare length of shaft between each gear or crank and
+            // its bearing: a wheel set against a bearing's housing would be fixed to it.)
+            e.add(GEAR, st, 4, 3, z, Dir.EAST, "teeth", 8, "pitch_radius", 0.5 / 16, "thickness", 0.012);
+            e.fill(BLOCK, st, 2, 0, z, 2, 5, z, Dir.UP);
+            e.add(BEARING, st, 2, 6, z, Dir.EAST);
+            e.name(name[k] + "Countershaft", e.fill(SHAFT, st, 1, 6, z, 4, 6, z, Dir.EAST, "diameter", 0.015));
+            e.add(GEAR, st, 4, 6, z, Dir.EAST, "teeth", 40, "pitch_radius", 2.5 / 16, "thickness", 0.012);
+            e.name(name[k] + "Crank", e.add(CRANK, st, 0, 6, z, Dir.EAST, "radius", 0.08));
             // the disc: nine lead plates on the shaft's end (the middle one round the shaft itself)
             int d = -1;
             for (int y = 2; y <= 4; y++)
                 for (int dz = -1; dz <= 1; dz++) {
-                    int q = e.add(BLOCK, "lead", 6, y, z + dz, Dir.EAST, "fill", 0.5);
+                    int q = e.add(BLOCK, "lead", 10, y, z + dz, Dir.EAST, "fill", 0.5);
                     if (d < 0) d = q;
                 }
             e.name(name[k] + "Disc", d);
         }
-        return e.view(3.5, 5, 17, 18, -150);
+        return e.view(7, 7, 18, 22, -150);
     }
 
     /**

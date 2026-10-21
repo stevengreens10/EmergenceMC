@@ -1733,20 +1733,42 @@ class DemoExhibitsTest {
         assertEquals(sigma, al[0], 0.01 * sigma, "rotating-bending amplitude at the bearing");
         assertTrue(Double.isInfinite(st[2]), "steel below its endurance limit lasts for ever");
         assertTrue(al[2] > 1e3 && al[2] < 1e4, "aluminium has a finite life");
-        // turn until the aluminium cracks: revolutions counted from the shaft's angle
+        for (String k : new String[]{"aluminium", "steel"}) {
+            double[] f = c.fatigue(b.id(e, k + "Countershaft")); // (null: nothing overhung to bend it)
+            assertTrue(f == null || Double.isInfinite(f[2]), k + ": the drive's countershaft lasts");
+        }
+        // both at rest: each cranked up by hand through its gears in turn, then left to run; the aluminium shaft's
+        // revolutions counted from its angle until it cracks
         long alBody = alRoot;
-        double turned = 0, last = c.probe(alBody).angle();
+        double[] turned = {0}, last = {c.probe(alBody).angle()};
         boolean broke = false;
-        for (int i = 0; i < 4000 && !broke; i++) {
+        java.util.function.Supplier<java.util.List<Long>> step = () -> {
             var gone = c.step(0.05);
-            double th = c.probe(alBody).angle();
-            turned += Math.abs(th - last) / (2 * Math.PI);
-            last = th;
+            if (!gone.contains(alRoot)) {
+                double th = c.probe(alBody).angle();
+                turned[0] += Math.abs(th - last[0]) / (2 * Math.PI);
+                last[0] = th;
+            }
+            return gone;
+        };
+        for (String k : new String[]{"aluminium", "steel"}) {
+            long crank = b.id(e, k + "Crank");
+            for (int i = 0; i < 300; i++) {
+                c.setCrankEffort(crank, 1, false);
+                assertFalse(step.get().contains(alRoot), "no crack while still spinning up");
+            }
+            c.setCrankEffort(crank, 0, false);
+            double w = Math.abs(c.probe(b.id(e, k + "Root")).angularVelocity());
+            System.out.printf("  %s cranked for 15 s: %.0f rad/s%n", k, w);
+            assertTrue(w > 100, k + ": a hand spins it up through its gears");
+        }
+        for (int i = 0; i < 4000 && !broke; i++) {
+            var gone = step.get();
             if (gone.contains(alRoot)) {
                 broke = true;
                 System.out.printf("  aluminium cracked after %.0f turns (%.1f s; Miner's sum of the Basquin life %.0f); its disc falls: %s%n",
-                        turned, c.time(), al[2], gone.contains(b.id(e, "aluminiumDisc")));
-                assertEquals(al[2], turned, 0.05 * al[2], "at its Basquin life");
+                        turned[0], c.time(), al[2], gone.contains(b.id(e, "aluminiumDisc")));
+                assertEquals(al[2], turned[0], 0.05 * al[2], "at its Basquin life");
                 assertTrue(gone.contains(b.id(e, "aluminiumDisc")), "the disc beyond the crack falls");
                 assertFalse(gone.contains(stRoot), "the steel shaft is intact");
             }

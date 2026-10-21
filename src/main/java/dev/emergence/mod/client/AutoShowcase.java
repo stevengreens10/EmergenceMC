@@ -175,9 +175,12 @@ public final class AutoShowcase {
             if (id.equals("glow") || id.equals("fuse")) {
                 BlockPos wire = at.apply("wire");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
+                // judged on its peak: the wire glows for a moment and cools while the eye flies back from the switch
+                Sampler peak = new Sampler();
                 STEPS.add(new Step(40, view, shot.apply("discharged"), () -> hottest(wire) > 950 || gone(wire))
+                        .sample(peak, () -> has(server, wire, PartKind.WIRE) ? temperature(server, wire, PartKind.WIRE) : Double.NaN)
                         .check(key + " the discharge heats the wire to a glow (or blows it)",
-                                () -> !has(server, wire, PartKind.WIRE) ? that(true, "the wire has blown") : atLeast("wire temperature [K]", temperature(server, wire, PartKind.WIRE), 900)));
+                                () -> !has(server, wire, PartKind.WIRE) ? that(true, "the wire has blown") : atLeast("wire's peak temperature [K]", peak.max(), 900)));
             }
             if (id.equals("dcmotor") || id.equals("corrosion")) {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
@@ -566,8 +569,19 @@ public final class AutoShowcase {
                 }));
             }
             if (id.equals("fatigue")) {
-                // both shafts spin; the aluminium one cracks after some two thousand turns and drops its disc
+                // both at rest: crank each up through its gears and let go; the aluminium shaft cracks after some two
+                // thousand turns and drops its disc
                 BlockPos root = at.apply("aluminiumRoot");
+                for (String k : new String[]{"aluminium", "steel"}) {
+                    BlockPos shaftAt = at.apply(k + "Root");
+                    STEPS.add(new Step(600, NOTHING, null, () -> motion(server, shaftAt, PartKind.SHAFT) > 120)
+                            .act(PlayerHand.hold(key + " crank the " + k + " shaft up to speed", part.apply(k + "Crank", PartKind.CRANK), false)));
+                    STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+                }
+                STEPS.add(new Step(40, view, shot.apply("spinning")).check(key + " the hand spins both shafts up through the gears", () -> {
+                    double a = motion(server, at.apply("aluminiumRoot"), PartKind.SHAFT), st = motion(server, at.apply("steelRoot"), PartKind.SHAFT);
+                    return that(a > 60 && st > 60, String.format("aluminium %.0f rad/s, steel %.0f rad/s, expected both above 60", a, st));
+                }));
                 STEPS.add(new Step(8000, NOTHING, shot.apply("cracked"), () -> gone(root, PartKind.SHAFT))
                         .check(key + " the aluminium shaft fails by fatigue", () -> that(!has(server, root, PartKind.SHAFT),
                                 "aluminium shaft " + (has(server, root, PartKind.SHAFT) ? "still whole" : "cracked") + "; expected to crack")));

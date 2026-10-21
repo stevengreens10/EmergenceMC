@@ -8,10 +8,10 @@
      the gas engine next door by line of sight;
    - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
      (done: the fan train, governors, unbalanced rotor, flywheels, eddy brake and gas engine start at rest and are
-     started by hand — the engine with its fuel, a starting handle and the brake off) still opening in motion: the
+     started by hand — the engine with its fuel, a starting handle and the brake off; the fatigue rig through a 5 : 1
+     step-up gear pair, 176 rad/s in 15 s) still opening in motion: the
      steam engines on their pre-heated plants, the four-bar (its consistent start is what its test
-     measures; the tour turns its crank), the flyball (minutes to spin up) and the fatigue rig (150 rad/s: a motor's
-     job, not a hand's — a motor from parts to drive it);
+     measures; the tour turns its crank) and the flyball (minutes to spin up);
      keep only boilers, fires and furnaces pre-started;
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
    - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;
@@ -21,6 +21,10 @@
    - (done: the tour flies between viewpoints and to its hands' spots in spectator mode, landing in creative —
      `Flight`; 10/10 checks over five exhibits with it) confirm in a full tour; shots taken where the hand stood
      (a step without the exhibit's view) to review in its screenshots;
+   - the EM-4's island (912 parts) failed once in the world, 24 s after the tour flipped its sense switch and left:
+     time-step underflow at 71.5 s with a chip output Newton-stepped to 563 V, recovered by a restart at rest; the
+     core runs it with the switch flipped at 30–60 s, steps of 45 and 50 ms, to 130 s without failing (the same
+     world-only pattern as the loudspeaker's below — look for what the world adds: sunlight, a partial step);
    - the loudspeaker's island (527 parts, audio-rate) failed once in the world, idle for minutes with its switch off:
      time-step underflow at a resistor's node at 6.3 s, recovered by a restart at rest; the core runs it idle and on
      to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:

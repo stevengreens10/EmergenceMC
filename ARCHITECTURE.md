@@ -35,7 +35,7 @@ mod jar.
 | `fluids` | Working-fluid database (`fluids.json`): thermally perfect ideal gases and compressible liquids. |
 | `em` | Magnetostatics (cuboid magnets, current loops), coil geometry, `MagneticSystem` coupling. |
 | `optics` | Geometric optics: Snell/Fresnel/Cauchy (`Optics`), surfaces of an assembly on a cell grid per moving frame (`OpticalScene`), ray-tube light transport (`TubeTracer`). |
-| `assembly` | Grid parts → physics: `Part`, `Assembly`, `AssemblyCompiler`, `CompiledAssembly`, probes, state. |
+| `assembly` | Grid parts → physics: `Part`, `Assembly`, `AssemblyCompiler`, `CompiledAssembly`, probes, state; what each kind of part can be set to (`PartParameters`: parameters, ranges, defaults, materials — the part editor's form and the server's check), stock variants (`PartCatalog`), values as text (`ParamText`). |
 | `demo` | Platform-independent exhibit definitions shared by tests and the demo-world builder. |
 
 ### Unified multiphysics coupling

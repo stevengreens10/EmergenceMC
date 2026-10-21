@@ -673,3 +673,27 @@ rather than the time base — it now crouches first and checks the screen's chan
 before the click; the Geiger counter counts its counter's steps; the unbalanced rotor's platform swing is taken in
 one-second windows over its whole coast-down; the H-bridge is turned backwards by hand for REVERSE; the press handle
 is held until the pump has moved.
+
+**Batteries for supplies, and the watched machine first.** Forty-four exhibits ran from capacitor banks charged before
+the gallery opened — a state no player could set up, and one that faded with time. They now run from batteries: the
+lead–acid element became `Battery` with a second chemistry, nickel–metal hydride, its voltage the Nernst curve of the
+nickel electrode (four cells make the 5 V logic supply that lead–acid's 2.1 V steps could not). One exhibit test moved:
+the spectrometer's 12.75 V lead–acid ran the filament red-hot enough to light the red channel early, so its series
+resistors went from 1.5 to 1.7 Ω. In the world, every island within 48 blocks of a player used to share one pace, so a
+costly neighbour slowed the exhibit being watched: the budget now goes first to each player's nearest machine. The
+fan's windmill and the unbalanced rotor's resonance, both failing in the tour, now pass. The build check now compares
+every rotor and slide with the definition (parts, mass, inertia, travel): all equal — so the press and propeller cart,
+still failing identically every run, are not built differently; their hands are the next thing to trace.
+
+**The part editor, made for people.** The creative tab offered some 150 variants; it now holds one of each kind of
+part, and the editor (right-click the air with a part) makes any variant. Its form comes from a schema in the core
+(`PartParameters`): for each kind every parameter the simulation reads — label, unit, kind of value, range, default
+(or what decides it when automatic), a line on what it does, whether it is advanced, and when it applies (a MOSFET's
+threshold only for MOSFETs, a ROM's bytes only for a ROM) — and the materials it may be made of (no magnet of copper,
+no resistor of salt water). Switches are checkboxes, codes are named choices (fluids, nuclides, gates, directions),
+quantities are sliders over their range (logarithmic where it spans decades) with a ✎ to type an exact value ("4.7k",
+"220 mΩ", or a bare number in the unit shown); values read as people write them ("0.5 mm", "4.7 kΩ", "13 V/µs"). The
+stock variants are named presets ("12 V lead–acid, 7 A·h", "Transformer secondary on a core"); a line at the top works
+out what the settings come to (a spring's stiffness, a coil's resistance and how full its winding space is, a lens's
+focal length, a battery's voltage and energy). The server checks every specification against the same schema, and a
+test checks that all 72 exhibits and every preset pass it.

@@ -7,10 +7,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Ready-made part variants offered in the creative tab. These are stock sizes of primitive parts
- * (as a workshop would keep in stock), not machines.
- */
+/** Part items: one of each kind for the creative tab (its stock variants are presets in the part editor). */
 public final class PartPresets {
     private PartPresets() {}
 
@@ -20,175 +17,13 @@ public final class PartPresets {
         return s;
     }
 
+    /**
+     * The creative tab: one of each kind of part, as it comes; the part editor (right-click the air with it) makes it
+     * into any variant — its stock presets, or settings of the player's own.
+     */
     public static List<ItemStack> all() {
         List<ItemStack> l = new ArrayList<>();
-        // structure (at block scale each block is one 6.25 cm cell of the model)
-        for (String m : new String[]{"steel_1045", "aluminium_6061", "stainless_304", "oak", "granite", "copper", "ptfe", "cfrp"}) {
-            l.add(stack(PartKind.BLOCK, PartSpec.of(m, 1, 1)));
-        }
-        l.add(stack(PartKind.BLOCK, PartSpec.of("aluminium_6061", 1, 1, "fill", 0.25)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("copper", 1, 1, "fill", 0.5)));
-        // thin plates for shelves, beams and bridges (fill = thickness as a fraction of the block)
-        l.add(stack(PartKind.BLOCK, PartSpec.of("steel_1045", 1, 1, "fill", 0.02)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("aluminium_6061", 1, 1, "fill", 0.04)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("oak", 1, 1, "fill", 0.2)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("glass", 1, 1, "fill", 0.075)));
-        // rotating machinery elements
-        l.add(stack(PartKind.SHAFT, PartSpec.of("steel_1045", 1, 1, "diameter", 0.02)));
-        l.add(stack(PartKind.SHAFT, PartSpec.of("steel_1045", 4, 1, "diameter", 0.02)));
-        l.add(stack(PartKind.SHAFT, PartSpec.of("steel_1045", 16, 1, "diameter", 0.025)));
-        l.add(stack(PartKind.BEARING, PartSpec.of("steel_1045", 1, 1, "type", 0)));
-        l.add(stack(PartKind.BEARING, PartSpec.of("bronze", 1, 1, "type", 1)));
-        // spur gears of one tooth module (m = 2r/z = 7.8 mm) so any two of them mesh at centre distance r1 + r2
-        l.add(stack(PartKind.GEAR, PartSpec.of("steel_1045", 1, 1, "teeth", 8, "pitch_radius", 0.5 / 16)));
-        l.add(stack(PartKind.GEAR, PartSpec.of("steel_1045", 1, 1, "teeth", 24, "pitch_radius", 1.5 / 16)));
-        l.add(stack(PartKind.GEAR, PartSpec.of("steel_1045", 1, 1, "teeth", 40, "pitch_radius", 2.5 / 16)));
-        l.add(stack(PartKind.GEAR, PartSpec.of("brass", 1, 1, "teeth", 16, "pitch_radius", 1.0 / 16)));
-        l.add(stack(PartKind.CRANK, PartSpec.of("steel_1045", 1, 1, "radius", 0.15)));
-        // magnetics
-        l.add(stack(PartKind.MAGNET, PartSpec.of("ndfeb_n42", 1, 1)));
-        l.add(stack(PartKind.MAGNET, PartSpec.of("ferrite_c8", 1, 1)));
-        l.add(stack(PartKind.MAGNET, PartSpec.of("alnico_5", 1, 1)));
-        l.add(stack(PartKind.MAGNET, PartSpec.of("smco_2_17", 1, 1)));
-        l.add(stack(PartKind.COIL, PartSpec.of("copper", 1, 1, "turns", 100, "wire_diameter", 1.0e-3)));
-        l.add(stack(PartKind.COIL, PartSpec.of("copper", 1, 1, "turns", 400, "wire_diameter", 0.5e-3)));
-        l.add(stack(PartKind.COIL, PartSpec.of("copper", 2, 1, "turns", 300, "wire_diameter", 0.8e-3)));
-        // conductors
-        l.add(stack(PartKind.WIRE, PartSpec.of("copper", 1, 1, "diameter", 1.5e-3)));
-        l.add(stack(PartKind.INSULATED_WIRE, PartSpec.of("copper", 1, 1, "diameter", 1.5e-3)));
-        l.add(stack(PartKind.INSULATED_WIRE, PartSpec.of("copper", 1, 1, "diameter", 0.5e-3)));
-        l.add(stack(PartKind.WIRE, PartSpec.of("nichrome", 1, 1, "diameter", 0.3e-3)));
-        l.add(stack(PartKind.WIRE, PartSpec.of("tungsten", 1, 1, "diameter", 0.05e-3)));
-        l.add(stack(PartKind.WIRE, PartSpec.of("copper", 1, 1, "diameter", 0.3e-3, "flexible", 1)));
-        l.add(stack(PartKind.WIRE, PartSpec.of("constantan", 1, 1, "diameter", 0.5e-3)));
-        l.add(stack(PartKind.BRUSH, PartSpec.of("graphite", 1, 1)));
-        // manufactured components
-        for (double r : new double[]{1, 10, 100, 1000}) l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", r)));
-        l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 1e-4)));
-        l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 1e-2)));
-        l.add(stack(PartKind.DIODE, PartSpec.of("silicon", 1, 1)));
-        l.add(stack(PartKind.SWITCH, PartSpec.of("brass", 1, 1)));
-        // electrochemistry: solutions in glass jars and electrode metals
-        for (String m : new String[]{"copper_sulfate_1m", "zinc_sulfate_1m", "sulfuric_acid_1m", "brine", "silver_nitrate_01m"}) {
-            l.add(stack(PartKind.ELECTROLYTE, PartSpec.of(m, 1, 1)));
-        }
-        for (String m : new String[]{"zinc", "lead", "nickel", "silver", "iron", "graphite"}) {
-            l.add(stack(PartKind.BLOCK, PartSpec.of(m, 1, 1)));
-        }
-        // fluids: pipes, vessels, valves and bladed rotors (fluid codes: 0 air, 1 water, 2 helium, 4 oil)
-        l.add(stack(PartKind.PIPE, PartSpec.of("copper", 1, 1, "bore", 0.025)));
-        l.add(stack(PartKind.PIPE, PartSpec.of("steel_1045", 1, 1, "bore", 0.04)));
-        l.add(stack(PartKind.PIPE, PartSpec.of("pvc", 1, 1, "bore", 0.05, "wall", 0.003)));
-        l.add(stack(PartKind.PIPE, PartSpec.of("copper", 1, 1, "bore", 0.025, "fluid", 1)));
-        l.add(stack(PartKind.PIPE, PartSpec.of("steel_1045", 1, 1, "bore", 0.012, "wall", 0.003, "fluid", 4)));
-        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1)));
-        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "pressure", 1e6, "wall", 0.004, "gauge_range", 16)));
-        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "fluid", 1)));
-        // sealed vessels charged with reacting gases
-        l.add(stack(PartKind.TANK, PartSpec.of("glass", 1, 1, "x_N2O4", 1, "pressure", 5000, "wall", 0.002)));
-        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "x_CH4", 0.095, "x_O2", 0.19, "x_N2", 0.715, "pressure", 101325,
-                "wall", 0.0015)));
-        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "x_N2", 0.78, "x_O2", 0.21, "x_Ar", 0.01, "pressure", 101325)));
-        l.add(stack(PartKind.TANK, PartSpec.of("aluminium_6061", 1, 1, "fluid", 2, "pressure", 5e5, "gauge_range", 10)));
-        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.025)));
-        l.add(stack(PartKind.VALVE, PartSpec.of("steel_1045", 1, 1, "bore", 0.04)));
-        // water and steam (fluid 7): a boiler a third full, steam pipe, safety valve, cam-worked valve, throttle
-        l.add(stack(PartKind.TANK, PartSpec.of("steel_1045", 1, 1, "fluid", 7, "fill", 0.6, "wall", 0.003, "gauge_range", 6)));
-        l.add(stack(PartKind.PIPE, PartSpec.of("copper", 1, 1, "bore", 0.008, "fluid", 7)));
-        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.006, "fluid", 7, "relief", 4.5e5)));
-        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.008, "fluid", 7, "lap", 0.7)));
-        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.0012, "fluid", 7)));
-        l.add(stack(PartKind.VALVE, PartSpec.of("brass", 1, 1, "bore", 0.01, "relief", 2e4)));
-        l.add(stack(PartKind.BRAKE, PartSpec.of("oak", 1, 1, "force", 20)));
-        l.add(stack(PartKind.BRAKE, PartSpec.of("alumina", 1, 1, "force", 100)));
-        l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1)));
-        l.add(stack(PartKind.ROTOR, PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", -1)));
-        l.add(stack(PartKind.ROTOR, PartSpec.of("steel_1045", 1, 1, "blade_angle", 65, "pitch", 1)));
-        // reciprocating machinery
-        l.add(stack(PartKind.CYLINDER, PartSpec.of("steel_1045", 1, 1, "bore", 0.04, "fins", 6)));
-        l.add(stack(PartKind.CYLINDER, PartSpec.of("aluminium_6061", 1, 1, "bore", 0.04, "fins", 6)));
-        l.add(stack(PartKind.CYLINDER, PartSpec.of("steel_1045", 1, 1, "bore", 0.025)));
-        for (double t : new double[]{0.01, 0.015, 0.02}) l.add(stack(PartKind.ECCENTRIC, PartSpec.of("steel_1045", 1, 1, "throw", t)));
-        // semiconductors
-        for (int type = 0; type < 4; type++) l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", type)));
-        // NPN phototransistors: the window looking up, or sideways
-        for (int face : new int[]{1, 2, 4}) l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 0, "photo", 7.5e-6, "face", face)));
-        for (double nm : new double[]{630, 590, 525, 470}) l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", nm)));
-        l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10)));
-        l.add(stack(PartKind.CAPACITOR, PartSpec.of("alumina", 1, 1, "capacitance", 10e-6)));
-        for (double r : new double[]{470, 10_000, 100_000}) l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", r)));
-        l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 10_000, "ntc_beta", 3950)));
-        l.add(stack(PartKind.RESISTOR, PartSpec.of("alumina", 1, 1, "resistance", 6)));
-        for (int fn = 0; fn <= 8; fn++) l.add(stack(PartKind.LOGIC, PartSpec.of("silicon", 1, 1, "function", fn)));
-        // light: IR and visible LEDs pointing in each direction, photodiodes, solar cells
-        l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", 850, "efficiency", 0.3, "beam", 20)));
-        l.add(stack(PartKind.LED, PartSpec.of("silicon", 1, 1, "wavelength", 850, "efficiency", 0.3, "beam", 20, "face", 5)));
-        for (int face = 0; face < 6; face++) l.add(stack(PartKind.PHOTODIODE, PartSpec.of("silicon", 1, 1, "area", 7.5e-6, "face", face)));
-        l.add(stack(PartKind.PHOTODIODE, PartSpec.of("silicon", 1, 1, "area", 0.0035, "face", 1)));
-        // control: potentiometers (shaft through the housing), a damped knob bearing, op-amps, power transistors
-        l.add(stack(PartKind.POTENTIOMETER, PartSpec.of("nylon_66", 1, 1, "resistance", 10_000)));
-        l.add(stack(PartKind.POTENTIOMETER, PartSpec.of("nylon_66", 1, 1, "resistance", 10_000, "lead_axis", 1)));
-        l.add(stack(PartKind.POTENTIOMETER, PartSpec.of("nylon_66", 1, 1, "resistance", 1_000)));
-        l.add(stack(PartKind.BEARING, PartSpec.of("bronze", 1, 1, "type", 2, "viscosity", 2000)));
-        l.add(stack(PartKind.OPAMP, PartSpec.of("silicon", 1, 1)));
-        l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 0, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
-        l.add(stack(PartKind.TRANSISTOR, PartSpec.of("silicon", 1, 1, "type", 1, "beta", 60, "saturation_current", 1e-12, "surface_area", 0.03)));
-        // magnetic circuits: coils wound on an electrical-steel core (leads out the sides), and the core material
-        l.add(stack(PartKind.COIL, PartSpec.of("copper", 1, 1, "turns", 200, "wire_diameter", 0.8e-3, "core", 1, "bore_fraction", 0.6, "lead_axis", 1)));
-        l.add(stack(PartKind.COIL, PartSpec.of("copper", 1, 1, "turns", 1000, "wire_diameter", 0.3e-3, "core", 1, "bore_fraction", 0.6, "lead_axis", 1)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("electrical_steel", 1, 1)));
-        // slides: linear bearings and springs
-        l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1)));
-        l.add(stack(PartKind.LINEAR_BEARING, PartSpec.of("steel_1045", 1, 1, "travel", 0.0015))); // stop collars: ±1.5 mm
-        l.add(stack(PartKind.LINK, PartSpec.of("steel_1045", 1, 1)));
-        l.add(stack(PartKind.BATTERY, PartSpec.of("pvc", 1, 1, "cells", 6, "capacity", 7)));
-        l.add(stack(PartKind.BATTERY, PartSpec.of("pvc", 1, 1, "cells", 12, "capacity", 7)));
-        l.add(stack(PartKind.BATTERY, PartSpec.of("pvc", 1, 1, "cells", 3, "capacity", 1.2)));
-        l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.002)));
-        l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.003)));
-        // stiff and preloaded (fitted 8.7 mm short): a governor's spring, pressing ~210 N before it gives
-        l.add(stack(PartKind.SPRING, PartSpec.of("steel_1045", 1, 1, "wire", 0.006, "preload", 0.0087)));
-        // rotary to linear: racks with their teeth on each side, fine and steep lead-screw nuts
-        for (int face = 0; face < 6; face++) l.add(stack(PartKind.RACK, PartSpec.of("steel_1045", 4, 1, "face", face)));
-        l.add(stack(PartKind.NUT, PartSpec.of("bronze", 1, 1, "lead", 0.004)));
-        l.add(stack(PartKind.NUT, PartSpec.of("bronze", 1, 1, "lead", 0.04)));
-        // optics: flat mirrors (aluminium, silver), 45° mirrors leaning each way, concave mirrors, lenses, glass
-        l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1)));
-        l.add(stack(PartKind.MIRROR, PartSpec.of("silver", 1, 1)));
-        for (int to = 0; to < 6; to++) l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1, "tilt", 45, "tilt_toward", to)));
-        l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1, "radius", 0.5)));
-        l.add(stack(PartKind.MIRROR, PartSpec.of("aluminium", 1, 1, "radius", 2.0)));
-        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1)));
-        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1, "radius", 0.25)));
-        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1, "radius", 0.06, "radius2", 0)));
-        l.add(stack(PartKind.LENS, PartSpec.of("glass_bk7", 1, 1, "radius", -0.12, "radius2", 0.12)));
-        l.add(stack(PartKind.LENS, PartSpec.of("glass_sf11", 1, 1)));
-        l.add(stack(PartKind.LENS, PartSpec.of("acrylic", 1, 1)));
-        for (int to = 2; to < 6; to++) l.add(stack(PartKind.PRISM, PartSpec.of("glass_sf11", 1, 1, "apex", 45, "face", to)));
-        l.add(stack(PartKind.PRISM, PartSpec.of("glass_bk7", 1, 1, "apex", 60)));
-        for (int pitch : new int[]{-5, -10, -20, 10, 30}) l.add(stack(PartKind.BLADE, PartSpec.of("aluminium_6061", 1, 1, "pitch", pitch)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("glass_bk7", 1, 1)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("glass_sf11", 1, 1)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("fused_silica", 1, 1)));
-        // radioactivity: school check sources (sealed), a Ba-137m sample, a Geiger–Müller tube, lead shielding
-        l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5)));
-        l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 2, "activity", 3.7e4)));
-        l.add(stack(PartKind.SOURCE, PartSpec.of("stainless_304", 1, 1, "nuclide", 3, "activity", 3.7e4)));
-        l.add(stack(PartKind.SOURCE, PartSpec.of("glass", 1, 1, "nuclide", 1, "activity", 2e5)));
-        l.add(stack(PartKind.GM_TUBE, PartSpec.of("stainless_304", 1, 1)));
-        l.add(stack(PartKind.BLOCK, PartSpec.of("lead", 1, 1, "fill", 0.16)));
-        // MSI chips (counter, register, adder, blank ROM) and a ROM holding the EM-4 stepper program
-        for (int fn = 0; fn < dev.emergence.core.sim.elements.MsiChip.Type.values().length; fn++)
-            l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, "function", fn)));
-        Object[] prog = new Object[2 + 32];
-        prog[0] = "function";
-        prog[1] = 3;
-        for (int w = 0; w < 16; w++) {
-            prog[2 + 2 * w] = "w" + w;
-            prog[3 + 2 * w] = dev.emergence.core.demo.ComputerExhibit.PROGRAM[w];
-        }
-        l.add(stack(PartKind.CHIP, PartSpec.of("silicon", 1, 1, prog)));
-        l.add(stack(PartKind.BEARING, PartSpec.of("bronze", 1, 1, "type", 2, "viscosity", 1.5)));
+        for (PartKind k : PartKind.values()) l.add(stack(k, PartItem.defaultSpec(k)));
         return l;
     }
 }

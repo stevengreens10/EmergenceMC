@@ -1,0 +1,61 @@
+package dev.emergence.mod.client;
+
+import dev.emergence.core.assembly.PartCatalog;
+import dev.emergence.core.assembly.PartKind;
+import dev.emergence.mod.EmergenceMod;
+import dev.emergence.mod.part.PartItem;
+import dev.emergence.mod.part.PartSpec;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.common.NeoForge;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * A look at the part editor without a person at the keyboard: with {@code -Demergence.editorShots=BATTERY,TANK,…}
+ * (or {@code all}) the showcase client opens the editor on each kind of part — as it comes, then as its last stock
+ * variant with the advanced settings open — saves {@code screenshots/editor-*.png} and quits.
+ */
+final class EditorShots {
+    private EditorShots() {}
+
+    private static final List<Object[]> SHOTS = new ArrayList<>();
+    private static int index, wait = -1, joined;
+
+    static boolean init() {
+        String which = System.getProperty("emergence.editorShots", "");
+        if (which.isBlank()) return false;
+        for (PartKind k : PartKind.values()) {
+            if (!which.equals("all") && !List.of(which.split(",")).contains(k.name())) continue;
+            SHOTS.add(new Object[]{k, PartItem.defaultSpec(k), false, "editor-" + k.name().toLowerCase()});
+            var presets = PartCatalog.of(k);
+            var last = presets.get(presets.size() - 1);
+            SHOTS.add(new Object[]{k, new PartSpec(last.material(), last.length(), 1, last.params()), true, "editor-" + k.name().toLowerCase() + "-preset"});
+        }
+        NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post e) -> tick());
+        return true;
+    }
+
+    private static void tick() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || joined++ < 40) return;
+        if (index >= SHOTS.size()) {
+            mc.stop();
+            return;
+        }
+        Object[] s = SHOTS.get(index);
+        if (wait < 0) {
+            PartEditorScreen screen = new PartEditorScreen((PartKind) s[0], false, (PartSpec) s[1]);
+            if ((boolean) s[2]) screen.showAdvanced();
+            if (s[0] == PartKind.BATTERY && (boolean) s[2]) screen.startTyping("capacity");
+            mc.setScreen(screen);
+            wait = 10;
+        } else if (wait-- == 0) {
+            Screenshot.grab(mc.gameDirectory, s[3] + ".png", mc.getMainRenderTarget(), msg -> EmergenceMod.LOG.info("Editor shot: {}", msg.getString()));
+            index++;
+            wait = -1;
+        }
+    }
+}

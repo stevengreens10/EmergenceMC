@@ -449,15 +449,26 @@ Hand-cranked generator inside a real world heats its resistor; part persistence 
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the
 block-scale gear train meshes across air gaps (island reach) with the 8:40 ratio within 1 %.
 
-## Battery (`LeadAcidBatteryTest`, `BatteryPartTest`)
+## Battery (`BatteryTest`, `BatteryPartTest`)
 A full six-cell battery reads 12.753 V open circuit (Vinal: 12.75 V). Run down 300 s through 12 Ω, the state of charge
 counted (0.841) equals 1 − ∫i dt / capacity to 10⁻³, the terminal voltage sags 11.57 → 11.31 V as the acid thins,
 the battery warms by its i²r, and the energy ledger closes to 10⁻⁷ J. Charged at 14.4 V through 2 Ω it takes charge
 back in (0.50 → 0.533 in 100 s at 0.6 A). As a part wired to a 10 Ω load it delivers 0.976 A (12.75 V over 13 Ω:
-0.981 A), and its state of charge carries through a recompile.
+0.981 A), and its state of charge carries through a recompile. Four nickel–metal hydride cells (1 A·h) follow the
+Nernst curve of their nickel electrode: E½ = 1.30 V at half charge, 1.401 V full, 1.266 V at a fifth (its reported
+slope matches the curve's to 10⁻³); into 20 Ω they read 5.55 V, sagging to 5.32 V over 30 minutes as Faraday's count
+(0.865) says, the ledger closing to 10⁻⁷ J.
+
+## The part editor (`PartParametersTest`, `ParamTextTest`)
+Every part of all 72 exhibits, and every stock preset, passes the editor's checks (a material the kind may be made of,
+known parameters, each in range); every default is in range and every automatic default says what it is; bad
+specifications are refused (a resistor of copper sulfate solution, a magnet of copper, a negative diameter, an unknown
+key, a seventh transistor type, half a cell). Values are shown as people write them ("1.5 mm", "4.7 kΩ", "100 pF",
+"80 %", "13 V/µs") and read back from what they type ("4.7k", "220 mΩ", a bare number in the unit shown).
 
 ## In the world, as a player (`generateDemoWorld`, `runShowcaseClient`)
-The demo world is built by player placement (`PlayerBuilder`): all 72 exhibits come out exactly as defined (0 build
+The demo world is built by player placement (`PlayerBuilder`) and checked body by body against the definitions
+(every rotor and slide: its parts, mass or inertia, a slide's travel): all 72 exhibits come out exactly as defined (0 build
 problems). Building them so found exhibits a player could not have built — linear bearings, lead-screw nuts and
 coils could not share a shaft's cell, a crank could only face along its shaft one way, parts with nothing to click
 against, the wire router laying wire through the cells of components added after it was set up, a press column inside

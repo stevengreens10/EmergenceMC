@@ -53,44 +53,10 @@ public final class PartItem extends Item {
         return s != null ? s : defaultSpec(kind);
     }
 
+    /** A part as it comes before it is edited: the first stock variant of its kind ({@link dev.emergence.core.assembly.PartCatalog}). */
     public static PartSpec defaultSpec(PartKind k) {
-        return switch (k) {
-            case MAGNET -> PartSpec.of("ndfeb_n42", 1, 1);
-            case COIL, WIRE, INSULATED_WIRE -> PartSpec.of("copper", 1, 1);
-            case RESISTOR, CAPACITOR -> PartSpec.of("alumina", 1, 1);
-            case DIODE -> PartSpec.of("silicon", 1, 1);
-            case BRUSH -> PartSpec.of("graphite", 1, 1);
-            case SWITCH -> PartSpec.of("brass", 1, 1);
-            case SHAFT -> PartSpec.of("steel_1045", 4, 1);
-            case ELECTROLYTE -> PartSpec.of("copper_sulfate_1m", 1, 1);
-            case PIPE -> PartSpec.of("copper", 1, 1, "bore", 0.025);
-            case TANK -> PartSpec.of("steel_1045", 1, 1);
-            case VALVE -> PartSpec.of("brass", 1, 1, "bore", 0.025);
-            case ROTOR -> PartSpec.of("aluminium_6061", 1, 1, "blade_angle", 45, "pitch", 1);
-            case CYLINDER -> PartSpec.of("steel_1045", 1, 1, "bore", 0.04, "fins", 4);
-            case ECCENTRIC -> PartSpec.of("steel_1045", 1, 1, "throw", 0.015);
-            case TRANSISTOR -> PartSpec.of("silicon", 1, 1, "type", 0);
-            case LED -> PartSpec.of("silicon", 1, 1, "wavelength", 630);
-            case PHOTODIODE -> PartSpec.of("silicon", 1, 1, "area", 7.5e-6, "face", 1);
-            case LOGIC -> PartSpec.of("silicon", 1, 1, "function", 2);
-            case BRAKE -> PartSpec.of("oak", 1, 1, "force", 20);
-            case CHIP -> PartSpec.of("silicon", 1, 1, "function", 0);
-            case POTENTIOMETER -> PartSpec.of("nylon_66", 1, 1, "resistance", 10_000);
-            case OPAMP -> PartSpec.of("silicon", 1, 1);
-            case SOURCE -> PartSpec.of("stainless_304", 1, 1, "nuclide", 0, "activity", 3.7e5);
-            case GM_TUBE -> PartSpec.of("stainless_304", 1, 1);
-            case LINEAR_BEARING -> PartSpec.of("steel_1045", 1, 1);
-            case SPRING -> PartSpec.of("steel_1045", 1, 1, "wire", 0.002);
-            case RACK -> PartSpec.of("steel_1045", 4, 1, "face", 1);
-            case NUT -> PartSpec.of("bronze", 1, 1, "lead", 0.004);
-            case MIRROR -> PartSpec.of("aluminium", 1, 1);
-            case LENS -> PartSpec.of("glass_bk7", 1, 1);
-            case PRISM -> PartSpec.of("glass_sf11", 1, 1, "apex", 45);
-            case BLADE -> PartSpec.of("aluminium_6061", 1, 1, "pitch", -10);
-            case LINK -> PartSpec.of("steel_1045", 1, 1);
-            case BATTERY -> PartSpec.of("pvc", 1, 1, "cells", 6, "capacity", 7);
-            default -> PartSpec.of("steel_1045", 1, 1);
-        };
+        var p = dev.emergence.core.assembly.PartCatalog.of(k).get(0);
+        return new PartSpec(p.material(), p.length(), 1, p.params());
     }
 
     @Override
@@ -119,7 +85,8 @@ public final class PartItem extends Item {
             case RESISTOR -> ", " + Units.formatSI(p.getOrDefault("resistance", 10.0), "Ω")
                     + (p.getOrDefault("ntc_beta", 0.0) > 0 ? String.format(" NTC thermistor, β %.0f K", p.get("ntc_beta")) : "");
             case CAPACITOR -> ", " + Units.formatSI(p.getOrDefault("capacitance", 1e-4), "F");
-            case BATTERY -> String.format(", %.0f V, %.1f Ah", 2 * p.getOrDefault("cells", 6.0), p.getOrDefault("capacity", 7.0));
+            case BATTERY -> String.format(", %s %.1f V, %.1f Ah", Math.round(p.getOrDefault("chemistry", 0.0)) == 1 ? "NiMH" : "lead–acid",
+                    (Math.round(p.getOrDefault("chemistry", 0.0)) == 1 ? 1.2 : 2.0) * p.getOrDefault("cells", 6.0), p.getOrDefault("capacity", 7.0));
             case GEAR -> ", " + p.getOrDefault("teeth", 24.0).intValue() + " teeth";
             case WIRE, INSULATED_WIRE -> ", ⌀" + Units.formatSI(p.getOrDefault("diameter", 1.5e-3), "m")
                     + (p.getOrDefault("flexible", 0.0) > 0.5 ? ", flexible lead" : "");

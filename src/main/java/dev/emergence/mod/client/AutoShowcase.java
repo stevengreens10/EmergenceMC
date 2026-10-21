@@ -123,6 +123,7 @@ public final class AutoShowcase {
 
     public static void init() {
         if (!Boolean.getBoolean("emergence.autoShowcase")) return;
+        if (EditorShots.init()) return; // a look at the part editor instead of the tour
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post e) -> tick());
     }
 

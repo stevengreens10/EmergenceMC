@@ -152,8 +152,6 @@ public final class ControlExhibits {
         String st = "steel_1045", ny = "nylon_66";
         // ---- the brushed DC motor (as in the DC motor exhibit), its shaft continuing above the frame
         int shaft = brushedMotor(e, 14);
-        // it starts at its governed speed, the tacho and integrator capacitors charged to match (as if it had been running)
-        e.init(shaft, new Exhibit.Initial(Double.NaN, 25.5, 0, 0.3));
         e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
                 {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
         // ---- above the frame: the tacho disc with two magnets of opposite polarity, the fixed tacho coil over their
@@ -179,7 +177,6 @@ public final class ControlExhibits {
             e.add(RESISTOR, "alumina", 20, f, 5, Dir.EAST, "resistance", 10_000);        // tacho → in−
             e.add(RESISTOR, "alumina", 27, f, 4, Dir.EAST, "resistance", 100_000);      // in− → feedback capacitor
             e.name("ci", e.add(CAPACITOR, "alumina", 30, f, 4, Dir.EAST, "capacitance", 10e-6));
-            e.init(e.named.get("ci"), new Exhibit.Initial(Double.NaN, 0, 5.8));
             e.name("npn", e.add(TRANSISTOR, "silicon", 28, f, 8, Dir.EAST, "type", 0, "beta", 60, "saturation_current", 1e-12,
                     "surface_area", 0.03));
             // a driver transistor feeding the power transistor's base (a Darlington pair): the op-amp could not source the
@@ -194,7 +191,6 @@ public final class ControlExhibits {
         // the tacho's rectifier: a diode charging a capacitor, a resistor bleeding it (τ = 2 s)
         e.add(DIODE, "silicon", 20, f, 13, Dir.EAST);
         e.name("ct", e.add(CAPACITOR, "alumina", 24, f, 13, Dir.EAST, "capacitance", 20e-6));
-        e.init(e.named.get("ct"), new Exhibit.Initial(Double.NaN, 0, 4.15));
         e.add(RESISTOR, "alumina", 28, f, 13, Dir.EAST, "resistance", 100_000);
         Router r = new Router(e, 0, 0, 0, 35, 18, 15);
         if (closed) {
@@ -258,8 +254,6 @@ public final class ControlExhibits {
         e.plots = 2;
         String st = "steel_1045", ny = "nylon_66";
         int shaft = brushedMotor(e, 16);
-        // turning already (a coasting start, so the visit need not wait half a minute for it to come up to speed)
-        e.init(shaft, new Exhibit.Initial(Double.NaN, 30, 0, 0.3));
         // ---- the centrifugal switch on the rotor, above the frame: a nylon beam (y = 14) clear of the frame below
         e.add(BLOCK, ny, 8, 14, 8, Dir.UP, "fill", 0.5);                                   // the hub, on the shaft
         e.add(BLOCK, ny, 8, 14, 9, Dir.UP, "fill", 0.5);
@@ -330,7 +324,7 @@ public final class ControlExhibits {
                         + "rod turns the rheostat towards more resistance — the motor's current and torque fall, and its "
                         + "speed settles where the two agree, near 28 radians a second with the weights 9 mm out. Brake it "
                         + "(right-click the pad): the weights sink in, the resistance falls and the motor takes more "
-                        + "current, and the speed sags — by under a tenth. (Below about 25 rad/s the springs, fitted "
+                        + "current, and the speed sags — by some percent. (Below about 25 rad/s the springs, fitted "
                         + "16 mm short, hold the weights against their stops.) Unlike the electronic governor this one "
                         + "has no integrator: it holds the speed only roughly, a little lower under load (droop) — "
                         + "the price Watt's engines paid, and why later governors added a reset. Its rheostat (150 Ω) "
@@ -339,8 +333,8 @@ public final class ControlExhibits {
         e.plots = 2;
         String st = "steel_1045", al = "aluminium_6061", ny = "nylon_66";
         int shaft = brushedMotor(e, 16);
-        // turning already (a coasting start: the heavy rotor would take half a minute to come up to speed), just past
-        // the dead point
+        // turning already: its heavy rotor takes minutes of the world's time to come up to speed (in the world it runs at a
+        // fraction of real time), so the gallery opens with it running — just past the dead point
         e.init(shaft, new Exhibit.Initial(Double.NaN, 28, 0, 0.3));
         e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
                 {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
@@ -351,7 +345,7 @@ public final class ControlExhibits {
         e.add(BLOCK, al, 7, 14, 8, Dir.UP, "fill", 0.15);
         e.add(BLOCK, al, 9, 14, 8, Dir.UP, "fill", 0.15);
         e.fill(BLOCK, st, 5, 13, 8, 5, 14, 8, Dir.UP);
-        e.name("brake", e.add(BRAKE, "bronze", 6, 14, 8, Dir.EAST, "force", 3));
+        e.name("brake", e.add(BRAKE, "bronze", 6, 14, 8, Dir.EAST, "force", 2));
         // ---- the governor on the spindle: a cross at y = 16, risers, the weights on their rods at y = 18
         e.add(BLOCK, al, 8, 16, 8, Dir.UP, "fill", 0.5);                                     // the hub
         e.fill(BLOCK, al, 2, 16, 8, 7, 16, 8, Dir.UP, "fill", 0.12);

@@ -7,7 +7,8 @@
      judged mid-recovery, the gas engine ran as half of itself while its chunks loaded) the periscope's island takes in
      the gas engine next door by line of sight;
    - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
-     flywheels and the fan train are still pre-spun;
+     (done: the fan train, governors and unbalanced rotor start at rest) the flywheels, four-bar, gas engine and
+     fatigue rig still open turning (each would need its own way to be started by hand: a crank, a starter);
      keep only boilers, fires and furnaces pre-started;
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
    - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;

@@ -282,7 +282,6 @@ public final class MechanicsExhibits {
         e.add(BEARING, "bronze", 7, y + 2, 8, Dir.UP, "type", 2, "viscosity", 0.01);
         int shaft = e.fill(SHAFT, st, 7, y + 2, 8, 7, y + 4, 8, Dir.UP, "diameter", 0.012);
         e.name("shaft", shaft);
-        e.init(shaft, new Exhibit.Initial(Double.NaN, 30, 0)); // spinning at 30 rad/s, well above resonance
         e.name("disc", e.add(BLOCK, st, 7, y + 4, 8, Dir.UP));
         e.name("weight", e.add(BLOCK, "lead", 8, y + 4, 8, Dir.UP, "fill", 0.25));
         e.name("crank", e.add(CRANK, st, 7, y + 5, 8, Dir.UP, "radius", 0.1));

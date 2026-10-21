@@ -468,10 +468,6 @@ public final class Exhibits {
         e.add(BEARING, st, 3, y, 14, Dir.EAST);
         e.fill(BLOCK, st, 3, 0, 14, 3, y - 1, 14, Dir.UP);
         e.name("crank", e.add(CRANK, st, 0, y, 14, Dir.WEST, "radius", 0.15));
-        // the gallery opens with the train already turning (speeds in the gear ratios, each mesh reversing)
-        e.init(crankShaft, new Exhibit.Initial(Double.NaN, 16, 0));
-        e.init(midShaft, new Exhibit.Initial(Double.NaN, -80, 0));
-        e.init(fanShaft, new Exhibit.Initial(Double.NaN, 400, 0));
         return e.view(6.5, 8, 21, 25);
     }
 

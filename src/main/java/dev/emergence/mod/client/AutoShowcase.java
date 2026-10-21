@@ -511,7 +511,9 @@ public final class AutoShowcase {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
             }
             if (id.equals("governor")) {
-                // apply the brake: the speed sags, the drive rises and brings it back
+                // at rest, its switch on: a turn by hand starts it; then apply the brake: the speed sags, the drive rises
+                // and brings it back
+                nudge(key, part.apply("rotor", PartKind.SHAFT), false);
                 governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.05, at.apply("battery"), 4);
             }
             if (id.equals("contactgov")) {
@@ -711,7 +713,7 @@ public final class AutoShowcase {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.hold(key + " turn the crank", part.apply("crank", PartKind.CRANK), false)));
                 Sampler sig = new Sampler();
                 // (the light barrier's vane must come round past the beam at a hand's pace: a longer watch)
-                Step cranked = new Step(id.equals("lightbarrier") ? 100 : 40, NOTHING, shot.apply("cranked")).check(key + " the crank turns when held",
+                Step cranked = new Step(id.equals("lightbarrier") ? 100 : id.equals("fan") ? 300 : 40, NOTHING, shot.apply("cranked")).check(key + " the crank turns when held",
                         () -> atLeast("crank speed [rad/s]", motion(server, crank, PartKind.CRANK), 1));
                 if (id.equals("gears")) cranked.check(key + " the gears turn the output a fifth as fast, the same way", () -> {
                     double in = spin(server, at.apply("input"), PartKind.SHAFT), out = spin(server, at.apply("output"), PartKind.SHAFT);

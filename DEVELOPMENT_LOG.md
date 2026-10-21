@@ -738,3 +738,10 @@ Exhibits can now have scenery — ordinary blocks such as a wall — and the car
 The build check counts only an exhibit's own bodies (the periscope's mirrors take the engine next door into their
 island by line of sight): all 72 exhibits now match their definitions with no difference. The tour's "LED lit" waits
 read the server, as its checks do (a stale client gauge ended the loudspeaker's wait early).
+
+**Starting cold.** The fan-and-windmill train, the electronic and contact governors and the unbalanced rotor no longer
+open turning: a player starts them — cranks the fan, closes the switch and gives the motor a turn by hand (a
+two-segment commutator can rest with its brushes in a gap), cranks the wheel up past resonance and lets it coast. Their
+core tests start them the same way and judge the state they come to. The flyball governor stays turning: its heavy
+rotor takes minutes of the world's slowed time to come up to speed. Its test brake is 2 N, a load the governor rides
+with a few percent of droop.

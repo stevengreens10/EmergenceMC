@@ -18,6 +18,16 @@ class DemoExhibitsTest {
         return c;
     }
 
+    /**
+     * A turn of a body by hand, as a player gives a motor at rest (a two-segment commutator can stop with its brushes in
+     * a gap, where no current flows) or a flywheel.
+     */
+    static void startByHand(CompiledAssembly c, long part) {
+        c.setTurnEffort(part, 1, false);
+        run(c, 0.3);
+        c.setTurnEffort(part, 0, false);
+    }
+
     static void run(CompiledAssembly c, double seconds) {
         for (int i = 0; i < Math.round(seconds / 0.05); i++) c.step(0.05);
     }
@@ -385,7 +395,7 @@ class DemoExhibitsTest {
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = compile(e, b);
         long fan = b.id(e, "fanShaft"), mill = b.id(e, "millShaft");
-        for (int i = 0; i < 160; i++) {
+        for (int i = 0; i < 400; i++) { // from rest
             c.setCrankEffort(b.id(e, "crank"), 1, true);
             c.step(0.05);
         }
@@ -1863,7 +1873,8 @@ class DemoExhibitsTest {
             CompiledAssembly c = compile(e, b);
             if (m == 1) c.toggleSwitch(b.id(e, "switch"));
             long rotor = b.id(e, "rotor");
-            run(c, 3);
+            startByHand(c, rotor); // at rest, as a player finds it
+            run(c, 20);
             double before = 0, after = 0;
             for (int k = 0; k < 6; k++) {
                 run(c, 0.5);
@@ -1894,7 +1905,8 @@ class DemoExhibitsTest {
         CompiledAssembly c = compile(e, b);
         long rotor = b.id(e, "rotor"), weight = b.id(e, "weight"), bat = b.id(e, "battery");
         c.toggleSwitch(b.id(e, "switch"));
-        run(c, 12);
+        startByHand(c, rotor); // at rest, as a player finds it
+        run(c, 30);
         double[] w = new double[2], amps = new double[2];
         for (int m = 0; m < 2; m++) {
             if (m == 1) {
@@ -1928,6 +1940,7 @@ class DemoExhibitsTest {
         assertFalse(Double.isNaN(c.linkTension(b.id(e, "barA"))), "the weights' bars work");
         assertFalse(Double.isNaN(c.linkTension(b.id(e, "pushRod"))), "the push rod works");
         c.toggleSwitch(b.id(e, "switch"));
+        startByHand(c, rotor); // at rest, as a player finds it
         double[] w = new double[2], amps = new double[2], turn = new double[2], out = new double[2];
         for (int m = 0; m < 2; m++) {
             if (m == 1) c.toggleSwitch(b.id(e, "brake"));
@@ -2194,6 +2207,12 @@ class DemoExhibitsTest {
         double k = dev.emergence.core.assembly.PartGeometry.springRate(b.assembly().get(b.id(e, "springA")))
                 + dev.emergence.core.assembly.PartGeometry.springRate(b.assembly().get(b.id(e, "springB")));
         double wn = Math.sqrt(k / (platform.mass() + wheel.mass()));
+        // at rest as a player finds it: cranked up well past resonance, then let go
+        for (int i = 0; i < 2000 && Math.abs(c.angularVelocity(wheel)) < 28; i++) {
+            c.setCrankEffort(b.id(e, "crank"), 1, true);
+            c.step(0.05);
+        }
+        c.setCrankEffort(b.id(e, "crank"), 0, false);
         double w0 = c.angularVelocity(wheel), e0 = 0.5 * wheel.inertia() * w0 * w0, first = 0, peak = 0, peakSpeed = 0, last = 0;
         for (int w = 0; w < 20; w++) {
             double lo = 1e9, hi = -1e9, speed = 0;

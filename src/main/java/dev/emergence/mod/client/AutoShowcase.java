@@ -700,7 +700,8 @@ public final class AutoShowcase {
                 BlockPos crank = at.apply("crank");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.hold(key + " turn the crank", part.apply("crank", PartKind.CRANK), false)));
                 Sampler sig = new Sampler();
-                Step cranked = new Step(40, NOTHING, shot.apply("cranked")).check(key + " the crank turns when held",
+                // (the light barrier's vane must come round past the beam at a hand's pace: a longer watch)
+                Step cranked = new Step(id.equals("lightbarrier") ? 100 : 40, NOTHING, shot.apply("cranked")).check(key + " the crank turns when held",
                         () -> atLeast("crank speed [rad/s]", motion(server, crank, PartKind.CRANK), 1));
                 if (id.equals("gears")) cranked.check(key + " the gears turn the output a fifth as fast, the same way", () -> {
                     double in = spin(server, at.apply("input"), PartKind.SHAFT), out = spin(server, at.apply("output"), PartKind.SHAFT);

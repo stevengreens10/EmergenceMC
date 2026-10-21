@@ -192,9 +192,10 @@ public enum PartKind {
      */
     LINK(false, false),
     /**
-     * Lead–acid battery (manufactured): "cells" in series (default 6: 12 V), "capacity" [A·h] (default 7), "charge" as
+     * Rechargeable battery (manufactured): "chemistry" 0 lead–acid (2.1 V a cell, default) or 1 nickel–metal hydride
+     * (1.3 V a cell: four make a 5 V supply), "cells" in series (default 6), "capacity" [A·h] (default 7), "charge" as
      * delivered (default 1: full). Positive terminal on the +axis face, negative on the −axis face. Its voltage follows
-     * its acid's strength, which falls as charge is drawn; its internal resistance warms it.
+     * what the charge drawn has done to its electrodes and electrolyte; its internal resistance warms it.
      */
     BATTERY(false, true);
 

@@ -84,13 +84,12 @@ public final class EngineExhibits {
         e.add(TANK, st, 6, 3, 6, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
         e.fill(BLOCK, st, 6, 0, 6, 6, 2, 6, Dir.UP);
         // the glow plug: a silicon-carbide element set into the cylinder wall on a slender mount (128 W: 72 ohm on 96 V), switched from a
-        // capacitor bank — it keeps the wall hot enough to light each charge as it is squeezed
+        // battery — it keeps the wall hot enough to light each charge as it is squeezed
         int glow = e.add(RESISTOR, "alumina", 3, 5, 9, Dir.EAST, "resistance", 72.0, "contact_area", 3e-5,
                 "surface_area", 0.0002, "mass", 0.01, "max_temperature", 1800, "exposed", 1);
         e.name("glow", glow);
         e.init(glow, new Exhibit.Initial(1200, 0, 0));
-        int bank = e.add(CAPACITOR, "alumina", 2, 1, 13, Dir.EAST, "capacitance", 150);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 96));
+        int bank = e.add(BATTERY, "pvc", 2, 1, 13, Dir.EAST, "cells", 45, "capacity", 40); // 45 lead–acid cells: 95.6 V full
         int sw = e.add(SWITCH, "brass", 6, 1, 13, Dir.EAST);
         e.name("switch", sw);
         e.latch(sw);

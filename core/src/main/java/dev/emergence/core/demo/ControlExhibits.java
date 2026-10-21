@@ -30,8 +30,8 @@ public final class ControlExhibits {
                         + "series with the feedback resistor integrates the error, building up whatever current the arm "
                         + "needs until the error is gone (integral action; its twin keeps the input network balanced). "
                         + "The capacitor across the position resistor makes the drive respond to the arm's speed too, "
-                        + "damping the swing (derivative action): a PID controller. Powered by two 12 V supercapacitor "
-                        + "banks.");
+                        + "damping the swing (derivative action): a PID controller. Powered by two 12 V lead–acid "
+                        + "batteries.");
         e.plots = 2;
         String st = "steel_1045", ny = "nylon_66", cu = "copper";
         int y = 4, z = 5;
@@ -76,11 +76,9 @@ public final class ControlExhibits {
         e.add(RESISTOR, "alumina", 11, 1, 10, Dir.SOUTH, "resistance", 11_000);
         // ---- electronics on the floor (y = 1)
         int f = 1;
-        int bp = e.add(CAPACITOR, "alumina", 24, f, 2, Dir.EAST, "capacitance", 3000);
-        int bn = e.add(CAPACITOR, "alumina", 28, f, 2, Dir.EAST, "capacitance", 3000);
+        int bp = e.add(BATTERY, "pvc", 24, f, 2, Dir.EAST, "cells", 6, "capacity", 20); // 6 lead–acid cells: 12.8 V full
+        int bn = e.add(BATTERY, "pvc", 28, f, 2, Dir.EAST, "cells", 6, "capacity", 20); // 6 lead–acid cells: 12.8 V full
         e.name("batteryP", bp).name("batteryN", bn);
-        e.init(bp, new Exhibit.Initial(Double.NaN, 0, 12));
-        e.init(bn, new Exhibit.Initial(Double.NaN, 0, 12));
         e.name("opamp", e.add(OPAMP, "silicon", 18, f, 8, Dir.EAST));
         e.add(RESISTOR, "alumina", 14, f, 8, Dir.EAST, "resistance", 10_000);     // set → in+
         e.add(RESISTOR, "alumina", 14, f, 11, Dir.EAST, "resistance", 100_000);   // in+ → 0 V, through
@@ -104,7 +102,7 @@ public final class ControlExhibits {
                 .pin("vn", 7, y - 1, z).pin("vn", 11, 1, 11);                         // arm pot A, knob divider
         r.pin("kB", 11, 1, 7).pin("kB", 11, ky + 1, kz);
         r.pin("kA", 11, 1, 9).pin("kA", 11, ky - 1, kz);
-        r.pin("gnd", 23, f, 2).pin("gnd", 29, f, 2).pin("gnd", 18, f, 11)           // banks' 0 V, in+ divider
+        r.pin("gnd", 23, f, 2).pin("gnd", 29, f, 2).pin("gnd", 18, f, 11)           // batteries' 0 V, in+ divider
                 .pin("gI", 15, f, 11).pin("gI", 16, f, 11)
                 .pin("gnd", 2, y + 1, z);                                            // motor return
         r.pin("set", 11, ky, kz - 1).pin("set", 13, f, 8);
@@ -291,9 +289,8 @@ public final class ControlExhibits {
         e.name("brake", e.add(BRAKE, "bronze", 6, 16, 8, Dir.EAST, "force", brakeForce));
         // ---- supply: a 24 V bank and a switch to the brushes
         int f = 1;
-        int bat = e.add(CAPACITOR, "alumina", 16, f, 4, Dir.EAST, "capacitance", 3000);
+        int bat = e.add(BATTERY, "pvc", 16, f, 4, Dir.EAST, "cells", 11, "capacity", 20); // 11 lead–acid cells: 23.4 V full
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 24));
         e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 22, 18, 15);
         r.pin("vb", 17, f, 4).pin("vb", 18, f, 4);
@@ -394,9 +391,8 @@ public final class ControlExhibits {
         e.fill(BLOCK, st, 9, 0, 0, 9, 26, 0, Dir.UP);                                         // and post
         // ---- supply: a 24 V bank and a switch, through the rheostat (end A to the wiper) to the brushes
         int f = 1;
-        int bat = e.add(CAPACITOR, "alumina", 16, f, 4, Dir.EAST, "capacitance", 3000);
+        int bat = e.add(BATTERY, "pvc", 16, f, 4, Dir.EAST, "cells", 11, "capacity", 20); // 11 lead–acid cells: 23.4 V full
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 24));
         e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 22, 27, 15);
         r.pin("vb", 17, f, 4).pin("vb", 18, f, 4);
@@ -473,9 +469,8 @@ public final class ControlExhibits {
         e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
                 {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
         int f = 1;
-        int bat = e.add(CAPACITOR, "alumina", 16, f, 2, Dir.EAST, "capacitance", 3000);
+        int bat = e.add(BATTERY, "pvc", 16, f, 2, Dir.EAST, "chemistry", 1, "cells", 7, "capacity", 10); // 7 nickel–metal hydride cells: 9.1 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 9.5));
         Object[] power = {"transconductance", 5.0, "threshold", 2.0};
         e.name("pA", e.add(TRANSISTOR, "silicon", 20, f, 5, Dir.EAST, with(power, "type", 3)));
         e.name("nA", e.add(TRANSISTOR, "silicon", 22, f, 8, Dir.EAST, with(power, "type", 2)));
@@ -579,9 +574,8 @@ public final class ControlExhibits {
         e.name("red", e.add(LED, "silicon", 13, 0, 10, Dir.WEST, "wavelength", 630));
         e.add(RESISTOR, "alumina", 13, 0, 13, Dir.EAST, "resistance", 4700);
         int f = 1;
-        int bat = e.add(CAPACITOR, "alumina", 16, f, 2, Dir.EAST, "capacitance", 3000);
+        int bat = e.add(BATTERY, "pvc", 16, f, 2, Dir.EAST, "chemistry", 1, "cells", 7, "capacity", 10); // 7 nickel–metal hydride cells: 9.1 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 9.5));
         Object[] power = {"transconductance", 5.0, "threshold", 2.0};
         e.add(TRANSISTOR, "silicon", 20, f, 5, Dir.EAST, with(power, "type", 3));
         e.add(TRANSISTOR, "silicon", 22, f, 8, Dir.EAST, with(power, "type", 2));

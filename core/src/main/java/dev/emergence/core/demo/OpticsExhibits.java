@@ -41,9 +41,8 @@ public final class OpticsExhibits {
         e.name("irled", e.add(LED, "silicon", sx + 2, 1, sz, Dir.EAST, "wavelength", 850, "efficiency", 0.3, "beam", 20));
         e.name("pd", e.add(PHOTODIODE, "silicon", sx + 2, 5, sz, Dir.EAST, "face", 0));
         // electronics on the floor to the east
-        int bat = e.add(CAPACITOR, "alumina", 12, 1, 2, Dir.EAST, "capacitance", 10);
+        int bat = e.add(BATTERY, "pvc", 12, 1, 2, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         e.add(RESISTOR, "alumina", 9, 1, 2, Dir.EAST, "resistance", 150);       // IR LED current
         e.add(RESISTOR, "alumina", 9, 1, 10, Dir.EAST, "resistance", 2.2e6);    // photodiode load
         e.name("schmitt", e.add(LOGIC, "silicon", 13, 1, 10, Dir.EAST, "function", 7));
@@ -144,8 +143,7 @@ public final class OpticsExhibits {
         e.name("mirrorA", e.add(MIRROR, "aluminium", 2, 1, 8, Dir.UP, "tilt", 45, "tilt_toward", Dir.WEST.ordinal()));
         e.name("mirrorB", e.add(MIRROR, "aluminium", 2, 6, 8, Dir.DOWN, "tilt", 45, "tilt_toward", Dir.EAST.ordinal()));
         e.name("pd", e.add(PHOTODIODE, "silicon", 9, 6, 8, Dir.UP, "face", 4, "area", 1e-4));
-        int bat = e.add(CAPACITOR, "alumina", 14, 1, 12, Dir.EAST, "capacitance", 10);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        int bat = e.add(BATTERY, "pvc", 14, 1, 12, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.add(RESISTOR, "alumina", 14, 1, 10, Dir.EAST, "resistance", 150);         // the red LED's current
         Router r = new Router(e, 0, 0, 7, 17, 8, 15);
         // the beam's path: up from the lower mirror, east over the wall
@@ -177,8 +175,7 @@ public final class OpticsExhibits {
         e.add(BLOCK, st, 9, 0, 6, Dir.UP);
         e.name("lens", e.add(LENS, "glass_bk7", 9, 1, 6, Dir.EAST));
         e.name("pd", e.add(PHOTODIODE, "silicon", 12, 1, 6, Dir.SOUTH, "face", 4));
-        int bat = e.add(CAPACITOR, "alumina", 4, 1, 3, Dir.EAST, "capacitance", 10);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        int bat = e.add(BATTERY, "pvc", 4, 1, 3, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.add(RESISTOR, "alumina", 1, 1, 3, Dir.SOUTH, "resistance", 150);
         Router r = new Router(e, 0, 0, 0, 17, 5, 15);
         r.keepClear(2, 1, 6, 11, 1, 6);
@@ -244,14 +241,12 @@ public final class OpticsExhibits {
                         + "pyrometers measure furnaces. (A real lamp keeps its tungsten in a bulb of inert gas: in air it "
                         + "would burn; oxidation is not modelled here.)");
         // the lamp circuit: a 12 V bank, a switch, and the filament held up between its two leads
-        int bank = e.add(CAPACITOR, "alumina", 2, 1, 2, Dir.EAST, "capacitance", 500);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        int bank = e.add(BATTERY, "pvc", 2, 1, 2, Dir.EAST, "cells", 6, "capacity", 7); // 6 lead–acid cells: 12.8 V full
         e.name("switch", e.add(SWITCH, "brass", 6, 1, 2, Dir.EAST));
         e.name("filament", e.add(WIRE, "tungsten", 7, 3, 6, Dir.EAST, "diameter", 1.2e-4));
         // the electric eye, facing the filament from four cells away
         e.name("pd", e.add(PHOTODIODE, "silicon", 7, 3, 10, Dir.EAST, "face", 2));
-        int cell = e.add(CAPACITOR, "alumina", 13, 1, 12, Dir.EAST, "capacitance", 10);
-        e.init(cell, new Exhibit.Initial(Double.NaN, 0, 5));
+        int cell = e.add(BATTERY, "pvc", 13, 1, 12, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         Router r = new Router(e, 0, 0, 0, 15, 5, 16);
         // nothing may touch the bare filament but its two leads, nor stand between it and the eye
         r.keepClear(7, 4, 5, 7, 5, 9).keepClear(6, 3, 7, 8, 3, 9).keepClear(7, 2, 5, 7, 2, 7).keepClear(7, 3, 5, 7, 3, 5);
@@ -286,8 +281,7 @@ public final class OpticsExhibits {
         }
         e.add(BLOCK, st, 6, 0, 8, Dir.UP);
         e.name("prism", e.fill(PRISM, "glass_sf11", 6, 1, 8, 6, 3, 8, Dir.UP, "apex", 45, "face", Dir.NORTH.ordinal()));
-        int bat = e.add(CAPACITOR, "alumina", 2, 1, 3, Dir.EAST, "capacitance", 10);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 9));
+        int bat = e.add(BATTERY, "pvc", 2, 1, 3, Dir.EAST, "chemistry", 1, "cells", 7, "capacity", 2); // 7 nickel–metal hydride cells: 9.1 V at half charge
         e.add(RESISTOR, "alumina", 5, 1, 3, Dir.EAST, "resistance", 68);
         Router r = new Router(e, 0, 0, 0, 15, 5, 15);
         r.keepClear(2, 1, 8, 5, 3, 8).keepClear(7, 1, 8, 15, 3, 15);
@@ -337,16 +331,14 @@ public final class OpticsExhibits {
         double[] ledNm = {465, 630, 700};
         for (int k = 0; k < 3; k++) e.name("pd_" + ch[k], e.add(PHOTODIODE, "silicon", 20 + k, 2, 13, Dir.UP, "face", 2, "area", 1e-3, "lead_axis", 2));
         // the lamp circuit: 12 V, the main switch, two resistors each bridged by a switch
-        int bank = e.add(CAPACITOR, "alumina", 2, 1, 10, Dir.EAST, "capacitance", 3000);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        int bank = e.add(BATTERY, "pvc", 2, 1, 10, Dir.EAST, "cells", 6, "capacity", 7); // 6 lead–acid cells: 12.8 V full
         e.name("switch", e.add(SWITCH, "brass", 5, 1, 10, Dir.EAST));
-        e.add(RESISTOR, "alumina", 8, 1, 10, Dir.EAST, "resistance", 1.5);
+        e.add(RESISTOR, "alumina", 8, 1, 10, Dir.EAST, "resistance", 1.7);
         e.name("warmer", e.add(SWITCH, "brass", 8, 1, 12, Dir.EAST));
-        e.add(RESISTOR, "alumina", 12, 1, 10, Dir.EAST, "resistance", 1.5);
+        e.add(RESISTOR, "alumina", 12, 1, 10, Dir.EAST, "resistance", 1.7);
         e.name("hotter", e.add(SWITCH, "brass", 12, 1, 12, Dir.EAST));
         // the receivers' 5 V supply
-        int cell = e.add(CAPACITOR, "alumina", 16, 1, 15, Dir.EAST, "capacitance", 10);
-        e.init(cell, new Exhibit.Initial(Double.NaN, 0, 5));
+        int cell = e.add(BATTERY, "pvc", 16, 1, 15, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         int[] rx = {14, 25, 25}, rz = {1, 1, 7};
         for (int k = 0; k < 3; k++) {
             int x = rx[k], z = rz[k];
@@ -398,13 +390,11 @@ public final class OpticsExhibits {
         e.name("photo", e.add(TRANSISTOR, "silicon", 7, 1, 8, Dir.UP, "type", 0, "photo", 7.5e-6, "face", Dir.WEST.ordinal(),
                 "lead_axis", 2));
         // input circuit: 3 V bank, switch, 100 ohm
-        int bank1 = e.add(CAPACITOR, "alumina", 2, 0, 4, Dir.EAST, "capacitance", 50);
-        e.init(bank1, new Exhibit.Initial(Double.NaN, 0, 3));
+        int bank1 = e.add(BATTERY, "pvc", 2, 0, 4, Dir.EAST, "chemistry", 1, "cells", 2, "capacity", 2); // 2 nickel–metal hydride cells: 2.6 V at half charge
         e.name("switch", e.add(SWITCH, "brass", 2, 0, 12, Dir.EAST));
         e.add(RESISTOR, "alumina", 4, 0, 14, Dir.EAST, "resistance", 100);
         // output circuit: 5 V bank, green LED, 330 ohm, the phototransistor
-        int bank2 = e.add(CAPACITOR, "alumina", 12, 0, 4, Dir.EAST, "capacitance", 50);
-        e.init(bank2, new Exhibit.Initial(Double.NaN, 0, 5));
+        int bank2 = e.add(BATTERY, "pvc", 12, 0, 4, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("green", e.add(LED, "silicon", 12, 0, 12, Dir.WEST, "wavelength", 530));
         e.add(RESISTOR, "alumina", 10, 0, 8, Dir.EAST, "resistance", 330);
         Router r = new Router(e, 0, 0, 2, 15, 3, 15);
@@ -444,8 +434,7 @@ public final class OpticsExhibits {
                         + "warms with what it absorbs, as sunglasses do in the sun.");
         int y = 3;
         // the lamp: a 12 V bank and a switch to the east, the filament between its two leads in the middle
-        int bank = e.add(CAPACITOR, "alumina", 13, 1, 5, Dir.EAST, "capacitance", 500);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        int bank = e.add(BATTERY, "pvc", 13, 1, 5, Dir.EAST, "cells", 6, "capacity", 7); // 6 lead–acid cells: 12.8 V full
         e.name("switch", e.add(SWITCH, "brass", 13, 1, 9, Dir.EAST));
         e.add(RESISTOR, "alumina", 10, 1, 9, Dir.EAST, "resistance", 3.0); // in series: the filament runs red-hot
         e.name("hotter", e.add(SWITCH, "brass", 10, 1, 11, Dir.EAST));     // across it: white-hot
@@ -457,8 +446,7 @@ public final class OpticsExhibits {
         e.name("pdBlue", e.add(PHOTODIODE, "silicon", 7, y, 3, Dir.EAST, "face", Dir.SOUTH.ordinal()));
         e.fill(BLOCK, "oak", 7, 0, 9, 7, y - 1, 9, Dir.UP);   // stands for the filters
         e.fill(BLOCK, "oak", 7, 0, 5, 7, y - 1, 5, Dir.UP);
-        int cell = e.add(CAPACITOR, "alumina", 13, 1, 13, Dir.EAST, "capacitance", 10);
-        e.init(cell, new Exhibit.Initial(Double.NaN, 0, 5));
+        int cell = e.add(BATTERY, "pvc", 13, 1, 13, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         Router r = new Router(e, 0, 0, 0, 15, 5, 15);
         // nothing between the filament and the photodiodes, nothing touching the bare filament but its leads
         r.keepClear(7, y, 4, 7, y, 10).keepClear(6, y, 5, 8, y, 5).keepClear(6, y, 9, 8, y, 9).keepClear(7, y + 1, 4, 7, y + 2, 10)

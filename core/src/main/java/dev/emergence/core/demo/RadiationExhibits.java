@@ -40,8 +40,7 @@ public final class RadiationExhibits {
         e.add(RESISTOR, "alumina", 4, 1, 11, Dir.SOUTH, "resistance", 10_000); // cathode resistor
         e.name("schmitt", e.add(LOGIC, "silicon", 10, 1, 10, Dir.EAST, "function", 7));
         e.name("counter", ComputerExhibit.chip(e, MsiChip.Type.COUNTER4, 14, 1, 10));
-        int vdd = e.add(CAPACITOR, "alumina", 27, 1, 7, Dir.EAST, "capacitance", 2000);
-        e.init(vdd, new Exhibit.Initial(Double.NaN, 0, 5));
+        int vdd = e.add(BATTERY, "pvc", 27, 1, 7, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         for (int k = 0; k < 4; k++) {
             e.name("led" + k, e.add(LED, "silicon", 14 + 2 * k, 1, 13, Dir.SOUTH, "wavelength", 590, "face", 1, "beam", 20));
             e.add(RESISTOR, "alumina", 14 + 2 * k, 1, 14, Dir.SOUTH, "resistance", 470);

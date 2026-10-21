@@ -65,7 +65,7 @@ public final class ComputerExhibit {
                         + "and the magnet is pulled a quarter turn under the next coil at each step, a silicone-filled "
                         + "bearing damping its swing. Flip SENSE and the program branches into a "
                         + "loop that adds 12, 14, 15, 7 — the reverse sequence. Diodes across the coils absorb the "
-                        + "inductive kick when a MOSFET turns off. Everything runs from a 5 V supercapacitor bank.");
+                        + "inductive kick when a MOSFET turns off. Everything runs from a 5 V battery (four nickel–metal hydride cells).");
         e.plots = 3; // the stepper motor stands past the second plot
         String st = "steel_1045", cu = "copper";
         int y = 1;
@@ -87,9 +87,8 @@ public final class ComputerExhibit {
         e.name("nor", e.add(LOGIC, "silicon", 18, y, 12, Dir.EAST, "function", 3));
         e.name("sense", e.add(SWITCH, "brass", 26, y, 12, Dir.EAST));
         e.add(RESISTOR, "alumina", 30, y, 12, Dir.EAST, "resistance", 100_000);
-        int bat = e.add(CAPACITOR, "alumina", 34, y, 12, Dir.EAST, "capacitance", 2000);
+        int bat = e.add(BATTERY, "pvc", 34, y, 12, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 5); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         // ---- drivers (rows z = 1, 4, 7, 10): MOSFET, flyback diode, series resistor for coil k
         for (int k = 0; k < 4; k++) {
             int z = 1 + 3 * k;
@@ -202,8 +201,7 @@ public final class ComputerExhibit {
             r.pin("q" + k, x, y, cz + 1).pin("q" + k, x, y, 9);
             r.pin("gnd", x, y, 12);
         }
-        int bat = e.add(CAPACITOR, "alumina", 14, y, 10, Dir.SOUTH, "capacitance", 500);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
+        int bat = e.add(BATTERY, "pvc", 14, y, 10, Dir.SOUTH, "chemistry", 1, "cells", 4, "capacity", 5); // 4 nickel–metal hydride cells: 5.2 V at half charge
         r.pin("gnd", 14, y, 9).pin("gnd", cx + 10, y, cz - 1);
         r.pin("vdd", 14, y, 11).pin("vdd", cx + 10, y, cz + 1);
         r.route();

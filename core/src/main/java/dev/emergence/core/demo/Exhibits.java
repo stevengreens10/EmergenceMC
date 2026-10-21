@@ -144,9 +144,8 @@ public final class Exhibits {
                         + "supply. The same trick powers LED torches from a single cell.");
         e.plots = 2;
         int f = 1;
-        int bat = e.add(CAPACITOR, "alumina", 2, f, 2, Dir.EAST, "capacitance", 50);
+        int bat = e.add(BATTERY, "pvc", 2, f, 2, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         // oscillator: Schmitt inverter, 47 kΩ feedback, 1 µF to ground (period 2RC·ln 1.5 ≈ 38 ms)
         e.name("schmitt", e.add(LOGIC, "silicon", 6, f, 10, Dir.EAST, "function", 7));
         e.add(RESISTOR, "alumina", 6, f, 13, Dir.EAST, "resistance", 47_000);
@@ -278,7 +277,7 @@ public final class Exhibits {
 
     /**
      * Brushed DC motor: rotor coils, a two-segment copper commutator on a nylon hub and two graphite
-     * brushes, fed from a 1 F capacitor bank at 24 V through a switch. Commutation emerges from where the
+     * brushes, fed from a 24 V battery through a switch. Commutation emerges from where the
      * segment gap passes the brushes.
      */
     public static Exhibit dcMotor() {
@@ -287,8 +286,8 @@ public final class Exhibits {
                 "Two coils on a nylon rotor sit above two NdFeB magnets. Current reaches them through graphite "
                         + "brushes sliding on two copper commutator segments. Torque i·dΦ/dθ only pushes one way "
                         + "if the current reverses as each coil passes a magnet — which happens because the "
-                        + "segment gap passes the brushes exactly then. A 1 F, 24 V capacitor bank powers it for a "
-                        + "few seconds; rebuild the gallery (/emergence demo) to recharge.");
+                        + "segment gap passes the brushes exactly then. A 24 V lead–acid battery powers it; the "
+                        + "commutator can stop with its brushes in a gap, where no current flows: give the rotor a turn.");
         String st = "steel_1045", ny = "nylon_66";
         // frame
         e.fill(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
@@ -330,14 +329,13 @@ public final class Exhibits {
         e.fill(BLOCK, ny, 10, 9, 8, 10, 11, 8, Dir.UP);
         e.add(BRUSH, "graphite", 6, 8, 8, Dir.EAST);
         e.fill(BLOCK, ny, 6, 9, 8, 6, 11, 8, Dir.UP);
-        // supply: capacitor bank and switch in a loop between the brushes
+        // supply: battery and switch in a loop between the brushes
         e.path(INSULATED_WIRE, "copper", new int[][]{{11, 8, 8}, {12, 8, 8}, {12, 8, 9}, {12, 8, 10}, {12, 8, 11}, {12, 8, 12},
                 {12, 8, 13}, {11, 8, 13}, {9, 8, 13}, {7, 8, 13}, {6, 8, 13}, {5, 8, 13}, {4, 8, 13},
                 {4, 8, 12}, {4, 8, 11}, {4, 8, 10}, {4, 8, 9}, {4, 8, 8}, {5, 8, 8}});
         e.name("switch", e.add(SWITCH, "brass", 10, 8, 13, Dir.EAST));
-        int cap = e.add(CAPACITOR, "alumina", 8, 8, 13, Dir.EAST, "capacitance", 1.0);
+        int cap = e.add(BATTERY, "pvc", 8, 8, 13, Dir.EAST, "cells", 11, "capacity", 7); // 11 lead–acid cells: 23.4 V full
         e.name("capacitor", cap);
-        e.init(cap, new Exhibit.Initial(Double.NaN, 0, 24));
         return e.view(8.5, 11, 22, 22);
     }
 
@@ -492,7 +490,7 @@ public final class Exhibits {
                         + "law): the green LED flashes, about five times the battery's voltage for five times the turns. "
                         + "With the current steady, nothing. Open the switch: the flux collapses, the voltage reverses, and "
                         + "the red LED flashes. Without the iron, the coils would barely notice each other. The iron has a "
-                        + "limit: the 3 A the bank drives would push the ring's flux density past the steel's 2 tesla, so "
+                        + "limit: the 3 A the battery drives would push the ring's flux density past the steel's 2 tesla, so "
                         + "the core saturates — its flux stops growing early, and the make pulse is cut short. Saturated "
                         + "iron is little better than air; transformers are designed never to reach it. And the steel remembers: "
                         + "switched off, it keeps part of its flux (remanence) — its domains stay where the current left them "
@@ -515,8 +513,7 @@ public final class Exhibits {
         e.name("secondary", e.add(COIL, "copper", 10, 1, 8, Dir.SOUTH, "turns", 1000, "wire_diameter", 0.3e-3, "core", 1,
                 "bore_fraction", 0.6, "lead_axis", 1));
         // primary circuit: a 5 F, 12 V bank, a 4 ohm resistor and the switch
-        int bank = e.add(CAPACITOR, "alumina", 1, 0, 4, Dir.EAST, "capacitance", 5.0); // big: its slow fade induces too little to light an LED
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
+        int bank = e.add(BATTERY, "pvc", 1, 0, 4, Dir.EAST, "cells", 6, "capacity", 7);
         e.add(RESISTOR, "alumina", 1, 0, 8, Dir.EAST, "resistance", 4.0);
         e.name("switch", e.add(SWITCH, "brass", 1, 0, 13, Dir.EAST));
         // secondary: two LEDs back to back through 1 kilohm
@@ -572,11 +569,9 @@ public final class Exhibits {
         e.add(BLOCK, "nylon_66", 8, 6, 9, Dir.UP);
         e.fill(BLOCK, "nylon_66", 8, 0, 9, 8, 5, 9, Dir.UP);
         // the coil's circuit: 12 V and a switch; the lamp circuit: 5 V, 220 Ω and a green LED through the contacts
-        int bc = e.add(CAPACITOR, "alumina", 2, 1, 12, Dir.EAST, "capacitance", 50);
-        e.init(bc, new Exhibit.Initial(Double.NaN, 0, 24));
+        int bc = e.add(BATTERY, "pvc", 2, 1, 12, Dir.EAST, "cells", 11, "capacity", 7); // 11 lead–acid cells: 23.4 V full
         e.name("switch", e.add(SWITCH, "brass", 6, 1, 12, Dir.EAST));
-        int bl = e.add(CAPACITOR, "alumina", 2, 1, 15, Dir.EAST, "capacitance", 10);
-        e.init(bl, new Exhibit.Initial(Double.NaN, 0, 5));
+        int bl = e.add(BATTERY, "pvc", 2, 1, 15, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("lamp", e.add(LED, "silicon", 10, 1, 15, Dir.EAST, "wavelength", 525, "face", 3, "beam", 20));
         e.add(RESISTOR, "alumina", 13, 1, 15, Dir.EAST, "resistance", 220); // between the LED and the brush
         // a pull-up: with the contacts open it holds the brush side at the supply, so the LED sees no voltage
@@ -628,8 +623,7 @@ public final class Exhibits {
         e.add(BLOCK, "nylon_66", 8, 6, 9, Dir.UP);
         e.fill(BLOCK, "nylon_66", 8, 0, 9, 8, 5, 9, Dir.UP);
         // supply, switch, flyback diode across the coil, an indicator LED (with its resistor) across it too
-        int bc = e.add(CAPACITOR, "alumina", 2, 1, 12, Dir.EAST, "capacitance", 50);
-        e.init(bc, new Exhibit.Initial(Double.NaN, 0, 36));
+        int bc = e.add(BATTERY, "pvc", 2, 1, 12, Dir.EAST, "cells", 17, "capacity", 7); // 17 lead–acid cells: 36.1 V full
         e.name("switch", e.add(SWITCH, "brass", 6, 1, 12, Dir.EAST));
         e.name("diode", e.add(DIODE, "silicon", 11, 1, 12, Dir.EAST));
         e.name("lamp", e.add(LED, "silicon", 11, 1, 15, Dir.EAST, "wavelength", 590, "face", 3, "beam", 20));
@@ -976,17 +970,16 @@ public final class Exhibits {
         e.name("brake", brake);
         e.latch(brake); // applied
         e.add(BLOCK, st, 7, 0, 8, Dir.UP);
-        // the fire: a heating element pressed under the boiler's floor, on a capacitor bank (600 W at first, 0.9 MJ in
-        // all: the boiler stays pressed for many minutes, its safety valve lifting while the engine idles)
+        // the fire: a heating element pressed under the boiler's floor, on a battery (600 W for as long as it is
+        // switched on: the boiler stays pressed, its safety valve lifting while the engine idles)
         e.fill(BLOCK, st, 5, 0, 13, 5, y - 2, 13, Dir.UP);
         e.add(BLOCK, "mica", 5, y - 1, 13, Dir.UP); // insulating: the element's heat goes up into the boiler, not to the ground
         int fire = e.add(RESISTOR, "alumina", 5, y, 13, Dir.EAST, "resistance", 6.0, "contact_area", 0.003,
                 "surface_area", 0.002, "mass", 0.1, "max_temperature", 1500);
         e.name("fire", fire);
         e.init(fire, new Exhibit.Initial(470, 0, 0)); // alight already
-        int bank = e.add(CAPACITOR, "alumina", 8, 0, 14, Dir.EAST, "capacitance", 500);
+        int bank = e.add(BATTERY, "pvc", 8, 0, 14, Dir.EAST, "cells", 28, "capacity", 20); // 28 lead–acid cells: 59.5 V full
         e.name("bank", bank);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 60));
         // a jacket: a small element against the cylinder keeps its wall above the steam's saturation temperature, or each
         // admission of steam condenses on it and the cylinder slowly fills with water (as Watt found, and jacketed his)
         int jacket = e.add(RESISTOR, "alumina", 3, y + 2, 9, Dir.UP, "resistance", 30.0, "contact_area", 0.002,
@@ -1038,7 +1031,7 @@ public final class Exhibits {
 
     /**
      * An NPN transistor switching an LED: a small base current through a switch and 10 kΩ controls a
-     * 20 mA collector current. Powered by a 10 F supercapacitor charged to 5 V.
+     * 20 mA collector current. Powered by a 5 V battery (four nickel–metal hydride cells).
      */
     public static Exhibit transistorSwitch() {
         Exhibit e = new Exhibit("transistor", "Transistor switch",
@@ -1046,12 +1039,11 @@ public final class Exhibits {
                 "An NPN bipolar transistor: closing the switch drives about 0.4 mA through 10 kΩ into the base. "
                         + "Electrons injected from the emitter mostly diffuse across the thin base into the "
                         + "collector (current gain β ≈ 150), so the transistor saturates and the LED, in series "
-                        + "with 150 Ω, lights with about 20 mA. Meter the base and collector currents. The 10 F "
-                        + "supercapacitor at 5 V is the battery.");
+                        + "with 150 Ω, lights with about 20 mA. Meter the base and collector currents. The "
+                        + "battery is four nickel–metal hydride cells, 5 V.");
         String cu = "copper";
-        int bat = e.add(CAPACITOR, "alumina", 2, 0, 8, Dir.EAST, "capacitance", 10);
+        int bat = e.add(BATTERY, "pvc", 2, 0, 8, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         e.path(INSULATED_WIRE, cu, new int[][]{{3, 0, 8}, {4, 0, 8}, {4, 0, 7}, {4, 0, 6}, {7, 0, 6}, {8, 0, 6}, {8, 0, 7},
                 {7, 0, 8}, {9, 0, 8}, {9, 0, 9}, {9, 0, 10}, {8, 0, 10}, {7, 0, 10}, {6, 0, 10}, {5, 0, 10}, {4, 0, 10},
                 {3, 0, 10}, {2, 0, 10}, {1, 0, 10}, {1, 0, 9}, {1, 0, 8}});
@@ -1078,9 +1070,8 @@ public final class Exhibits {
                         + "therefore off only for A = B = 1: NAND, from which any digital circuit can be built. "
                         + "Input B crosses the LED's return wire on a raised bridge.");
         String cu = "copper";
-        int bat = e.add(CAPACITOR, "alumina", 1, 0, 8, Dir.NORTH, "capacitance", 10);
+        int bat = e.add(BATTERY, "pvc", 1, 0, 8, Dir.NORTH, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         // supply rails
         for (int z = 3; z <= 7; z++) e.add(INSULATED_WIRE, cu, 1, 0, z, Dir.UP);
         for (int z = 9; z <= 13; z++) e.add(INSULATED_WIRE, cu, 1, 0, z, Dir.UP);
@@ -1129,14 +1120,13 @@ public final class Exhibits {
                         + "charges and discharges between them: period 2RC·ln 1.5 ≈ 0.8 s). Each D flip-flop feeds "
                         + "its inverted output back to its input, so it toggles on every rising clock edge and "
                         + "clocks the next stage at half the rate: the LEDs count in binary. The chips draw their "
-                        + "current from the 5 V supercapacitor through real output resistances.");
+                        + "current from the 5 V battery through real output resistances.");
         e.plots = 2;
         String cu = "copper";
         int y = 2;
-        // supply: supercapacitor and the V_DD (z = 4) and GND (z = 12) buses
-        int bat = e.add(CAPACITOR, "alumina", 0, y, 8, Dir.NORTH, "capacitance", 10);
+        // supply: the battery and the V_DD (z = 4) and GND (z = 12) buses
+        int bat = e.add(BATTERY, "pvc", 0, y, 8, Dir.NORTH, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         e.path(INSULATED_WIRE, cu, new int[][]{{0, y, 7}, {0, y, 6}, {0, y, 5}, {0, y, 9}, {0, y, 10}, {0, y, 11}});
         for (int x = 0; x <= 35; x++) {
             e.add(INSULATED_WIRE, cu, x, y, 4, Dir.UP);
@@ -1187,10 +1177,9 @@ public final class Exhibits {
                         + "Schmitt trigger's output drops, the MOSFET turns off and the heater (and LED) go dark; the "
                         + "plate cools by convection and radiation until the voltage falls below 40 %, and the "
                         + "heater comes back on. The temperature cycles between roughly 30 and 50 °C. Watch it with "
-                        + "the multimeter on the plate or the thermistor. Powered by a 3000 F supercapacitor bank at 5 V (a few hours; as it runs down the heater weakens until it can no longer reach the upper threshold).");
-        int bat = e.add(CAPACITOR, "alumina", 1, 0, 8, Dir.NORTH, "capacitance", 3000);
+                        + "the multimeter on the plate or the thermistor. Powered by a 5 V battery of four nickel–metal hydride cells (5 A·h: hours of cycling; as it runs down the heater weakens until it can no longer reach the upper threshold).");
+        int bat = e.add(BATTERY, "pvc", 1, 0, 8, Dir.NORTH, "chemistry", 1, "cells", 4, "capacity", 5); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 5));
         int[][] vdd = new int[14 + 5 + 5 + 7 + 1][];
         int k = 0;
         for (int x = 1; x <= 14; x++) vdd[k++] = new int[]{x, 0, 2};

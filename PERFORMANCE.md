@@ -23,9 +23,13 @@ simulates less time per tick (down to 5 %) and recovers when cheap: the physics 
 server keeps its tick rate, but that machine runs in slow motion. The steam engine (≈ 230 unknowns,
 ≈ 750 steps per simulated second at 650 rpm) costs ≈ 1.5× real time on the dev machine.
 
-All islands together get 35 ms per tick (`emergence.globalBudgetMs`), shared nearest-first: islands within 48 blocks
-of a player are slowed in common only if they alone exceed it; islands further from every player get what is left
-(at least 10 %) and slow first, down to 1 % (nearly paused). In the dense demo gallery, where everything within the
+All islands together get 35 ms per tick (`emergence.globalBudgetMs`), shared by priority. First the machine a player
+is at — each player's nearest island, or any within 6 blocks — which may also take the whole 35 ms itself rather than
+the usual 12; then the islands within 48 blocks, slowed in common if they exceed what is left (down to 2 %); then the
+rest, down to 1 % (nearly paused). Before, every island within 48 blocks shared one pace: in the dense gallery a costly
+neighbour (the chip-level inverter) slowed the exhibit being watched to a crawl — a hand held on the press for twenty
+seconds pushed it for a fraction of one. Watched islands log their pace every ten seconds in the tour
+(`-Demergence.logPace=true` elsewhere). In the dense demo gallery, where everything within the
 simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its pace instead of sharing it with dozens
 out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
 

@@ -62,6 +62,9 @@ public final class CompiledAssembly {
         public double inertia() { return inertia; }
         public boolean slider() { return slider; }
         public double mass() { return mass; }
+        /** A slide's travel limits from where it was built [m] (±∞ where nothing stops it). */
+        public double strokeLo() { return strokeLo; }
+        public double strokeHi() { return strokeHi; }
         public Body carrier() { return carrier; }
     }
 
@@ -860,7 +863,7 @@ public final class CompiledAssembly {
         } else if (d instanceof Capacitor c) {
             i = c.current(solver);
             pw = 0;
-        } else if (d instanceof dev.emergence.core.sim.elements.LeadAcidBattery bt) {
+        } else if (d instanceof dev.emergence.core.sim.elements.Battery bt) {
             i = bt.current(solver);
             pw = Math.abs(i * v);
         } else if (d instanceof dev.emergence.core.sim.elements.Led led) {
@@ -994,7 +997,7 @@ public final class CompiledAssembly {
             if (e.getValue() instanceof MagneticSystem.Coil c) s.coilCurrents().put(e.getKey(), magnetics.current(c, solver));
             if (e.getValue() instanceof Capacitor c) s.capacitorVoltages().put(e.getKey(), c.voltage(solver));
             // a battery's state of charge travels with the capacitors' voltages
-            if (e.getValue() instanceof dev.emergence.core.sim.elements.LeadAcidBattery bt) s.capacitorVoltages().put(e.getKey(), bt.stateOfCharge(solver));
+            if (e.getValue() instanceof dev.emergence.core.sim.elements.Battery bt) s.capacitorVoltages().put(e.getKey(), bt.stateOfCharge(solver));
         }
         for (var e : fluidOfPart.entrySet()) {
             FluidVolume v = e.getValue();

@@ -1666,7 +1666,8 @@ public final class AssemblyCompiler {
                         Node[] l = leads(p);
                         // its charge carries over from the running state (kept with the capacitors' voltages)
                         Double held = prev.capacitorVoltages().get(p.id());
-                        c.deviceOfPart.put(p.id(), c.network.add(new LeadAcidBattery(l[1], l[0], (int) Math.round(p.param("cells", 6)),
+                        c.deviceOfPart.put(p.id(), c.network.add(new Battery(Battery.Chemistry.of(p.param("chemistry", 0)), l[1], l[0],
+                                (int) Math.round(p.param("cells", 6)),
                                 p.param("capacity", 7), held != null ? held : p.param("charge", 1), c.thermalOfPart.get(p.id()))));
                     }
                     case WIRE, INSULATED_WIRE -> c.leadsOfPart.put(p.id(), new Node[]{enode("p" + p.id())});

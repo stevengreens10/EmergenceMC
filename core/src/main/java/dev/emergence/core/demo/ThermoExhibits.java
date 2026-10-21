@@ -46,14 +46,11 @@ public final class ThermoExhibits {
         e.add(RESISTOR, "alumina", 14, 1, 3, Dir.EAST, "resistance", 100);       // in− to 0 V
         e.add(RESISTOR, "alumina", 18, 1, 3, Dir.EAST, "resistance", 20_000);    // out to in−
         e.name("load", e.add(RESISTOR, "alumina", 18, 1, 9, Dir.EAST, "resistance", 10_000)); // the meter's load
-        int bp = e.add(CAPACITOR, "alumina", 22, 1, 6, Dir.EAST, "capacitance", 3000);
-        int bn = e.add(CAPACITOR, "alumina", 26, 1, 6, Dir.EAST, "capacitance", 3000);
-        e.init(bp, new Exhibit.Initial(Double.NaN, 0, 12));
-        e.init(bn, new Exhibit.Initial(Double.NaN, 0, 12));
+        int bp = e.add(BATTERY, "pvc", 22, 1, 6, Dir.EAST, "cells", 6, "capacity", 20); // 6 lead–acid cells: 12.8 V full
+        int bn = e.add(BATTERY, "pvc", 26, 1, 6, Dir.EAST, "cells", 6, "capacity", 20); // 6 lead–acid cells: 12.8 V full
         // heater supply
-        int hb = e.add(CAPACITOR, "alumina", 4, 0, 13, Dir.EAST, "capacitance", 3000);
+        int hb = e.add(BATTERY, "pvc", 4, 0, 13, Dir.EAST, "cells", 6, "capacity", 20); // 6 lead–acid cells: 12.8 V full
         e.name("battery", hb);
-        e.init(hb, new Exhibit.Initial(Double.NaN, 0, 12));
         int sw = e.add(SWITCH, "brass", 8, 0, 13, Dir.EAST);
         e.name("switch", sw);
         e.latch(sw);
@@ -65,7 +62,7 @@ public final class ThermoExhibits {
         // the cold junction's copper to in+, the hot junction's copper lead to 0 V: positive when the junction is hot
         r.pin("tc", 11, 4, 10).pin("tc", 13, 1, 6);
         r.pin("gnd", 4, 2, 5).pin("gnd", 13, 1, 3).pin("gnd", 19, 1, 9)      // hot copper lead, R1, load
-                .pin("gnd", 21, 1, 6).pin("gnd", 27, 1, 6);                  // the banks' 0 V
+                .pin("gnd", 21, 1, 6).pin("gnd", 27, 1, 6);                  // the batteries' 0 V
         r.pin("inN", 15, 1, 3).pin("inN", 17, 1, 3).pin("inN", 14, 0, 6);
         r.pin("out", 15, 1, 6).pin("out", 19, 1, 3).pin("out", 17, 1, 9);
         r.pin("vp", 23, 1, 6).pin("vp", 14, 1, 7);
@@ -102,8 +99,7 @@ public final class ThermoExhibits {
             e.add(BLOCK, "mica", x, 0, 6, Dir.UP);
             e.add(BLOCK, "mica", x, 0, 8, Dir.UP);
         }
-        int bank = e.add(CAPACITOR, "alumina", 8, 0, 12, Dir.EAST, "capacitance", 150);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 96));
+        int bank = e.add(BATTERY, "pvc", 8, 0, 12, Dir.EAST, "cells", 45, "capacity", 40); // 45 lead–acid cells: 95.6 V full
         e.name("switch", e.add(SWITCH, "brass", 8, 0, 10, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 15, 3, 15);
         r.pin("live", 9, 0, 12).pin("live", 5, 0, 7).pin("live", 12, 0, 7);
@@ -163,8 +159,7 @@ public final class ThermoExhibits {
             e.init(heater, new Exhibit.Initial(warm, 0, 0));
             e.fill(BLOCK, "pvc", 10, 0, z, 10, y - 2, z, Dir.UP);
         }
-        int bank = e.add(CAPACITOR, "alumina", 13, 1, 6, Dir.SOUTH, "capacitance", 2000); // hours of heating
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 10));
+        int bank = e.add(BATTERY, "pvc", 13, 1, 6, Dir.SOUTH, "cells", 5, "capacity", 20);
         int sw = e.add(SWITCH, "brass", 13, 1, 10, Dir.SOUTH);
         e.name("switch", sw);
         e.latch(sw);

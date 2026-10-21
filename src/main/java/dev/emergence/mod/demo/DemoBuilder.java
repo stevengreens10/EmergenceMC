@@ -81,6 +81,18 @@ public final class DemoBuilder {
                 problems.add(e.id + ": in the world it has " + wb + " bodies (" + ws + " slides) over " + islands.size() + " islands, its definition "
                         + core.bodies().size() + " (" + cs + ")");
             }
+            // body by body: what moves, how heavy, how far a slide may travel (as a multiset: the order may differ)
+            List<String> wd = new java.util.ArrayList<>(), cd = new java.util.ArrayList<>();
+            for (var c : islands) for (var b : c.bodies()) if (!b.isStatic()) wd.add(describe(b));
+            for (var b : core.bodies()) if (!b.isStatic()) cd.add(describe(b));
+            java.util.Collections.sort(wd);
+            java.util.Collections.sort(cd);
+            if (!wd.equals(cd)) {
+                List<String> onlyW = new java.util.ArrayList<>(wd), onlyC = new java.util.ArrayList<>(cd);
+                for (String s : cd) onlyW.remove(s);
+                for (String s : wd) onlyC.remove(s);
+                problems.add(e.id + ": bodies differ: in the world " + onlyW + ", in its definition " + onlyC);
+            }
             java.util.Collections.sort(ww);
             List<String> cw = new java.util.ArrayList<>(core.warnings());
             java.util.Collections.sort(cw);
@@ -90,6 +102,12 @@ public final class DemoBuilder {
         EmergenceMod.LOG.info("Demo build: {} exhibits compiled in the world as from their definitions ({} differences)",
                 exhibits.size(), problems.size());
         return problems;
+    }
+
+    /** A body as the comparison sees it: rotor or slide, its parts, mass and inertia, a slide's travel. */
+    private static String describe(dev.emergence.core.assembly.CompiledAssembly.Body b) {
+        return (b.slider() ? String.format("slide of %d parts, %.4g kg, travel %.4g…%.4g m", b.parts().size(), b.mass(), b.strokeLo(), b.strokeHi())
+                : String.format("rotor of %d parts, %.4g kg·m²", b.parts().size(), b.inertia()));
     }
 
     /** What the last build could not do as a player would (see {@link PlayerBuilder}). */

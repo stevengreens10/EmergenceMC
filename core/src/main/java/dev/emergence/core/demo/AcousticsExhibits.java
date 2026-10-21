@@ -64,10 +64,8 @@ public final class AcousticsExhibits {
         transducer(e, "mic", 21, -1, 0.0097);
         int f = 1;
         // supplies: 12 V for the speaker, 5 V for the logic
-        int b12 = e.add(CAPACITOR, "alumina", 2, f, 13, Dir.EAST, "capacitance", 50);
-        e.init(b12, new Exhibit.Initial(Double.NaN, 0, 12));
-        int b5 = e.add(CAPACITOR, "alumina", 2, f, 11, Dir.EAST, "capacitance", 10);
-        e.init(b5, new Exhibit.Initial(Double.NaN, 0, 5));
+        int b12 = e.add(BATTERY, "pvc", 2, f, 13, Dir.EAST, "cells", 6, "capacity", 7); // 6 lead–acid cells: 12.8 V full
+        int b5 = e.add(BATTERY, "pvc", 2, f, 11, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2); // 4 nickel–metal hydride cells: 5.2 V at half charge
         e.name("switch", e.add(SWITCH, "brass", 6, f, 13, Dir.EAST));
         // the oscillator: a Schmitt inverter, its output fed back to its input through R, a capacitor to ground
         int sx = 10, sz = 11;

@@ -39,10 +39,9 @@ public final class ChemistryExhibits {
         // the hot plate's legs (wood: steel would touch the heater's leads)
         e.add(BLOCK, "oak", 10, 0, 6, Dir.UP);
         e.add(BLOCK, "oak", 10, 0, 8, Dir.UP);
-        // 12 V supercapacitor bank and switch
-        int bank = e.add(CAPACITOR, "alumina", 10, 0, 12, Dir.EAST, "capacitance", 3000);
+        // a 12 V battery and switch
+        int bank = e.add(BATTERY, "pvc", 10, 0, 12, Dir.EAST, "cells", 6, "capacity", 20); // 6 lead–acid cells: 12.8 V full
         e.name("battery", bank);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 12));
         int sw = e.add(SWITCH, "brass", 6, 0, 10, Dir.EAST);
         e.name("switch", sw);
         e.latch(sw);
@@ -131,9 +130,8 @@ public final class ChemistryExhibits {
         // 96 V bank (it peaks near 1500 K; much below 2 Ω the 60 A and more burns out its leads)
         e.name("heater", e.add(RESISTOR, "alumina", 6, 0, 8, Dir.EAST, "resistance", 2.0, "contact_area", 0.002,
                 "surface_area", 0.002, "mass", 0.1, "max_temperature", 1800));
-        int bank = e.add(CAPACITOR, "alumina", 8, 0, 12, Dir.EAST, "capacitance", 150);
+        int bank = e.add(BATTERY, "pvc", 8, 0, 12, Dir.EAST, "cells", 45, "capacity", 40); // 45 lead–acid cells: 95.6 V full
         e.name("battery", bank);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 96));
         e.name("switch", e.add(SWITCH, "brass", 4, 0, 12, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 15, 3, 15);
         r.pin("live", 9, 0, 12).pin("live", 7, 0, 8);
@@ -190,8 +188,7 @@ public final class ChemistryExhibits {
         // the heater under the pot
         e.name("heater", e.add(RESISTOR, "alumina", 3, 0, 8, Dir.EAST, "resistance", 9.0, "contact_area", 0.002,
                 "surface_area", 0.002, "mass", 0.05));
-        int bank = e.add(CAPACITOR, "alumina", 3, 0, 13, Dir.EAST, "capacitance", 200);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 30));
+        int bank = e.add(BATTERY, "pvc", 3, 0, 13, Dir.EAST, "cells", 14, "capacity", 7); // 14 lead–acid cells: 29.8 V full
         e.name("switch", e.add(SWITCH, "brass", 6, 0, 13, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 15, 2, 15);
         r.pin("bat", 4, 0, 13).pin("bat", 5, 0, 13);
@@ -249,8 +246,7 @@ public final class ChemistryExhibits {
         e.add(PIPE, st, 3, 8, 8, Dir.UP, "bore", 0.006); // the vent, open at its top
         e.name("heater", e.add(RESISTOR, "alumina", 3, 0, 8, Dir.EAST, "resistance", 4.5, "contact_area", 0.002,
                 "surface_area", 0.002, "mass", 0.05));
-        int bank = e.add(CAPACITOR, "alumina", 3, 0, 13, Dir.EAST, "capacitance", 400);
-        e.init(bank, new Exhibit.Initial(Double.NaN, 0, 30));
+        int bank = e.add(BATTERY, "pvc", 3, 0, 13, Dir.EAST, "cells", 14, "capacity", 7); // 14 lead–acid cells: 29.8 V full
         e.name("switch", e.add(SWITCH, "brass", 6, 0, 13, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 15, 2, 15);
         r.pin("bat", 4, 0, 13).pin("bat", 5, 0, 13);

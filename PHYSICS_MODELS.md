@@ -772,14 +772,19 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * The gas pressure difference does not push the liquid: the gas passage sharing the way equalises it, and gas and
   liquid pass independently — counting it coupled the liquid stiffly to the gas's pressure swings in small pipes.
 
-## Lead–acid battery (`LeadAcidBattery`, part BATTERY)
-* A manufactured stack of N cells, PbO₂ | H₂SO₄ | Pb. Discharge, Pb + PbO₂ + 2 H₂SO₄ → 2 PbSO₄ + 2 H₂O, thins the acid
+## Batteries (`Battery`, part BATTERY: "chemistry" 0 lead–acid, 1 nickel–metal hydride)
+* Lead–acid: a manufactured stack of N cells, PbO₂ | H₂SO₄ | Pb. Discharge, Pb + PbO₂ + 2 H₂SO₄ → 2 PbSO₄ + 2 H₂O, thins the acid
   linearly in the charge drawn (Faraday: the state of charge is integrated from the current): specific gravity 1.28
   full, 1.10 flat.
 * EMF per cell by Vinal's rule, E ≈ SG + 0.845 V (the Nernst equation over a working cell's acid concentrations, valid
   SG 1.10–1.30): 2.125 V full, 1.945 V flat. An exhaustion knee (−0.3 V over the last 3 %) and a gassing knee on
   overcharge (+10 mV a cell per percent past 103 %) hold the charge in range without clamping it.
-* Internal resistance per cell r = 0.1 Ω·Ah ÷ capacity, 60 % higher flat, steeply higher in the exhaustion knee.
+* Nickel–metal hydride, NiOOH | KOH | MH: the alkaline electrolyte is not consumed; the voltage is set by the nickel
+  electrode's redox couple, whose oxidised share is the state of charge s — Nernst, E = 1.30 V + (RT/F)·ln((s + 0.02)/(1 − s
+  + 0.02)) at 298 K (1.27 V at 20 %, 1.35 V at 90 %, 1.40 V full; the 2 % pinch keeps it finite, continued straight
+  past the ends). Four cells make a 5 V logic supply.
+* Internal resistance per cell r = k ÷ capacity (k = 0.1 Ω·Ah lead–acid, 0.05 Ω·Ah NiMH), 60 % higher flat, steeply
+  higher in the exhaustion knee; both chemistries share the exhaustion and overcharge knees.
 * Energy: the chemistry is an external reservoir delivering N·E·i; N·i²·r heats the battery. Its state of charge is
   saved with the assembly (in the capacitors' voltage channel). Not modelled: entropic heat, Peukert capacity loss
   beyond the resistance, temperature dependence, self-discharge, sulfation.

@@ -1,10 +1,13 @@
 # Next steps (priority order)
 
 0. **The demo as a player plays it** (tour with hands and checks, world built by placement are in):
-   - (the BATTERY part is in) replace the pre-charged capacitor banks with batteries, exhibit by exhibit (the
-     electronic governor first: its bank sags in the world and it droops 9 % braked); a nickel–metal-hydride or
-     alkaline chemistry for 5 V logic supplies (lead–acid comes in 2.1 V steps);
+   - (done: 44 pre-charged capacitor banks are batteries now, lead–acid or nickel–metal hydride) the Geiger counter's
+     500 V comes from a pre-charged capacitor: a high-voltage converter built from parts;
+   - in the tour the hydraulic press's pump moves 0.44 mm and the propeller cart 0.006 mm, identically every run, while
+     the core moves them millimetres: the world's compile matches body by body, so trace the hand's push in the world;
+   - the electronic governor droops 8 % braked in the world against 3 % in the core;
    - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
+     flywheels and the fan train are still pre-spun;
      keep only boilers, fires and furnaces pre-started;
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
    - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;

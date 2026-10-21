@@ -93,9 +93,15 @@ public final class SimulationManager {
         boolean sounding;
         /** The state the island was last compiled from (for diagnosing a failure right after a restart). */
         AssemblyState startState;
-        /** Whether a player was near it this tick, and its bounding box grown by the near distance (lazily). */
-        boolean near, resetLogged;
-        net.minecraft.world.phys.AABB box;
+        /**
+         * Whether a player was near it this tick, or right beside it (watching it); its bounding box (lazily), and that
+         * grown by the near distance.
+         */
+        boolean near, watched, resetLogged;
+        net.minecraft.world.phys.AABB bounds, box;
+        /** For the pace log: simulated and wall time when last logged. */
+        double paceSim = Double.NaN;
+        long paceWall;
 
         public double timeScale() {
             return timeScale;
@@ -159,7 +165,8 @@ public final class SimulationManager {
             if (ms > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: rebuilding the islands around {} changed blocks took {} ms", n, ms);
         }
         Set<Island> islands = new HashSet<>(islandOf.values());
-        double nearTotal = 0, farTotal = 0;
+        double watchedTotal = 0, nearTotal = 0, farTotal = 0;
+        Set<Island> nearest = nearestToPlayers(islands);
         for (Island isl : islands) {
             if (isl.compiled == null) continue;
             // like block entities, machines advance only within the simulation distance of a player; further
@@ -169,6 +176,7 @@ public final class SimulationManager {
             updateCranks(isl);
             updateWind(isl);
             isl.near = nearPlayer(isl);
+            isl.watched = isl.near && (nearest.contains(isl) || watchedBy(isl));
             List<Long> failed;
             long t0 = System.nanoTime();
             try {
@@ -197,10 +205,12 @@ public final class SimulationManager {
             long cost = System.nanoTime() - t0;
             if (cost / 1_000_000 > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: a step of the island at {} ({} parts) took {} ms",
                     isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), cost / 1_000_000);
-            if (isl.near) nearTotal += cost / 1e6;
+            if (isl.watched) watchedTotal += cost / 1e6;
+            else if (isl.near) nearTotal += cost / 1e6;
             else farTotal += cost / 1e6;
             Profiler.record(cost, isl.compiled.network().size());
-            pace(isl, cost / 1e6);
+            pace(isl, cost / 1e6, isl.watched ? Math.max(ISLAND_BUDGET_MS, GLOBAL_BUDGET_MS) : ISLAND_BUDGET_MS);
+            if (LOG_PACE && isl.watched && tickCount % 200 == 0) logPace(isl);
             if (!failed.isEmpty()) destroyParts(isl, failed);
             updateLight(isl);
             bubbles(isl);
@@ -217,10 +227,64 @@ public final class SimulationManager {
             if (tickCount % 100 == 0) saveIsland(isl);
         }
         tickLoggers();
-        // all islands together within the server's budget, the ones near a player first: if they cost more, those
-        // far from every player slow (down to nearly paused) before the ones being watched do
-        nearScale = adjust(nearScale, nearTotal, GLOBAL_BUDGET_MS, 0.05);
-        farScale = adjust(farScale, farTotal, Math.max(GLOBAL_BUDGET_MS - nearTotal, 0.1 * GLOBAL_BUDGET_MS), 0.01);
+        // all islands together within the server's budget, by priority: the machine a player stands at first, then
+        // those around them, then the rest — if they cost more, the further ones slow (down to nearly paused) before
+        // the one being watched does
+        watchedScale = adjust(watchedScale, watchedTotal, GLOBAL_BUDGET_MS, 0.05);
+        double left = Math.max(GLOBAL_BUDGET_MS - watchedTotal, 0.1 * GLOBAL_BUDGET_MS);
+        nearScale = adjust(nearScale, nearTotal, left, 0.02);
+        farScale = adjust(farScale, farTotal, Math.max(left - nearTotal, 0.1 * GLOBAL_BUDGET_MS), 0.01);
+    }
+
+    /** Logs how fast a watched island runs: simulated seconds per real second since the last log (and why, if slow). */
+    private void logPace(Island isl) {
+        double sim = isl.compiled.time();
+        long wall = System.nanoTime();
+        if (!Double.isNaN(isl.paceSim) && wall > isl.paceWall) {
+            double pace = (sim - isl.paceSim) / ((wall - isl.paceWall) * 1e-9);
+            EmergenceMod.LOG.info("Pace: island at {} ({} parts) ran {} s simulated per real second (its own scale {}, the watched {}, near {}; {} ms a tick)",
+                    isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), String.format("%.2f", pace),
+                    String.format("%.2f", isl.timeScale), String.format("%.2f", watchedScale), String.format("%.2f", nearScale),
+                    String.format("%.1f", isl.costMs));
+        }
+        isl.paceSim = sim;
+        isl.paceWall = wall;
+    }
+
+    /** Logs watched islands' pace (the automated tour, or {@code -Demergence.logPace=true}). */
+    private static final boolean LOG_PACE = Boolean.getBoolean("emergence.autoShowcase") || Boolean.getBoolean("emergence.logPace");
+
+    /** Each player's nearest island (by distance to its blocks' bounds): the machine they are at or looking over. */
+    private Set<Island> nearestToPlayers(Set<Island> islands) {
+        Set<Island> out = new HashSet<>();
+        for (var p : level.players()) {
+            Island best = null;
+            double bestD = Double.MAX_VALUE;
+            for (Island isl : islands) {
+                if (isl.compiled == null) continue;
+                if (isl.bounds == null) nearPlayer(isl);
+                var b = isl.bounds;
+                double dx = Math.max(0, Math.max(b.minX - p.getX(), p.getX() - b.maxX)), dy = Math.max(0, Math.max(b.minY - p.getY(), p.getY() - b.maxY)),
+                        dz = Math.max(0, Math.max(b.minZ - p.getZ(), p.getZ() - b.maxZ)), d = dx * dx + dy * dy + dz * dz;
+                if (d < bestD) {
+                    bestD = d;
+                    best = isl;
+                }
+            }
+            if (best != null) out.add(best);
+        }
+        return out;
+    }
+
+    /** A player within this many blocks of an island's own bounds is taken to be watching it (at it, within reach). */
+    public static final double WATCH_BLOCKS = 6;
+
+    /** True if some player is within {@link #WATCH_BLOCKS} of the island's blocks. */
+    private boolean watchedBy(Island isl) {
+        if (isl.bounds == null) nearPlayer(isl);
+        var b = isl.bounds.inflate(WATCH_BLOCKS);
+        for (var p : level.players()) if (b.contains(p.position())) return true;
+        return false;
     }
 
     /** Multiplicative controller: slow in proportion when over budget, recover by 25 % a tick when under it. */
@@ -232,9 +296,9 @@ public final class SimulationManager {
     /** Islands within this many blocks of a player get the time budget before those further away. */
     public static final double NEAR_BLOCKS = 48;
 
-    /** The common slow-motion factor for an island (on top of its own), by whether a player is near it. */
+    /** The common slow-motion factor for an island (on top of its own), by whether a player is at it or near it. */
     private double scaleOf(Island isl) {
-        return isl.near ? nearScale : farScale;
+        return isl.watched ? watchedScale : isl.near ? nearScale : farScale;
     }
 
     /** True if some player is within {@link #NEAR_BLOCKS} of the island's bounding box. */
@@ -249,7 +313,8 @@ public final class SimulationManager {
                 y1 = Math.max(y1, b.getY());
                 z1 = Math.max(z1, b.getZ());
             }
-            isl.box = new net.minecraft.world.phys.AABB(x0, y0, z0, x1 + 1, y1 + 1, z1 + 1).inflate(NEAR_BLOCKS);
+            isl.bounds = new net.minecraft.world.phys.AABB(x0, y0, z0, x1 + 1, y1 + 1, z1 + 1);
+            isl.box = isl.bounds.inflate(NEAR_BLOCKS);
         }
         for (var p : level.players()) if (isl.box.contains(p.position())) return true;
         return false;
@@ -262,7 +327,7 @@ public final class SimulationManager {
      */
     public static final double GLOBAL_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.globalBudgetMs", "35"));
     /** Common slow-motion factor applied on top of each island's own when all of them together are too costly. */
-    private double nearScale = 1, farScale = 1;
+    private double watchedScale = 1, nearScale = 1, farScale = 1;
 
     // ------------------------------------------------------------------ data loggers
 
@@ -404,10 +469,10 @@ public final class SimulationManager {
     }
 
     /** Time dilation: shrink an island's simulated step while its cost exceeds the budget, recover when cheap. */
-    static void pace(Island isl, double ms) {
+    static void pace(Island isl, double ms, double budgetMs) {
         isl.costMs = isl.costMs == 0 ? ms : 0.8 * isl.costMs + 0.2 * ms;
-        if (isl.costMs > ISLAND_BUDGET_MS) isl.timeScale = Math.max(0.05, isl.timeScale * 0.92);
-        else if (isl.costMs < 0.6 * ISLAND_BUDGET_MS) isl.timeScale = Math.min(1, isl.timeScale * 1.05);
+        if (isl.costMs > budgetMs) isl.timeScale = Math.max(0.05, isl.timeScale * 0.92);
+        else if (isl.costMs < 0.6 * budgetMs) isl.timeScale = Math.min(1, isl.timeScale * 1.05);
     }
 
     private void rebuild() {

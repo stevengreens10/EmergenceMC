@@ -320,8 +320,16 @@ public final class MsiChip implements Element {
         }
     }
 
+    /**
+     * A latch's regeneration towards 0 or 1. Its balance point sits a hair above the middle (a real latch's two halves
+     * are never quite matched): a state left at exactly ½ — the even blend of 0 and 1 a capture cut short leaves — would
+     * otherwise be an exact equilibrium and stay there, a bit neither set nor clear (a Geiger counter's first two bits
+     * were found so, and it never counted again).
+     */
+    private static final double OFFSET = 0.01;
+
     private static double[] regen(double q) {
-        double r = sig((q - 0.5) / 0.1);
+        double r = sig((q - 0.5 - OFFSET) / 0.1);
         return new double[]{r, r * (1 - r) / 0.1};
     }
 

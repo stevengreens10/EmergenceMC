@@ -745,3 +745,9 @@ two-segment commutator can rest with its brushes in a gap), cranks the wheel up 
 core tests start them the same way and judge the state they come to. The flyball governor stays turning: its heavy
 rotor takes minutes of the world's slowed time to come up to speed. Its test brake is 2 N, a load the governor rides
 with a few percent of droop.
+
+**A latch balanced on its edge.** The Geiger counter stopped counting in the world on its 510 V battery, while in the
+core it counted 150 a minute, cut steps or not. Its counter's first two bits sat at exactly ½ — the unstable balance
+point of a latch's regeneration, where a symmetric blend of 0 and 1 leaves it and nothing ever moves it. A real
+latch's halves are never matched; the chip's latches now balance a hair above the middle (1 %), so a state left at ½
+falls to 0 and the counter counts again.

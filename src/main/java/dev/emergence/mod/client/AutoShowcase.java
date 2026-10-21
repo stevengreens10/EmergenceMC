@@ -528,7 +528,7 @@ public final class AutoShowcase {
                 // close the switch: the weights fly out and the push rod turns the rheostat in; then brake it
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
                 nudge(key, part.apply("rotor", PartKind.SHAFT), false);
-                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.10, at.apply("battery"), 30); // (a governor without reset: it droops)
+                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.10, at.apply("battery"), 45); // (a governor without reset: it droops; slow to settle)
             }
             if (id.equals("column")) {
                 // the heater on: the pot boils, the trays warm one by one and the condensate runs back down

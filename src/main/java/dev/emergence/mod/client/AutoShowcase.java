@@ -462,7 +462,10 @@ public final class AutoShowcase {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
             }
             if (id.equals("fourbar")) {
-                // the flywheel turns the crank round; the coupler swings the rocker one way, then the other
+                // the flywheel turns the crank round; the coupler swings the rocker one way, then the other. It has been
+                // coasting down since the gallery opened: a few turns of its crank first, as a player would
+                STEPS.add(new Step(60, NOTHING, null).act(PlayerHand.hold(key + " turn the crank", part.apply("crank", PartKind.CRANK), false)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 BlockPos rocker = at.apply("rocker");
                 double[] lo = {Double.MAX_VALUE}, hi = {-Double.MAX_VALUE};
                 for (String when : new String[]{"a", "b", "c"}) {

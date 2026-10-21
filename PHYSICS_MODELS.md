@@ -736,7 +736,10 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **The wind** (`Assembly.ambientWind`, uniform over a machine). In the world (Minecraft has none) it is modelled:
   4.5 m/s at 10 m in clear weather, 8 in rain, 12 in thunder, from the west, veering ±25° over 20 minutes and gusting
   ±15 % over tens of seconds, reduced near the ground by the neutral log profile u(h) = u₁₀ ln(h/z₀)/ln(10/z₀),
-  z₀ = 0.1 m, h the machine's middle above the ground beneath it (≥ 2 m).
+  z₀ = 0.1 m, h the machine's middle above the ground beneath it (≥ 2 m). Shelter: rays from the machine's blocks
+  run upwind 16 blocks; the share that meets a solid block that is no part of a machine (a wall, a hedge, a hill) is in
+  its lee, where the wind is down to a quarter (a wall's wake is calm for several times its height downwind). Looked
+  for again as the wind veers.
 
 ## Phototransistors (TRANSISTOR with "photo")
 * An NPN (or PNP) bipolar transistor whose collector–base junction lies under a window ("photo": its area [m²],

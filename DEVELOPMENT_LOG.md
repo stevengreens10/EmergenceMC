@@ -729,3 +729,12 @@ in its eight-second test, but over a minute it crept up until the weights lay on
 fully turned in, the motor at this light load ran faster than the governed speed. With 150 Ω it holds 27.6 rad/s
 indefinitely; braked (3 N) it settles 8 % lower — the droop of a governor without a reset, as its sign now says. Its test
 now judges the steady state, and the tour allows that droop.
+
+**Shelter from the wind.** The propeller cart still failed one full tour in two: the wind veers ±25° about west, and
+a quartering wind on the propeller's disc made it a windmill that pinned the cart to the end of its rail before
+anyone came — stronger than a hand-cranked propeller can pull. Wind now has shelter: what a machine's blocks see
+upwind within 16 blocks, if it is a solid world block, puts that share of it in a lee where the wind is a quarter.
+Exhibits can now have scenery — ordinary blocks such as a wall — and the cart has a windbreak along its west side.
+The build check counts only an exhibit's own bodies (the periscope's mirrors take the engine next door into their
+island by line of sight): all 72 exhibits now match their definitions with no difference. The tour's "LED lit" waits
+read the server, as its checks do (a stale client gauge ended the loudspeaker's wait early).

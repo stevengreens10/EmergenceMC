@@ -648,9 +648,19 @@ public final class AutoShowcase {
             }
             if (id.equals("propcart")) {
                 // spin the propeller up by its crank, let go, and the cart runs along its rail on the propeller's thrust
+                // the way the cart can go: a shifting wind may have pushed it to one end of its rail before anyone came
                 double[] x0 = {Double.NaN};
-                STEPS.add(new Step(0, () -> x0[0] = where(server, at.apply("cart"), null), null)
-                        .act(PlayerHand.hold(key + " spin the propeller up", part.apply("crank", PartKind.CRANK), false)));
+                boolean[] back = {false};
+                STEPS.add(new Step(0, () -> {
+                    x0[0] = where(server, at.apply("cart"), null);
+                    PlacedPart cp = any(server, at.apply("cart"), null);
+                    CompiledAssembly c = compiled(server, at.apply("cart"));
+                    var body = cp == null || c == null ? null : c.bodyOf(cp.id);
+                    if (body != null) back[0] = x0[0] > 0.5 * (body.strokeLo() + body.strokeHi());
+                    EmergenceMod.LOG.info("Propcart: cart at {} m (travel {}…{}), cranking {}", x0[0], body == null ? "?" : body.strokeLo(),
+                            body == null ? "?" : body.strokeHi(), back[0] ? "backwards" : "forwards");
+                }, null).act(PlayerHand.hold(key + " spin the propeller up (the way the cart can go)", part.apply("crank", PartKind.CRANK),
+                        () -> back[0])));
                 STEPS.add(new Step(40, NOTHING, null).check(key + " the crank spins the propeller", () ->
                         atLeast("propeller speed [rad/s]", motion(server, at.apply("shaft"), PartKind.SHAFT), 10)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
@@ -1342,8 +1352,10 @@ public final class AutoShowcase {
 
     /** True once an LED in the block at {@code at} is glowing. */
     private static boolean ledLit(BlockPos at) {
-        return Minecraft.getInstance().level.getBlockEntity(at) instanceof AssemblyBlockEntity be
-                && be.parts().stream().anyMatch(p -> p.kind == PartKind.LED && ClientSimState.gauge(p.id) > 1e-5f);
+        // the server's reading, as the check takes it (the client's synced gauge can be a moment stale: a step ended on
+        // it while the server still had the LED dark)
+        var s = Minecraft.getInstance().getSingleplayerServer();
+        return s != null && onServer(s, "lit" + at, () -> light(s, at)) > 1e-5;
     }
 
     /** True once the fuse wire has been destroyed. */

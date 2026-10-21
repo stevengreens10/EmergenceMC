@@ -58,11 +58,12 @@ public final class DemoBuilder {
             if (e.miniature) continue;
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
             // every island the exhibit's blocks belong to (one exhibit may be several machines)
-            java.util.Set<dev.emergence.core.assembly.CompiledAssembly> islands = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            java.util.Map<dev.emergence.core.assembly.CompiledAssembly, BlockPos> islands = new java.util.IdentityHashMap<>();
             List<String> uncompiled = new java.util.ArrayList<>();
             for (Exhibit.PartDef d : e.parts) {
-                var c = sim.compiledAt(plot.offset(d.x0(), d.y0(), d.z0()));
-                if (c != null) islands.add(c);
+                BlockPos at = plot.offset(d.x0(), d.y0(), d.z0());
+                var c = sim.compiledAt(at);
+                if (c != null) islands.putIfAbsent(c, at);
                 else if (uncompiled.size() < 3) uncompiled.add(d.kind() + " at (" + d.x0() + ", " + d.y0() + ", " + d.z0() + ")");
             }
             if (!uncompiled.isEmpty()) problems.add(e.id + ": not simulated in the world: " + uncompiled);
@@ -71,9 +72,22 @@ public final class DemoBuilder {
             int wb = 1;
             long ws = 0;
             List<String> ww = new java.util.ArrayList<>();
-            for (var c : islands) {
-                wb += c.bodies().size() - 1; // each island has its own frame
-                ws += c.bodies().stream().filter(b -> b.slider()).count();
+            int x0 = plot.getX(), x1 = plot.getX() + e.plots * PLOT_SPACING;
+            java.util.function.BiPredicate<dev.emergence.core.assembly.CompiledAssembly, dev.emergence.core.assembly.CompiledAssembly.Body> own = (c, b) -> {
+                // a body is this exhibit's if a part of it stands on its plot (light can join a neighbour's machine
+                // into the same island: the periscope's mirrors see the engine next door)
+                for (long id : b.parts()) {
+                    BlockPos p = sim.partBlock(islands.get(c), id);
+                    if (p != null && p.getX() >= x0 && p.getX() < x1) return true;
+                }
+                return false;
+            };
+            for (var c : islands.keySet()) {
+                for (var b : c.bodies()) {
+                    if (b.isStatic() || !own.test(c, b)) continue;
+                    wb++;
+                    if (b.slider()) ws++;
+                }
                 ww.addAll(c.warnings());
             }
             long cs = core.bodies().stream().filter(b -> b.slider()).count();
@@ -83,7 +97,7 @@ public final class DemoBuilder {
             }
             // body by body: what moves, how heavy, how far a slide may travel (as a multiset: the order may differ)
             List<String> wd = new java.util.ArrayList<>(), cd = new java.util.ArrayList<>();
-            for (var c : islands) for (var b : c.bodies()) if (!b.isStatic()) wd.add(describe(b));
+            for (var c : islands.keySet()) for (var b : c.bodies()) if (!b.isStatic() && own.test(c, b)) wd.add(describe(b));
             for (var b : core.bodies()) if (!b.isStatic()) cd.add(describe(b));
             java.util.Collections.sort(wd);
             java.util.Collections.sort(cd);
@@ -133,6 +147,12 @@ public final class DemoBuilder {
         for (int i = 0; i < exhibits.size(); i++) {
             Exhibit e = exhibits.get(i);
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
+            for (Exhibit.Scenery s : e.scenery) {
+                var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.withDefaultNamespace(s.block()));
+                for (int x = s.x0(); x <= s.x1(); x++)
+                    for (int y = s.y0(); y <= s.y1(); y++)
+                        for (int z = s.z0(); z <= s.z1(); z++) level.setBlock(plot.offset(x, y, z), block.defaultBlockState(), 2);
+            }
             // as a player builds it: each part made in the part editor and placed with a click
             if (e.miniature) place(level, plot, e);
             else problems.addAll(PlayerBuilder.build(level, plot, e));

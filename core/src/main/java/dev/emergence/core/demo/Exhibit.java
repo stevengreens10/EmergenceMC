@@ -37,6 +37,21 @@ public final class Exhibit {
     /** Longer explanation shown to the player. */
     public final String description;
     public final List<PartDef> parts = new ArrayList<>();
+
+    /**
+     * Scenery: ordinary solid blocks, no part of any machine — a windbreak, a wall (by Minecraft block id, e.g.
+     * "stone_bricks"), filling the box between two corners on the plot. They matter only as the world matters: shelter
+     * from the wind, something to stand on. Keep them a block clear of the parts (a part touching a world block is
+     * fixed to it).
+     */
+    public record Scenery(int x0, int y0, int z0, int x1, int y1, int z1, String block) {}
+
+    public final List<Scenery> scenery = new ArrayList<>();
+
+    public Exhibit scenery(int x0, int y0, int z0, int x1, int y1, int z1, String block) {
+        scenery.add(new Scenery(x0, y0, z0, x1, y1, z1, block));
+        return this;
+    }
     public final Map<Integer, Initial> initial = new LinkedHashMap<>();
     /** Named parts of interest (for instruments and tests). */
     public final Map<String, Integer> named = new LinkedHashMap<>();

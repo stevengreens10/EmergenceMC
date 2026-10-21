@@ -101,6 +101,27 @@ final class PlayerHand {
         return holdWith(what, t, sneak, ItemStack.EMPTY);
     }
 
+    /**
+     * Hold the use key on the part, sneaking or not as {@code sneak} says when the hold begins (a player looks first: a
+     * cart at the far end of its rail is cranked the way it can go).
+     */
+    static Act hold(String what, Target t, java.util.function.BooleanSupplier sneak) {
+        return new Act() {
+            private Act real;
+
+            @Override
+            public boolean tick(Minecraft mc) {
+                if (real == null) real = hold(what, t, sneak.getAsBoolean());
+                return real.tick(mc);
+            }
+
+            @Override
+            public String what() {
+                return real == null ? what : real.what();
+            }
+        };
+    }
+
     /** Hold the use key on the part with an item in hand (a crank turned with the data logger in the other hand, as it were). */
     static Act holdWith(String what, Target t, boolean sneak, ItemStack item) {
         return new Reach(what, t, item, sneak, mc -> {

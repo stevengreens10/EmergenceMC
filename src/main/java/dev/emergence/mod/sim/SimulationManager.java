@@ -84,6 +84,8 @@ public final class SimulationManager {
         double ambient;
         /** Height of the island's middle above the ground under it [m, world blocks]; −1 until found. */
         double windHeight = -1;
+        /** The share of the wind reaching it past solid blocks upwind (1: open), and the direction it was found for. */
+        double shelter = 1, shelterDir = Double.NaN;
         int resolution = AssemblyBlockEntity.MINIATURE;
         /** Simulated seconds per real second: below 1 when the island cannot keep up within its budget. */
         double timeScale = 1;
@@ -952,7 +954,42 @@ public final class SimulationManager {
         double z0 = 0.1, u = u10 * Math.log(Math.max(isl.windHeight, 2) / z0) / Math.log(10 / z0);
         double gust = 1 + 0.1 * Math.sin(2 * Math.PI * t / 37) + 0.05 * Math.sin(2 * Math.PI * t / 11.3 + 1.3);
         double dir = Math.toRadians(25) * Math.sin(2 * Math.PI * t / 1200);
+        // a wall or a hedge upwind calms the air behind it: looked for again as the wind veers
+        if (Double.isNaN(isl.shelterDir) || Math.abs(dir - isl.shelterDir) > Math.toRadians(3)) {
+            isl.shelter = shelter(isl, dir);
+            isl.shelterDir = dir;
+        }
+        u *= isl.shelter;
         isl.compiled.setWind(new Vec3(u * gust * Math.cos(dir), 0, u * gust * Math.sin(dir)));
+    }
+
+    /** How far upwind a solid block shelters a machine [blocks], and the wind left in its lee. */
+    private static final int SHELTER_REACH = 16;
+    private static final double LEE = 0.25;
+
+    /**
+     * The share of the wind that reaches an island blowing towards direction {@code dir} (radians from east, about the
+     * vertical): rays from its blocks run upwind; the fraction stopped within {@value #SHELTER_REACH} blocks by a solid
+     * block that is no part of a machine is in the lee of a wall, where the wind is down to {@value #LEE} of itself.
+     * (A wall's wake is calm for some times its height downwind; this keeps the first few.)
+     */
+    private double shelter(Island isl, double dir) {
+        double ux = -Math.cos(dir), uz = -Math.sin(dir); // upwind
+        int rays = 0, blocked = 0;
+        for (BlockPos b : isl.blocks) {
+            rays++;
+            for (int k = 1; k <= SHELTER_REACH; k++) {
+                BlockPos q = BlockPos.containing(b.getX() + 0.5 + ux * k, b.getY() + 0.5, b.getZ() + 0.5 + uz * k);
+                if (isl.blocks.contains(q) || blocks.containsKey(q) || !level.isLoaded(q)) continue;
+                if (level.getBlockState(q).isSolid()) {
+                    blocked++;
+                    break;
+                }
+            }
+        }
+        if (rays == 0) return 1;
+        double f = (double) blocked / rays;
+        return 1 - (1 - LEE) * f;
     }
 
     /** Height of an island's middle above the first non-machine block under its lowest block [blocks]. */
@@ -1047,6 +1084,12 @@ public final class SimulationManager {
     public CompiledAssembly compiledAt(BlockPos pos) {
         Island isl = islandAt(pos);
         return isl == null ? null : isl.compiled;
+    }
+
+    /** The block a part of the island at {@code pos} is in (null if none such). */
+    public BlockPos partBlock(BlockPos pos, long partId) {
+        Island isl = islandAt(pos);
+        return isl == null ? null : isl.partPos.get(partId);
     }
 
     // ------------------------------------------------------------------ consequences

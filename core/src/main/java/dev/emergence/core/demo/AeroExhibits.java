@@ -81,7 +81,9 @@ public final class AeroExhibits {
                         + "it: nothing else touches the cart. The faster the cart goes, the less its blades bite (they "
                         + "meet the air already moving towards them) and the thrust falls; the flywheel runs down as "
                         + "the air takes its energy. The rail runs north–south, across the wind (from the west): the "
-                        + "bushings take the wind's push sideways, so only the propeller drives the cart along. Crank the "
+                        + "bushings take the wind's push sideways, and a wall to the west keeps the wind off its propeller "
+                        + "when it veers (in the open, a quartering wind on the disc would turn it into a windmill and "
+                        + "push the cart to the end of its rail). Crank the "
                         + "flywheel to spin it up. Aircraft propellers, airboats and the fans of a hovercraft all push this way.");
         String st = "steel_1045", al = "aluminium_6061";
         int y = 3, ya = y + 8, x = 8; // the propeller high enough for long blades to clear the rail
@@ -104,6 +106,9 @@ public final class AeroExhibits {
         // the flywheel, and a crank to spin it up
         e.name("flywheel", e.fill(BLOCK, "brass", x - 1, ya - 1, 5, x + 1, ya + 1, 5, Dir.SOUTH, "fill", 0.3));
         e.name("crank", e.add(CRANK, st, x, ya, 6, Dir.SOUTH, "radius", 0.1));
+        // a windbreak to the west, clear of the blades: the wind veers ±25° about west, and a quartering wind on the
+        // propeller's disc turned it into a windmill that pinned the cart to the end of its rail
+        e.scenery(-1, 0, -3, -1, ya + 2, 22, "stone_bricks");
         return e.view(18, 9, 8, 25, 90);
     }
 }

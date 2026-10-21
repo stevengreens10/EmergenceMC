@@ -123,6 +123,20 @@ public final class AssemblyBlock extends BaseEntityBlock {
         return InteractionResult.PASS;
     }
 
+    /**
+     * Pick block (middle click): the part under the crosshair as an item, with all its settings — to build another
+     * like it without setting it up again in the part editor.
+     */
+    @Override
+    public ItemStack getCloneItemStack(BlockState state, net.minecraft.world.phys.HitResult target, net.minecraft.world.level.LevelReader level,
+                                       BlockPos pos, Player player) {
+        if (level.getBlockEntity(pos) instanceof AssemblyBlockEntity be && target instanceof BlockHitResult bh) {
+            PlacedPart part = be.partHit(bh.getLocation(), bh.getDirection());
+            if (part != null) return PartPresets.stack(part.kind, part.spec);
+        }
+        return ItemStack.EMPTY;
+    }
+
     /** Removes the part the player is looking at; returns true if something was removed. */
     public static boolean removeTargetedPart(Level level, BlockPos pos, Player player) {
         if (!(level.getBlockEntity(pos) instanceof AssemblyBlockEntity be)) return false;

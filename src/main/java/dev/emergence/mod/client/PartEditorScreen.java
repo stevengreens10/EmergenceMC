@@ -104,13 +104,23 @@ public final class PartEditorScreen extends Screen {
             now = materials.stream().filter(m -> m.id().equals(schema.defaultMaterial())).findFirst().orElse(materials.get(0));
             material = now.id();
         }
-        addRenderableWidget(CycleButton.<Material>builder(m -> Component.literal(m.name()))
-                .withValues(materials).withInitialValue(now).displayOnlyValue()
-                .withTooltip(m -> Tooltip.create(Component.literal(materialNote(m))))
-                .create(cx, y, CONTROL_W, 20, Component.literal("Material"), (b, m) -> {
-                    material = m.id();
-                    changed(false);
-                }));
+        Material shownMaterial = now;
+        // all the choices at once, grouped, when there are many; stepping through them when there are few
+        if (materials.size() > 6) {
+            addRenderableWidget(Button.builder(Component.literal(now == null ? "?" : now.name() + "  ▼"), b -> minecraft.setScreen(
+                    new MaterialPickerScreen(this, materials, material, this::materialNote, m -> {
+                        material = m.id();
+                        validate();
+                    }))).bounds(cx, y, CONTROL_W, 20).tooltip(Tooltip.create(Component.literal(shownMaterial == null ? "" : materialNote(shownMaterial)))).build());
+        } else {
+            addRenderableWidget(CycleButton.<Material>builder(m -> Component.literal(m.name()))
+                    .withValues(materials).withInitialValue(now).displayOnlyValue()
+                    .withTooltip(m -> Tooltip.create(Component.literal(materialNote(m))))
+                    .create(cx, y, CONTROL_W, 20, Component.literal("Material"), (b, m) -> {
+                        material = m.id();
+                        changed(false);
+                    }));
+        }
         labels.add(new Object[]{"Material", y, "What it is made of (only materials this part can sensibly be made of)."});
         y += ROW + 6;
         listTop = y;
@@ -544,7 +554,9 @@ public final class PartEditorScreen extends Screen {
 
         @Override
         protected void updateMessage() {
-            setMessage(Component.literal(p.log() && p.min() <= 0 && current == 0 ? "0 (off)" : format(p, current)));
+            // where 0 stands for something ("0: flat", "0: none"), say what
+            String zero = p.help().startsWith("0: ") ? p.help().substring(3).split("[.;]")[0] : p.log() && p.min() <= 0 ? "off" : null;
+            setMessage(Component.literal(current == 0 && zero != null ? "0 (" + zero + ")" : format(p, current)));
         }
 
         @Override

@@ -696,4 +696,6 @@ quantities are sliders over their range (logarithmic where it spans decades) wit
 stock variants are named presets ("12 V lead–acid, 7 A·h", "Transformer secondary on a core"); a line at the top works
 out what the settings come to (a spring's stiffness, a coil's resistance and how full its winding space is, a lens's
 focal length, a battery's voltage and energy). The server checks every specification against the same schema, and a
-test checks that all 72 exhibits and every preset pass it.
+test checks that all 72 exhibits and every preset pass it. A part with many possible materials (a block: forty) opens a picker that shows them all at
+once, grouped by kind with their properties on hover; a slider at zero says what zero means ("0 (flat)", "0 (none)");
+and pick block (middle click) on a placed part gives an item with all of its settings, to build another like it.

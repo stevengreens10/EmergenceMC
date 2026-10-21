@@ -51,6 +51,10 @@ final class EditorShots {
             if ((boolean) s[2]) screen.showAdvanced();
             if (s[0] == PartKind.BATTERY && (boolean) s[2]) screen.startTyping("capacity");
             mc.setScreen(screen);
+            if (s[0] == PartKind.BLOCK && (boolean) s[2]) {
+                mc.setScreen(new MaterialPickerScreen(screen, dev.emergence.core.assembly.PartParameters.of(PartKind.BLOCK).allowedMaterials(),
+                        "steel_1045", m -> m.name(), m -> { }));
+            }
             wait = 10;
         } else if (wait-- == 0) {
             Screenshot.grab(mc.gameDirectory, s[3] + ".png", mc.getMainRenderTarget(), msg -> EmergenceMod.LOG.info("Editor shot: {}", msg.getString()));

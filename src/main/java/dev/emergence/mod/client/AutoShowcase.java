@@ -553,6 +553,11 @@ public final class AutoShowcase {
                 STEPS.add(new Step(3, NOTHING, shot.apply("buzzing2")));
             }
             if (id.equals("eddy")) {
+                // both discs at rest: crank each up and let go — the aluminium one between the magnets stops, the nylon coasts
+                for (String d : new String[]{"nylon", "aluminium"}) {
+                    STEPS.add(new Step(100, NOTHING, null).act(PlayerHand.hold(key + " crank the " + d + " disc", part.apply(d + "Crank", PartKind.CRANK), false)));
+                    STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+                }
                 STEPS.add(new Step(60, NOTHING, shot.apply("braked")).check(key + " the magnets brake the aluminium disc, not the nylon one", () -> {
                     double al = motion(server, at.apply("aluminiumShaft"), PartKind.SHAFT), ny = motion(server, at.apply("nylonShaft"), PartKind.SHAFT);
                     return that(al < 0.6 * ny, String.format("aluminium %.1f rad/s, nylon %.1f rad/s, expected aluminium well below", al, ny));
@@ -746,9 +751,15 @@ public final class AutoShowcase {
                 }));
             }
             if (id.equals("flywheels")) {
+                // both at rest: spin each by hand and let go — the ball bearing's runs on, the bushing's slows
+                for (String w : new String[]{"ball", "plain"}) {
+                    STEPS.add(new Step(80, NOTHING, null).act(PlayerHand.hold(key + " spin the " + (w.equals("ball") ? "ball-bearing" : "bushing")
+                            + " flywheel by hand", part.apply(w + "Wheel", PartKind.BLOCK), false)));
+                    STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+                }
                 STEPS.add(new Step(200, NOTHING, shot.apply("later")).check(key + " the ball-bearing flywheel keeps turning, the bushing's slows", () -> {
                     double ball = motion(server, at.apply("ball"), null), plain = motion(server, at.apply("plain"), null);
-                    return that(ball > plain + 5, String.format("ball bearing %.1f rad/s, bushing %.1f rad/s, expected the ball bearing's well ahead", ball, plain));
+                    return that(ball > 1.5 * plain + 1, String.format("ball bearing %.1f rad/s, bushing %.1f rad/s, expected the ball bearing's well ahead", ball, plain));
                 }));
             }
             if (id.equals("daniell")) {

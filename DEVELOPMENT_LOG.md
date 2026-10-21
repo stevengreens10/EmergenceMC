@@ -750,4 +750,6 @@ with a few percent of droop.
 core it counted 150 a minute, cut steps or not. Its counter's first two bits sat at exactly ½ — the unstable balance
 point of a latch's regeneration, where a symmetric blend of 0 and 1 leaves it and nothing ever moves it. A real
 latch's halves are never matched; the chip's latches now balance a hair above the middle (1 %), so a state left at ½
-falls to 0 and the counter counts again.
+falls to 0 and the counter counts again. The flywheels and the eddy brake now open at rest too: the tour
+spins each flywheel by its rim and cranks each eddy disc, and their tests do the same (the eddy brake's energy check
+counts the disc's heat from the moment it is let go — cranking against the magnets warms it first).

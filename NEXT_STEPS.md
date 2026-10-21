@@ -7,8 +7,11 @@
      judged mid-recovery, the gas engine ran as half of itself while its chunks loaded) the periscope's island takes in
      the gas engine next door by line of sight;
    - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
-     (done: the fan train, governors and unbalanced rotor start at rest) the flywheels, four-bar, gas engine and
-     fatigue rig still open turning (each would need its own way to be started by hand: a crank, a starter);
+     (done: the fan train, governors, unbalanced rotor, flywheels and eddy brake start at rest and are started by hand)
+     still opening in motion: the heat engines on their pre-heated plants (the gas engine needs a starting handle — a
+     hand-turned crank too slow to fire it is the honest test), the four-bar (its consistent start is what its test
+     measures; the tour turns its crank), the flyball (minutes to spin up) and the fatigue rig (150 rad/s: a motor's
+     job, not a hand's — a motor from parts to drive it);
      keep only boilers, fires and furnaces pre-started;
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
    - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;
@@ -16,6 +19,10 @@
    - the chip-level inverter costs 1–3 s of CPU a tick near a player (now slowed rather than stalling the server): the
      averaged-switch model of item 5a;
    - the tour's hands still teleport the player to open sky for clicks in the air (walk there instead);
+   - the loudspeaker's island (527 parts, audio-rate) failed once in the world, idle for minutes with its switch off:
+     time-step underflow at a resistor's node at 6.3 s, recovered by a restart at rest; the core runs it idle and on
+     to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:
+     an audio-rate partition that sleeps while nothing vibrates;
    - the miniature exhibit is still placed directly (tweezers placement);
    - the full tour, then every exhibit's checks green.
 

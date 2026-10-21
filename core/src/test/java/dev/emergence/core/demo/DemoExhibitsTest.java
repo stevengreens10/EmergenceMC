@@ -288,12 +288,18 @@ class DemoExhibitsTest {
         Exhibit e = Exhibits.flywheels();
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = compile(e, b);
-        assertEquals(60, c.probe(b.id(e, "ball")).angularVelocity(), 1e-9);
+        // at rest, as a player finds them: each spun up by hand for a few seconds, then let go
+        for (String s : new String[]{"ball", "plain"}) c.setTurnEffort(b.id(e, s), 1, true);
+        run(c, 4);
+        for (String s : new String[]{"ball", "plain"}) c.setTurnEffort(b.id(e, s), 0, false);
+        double ball0 = c.probe(b.id(e, "ball")).angularVelocity(), plain0 = c.probe(b.id(e, "plain")).angularVelocity();
         run(c, 60);
         double ball = c.probe(b.id(e, "ball")).angularVelocity();
         double plain = c.probe(b.id(e, "plain")).angularVelocity();
-        assertTrue(ball > 50, "ball bearing barely slows: " + ball);
-        assertTrue(plain < 5, "bushing nearly stopped: " + plain);
+        System.out.printf("flywheels: spun by hand to %.1f / %.1f rad/s; a minute later %.1f / %.1f rad/s%n", ball0, plain0, ball, plain);
+        assertTrue(ball0 > 5 && plain0 > 5, "a hand spins them up: " + ball0 + ", " + plain0);
+        assertTrue(ball > 0.8 * ball0, "ball bearing barely slows: " + ball);
+        assertTrue(plain < 0.1 * plain0, "bushing nearly stopped: " + plain);
         assertTrue(c.temperature(b.id(e, "plainBearing")) > AMBIENT + 0.5, "bushing warmed by friction");
     }
 
@@ -1744,25 +1750,39 @@ class DemoExhibitsTest {
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = compile(e, b);
         long al = b.id(e, "aluminiumShaft"), ny = b.id(e, "nylonShaft");
-        double j = c.bodyOf(al).inertia(), w0 = c.probe(al).angularVelocity();
+        // at rest, as a player finds them: the nylon disc cranked up, then the aluminium one, each let go at speed
+        for (String s : new String[]{"nylonCrank", "aluminiumCrank"}) {
+            for (int i = 0; i < 200; i++) {
+                c.setCrankEffort(b.id(e, s), 1, true);
+                c.step(0.05);
+            }
+            c.setCrankEffort(b.id(e, s), 0, false);
+        }
+        double j = c.bodyOf(al).inertia(), w0 = c.probe(al).angularVelocity(), wn0 = c.probe(ny).angularVelocity();
+        // the heat in the aluminium disc (the hand's work while cranking against the magnets is already there: counted from now)
+        java.util.function.DoubleSupplier discHeat = () -> {
+            double h = 0;
+            for (long id : c.bodyOf(al).parts()) {
+                var p = b.assembly().get(id);
+                if (!p.material().id().equals("aluminium_6061")) continue;
+                h += (c.temperature(id) - AMBIENT) * dev.emergence.core.assembly.PartGeometry.mass(p)
+                        * p.material().get(dev.emergence.core.materials.MaterialProperty.SPECIFIC_HEAT, 0);
+            }
+            return h;
+        };
+        double heat0 = discHeat.getAsDouble();
         StringBuilder log = new StringBuilder();
-        for (int s = 0; s < 6; s++) {
+        for (int s = 0; s < 2; s++) { // stopped within some 4 s; judged then, before the hot disc sheds much heat to the air
             run(c, 2);
             log.append(String.format(" %.0f s: %.1f / %.1f rad/s;", c.time(), c.probe(al).angularVelocity(), c.probe(ny).angularVelocity()));
         }
         double wAl = c.probe(al).angularVelocity(), wNy = c.probe(ny).angularVelocity();
-        // the heat in the aluminium disc against the kinetic energy it lost (its bearings take a little)
-        double heat = 0;
-        for (long id : c.bodyOf(al).parts()) {
-            var p = b.assembly().get(id);
-            if (!p.material().id().equals("aluminium_6061")) continue;
-            heat += (c.temperature(id) - AMBIENT) * dev.emergence.core.assembly.PartGeometry.mass(p)
-                    * p.material().get(dev.emergence.core.materials.MaterialProperty.SPECIFIC_HEAT, 0);
-        }
+        // the heat the disc gained against the kinetic energy it lost since it was let go (its bearings take a little)
+        double heat = discHeat.getAsDouble() - heat0;
         double lost = 0.5 * j * (w0 * w0 - wAl * wAl);
         System.out.printf("eddy brake:%s kinetic energy lost %.1f J, heat in the disc %.1f J%n", log, lost, heat);
         assertTrue(wAl < 0.3 * w0, "the aluminium disc is braked: " + wAl);
-        assertTrue(wNy > 0.9 * w0, "the nylon disc coasts: " + wNy);
+        assertTrue(wNy > 0.9 * wn0, "the nylon disc coasts: " + wNy);
         assertEquals(lost, heat, 0.1 * lost, "the kinetic energy becomes heat in the disc");
     }
 

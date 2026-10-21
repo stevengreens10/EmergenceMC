@@ -268,9 +268,9 @@ public final class Exhibits {
             int shaft = e.fill(SHAFT, st, x, 0, 8, x, 4, 8, Dir.UP, "diameter", 0.02);
             int bearing = e.add(BEARING, k == 0 ? st : "bronze", x, 0, 8, Dir.UP, "type", k);
             e.name(k == 0 ? "ballBearing" : "plainBearing", bearing);
-            e.fill(BLOCK, "aluminium_6061", x - 2, 2, 6, x + 2, 2, 10, Dir.UP, "fill", 0.25);
-            e.name(k == 0 ? "ball" : "plain", shaft);
-            e.init(shaft, new Exhibit.Initial(Double.NaN, 60, 0));
+            // the wheel's rim: where a player grips it to give it a spin
+            e.name(k == 0 ? "ballWheel" : "plainWheel", e.fill(BLOCK, "aluminium_6061", x - 2, 2, 6, x + 2, 2, 10, Dir.UP, "fill", 0.25));
+            e.name(k == 0 ? "ball" : "plain", shaft); // at rest: a player spins each by hand
         }
         return e.view(7.5, 7, 17, 25);
     }
@@ -693,9 +693,8 @@ public final class Exhibits {
             e.add(BEARING, st, 2, 3, z, Dir.EAST);
             e.add(BEARING, st, 4, 3, z, Dir.EAST);
             int s = e.fill(SHAFT, st, 1, 3, z, 6, 3, z, Dir.EAST, "diameter", 0.012);
-            e.name(name[k] + "Shaft", s);
-            e.init(s, new Exhibit.Initial(Double.NaN, 60, 0));
-            e.add(CRANK, st, 0, 3, z, Dir.EAST, "radius", 0.1);
+            e.name(name[k] + "Shaft", s); // at rest: a player cranks each
+            e.name(name[k] + "Crank", e.add(CRANK, st, 0, 3, z, Dir.EAST, "radius", 0.1));
             // the disc: a 5 × 5 plate, 6 mm thick, on the shaft's end
             int d = -1;
             for (int y = 1; y <= 5; y++)

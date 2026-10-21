@@ -220,6 +220,7 @@ public final class CompiledAssembly {
     Node ambient;
     private double lag;
     private int maxStepsPerAdvance = 4000;
+    private long wallBudgetNanos;
 
     CompiledAssembly(Assembly assembly) {
         this.assembly = assembly;
@@ -396,7 +397,7 @@ public final class CompiledAssembly {
     }
 
     private List<Long> stepOnce(double dt) {
-        double done = solver.advance(dt, maxStepsPerAdvance);
+        double done = solver.advance(dt, maxStepsPerAdvance, wallBudgetNanos > 0 ? System.nanoTime() + wallBudgetNanos : 0);
         lag += dt - done;
         List<Long> failed = new ArrayList<>();
         for (long id : vessels().keySet()) if (burstUtilisation(id) >= 1) failed.add(id);
@@ -425,6 +426,15 @@ public final class CompiledAssembly {
 
     public CompiledAssembly maxStepsPerAdvance(int n) {
         this.maxStepsPerAdvance = n;
+        return this;
+    }
+
+    /**
+     * Wall-clock time a {@link #step} may take [ms] (0: no limit, the default — tests are deterministic): past it the
+     * step ends early on an accepted state, and the shortfall shows as {@link #lag()}.
+     */
+    public CompiledAssembly wallBudget(double ms) {
+        this.wallBudgetNanos = (long) (ms * 1e6);
         return this;
     }
 

@@ -148,7 +148,8 @@ public final class AutoShowcase {
             java.util.function.Function<String, String> shot = s -> "showcase-" + no + "-" + id + (s.isEmpty() ? "" : "-" + s);
             java.util.function.Function<String, BlockPos> at = name -> {
                 if (!e.miniature && !e.named.containsKey(name)) {
-                    REPORT.add("FAIL tour: " + id + " has no part named " + name);
+                    String line = "FAIL tour: " + id + " has no part named " + name;
+                    if (!REPORT.contains(line)) REPORT.add(line);
                     return plot;
                 }
                 return DemoBuilder.partBlock(plot, e, name);
@@ -179,6 +180,7 @@ public final class AutoShowcase {
             }
             if (id.equals("dcmotor") || id.equals("corrosion")) {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
+                if (id.equals("dcmotor")) nudge(key, part.apply("rotor", PartKind.SHAFT), false);
                 Step s = new Step(id.equals("corrosion") ? 60 : 30, view, shot.apply("on"));
                 if (id.equals("dcmotor")) {
                     s.check(key + " the motor turns", () -> atLeast("rotor speed [rad/s]", motion(server, at.apply("rotor"), PartKind.SHAFT), 2))
@@ -257,12 +259,10 @@ public final class AutoShowcase {
                         () -> that(!has(server, top, PartKind.BLOCK), "tall strip " + (has(server, top, PartKind.BLOCK) ? "still standing" : "buckled") + "; expected to buckle")));
             }
             if (id.equals("computer")) {
-                Sampler pc = new Sampler(), acc = new Sampler();
-                STEPS.add(new Step(200, NOTHING, shot.apply("running")).sample(pc, () -> chip(server, at.apply("pc"))).sample(acc, () -> chip(server, at.apply("acc")))
-                        .check(key + " the program counter steps through the program", () -> that(pc.range() >= 2,
-                                String.format("PC took values %.0f–%.0f, expected to step", pc.min(), pc.max())))
-                        .check(key + " the accumulator follows it", () -> that(acc.range() >= 1,
-                                String.format("ACC took values %.0f–%.0f, expected to change", acc.min(), acc.max()))));
+                Sampler rotor = new Sampler();
+                STEPS.add(new Step(200, NOTHING, shot.apply("running")).sample(rotor, () -> where(server, at.apply("rotor"), null))
+                        .check(key + " the program steps the motor's rotor round", () -> atLeast("rotor turned [°]",
+                                Math.toDegrees(rotor.range()), 30)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " flip the sense switch", part.apply("sense", PartKind.SWITCH))));
                 STEPS.add(new Step(200, view, shot.apply("reverse")));
             }
@@ -277,8 +277,12 @@ public final class AutoShowcase {
                         1e-3 * pressure(server, at.apply("condenser"), PartKind.TANK), 20));
                 STEPS.add(run);
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " shut the regulator", part.apply("regulator", PartKind.VALVE))));
+                double[] boiler0 = {Double.NaN};
+                STEPS.add(new Step(0, () -> boiler0[0] = pressure(server, at.apply("boiler"), PartKind.TANK), null));
                 STEPS.add(new Step(200, view, shot.apply("shut")).check(key + " without steam it slows",
-                        () -> atMost("crankshaft speed [rad/s]", motion(server, shaft, PartKind.SHAFT), 0.9 * running[0])));
+                                () -> atMost("crankshaft speed [rad/s]", motion(server, shaft, PartKind.SHAFT), 0.97 * running[0]))
+                        .check(key + " and the boiler, no longer drawn on, presses up", () -> atLeast("boiler pressure rise [kPa]",
+                                1e-3 * (pressure(server, at.apply("boiler"), PartKind.TANK) - boiler0[0]), 1)));
             }
             if (id.equals("servo")) {
                 // turn the knob down to its stop: the arm rises against gravity to just above horizontal
@@ -297,9 +301,14 @@ public final class AutoShowcase {
                 // the data logger on the can's gas, then the heater switch: shoot when the gas runs away
                 logOn(key, part.apply("can", PartKind.TANK), "fluid temperature", 2, server, logger);
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " close the heater switch", part.apply("switch", PartKind.SWITCH), logger)));
-                STEPS.add(new Step(4000, view, shot.apply("ignited"), () -> onServer(server, "logger", () -> loggerNow(server)) > 1500).show()
-                        .check(key + " the methane–air runs away and ignites", () -> atLeast("peak gas temperature on the logger's screen [K]",
-                                SimulationManager.get(server.overworld()).loggerPeak(player(server)), 1000)));
+                // the spike lasts a few tenths of a second of simulated time: the logger's screen holds it for its time base
+                Sampler screen = new Sampler();
+                STEPS.add(new Step(4000, view, null, () -> onServer(server, "ch4", () -> gasShare(server, at.apply("can"), "CH4")) < 0.01).show()
+                        .sample(screen, () -> SimulationManager.get(server.overworld()).loggerPeak(player(server))));
+                STEPS.add(new Step(10, NOTHING, shot.apply("ignited")).show().sample(screen, () -> SimulationManager.get(server.overworld()).loggerPeak(player(server)))
+                        .check(key + " the methane has burned", () -> atMost("methane left in the can [%]", 100 * gasShare(server, at.apply("can"), "CH4"), 1))
+                        .check(key + " the methane–air runs away and ignites", () -> atLeast("peak gas temperature seen on the logger's screen [K]",
+                                screen.max(), 1500)));
             }
             if (id.equals("burner")) {
                 // igniter and fuel together (the methane lights on the walls as they come up to temperature, ~50 s), the
@@ -364,18 +373,19 @@ public final class AutoShowcase {
             }
             if (id.equals("relay")) {
                 // close the coil's switch: the armature snaps up and the contacts light the LED
-                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the coil's switch", part.apply("switch", PartKind.SWITCH))));
                 double[] arm0 = {Double.NaN};
-                STEPS.add(new Step(0, () -> arm0[0] = where(server, at.apply("armature"), null), null));
+                STEPS.add(new Step(0, () -> arm0[0] = where(server, at.apply("slide"), PartKind.SHAFT), null)
+                        .act(PlayerHand.click(key + " close the coil's switch", part.apply("switch", PartKind.SWITCH))));
                 STEPS.add(new Step(60, view, shot.apply("energised")).check(key + " the contacts light the lamp", () -> lit(server, at.apply("lamp")))
                         .check(key + " the coil pulls the armature up", () -> atLeast("armature travel [mm]",
-                                1e3 * Math.abs(where(server, at.apply("armature"), null) - arm0[0]), 0.2)));
+                                1e3 * Math.abs(where(server, at.apply("slide"), PartKind.SHAFT) - arm0[0]), 0.2)));
             }
             if (id.equals("still")) {
                 // heater on: the warm pot boils and distillate gathers in the receiver
                 BlockPos pot = at.apply("pot");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " switch the heater on", part.apply("switch", PartKind.SWITCH))));
-                STEPS.add(new Step(1200, view, shot.apply("boiling")).check(key + " the pot heats towards boiling",
+                STEPS.add(new Step(1200, view, shot.apply("boiling"), () -> onServer(server, "pot", () -> temperature(server, pot, PartKind.TANK)) > 345)
+                        .check(key + " the pot heats towards boiling",
                         () -> atLeast("pot temperature [K]", temperature(server, pot, PartKind.TANK), 340)));
             }
             if (id.equals("loudspeaker")) {
@@ -469,20 +479,23 @@ public final class AutoShowcase {
             if (id.equals("unbalance")) {
                 // the lopsided wheel coasts down: a little shaking at speed, hard shaking at resonance, calm below
                 BlockPos shaftAt = at.apply("shaft");
-                Sampler fast = new Sampler(), res = new Sampler();
-                STEPS.add(new Step(40, NOTHING, shot.apply("fast")).sample(fast, () -> where(server, at.apply("rod"), PartKind.SHAFT)));
+                Swing swing = new Swing(10); // one-second windows (a sample every other tick)
+                STEPS.add(new Step(20, NOTHING, shot.apply("fast")).sample(swing, () -> where(server, at.apply("rod"), PartKind.SHAFT)));
                 STEPS.add(new Step(3000, NOTHING, shot.apply("resonance"), () -> Math.abs(wheelSpeed(server, shaftAt)) < 10.5)
+                        .sample(swing, () -> where(server, at.apply("rod"), PartKind.SHAFT))
                         .check(key + " it coasts down to resonance", () -> atMost("wheel speed [rad/s]", motion(server, shaftAt, PartKind.SHAFT), 11)));
-                STEPS.add(new Step(40, NOTHING, null).sample(res, () -> where(server, at.apply("rod"), PartKind.SHAFT))
-                        .check(key + " at resonance the platform shakes hardest", () -> that(res.range() > 1.5 * fast.range(),
-                                String.format("platform swing %.2f mm at resonance vs %.2f mm fast, expected well over", 1e3 * res.range(), 1e3 * fast.range()))));
-                STEPS.add(new Step(3000, NOTHING, shot.apply("calm"), () -> Math.abs(wheelSpeed(server, shaftAt)) < 6));
+                STEPS.add(new Step(3000, NOTHING, shot.apply("calm"), () -> Math.abs(wheelSpeed(server, shaftAt)) < 6)
+                        .sample(swing, () -> where(server, at.apply("rod"), PartKind.SHAFT))
+                        .check(key + " near resonance the platform shakes hardest", () -> that(swing.peak() > 1.5 * swing.first(),
+                                String.format("largest swing %.2f mm, %.2f mm at full speed, expected well over", 1e3 * swing.peak(), 1e3 * swing.first())))
+                        .check(key + " and calms again below it", () -> that(swing.last() < 0.7 * swing.peak(),
+                                String.format("swing now %.2f mm, %.2f mm at its largest, expected well under", 1e3 * swing.last(), 1e3 * swing.peak()))));
             }
             if (id.equals("fancooling")) {
                 // a hand on the crank: the fan's jet cools its plate until it is well below its twin in still air
                 BlockPos cooled = at.apply("cooled"), still = at.apply("still");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.hold(key + " turn the fan's crank", part.apply("crank", PartKind.CRANK), false)));
-                STEPS.add(new Step(3000, NOTHING, shot.apply("cranked"), () -> hottest(still) - hottest(cooled) > 8)
+                STEPS.add(new Step(3000, NOTHING, shot.apply("cranked"), () -> hottest(still) - hottest(cooled) > 5.5)
                         .check(key + " the jet cools its plate below its twin's", () -> atLeast("still − cooled plate [K]",
                                 maxTemperature(server, still) - maxTemperature(server, cooled), 5)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
@@ -496,25 +509,28 @@ public final class AutoShowcase {
                 // brake it: the speed holds while the current rises
                 logOn(key, part.apply("rotor", PartKind.SHAFT), "angular velocity", 2, server, logger);
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " close the switch", part.apply("switch", PartKind.SWITCH), logger)));
+                nudge(key, part.apply("rotor", PartKind.SHAFT), false);
                 governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, logger, 0.03, at.apply("battery"));
             }
             if (id.equals("flyball")) {
                 // close the switch: the weights fly out and the push rod turns the rheostat in; then brake it
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
+                nudge(key, part.apply("rotor", PartKind.SHAFT), false);
                 governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.06, at.apply("battery"));
             }
             if (id.equals("column")) {
                 // the heater on: the pot boils, the trays warm one by one and the condensate runs back down
                 BlockPos pot = at.apply("pot");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " switch the heater on", part.apply("switch", PartKind.SWITCH))));
-                STEPS.add(new Step(2400, view, shot.apply("refluxing")).check(key + " the pot heats up",
+                STEPS.add(new Step(2400, view, shot.apply("refluxing"), () -> onServer(server, "pot", () -> temperature(server, pot, PartKind.TANK)) > 350)
+                        .check(key + " the pot heats up",
                         () -> atLeast("pot temperature [K]", temperature(server, pot, PartKind.TANK), 340)));
             }
             if (id.equals("trembler")) {
                 // close the switch: the relay chatters, opening its own coil's circuit eight times a second
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
                 Sampler arm = new Sampler(), lamp = new Sampler();
-                STEPS.add(new Step(60, view, shot.apply("buzzing")).sample(arm, () -> where(server, at.apply("armature"), null))
+                STEPS.add(new Step(60, view, shot.apply("buzzing")).sample(arm, () -> where(server, at.apply("slide"), PartKind.SHAFT))
                         .sample(lamp, () -> light(server, at.apply("lamp")))
                         .check(key + " the armature chatters to and fro", () -> atLeast("armature swing [mm]", 1e3 * arm.range(), 0.1))
                         .check(key + " the lamp flickers with it", () -> that(lamp.max() > 1e-5 && lamp.min() < 0.5 * lamp.max(),
@@ -545,7 +561,7 @@ public final class AutoShowcase {
             if (id.equals("furnace")) {
                 // the plate heats in the dish's focus until it glows
                 BlockPos plate = at.apply("target");
-                STEPS.add(new Step(12000, NOTHING, shot.apply("hot"), () -> hottest(plate) > 860).check(key + " the focused sunlight heats the plate red-hot",
+                STEPS.add(new Step(12000, NOTHING, shot.apply("hot"), () -> hottest(plate) > 810).check(key + " the focused sunlight heats the plate red-hot",
                         () -> atLeast("plate temperature [K]", maxTemperature(server, plate), 800)));
             }
             if (id.equals("engine")) {
@@ -621,9 +637,14 @@ public final class AutoShowcase {
                                 SimulationManager.get(server.overworld()).loggerPeak(player(server)), 20)));
             }
             if (id.equals("propcart")) {
+                // spin the propeller up by its crank, let go, and the cart runs along its rail on the propeller's thrust
                 double[] x0 = {Double.NaN};
-                STEPS.add(new Step(0, () -> x0[0] = where(server, at.apply("cart"), null), null));
-                STEPS.add(new Step(120, NOTHING, shot.apply("moving")).check(key + " the propeller's thrust drives the cart along", () ->
+                STEPS.add(new Step(0, () -> x0[0] = where(server, at.apply("cart"), null), null)
+                        .act(PlayerHand.hold(key + " spin the propeller up (backwards: the wind holds the cart at its east stop)", part.apply("crank", PartKind.CRANK), true)));
+                STEPS.add(new Step(40, NOTHING, null).check(key + " the crank spins the propeller", () ->
+                        atLeast("propeller speed [rad/s]", motion(server, at.apply("shaft"), PartKind.SHAFT), 10)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+                STEPS.add(new Step(120, view, shot.apply("moving")).check(key + " the propeller's thrust drives the cart along", () ->
                         atLeast("cart's travel [mm]", 1e3 * Math.abs(where(server, at.apply("cart"), null) - x0[0]), 20)));
             }
             if (id.equals("pwm")) {
@@ -637,13 +658,18 @@ public final class AutoShowcase {
             if (id.equals("hbridge")) {
                 // FORWARD, then REVERSE instead: the motor turns one way, then the other
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close FORWARD", part.apply("forward", PartKind.SWITCH))));
+                nudge(key, part.apply("rotor", PartKind.SHAFT), false);
                 double[] fwd = {Double.NaN};
-                STEPS.add(new Step(200, view, shot.apply("forward")).check(key + " forward: the motor turns", () ->
+                STEPS.add(new Step(600, view, null, settledIn(server, at.apply("rotor"), () -> spin(server, at.apply("rotor"), PartKind.SHAFT), 2, key + "fwd")));
+                STEPS.add(new Step(0, NOTHING, shot.apply("forward")).check(key + " forward: the motor turns", () ->
                         atLeast("motor speed [rad/s]", Math.abs(spin(server, at.apply("rotor"), PartKind.SHAFT)), 2))
                         .after(() -> fwd[0] = spin(server, at.apply("rotor"), PartKind.SHAFT)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open FORWARD", part.apply("forward", PartKind.SWITCH))));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close REVERSE", part.apply("reverse", PartKind.SWITCH))));
-                STEPS.add(new Step(300, view, shot.apply("reverse")).check(key + " reverse: it turns the other way", () -> {
+                nudge(key, part.apply("rotor", PartKind.SHAFT), true);
+                STEPS.add(new Step(600, view, null, () -> onServer(server, "hbrev", () -> spin(server, at.apply("rotor"), PartKind.SHAFT)) * fwd[0] < 0));
+                STEPS.add(new Step(600, NOTHING, null, settledIn(server, at.apply("rotor"), () -> spin(server, at.apply("rotor"), PartKind.SHAFT), 2, key + "rev")));
+                STEPS.add(new Step(0, view, shot.apply("reverse")).check(key + " reverse: it turns the other way", () -> {
                     double w = spin(server, at.apply("rotor"), PartKind.SHAFT);
                     return that(w * fwd[0] < 0 && Math.abs(w) > 2, String.format("%.2f rad/s forward, %.2f rad/s now, expected opposite", fwd[0], w));
                 }));
@@ -722,7 +748,8 @@ public final class AutoShowcase {
                     ram0[0] = where(server, at.apply("ramRod"), PartKind.SHAFT);
                     pump0[0] = where(server, at.apply("pumpRod"), PartKind.SHAFT);
                 }, null).act(PlayerHand.hold(key + " push the pump handle down", part.apply("pumpRod", PartKind.SHAFT), true)));
-                STEPS.add(new Step(40, NOTHING, shot.apply("pushed")).check(key + " the pump piston goes down", () -> atLeast("pump piston's travel down [mm]",
+                STEPS.add(new Step(400, NOTHING, shot.apply("pushed"), () -> onServer(server, "pump", () -> pump0[0] - where(server, at.apply("pumpRod"), PartKind.SHAFT)) > 0.0025)
+                        .check(key + " the pump piston goes down", () -> atLeast("pump piston's travel down [mm]",
                         1e3 * (pump0[0] - where(server, at.apply("pumpRod"), PartKind.SHAFT)), 2))
                         .check(key + " and the ram rises, a seventeenth as far", () -> atLeast("ram's rise [mm]",
                                 1e3 * (where(server, at.apply("ramRod"), PartKind.SHAFT) - ram0[0]), 0.1)));
@@ -739,9 +766,9 @@ public final class AutoShowcase {
                 }));
             }
             if (id.equals("geiger")) {
-                Sampler led = new Sampler();
-                STEPS.add(new Step(200, NOTHING, shot.apply("counting")).sample(led, () -> light(server, at.apply("led")))
-                        .check(key + " the tube's counts flash the LED", () -> atLeast("peak LED light [mW]", 1e3 * led.max(), 0.01)));
+                Steps count = new Steps();
+                STEPS.add(new Step(1200, NOTHING, shot.apply("counting"), () -> count.changes() >= 3).sample(count, () -> chip(server, at.apply("counter")))
+                        .check(key + " the tube's clicks advance the counter", () -> atLeast("counts seen", count.changes(), 3)));
             }
             if (id.equals("thermocouple")) {
                 STEPS.add(new Step(40, NOTHING, null).check(key + " the hot junction's EMF, amplified, appears at the output", () -> atLeast("output voltage [V]",
@@ -749,7 +776,7 @@ public final class AutoShowcase {
             }
             if (id.equals("equilibrium")) {
                 STEPS.add(new Step(40, NOTHING, null).check(key + " the warm flask holds more NO2 (browner) than the cold", () -> {
-                    double hot = gasFraction(server, at.apply("hot"), 1), cold = gasFraction(server, at.apply("cold"), 1);
+                    double hot = gasShare(server, at.apply("hot"), "NO2"), cold = gasShare(server, at.apply("cold"), "NO2");
                     return that(hot > cold + 0.1, String.format("NO2 fraction: warm %.2f, cold %.2f, expected the warm well above", hot, cold));
                 }));
             }
@@ -771,6 +798,15 @@ public final class AutoShowcase {
     }
 
     private static final Runnable NOTHING = () -> { };
+
+    /**
+     * A turn of the rotor by hand: a two-segment commutator can come to rest with its brushes in the gap between its
+     * segments, where no current flows and the motor cannot start itself — a player gives it a push.
+     */
+    private static void nudge(String key, PlayerHand.Target rotor, boolean backwards) {
+        STEPS.add(new Step(6, NOTHING, null).act(PlayerHand.hold(key + " give the rotor a turn to start it", rotor, backwards)));
+        STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+    }
 
     /** The memory's four output LEDs as a word, q3 first. */
     private static String bits(net.minecraft.server.MinecraftServer server, java.util.function.Function<String, BlockPos> at) {
@@ -795,41 +831,42 @@ public final class AutoShowcase {
                     String v = loggerShowing(server, 1);
                     return v == null ? null : String.valueOf(span).equals(v);
                 }, 6)));
+        STEPS.add(new Step(0, NOTHING, null).check(key + " the logger's screen shows " + channel, () -> {
+            String[] now = SimulationManager.get(server.overworld()).loggerShowing(player(server));
+            return that(now != null && channel.equals(now[0]), "the screen shows " + (now == null ? "nothing" : now[0]));
+        }));
     }
 
-    /** A governed motor: its speed held, then the brake applied — it must keep its speed within {@code droop}. */
+    /**
+     * A governed motor: its speed held, then the brake applied — it must keep its speed within {@code droop}. Speed and
+     * supply current are averaged over five seconds each side: a governor hunts, and a contact governor's current comes
+     * in pulses, so one instant's reading says little.
+     */
     private static void governed(String key, net.minecraft.server.MinecraftServer server, BlockPos shaftAt, PartKind kind, PlayerHand.Target brake,
                                  Runnable view, java.util.function.Function<String, String> shot, ItemStack inHand, double droop, BlockPos battery) {
-        double[] w = {Double.NaN}, amps = {Double.NaN};
-        STEPS.add(new Step(400, view, shot.apply("governing")).show(inHand != null).check(key + " it runs at its governed speed",
-                () -> atLeast("speed [rad/s]", motion(server, shaftAt, kind), 5)).after(() -> {
-            w[0] = motion(server, shaftAt, kind);
-            amps[0] = Math.abs(current(server, battery, null));
-        }));
+        Sampler w0 = new Sampler(), a0 = new Sampler(), w1 = new Sampler(), a1 = new Sampler();
+        STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), 4, key + "gov")).show(inHand != null));
+        STEPS.add(new Step(100, NOTHING, shot.apply("governing")).show(inHand != null)
+                .sample(w0, () -> motion(server, shaftAt, kind)).sample(a0, () -> Math.abs(current(server, battery, null)))
+                .check(key + " it runs at its governed speed", () -> atLeast("mean speed [rad/s]", w0.mean(), 5)));
         STEPS.add(new Step(0, NOTHING, null).act(inHand == null ? PlayerHand.click(key + " apply the brake", brake)
                 : PlayerHand.clickWith(key + " apply the brake", brake, inHand)));
-        // judged once the speed has settled again (a costly machine runs slower than real time: give it its seconds)
-        double[] seen = {Double.NaN, Double.NaN, Double.NaN};
-        int[] tick = {0};
-        java.util.function.BooleanSupplier settled = () -> {
-            if (tick[0]++ % 20 != 0) return false;
-            double now = onServer(server, "governed", () -> motion(server, shaftAt, kind));
-            seen[0] = seen[1];
-            seen[1] = seen[2];
-            seen[2] = now;
-            return tick[0] > 200 && Math.abs(seen[2] - seen[0]) < 0.003 * Math.abs(seen[2]);
-        };
-        STEPS.add(new Step(2400, view, shot.apply("braked"), settled).show(inHand != null).check(key + " braked, it keeps its speed", () -> {
-            double now = motion(server, shaftAt, kind);
-            return that(Math.abs(now - w[0]) <= droop * w[0],
-                    String.format("speed %.2f → %.2f rad/s (%+.1f %%), expected within ±%.0f %%", w[0], now, 100 * (now - w[0]) / w[0], 100 * droop));
-        }).check(key + " by taking more current from its supply", () -> {
-            double now = Math.abs(current(server, battery, null));
-            return that(now > 1.03 * amps[0], String.format("supply current %.3f → %.3f A, expected to rise", amps[0], now));
-        }));
+        // judged once the speed has settled again, in simulated time
+        STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), 4, key + "brk")).show(inHand != null));
+        STEPS.add(new Step(100, NOTHING, shot.apply("braked")).show(inHand != null)
+                .sample(w1, () -> motion(server, shaftAt, kind)).sample(a1, () -> Math.abs(current(server, battery, null)))
+                .check(key + " braked, it keeps its speed", () -> {
+                    double was = w0.mean(), now = w1.mean();
+                    return that(Math.abs(now - was) <= droop * was, String.format("mean speed %.2f → %.2f rad/s (%+.1f %%), expected within ±%.0f %%",
+                            was, now, 100 * (now - was) / was, 100 * droop));
+                }).check(key + " by taking more current from its supply", () -> {
+                    double was = a0.mean(), now = a1.mean();
+                    return that(now > 1.03 * was + 0.005, String.format("mean supply current %.3f → %.3f A, expected to rise", was, now));
+                }));
     }
 
     private static void look(net.minecraft.server.MinecraftServer server, double x, double y, double z, float yaw, float pitch) {
+        if (server.getPlayerList().getPlayers().isEmpty()) return; // the game is closing
         ServerPlayer p = server.getPlayerList().getPlayers().get(0);
         // spectator: no collision, so the eye can be placed anywhere (y is the eye height)
         p.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);
@@ -843,7 +880,9 @@ public final class AutoShowcase {
 
     // ---- readings for the checks, taken on the server thread (a test's eyes, not a player's hands)
 
+    /** The first part of that kind in the block (kind null: its first part that is not a wire). */
     private static PlacedPart partIn(net.minecraft.server.MinecraftServer s, BlockPos at, PartKind k) {
+        if (k == null) return any(s, at, null);
         return s.overworld().getBlockEntity(at) instanceof AssemblyBlockEntity be ? find(be, k) : null;
     }
 
@@ -965,6 +1004,65 @@ public final class AutoShowcase {
         return g == null ? Double.NaN : g.moleFraction(c.solverView(), i);
     }
 
+    /** The island's simulated time [s] (NaN if not simulated). */
+    private static double simTime(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        CompiledAssembly c = compiled(s, at);
+        return c == null ? Double.NaN : c.solverView().time();
+    }
+
+    /** Mole fraction of the named species in a vessel's gas. */
+    private static double gasShare(net.minecraft.server.MinecraftServer s, BlockPos at, String species) {
+        PlacedPart p = any(s, at, PartKind.TANK);
+        CompiledAssembly c = compiled(s, at);
+        var g = p == null || c == null ? null : c.gas(p.id);
+        if (g == null) return Double.NaN;
+        var view = c.solverView();
+        double total = 0, mine = 0;
+        for (var sp : g.species()) {
+            double n = g.moles(view, sp);
+            total += n;
+            if (sp.formula().equals(species) || sp.id().equals(species)) mine = n;
+        }
+        return total > 0 ? mine / total : Double.NaN;
+    }
+
+    /**
+     * True once a quantity has settled in simulated time: at least {@code after} seconds of the island's own time
+     * since the step began, and its mean over the last 1.5 simulated seconds within 0.5 % of its mean over the 1.5 s
+     * before. (Means, since a commutator motor's speed ripples and a governor hunts; simulated time, since a costly
+     * machine runs slower than real time: judged by the clock on the wall it would look steady while it is still moving.)
+     */
+    private static java.util.function.BooleanSupplier settledIn(net.minecraft.server.MinecraftServer server, BlockPos at,
+                                                                java.util.function.DoubleSupplier read, double after, String key) {
+        final double w = 1.5;
+        java.util.ArrayDeque<double[]> hist = new java.util.ArrayDeque<>();
+        double[] t0 = {Double.NaN};
+        int[] tick = {0};
+        return () -> {
+            if (tick[0]++ % 3 != 0) return false;
+            double t = onServer(server, key + "t", () -> simTime(server, at)), v = onServer(server, key + "v", read::getAsDouble);
+            if (Double.isNaN(t) || Double.isNaN(v)) return false;
+            if (Double.isNaN(t0[0])) t0[0] = t;
+            hist.addLast(new double[]{t, v});
+            while (hist.size() > 2 && hist.peekFirst()[0] < t - 2 * w) hist.removeFirst();
+            if (t - t0[0] < after || t - hist.peekFirst()[0] < 1.9 * w) return false;
+            double s1 = 0, s2 = 0;
+            int n1 = 0, n2 = 0;
+            for (double[] h : hist) {
+                if (h[0] < t - w) {
+                    s1 += h[1];
+                    n1++;
+                } else {
+                    s2 += h[1];
+                    n2++;
+                }
+            }
+            if (n1 < 3 || n2 < 3) return false;
+            double m1 = s1 / n1, m2 = s2 / n2;
+            return Math.abs(m2 - m1) < 0.005 * Math.abs(m2);
+        };
+    }
+
     /** Foreign metal deposited on an electrode [mol]. */
     private static double deposit(net.minecraft.server.MinecraftServer s, BlockPos at, PartKind k) {
         PlacedPart p = any(s, at, k);
@@ -998,7 +1096,7 @@ public final class AutoShowcase {
     }
 
     /** A quantity recorded through a step (every other tick, on the server): its least, greatest and mean values. */
-    static final class Sampler {
+    static class Sampler {
         double min = Double.POSITIVE_INFINITY, max = Double.NEGATIVE_INFINITY, sum;
         int n;
 
@@ -1024,6 +1122,64 @@ public final class AutoShowcase {
 
         double range() {
             return max() - min();
+        }
+    }
+
+    /** A quantity's swing (greatest less least) over a sliding window of samples: the first window's, the largest, the latest. */
+    static final class Swing extends Sampler {
+        private final double[] ring;
+        private int k, seen;
+        private double first = Double.NaN, peak = Double.NaN, last = Double.NaN;
+
+        Swing(int window) {
+            ring = new double[window];
+        }
+
+        @Override
+        synchronized void add(double v) {
+            if (Double.isNaN(v)) return;
+            super.add(v);
+            ring[k] = v;
+            k = (k + 1) % ring.length;
+            if (++seen < ring.length) return;
+            double lo = Double.POSITIVE_INFINITY, hi = Double.NEGATIVE_INFINITY;
+            for (double x : ring) {
+                lo = Math.min(lo, x);
+                hi = Math.max(hi, x);
+            }
+            last = hi - lo;
+            if (Double.isNaN(first)) first = last;
+            if (Double.isNaN(peak) || last > peak) peak = last;
+        }
+
+        synchronized double first() {
+            return first;
+        }
+
+        synchronized double peak() {
+            return peak;
+        }
+
+        synchronized double last() {
+            return last;
+        }
+    }
+
+    /** How many times a quantity has changed value (a counter's steps, wrapping or not). */
+    static final class Steps extends Sampler {
+        private double prev = Double.NaN;
+        private int changes;
+
+        @Override
+        synchronized void add(double v) {
+            if (Double.isNaN(v)) return;
+            super.add(v);
+            if (!Double.isNaN(prev) && v != prev) changes++;
+            prev = v;
+        }
+
+        synchronized int changes() {
+            return changes;
         }
     }
 

@@ -648,3 +648,28 @@ editor (material and parameters set in game), which flushed out what a player co
 nuts and coils on shafts, a crank's facing, unreachable parts, and the wire router routing through components added
 after it was made. A player can also now grip any turning body and turn it by hand (a flywheel given a turn, a motor
 nudged off its dead point), and a held item takes the click instead of the machine.
+
+**What froze the server in the tour.** The full tour stalled for two minutes at the gas burner and read its chamber as
+0 K. Timing every rebuild, compile and island step over a second pointed past the burner to its neighbour, the still,
+taking 30 s a tick — and reproduced in the core: idle in noon sunshine, after 58 s a vent pipe's gas went to −8 900 K
+in a Newton iterate and the step shrank to 10⁻¹¹ s. A ledger of every vessel's water showed why: the total was
+conserved, but two pipes' pools were negative. Both the gas passage (`MixtureBranch`) and the liquid passage
+(`LiquidDrain`) carried the *blend* of their two ends' contents through zero flow (blended to keep Newton from flipping
+at reversal), so a trickle out of a pipe holding no vapour or liquid took its neighbour's — the full pot's
+concentration. Now each passage splits its flow smoothly into its two ways, each way carrying only its own end's gas or
+liquid (and that end's enthalpy), so nothing is sent that is not there. The still now idles and boils with no Newton
+failure at all, ten times faster than real time (it was five, until it failed); the whole core suite passes unchanged.
+A wall-clock limit on one island's step per tick (60 ms; off where in-world tests lift the budget) keeps a burst of
+costly switching — the chip-level inverter takes 1–3 s a tick near the player — to slow motion for that machine rather
+than a stalled server.
+
+**Tour checks that measured the wrong thing.** The governors' supply current comes in pulses (a contact governor's
+contacts, a commutator's segments): one instant's reading said 3.04 → 0.024 A. Speeds and currents are now averaged
+over five seconds before and after the brake; the core holds the electronic governor at −3 % braked with the battery
+current doubled. Settling is judged on the means of consecutive 1.5 s windows (a rippling speed never looked settled
+to two instants, and the flyball waited out its two-minute cap twice). The explosion's logger was showing the can's
+wall, not its gas: the tour's crouch reached the server after its click, so a plain use in the air changed the channel
+rather than the time base — it now crouches first and checks the screen's channel. The relay records its armature
+before the click; the Geiger counter counts its counter's steps; the unbalanced rotor's platform swing is taken in
+one-second windows over its whole coast-down; the H-bridge is turned backwards by hand for REVERSE; the press handle
+is held until the pump has moved.

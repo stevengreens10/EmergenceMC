@@ -1280,11 +1280,25 @@ public final class Exhibits {
 
     /** Builds an exhibit as a core assembly; parts in layer y = 0 rest on the ground (anchored). */
     public static Built build(Exhibit e, double ambient) {
+        return build(e, ambient, null);
+    }
+
+    /**
+     * As {@link #build(Exhibit, double)}, its parts added in a shuffled order with scattered ids when {@code shuffle} is
+     * given — as a world holds them, in whatever order a player placed them (what is built must not depend on it).
+     */
+    public static Built build(Exhibit e, double ambient, java.util.Random shuffle) {
         Assembly a = new Assembly().ambientTemperature(ambient);
         AssemblyState st = AssemblyState.empty();
         Map<Integer, Long> ids = new HashMap<>();
-        for (Exhibit.PartDef d : e.parts) {
+        List<Exhibit.PartDef> order = new java.util.ArrayList<>(e.parts);
+        if (shuffle != null) java.util.Collections.shuffle(order, shuffle);
+        java.util.Set<Long> used = new java.util.HashSet<>();
+        for (Exhibit.PartDef d : order) {
             long id = d.index() + 1;
+            if (shuffle != null) {
+                do id = 1 + (shuffle.nextLong() >>> 2); while (!used.add(id));
+            }
             ids.put(d.index(), id);
             Part part = new Part(id, d.kind(), MaterialDatabase.standard().get(d.material()), d.x0(), d.y0(), d.z0(),
                     d.x1(), d.y1(), d.z1(), d.axis(), d.params());

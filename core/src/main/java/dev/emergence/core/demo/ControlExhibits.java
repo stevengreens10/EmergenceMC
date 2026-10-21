@@ -170,10 +170,10 @@ public final class ControlExhibits {
         e.name("brake", e.add(BRAKE, "bronze", 6, 14, 8, Dir.EAST, "force", 10));
         // ---- electronics on the floor beside the motor (y = 1)
         int f = 1;
-        int bat = e.add(CAPACITOR, "alumina", 16, f, 4, Dir.EAST, "capacitance", 3000);
-        e.name("battery", bat);
-        e.init(bat, new Exhibit.Initial(Double.NaN, 0, 24));
+        // a lead–acid battery (its reference divider runs from it too: a supply that sagged would drag the set speed down)
         boolean closed = Double.isNaN(openLoop);
+        int bat = e.add(BATTERY, "pvc", 16, f, 4, Dir.EAST, "cells", closed ? 11 : (int) Math.round(openLoop / 2.125), "capacity", 7);
+        e.name("battery", bat);
         if (closed) {
             e.name("opamp", e.add(OPAMP, "silicon", 24, f, 7, Dir.EAST));
             e.add(RESISTOR, "alumina", 20, f, 9, Dir.EAST, "resistance", 47_000);        // reference: +24 V → in+
@@ -191,7 +191,6 @@ public final class ControlExhibits {
             e.add(CAPACITOR, "alumina", 27, f, 11, Dir.EAST, "capacitance", 470e-6);
             e.add(DIODE, "silicon", 31, f, 11, Dir.EAST);
         } else {
-            e.init(bat, new Exhibit.Initial(Double.NaN, 0, openLoop));
             e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
         }
         // the tacho's rectifier: a diode charging a capacitor, a resistor bleeding it (τ = 2 s)

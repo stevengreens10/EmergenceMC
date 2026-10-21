@@ -548,12 +548,22 @@ public final class TransientSolver implements StateView {
      * @return simulated time actually advanced
      */
     public double advance(double duration, int maxSteps) {
+        return advance(duration, maxSteps, 0);
+    }
+
+    /**
+     * As {@link #advance(double, int)}, stopping early (after at least one step, on an accepted state) once the wall
+     * clock passes {@code deadlineNanos} ({@link System#nanoTime()}; 0 for none): a costly stretch — a burst of
+     * switching edges — then runs in slow motion instead of holding up whoever is waiting on it.
+     */
+    public double advance(double duration, int maxSteps, long deadlineNanos) {
         double tStart = t;
         double tEnd = t + duration;
         int steps = 0;
         Phase ph = multirate ? fast : all;
         while (t < tEnd - 1e-12 * Math.max(1.0, Math.abs(tEnd))) {
             if (steps++ >= maxSteps) break;
+            if (deadlineNanos != 0 && steps > 1 && System.nanoTime() - deadlineNanos > 0) break;
             fireEvents();
             double h = Math.min(ph.hNext, hMax);
             double remaining = tEnd - t;

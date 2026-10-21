@@ -151,7 +151,13 @@ public final class SimulationManager {
 
     public void tick() {
         tickCount++;
-        if (!dirty.isEmpty()) rebuild();
+        if (!dirty.isEmpty()) {
+            long r0 = System.nanoTime();
+            int n = dirty.size();
+            rebuild();
+            long ms = (System.nanoTime() - r0) / 1_000_000;
+            if (ms > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: rebuilding the islands around {} changed blocks took {} ms", n, ms);
+        }
         Set<Island> islands = new HashSet<>(islandOf.values());
         double nearTotal = 0, farTotal = 0;
         for (Island isl : islands) {
@@ -189,6 +195,8 @@ public final class SimulationManager {
                         isl.blocks.iterator().next(), isl.compiled.motionReset() ? "motion was" : "coil currents were");
             }
             long cost = System.nanoTime() - t0;
+            if (cost / 1_000_000 > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: a step of the island at {} ({} parts) took {} ms",
+                    isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), cost / 1_000_000);
             if (isl.near) nearTotal += cost / 1e6;
             else farTotal += cost / 1e6;
             Profiler.record(cost, isl.compiled.network().size());
@@ -674,7 +682,26 @@ public final class SimulationManager {
         b.append(String.format("%s: %d values, max |%.4g| (part %d), %d non-finite; ", what, m.size(), max, worst, bad));
     }
 
+    /** A rebuild, compile or step taking longer than this [ms] is logged: the server's tick is 50 ms. */
+    private static final long SLOW_MS = 1000;
+
     private CompiledAssembly compile(Island isl, AssemblyState state) {
+        long c0 = System.nanoTime();
+        CompiledAssembly c = compileTimed(isl, state);
+        long ms = (System.nanoTime() - c0) / 1_000_000;
+        if (ms > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: compiling the island at {} ({} blocks) took {} ms", isl.blocks.iterator().next(), isl.blocks.size(), ms);
+        return c;
+    }
+
+    /**
+     * Wall-clock limit on one island's step per server tick [ms]: a burst of costly switching runs that island in slow
+     * motion for the moment rather than stalling the server (and every other machine) for seconds. System property
+     * {@code emergence.stepWallMs} overrides it; off (0) where the global budget is lifted (the demo world's in-world
+     * tests run every machine at full rate).
+     */
+    private static final double STEP_WALL_MS = Double.parseDouble(System.getProperty("emergence.stepWallMs", GLOBAL_BUDGET_MS >= 1e6 ? "0" : "60"));
+
+    private CompiledAssembly compileTimed(Island isl, AssemblyState state) {
         isl.startState = state;
         Assembly asm = new Assembly();
         isl.partPos.clear();
@@ -706,7 +733,7 @@ public final class SimulationManager {
                     asm.parts().stream().filter(p -> anchored.containsKey(p.id())).map(p -> p.kind() + "@" + p.minY()).toList());
         }
         try {
-            CompiledAssembly c = AssemblyCompiler.compile(asm, state);
+            CompiledAssembly c = AssemblyCompiler.compile(asm, state).wallBudget(STEP_WALL_MS);
             for (String w : c.warnings()) EmergenceMod.LOG.debug("Island warning: {}", w);
             return c;
         } catch (RuntimeException e) {

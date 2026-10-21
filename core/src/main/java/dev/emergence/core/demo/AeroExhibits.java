@@ -84,11 +84,11 @@ public final class AeroExhibits {
                         + "airboats and the fans of a hovercraft all push this way.");
         e.plots = 2;
         String st = "steel_1045", al = "aluminium_6061";
-        int y = 3, ya = y + 5;
+        int y = 3, ya = y + 8; // the propeller high enough for long blades to clear the rail
         // the rail: a rod through two bushings on posts, nearly two metres long
         e.fill(BLOCK, st, 16, 0, 8, 17, y - 1, 8, Dir.UP);
-        e.add(LINEAR_BEARING, st, 16, y, 8, Dir.EAST, "viscosity", 0.5);
-        e.add(LINEAR_BEARING, st, 17, y, 8, Dir.EAST, "viscosity", 0.5);
+        e.add(LINEAR_BEARING, st, 16, y, 8, Dir.EAST, "viscosity", 0.05);
+        e.add(LINEAR_BEARING, st, 17, y, 8, Dir.EAST, "viscosity", 0.05);
         e.name("rail", e.fill(SHAFT, st, 2, y, 8, 31, y, 8, Dir.EAST, "diameter", 0.012));
         // the cart: an aluminium deck on the rod and a bracket up to the propeller's bearing
         e.name("cart", e.fill(BLOCK, al, 4, y, 8, 6, y, 8, Dir.EAST, "fill", 0.3));
@@ -96,11 +96,11 @@ public final class AeroExhibits {
         e.add(BEARING, st, 5, ya, 8, Dir.EAST);
         int shaft = e.fill(SHAFT, st, 3, ya, 8, 8, ya, 8, Dir.EAST, "diameter", 0.01);
         e.name("shaft", shaft);
-        e.init(shaft, new Exhibit.Initial(Double.NaN, 70, 0)); // spun up
         // the propeller: two blades across the shaft's end, pitched into the turn
         e.add(BLOCK, al, 3, ya, 8, Dir.UP, "fill", 0.5);
-        e.fill(BLADE, al, 3, ya, 4, 3, ya, 7, Dir.NORTH, "face", Dir.UP.ordinal(), "pitch", pitch);
-        e.fill(BLADE, al, 3, ya, 9, 3, ya, 12, Dir.SOUTH, "face", Dir.UP.ordinal(), "pitch", pitch);
+        // long blades: a hand can turn the propeller only so fast, and thrust grows with the cube of their length
+        e.fill(BLADE, al, 3, ya, 1, 3, ya, 7, Dir.NORTH, "face", Dir.UP.ordinal(), "pitch", pitch);
+        e.fill(BLADE, al, 3, ya, 9, 3, ya, 15, Dir.SOUTH, "face", Dir.UP.ordinal(), "pitch", pitch);
         // the flywheel, and a crank to spin it up
         e.name("flywheel", e.fill(BLOCK, "brass", 7, ya - 1, 7, 7, ya + 1, 9, Dir.EAST, "fill", 0.3));
         e.name("crank", e.add(CRANK, st, 8, ya, 8, Dir.EAST, "radius", 0.1));

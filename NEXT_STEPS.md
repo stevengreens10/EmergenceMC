@@ -8,7 +8,10 @@
      keep only boilers, fires and furnaces pre-started;
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
    - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;
-   - the electronic governor droops 9 % under the brake in the world (the core test holds it);
+   - (the governors' checks now average over 5 s: the core holds the electronic one at −3 % braked) confirm in the tour;
+   - the chip-level inverter costs 1–3 s of CPU a tick near a player (now slowed rather than stalling the server): the
+     averaged-switch model of item 5a;
+   - the tour's hands still teleport the player to open sky for clicks in the air (walk there instead);
    - the miniature exhibit is still placed directly (tweezers placement);
    - the full tour, then every exhibit's checks green.
 

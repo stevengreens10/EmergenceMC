@@ -394,7 +394,11 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   consistent flow near zero and Newton chatters), and choking (the
   downstream pressure felt is never below the critical ratio (2/(γ+1))^{γ/(γ−1)} of the upstream; with K ≈ 2 an
   orifice reproduces the isentropic choked mass flow within 0.5 %). It carries species ṅ·x_i and enthalpy ṅ·h(T_up)
-  (formation enthalpy included); flow to or from a reservoir is the system's external power.
+  (formation enthalpy included); flow to or from a reservoir is the system's external power. What it carries is split
+  smoothly into the flow's two ways, ṅ = ṅ⁺ − ṅ⁻ (width 10⁻⁶ mol/s, about what diffusion exchanges through these bores),
+  each carrying only its own end's gas at that end's temperature: a volume never sends what it does not hold. (The
+  momentum balance keeps its blended properties.) Carrying the blend instead let a trickle out of a pipe holding no
+  vapour take its neighbour's: the pipe's moles went negative, then its energy, and the solver failed.
 * In builds, every fluid part connected to a gas-charged one joins one mixture network over a shared species list
   (charged species, air, reaction products); uncharged parts hold air; open ends breathe the atmosphere at the
   hydrostatic pressure of their height; valves scale their passage.
@@ -760,7 +764,8 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   heights), through the passage as an orifice, Q = 0.6·A·√(2|Δ|/ρ)·sgn Δ, joined to a laminar Q ∝ Δ below 30 Pa; only
   what is there flows: the liquid reaches the port over its rim, at most the weir flow Q_w = ⅔·C_d·b·√(2g)·H^{3/2}
   (Francis; b = 2√(πA) the rim, H the upstream depth above the port), combined as Q·Q_w/(|Q| + Q_w), and a dry vessel
-  passes nothing (× V_l/(V_l + 10 µL)). A tank's "weir" raises its outlet to the vessel below above its floor, so it
+  passes nothing (× V_l/(V_l + 10 µL)), each way of the flow (split smoothly, Q = Q⁺ − Q⁻, width 10⁻¹² m³/s) carrying
+  only its own source pool's liquid, so a pool is never drained below empty. A tank's "weir" raises its outlet to the vessel below above its floor, so it
   holds a pool that deep: a column's tray. It carries its pool's
   composition and internal energy (elements and energy conserved; its potential energy falling is not tracked). A
   shut valve stops it with the gas.

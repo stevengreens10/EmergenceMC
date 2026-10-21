@@ -44,6 +44,54 @@ public final class DemoBuilder {
     /** Depth of a plot (z) and the row (relative to the plot origin) where the signs and the walkway are. */
     public static final int PLOT_DEPTH = 16, SIGN_Z = 16;
 
+    /**
+     * Each exhibit as the world compiles it, against the same exhibit compiled from its definition: a part that came
+     * out welded, locked or unjoined shows as a different set of bodies, or a warning. (Run once the gallery's blocks
+     * have registered with the simulation, a tick or so after they are placed.)
+     */
+    public static List<String> verifyAgainstDefinitions(ServerLevel level, BlockPos origin) {
+        List<Exhibit> exhibits = Exhibits.all();
+        List<String> problems = new java.util.ArrayList<>();
+        var sim = dev.emergence.mod.sim.SimulationManager.get(level);
+        for (int i = 0; i < exhibits.size(); i++) {
+            Exhibit e = exhibits.get(i);
+            if (e.miniature) continue;
+            BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
+            // every island the exhibit's blocks belong to (one exhibit may be several machines)
+            java.util.Set<dev.emergence.core.assembly.CompiledAssembly> islands = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            List<String> uncompiled = new java.util.ArrayList<>();
+            for (Exhibit.PartDef d : e.parts) {
+                var c = sim.compiledAt(plot.offset(d.x0(), d.y0(), d.z0()));
+                if (c != null) islands.add(c);
+                else if (uncompiled.size() < 3) uncompiled.add(d.kind() + " at (" + d.x0() + ", " + d.y0() + ", " + d.z0() + ")");
+            }
+            if (!uncompiled.isEmpty()) problems.add(e.id + ": not simulated in the world: " + uncompiled);
+            var core = dev.emergence.core.assembly.AssemblyCompiler.compile(Exhibits.build(e, PhysicalConstants.T_REF).assembly(),
+                    Exhibits.build(e, PhysicalConstants.T_REF).state());
+            int wb = 1;
+            long ws = 0;
+            List<String> ww = new java.util.ArrayList<>();
+            for (var c : islands) {
+                wb += c.bodies().size() - 1; // each island has its own frame
+                ws += c.bodies().stream().filter(b -> b.slider()).count();
+                ww.addAll(c.warnings());
+            }
+            long cs = core.bodies().stream().filter(b -> b.slider()).count();
+            if (wb != core.bodies().size() || ws != cs) {
+                problems.add(e.id + ": in the world it has " + wb + " bodies (" + ws + " slides) over " + islands.size() + " islands, its definition "
+                        + core.bodies().size() + " (" + cs + ")");
+            }
+            java.util.Collections.sort(ww);
+            List<String> cw = new java.util.ArrayList<>(core.warnings());
+            java.util.Collections.sort(cw);
+            if (!ww.equals(cw)) problems.add(e.id + ": in the world it warns " + ww + ", its definition " + cw);
+        }
+        for (String pr : problems) EmergenceMod.LOG.error("Demo build: {}", pr);
+        EmergenceMod.LOG.info("Demo build: {} exhibits compiled in the world as from their definitions ({} differences)",
+                exhibits.size(), problems.size());
+        return problems;
+    }
+
     /** What the last build could not do as a player would (see {@link PlayerBuilder}). */
     public static final List<String> LAST_PROBLEMS = new java.util.ArrayList<>();
 
@@ -172,6 +220,21 @@ public final class DemoBuilder {
         ServerLevel level = server.overworld();
         BlockPos top = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING, new BlockPos(0, 0, 0));
         BlockPos spawn = build(level, top);
+        // the whole gallery loaded (forced) while each exhibit is compared with its definition, once its blocks have
+        // registered with the simulation
+        List<int[]> forced = new java.util.ArrayList<>();
+        int width = plotOffset(Exhibits.all(), Exhibits.all().size());
+        for (int cx = Math.floorDiv(top.getX() - 4, 16); cx <= Math.floorDiv(top.getX() + width + 4, 16); cx++)
+            for (int cz = Math.floorDiv(top.getZ() - 4, 16); cz <= Math.floorDiv(top.getZ() + SIGN_Z + 8, 16); cz++) {
+                level.setChunkForced(cx, cz, true);
+                forced.add(new int[]{cx, cz});
+            }
+        int[] wait = {60};
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post ev) -> {
+            if (wait[0]-- != 0) return;
+            verifyAgainstDefinitions(level, top);
+            for (int[] c : forced) level.setChunkForced(c[0], c[1], false);
+        });
         level.setDefaultSpawnPos(spawn, 180f);
         level.setDayTime(6000);
         level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, server);

@@ -21,15 +21,20 @@ import dev.emergence.core.units.PhysicalConstants;
  * Δ₀ = 30 Pa. It can only carry liquid that is there: the liquid reaches the port by spilling over its lip, which
  * passes at most the weir flow Q_w = ⅔·C_d·b·√(2g)·H^{3/2} (Francis; b = 2√(πA_p) the port's rim, H the upstream depth
  * above the port, smoothly floored), joined to the orifice flow as Q·Q_w/(|Q| + Q_w) — a pool just below its outlet
- * keeps its liquid, as a column's tray holds its pool below the weir — and scaled by V_l/(V_l + 10 µL) (a dry vessel
- * passes nothing). The liquid carries
- * its upstream pool's composition (each species' moles per volume) and internal energy — elements and energy are
- * conserved; the liquid's weight falling between ports is neither stored nor dissipated (ρgΔz is 10⁻⁵ of its
+ * keeps its liquid, as a column's tray holds its pool below the weir. The flow is split smoothly into its two ways,
+ * Q = Q⁺ − Q⁻, and each way carries only its own source pool's liquid — its composition (each species' moles per volume)
+ * and internal energy — scaled by that pool's V_l/(V_l + 10 µL): a dry vessel passes nothing, so no pool is drained
+ * below empty, however the flow hovers about zero. Elements and energy are conserved; the liquid's weight falling between ports is neither stored nor dissipated (ρgΔz is 10⁻⁵ of its
  * internal energy per metre). Quasi-steady: the liquid in the passage stores nothing; gas and liquid pass a shared
  * passage independently (a pipe full of liquid still lets gas through).
  */
 public final class LiquidDrain implements Element {
     private static final double G = PhysicalConstants.STANDARD_GRAVITY, DP0 = 30.0, FLOOR = 1e-5, VOL0 = 1e-8;
+    /**
+     * Width [m³/s] of the smooth split of the flow into its two ways: 10⁻¹² m³/s (a microlitre in a quarter of an hour)
+     * — an exchange both ways at that rate where the flow is nil, from the fuller pool to the emptier.
+     */
+    private static final double Q0 = 1e-12;
 
     private final GasReactor a, b;
     private final double floorA, sectionA, portA, floorB, sectionB, portB, area, cd;
@@ -130,16 +135,21 @@ public final class LiquidDrain implements Element {
         double hUp = up * hA + (1 - up) * hB;
         double qw = 2.0 / 3 * cd * 2 * Math.sqrt(Math.PI * area) * open * Math.sqrt(2 * G) * hUp * Math.sqrt(hUp);
         q = q * qw / (Math.abs(q) + qw);
-        q *= up * phiA + (1 - up) * phiB;
+        // each way its own pool's liquid, as far as that pool has any: the flow split smoothly into its forward and
+        // backward parts (q = q⁺ − q⁻, both ≥ 0), q⁺ carrying a's liquid, q⁻ b's. (Blending the two pools' contents
+        // through the reversal let a trickle out of an empty pipe carry the full pot's concentration: a pool drained
+        // below zero, and with it its energy, until Newton failed.)
+        double qf = 0.5 * (q + Math.sqrt(q * q + Q0 * Q0)), qb = qf - q;
+        double fa = qf * phiA, fb = qb * phiB;
         double e = 0;
         for (int k = 0; k < n; k++) {
             double cA = pa[k] / (vA + 1e-12), cB = pb[k] / (vB + 1e-12);
-            double nk = q * (up * cA + (1 - up) * cB);
-            out[k] = nk;
-            e += nk * (up * a.liquidEnergy(species[k], tA) + (1 - up) * b.liquidEnergy(species[k], tB));
+            double na = fa * cA, nb = fb * cB;
+            out[k] = na - nb;
+            e += na * a.liquidEnergy(species[k], tA) - nb * b.liquidEnergy(species[k], tB);
         }
         out[n] = e;
-        out[n + 1] = q;
+        out[n + 1] = fa - fb;
     }
 
     @Override

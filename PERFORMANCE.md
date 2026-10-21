@@ -29,6 +29,12 @@ of a player are slowed in common only if they alone exceed it; islands further f
 simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its pace instead of sharing it with dozens
 out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
 
+Those controllers act on the next tick's step size, so a single step can still cost seconds: a burst of switching
+edges in chip-level logic (the inverter: 1–3 s a tick), or a model failing Newton over and over. One island's step is
+therefore also cut off at 60 ms of wall time (`emergence.stepWallMs`; off where the budgets are lifted): it ends on
+its last accepted state, and the shortfall shows as lag, as slow motion for that machine. The server logs any rebuild,
+compile or island step over 1 s ("Slow simulation: …"), naming the island's block and size.
+
 ## History
 * Conductors under multirate skip the temperature derivatives the fast partition would discard (keeping only the
   Joule heat's own slope, for the coupling's stability limit): loudspeaker 15.9 → 11.2 s, governor 23.7 → 19.4 s,

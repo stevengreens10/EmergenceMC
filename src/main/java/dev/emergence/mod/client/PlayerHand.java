@@ -131,7 +131,7 @@ final class PlayerHand {
      * answers null while it cannot tell yet (the screen's reading has not come back): the hand waits.
      */
     static Act useInAirUntil(String what, boolean sneak, java.util.function.Supplier<Boolean> done, int max) {
-        int[] clicks = {0}, pause = {0}, ticks = {0};
+        int[] clicks = {0}, pause = {0}, ticks = {0}, crouched = {0};
         Vec3[] spot = {null};
         return named(what, mc -> {
             if (ticks[0]++ > 1800) { // never wait on anything for ever (a busy server answers slowly)
@@ -173,6 +173,9 @@ final class PlayerHand {
                 return true;
             }
             mc.options.keyShift.setDown(sneak);
+            // crouch first, click after: a click arriving at the server before the crouch does the unsneaked thing
+            // (the logger's channel changes instead of its time base)
+            if (sneak && (!mc.player.isShiftKeyDown() || crouched[0]++ < 4)) return false;
             if (mc.hitResult == null || mc.hitResult.getType() != HitResult.Type.MISS) return false; // the view not yet up
             KeyMapping.click(mc.options.keyUse.getKey());
             clicks[0]++;

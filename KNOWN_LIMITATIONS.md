@@ -172,6 +172,9 @@ multimeter, oscilloscope/data logging.
 ## Simulation pace
 * Machines advance only within the simulation distance of a player (like Minecraft's block ticking); all islands
   together are held to ~35 ms per tick by slowing every island in proportion when the world holds too many.
+* One island's step is cut off after 60 ms of wall time: how far a costly machine gets each tick then depends on the
+  machine running it, so in the world its slow motion is not reproducible tick for tick (the physics of each accepted
+  step is; core tests and in-world tests run without the limit).
 
 ## Radiation
 * Gamma rays only (betas and alphas deposit locally in the source); straight-line attenuation without scattered

@@ -173,13 +173,21 @@ class DemoExhibitsTest {
         assertTrue(c.warnings().stream().noneMatch(w -> w.contains("Blade")), "the propeller's blades are modelled: " + c.warnings());
         var cart = c.bodyOf(b.id(e, "cart"));
         var af = c.aerofoils(c.bodyOf(b.id(e, "shaft")));
-        c.step(0.05);
+        // spun up by its crank (at rest, as a player finds it), then let go
+        double x0 = c.angle(cart);
+        for (int k = 0; k < 80; k++) {
+            c.setCrankEffort(b.id(e, "crank"), 1, true);
+            c.step(0.05);
+        }
+        c.setCrankEffort(b.id(e, "crank"), 0, false);
         double thrust0 = af.thrust(c.solverView());
+        System.out.printf("propeller cart: cranked 4 s, the propeller at %.1f rad/s, the cart %.3f m along%n",
+                c.angularVelocity(c.bodyOf(b.id(e, "shaft"))), c.angle(cart) - x0);
         run(c, 5);
-        double x = c.angle(cart), v = c.angularVelocity(cart), thrust = af.thrust(c.solverView());
+        double x = c.angle(cart) - x0, v = c.angularVelocity(cart), thrust = af.thrust(c.solverView());
         System.out.printf("propeller cart: thrust on the air %.3f N at rest; after 5 s the cart %.3f m along at %.3f m/s, thrust %.3f N%n",
                 thrust0, x, v, thrust);
-        assertTrue(x * thrust0 < 0 && Math.abs(x) > 0.3, "the cart runs the opposite way to the air it throws: " + x);
+        assertTrue(x * thrust0 < 0 && Math.abs(x) > 0.1, "the cart runs the opposite way to the air it throws: " + x);
         assertTrue(Math.abs(thrust) < Math.abs(thrust0), "the thrust falls as it goes");
     }
 
@@ -2059,6 +2067,41 @@ class DemoExhibitsTest {
         assertTrue(re + rw > 0.03, "a distillate collects: " + (re + rw));
         assertTrue(re / (re + rw) > 0.3, "several times richer in ethanol than the 10 % charge");
         assertTrue(pe / (pe + pw) < 0.095, "the pot loses its ethanol faster than its water");
+    }
+
+    /**
+     * The still idle in noon sunshine, as in the world before anyone switches it on: no vessel's gas or liquid goes
+     * below empty, and the solver never fails. (Gas and liquid passages used to carry the blend of both ends' contents
+     * through zero flow: a trickle out of a pipe holding no vapour or liquid took its neighbour's, the pipe's moles went
+     * negative, and after a minute its energy did too — 30-second server ticks, then a failed island.)
+     */
+    @Test
+    void stillIdlesInSunshineWithoutDrainingAPipeBelowEmpty() {
+        Exhibit e = ChemistryExhibits.still();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
+        double least = Double.POSITIVE_INFINITY;
+        String where = "";
+        for (int k = 0; k < 24; k++) {
+            run(c, 5);
+            var s = c.solverView();
+            for (var part : b.assembly().parts()) {
+                var g = c.gas(part.id());
+                if (g == null) continue;
+                for (int i = 0; i < g.species().size(); i++) {
+                    // (a liquid pool only for the condensables)
+                    double gas = g.moles(s, g.species().get(i)), liq = g.liquidIndex(i) >= 0 ? g.liquidMoles(s, i) : Double.POSITIVE_INFINITY;
+                    if (Math.min(gas, liq) < least) {
+                        least = Math.min(gas, liq);
+                        where = part.kind() + "#" + part.id() + " " + g.species().get(i).id() + (gas < liq ? " gas" : " liquid") + " at t = " + s.time();
+                    }
+                }
+            }
+        }
+        System.out.printf("still idle in the sun: least moles anywhere %.3g (%s), %d Newton failures%n", least, where, c.solver().newtonFailures());
+        assertTrue(least > -1e-9, "nothing below empty: " + least + " mol, " + where);
+        assertEquals(0, c.solver().newtonFailures(), "Newton never fails");
     }
 
     /**

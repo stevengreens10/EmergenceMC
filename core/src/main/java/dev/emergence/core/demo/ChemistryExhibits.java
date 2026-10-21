@@ -63,18 +63,18 @@ public final class ChemistryExhibits {
     public static Exhibit thermalExplosion() {
         Exhibit e = new Exhibit("explosion", "Thermal explosion",
                 List.of("THERMAL EXPLOSION", "Close the switch:", "methane + air in a", "heated can ignites"),
-                "The can holds methane and air in the proportions that burn completely (9.5 % CH₄), at atmospheric pressure. Close the switch: the 2.3 kW heater under the can warms it. Even at 800 K "
+                "The can holds methane and air in the proportions that burn completely (9.5 % CH₄), at atmospheric pressure. Close the switch: the 3.1 kW heater under the can warms it. Even at 800 K "
                         + "they react, slowly: the rate grows as e^(−E/RT), roughly doubling every 25 K here, while the "
                         + "heat the can's wall takes away grows only in proportion to the temperature difference. The "
-                        + "heater keeps heating the can; at a critical temperature (Semenov's, about 590 °C, after two minutes or so) the heat released "
+                        + "heater keeps heating the can; at a critical temperature (Semenov's, about 590 °C, after a minute or so) the heat released "
                         + "outruns the loss and the gas runs away — it ignites by itself, the temperature jumping to "
                         + "~3000 K and the pressure to several bar in a fraction of a second, leaving CO₂ and water "
                         + "vapour. Meter the can for its pressure, temperature and composition, or clip the data logger "
                         + "on it and watch the spike.");
         String st = "steel_1045";
-        // a 2.3 kW silicon-carbide heating element (4 Ω on 96 V, good to ~1800 K, as in furnaces) pressed against the
+        // a 3.1 kW silicon-carbide heating element (3 Ω on 96 V, good to ~1800 K, as in furnaces) pressed against the
         // can's base over 20 cm²
-        e.name("heater", e.add(RESISTOR, "alumina", 8, 0, 7, Dir.EAST, "resistance", 4.0, "contact_area", 0.002,
+        e.name("heater", e.add(RESISTOR, "alumina", 8, 0, 7, Dir.EAST, "resistance", 3.0, "contact_area", 0.002,
                 "surface_area", 0.002, "mass", 0.1, "max_temperature", 1800));
         int can = e.add(TANK, st, 8, 1, 7, Dir.UP, "x_CH4", 0.095, "x_O2", 0.19, "x_N2", 0.715, "pressure", 101325, "wall", 0.0015);
         e.name("can", can);
@@ -122,7 +122,7 @@ public final class ChemistryExhibits {
         int valve = e.add(VALVE, "brass", 4, 1, 8, Dir.EAST, "bore", 4e-5);
         e.name("valve", valve);
         e.add(PIPE, st, 5, 1, 8, Dir.EAST, "bore", 0.004);
-        int chamber = e.add(TANK, st, 6, 1, 8, Dir.UP, "wall", 0.001); // thin: the igniter brings it to light-off in 50 s
+        int chamber = e.add(TANK, st, 6, 1, 8, Dir.UP, "wall", 0.0005); // thin: the igniter brings it to light-off quickly
         e.name("chamber", chamber);
         e.add(PIPE, st, 6, 1, 9, Dir.SOUTH, "bore", 0.016);                // air inlet, open at its far end
         int chimney = e.fill(PIPE, st, 6, 2, 8, 6, 6, 8, Dir.UP, "bore", 0.04, "wall", 0.001); // chimney, open at the top

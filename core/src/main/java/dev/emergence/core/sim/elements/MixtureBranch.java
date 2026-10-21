@@ -20,7 +20,8 @@ import java.util.List;
  * gas in it (so a column of hot gas is lighter than the air outside and a chimney draws), and choking — the
  * downstream pressure the passage feels never falls below the critical ratio (2/(γ+1))^{γ/(γ−1)} ≈ 0.53 of the
  * upstream pressure, so a high-pressure supply through a valve delivers the choked flow, not more. The flow carries species ṅ·x_i and enthalpy ṅ·h(T_up) — h including formation enthalpies — out of
- * the upstream volume and into the downstream one, so mass, elements and energy are conserved; what crosses a
+ * the upstream volume and into the downstream one (split smoothly into its two ways, each carrying only its own end's
+ * gas, so a volume never sends what it does not hold), so mass, elements and energy are conserved; what crosses a
  * reservoir boundary is counted as external power. A valve scales the open area by its opening (fully shut: a
  * 10⁻⁶ leak keeps the equations regular). Quasi-steady: the gas in the passage itself stores nothing.
  */
@@ -33,6 +34,14 @@ public final class MixtureBranch implements Element {
      * once liquids drained through a still's pipes, nudging their gas to and fro.
      */
     private static final double Q_BLEND = 1e-5;
+    /**
+     * Width [mol/s] of the smooth split of the flow into its two ways, ṅ = ṅ⁺ − ṅ⁻ (both ≥ 0), each carrying only its own
+     * end's gas: 10⁻⁶ mol/s, about what diffusion alone exchanges through these bores (D·A·c/L ≈ 4·10⁻⁷ mol/s for a 6 mm
+     * bore over 6 cm). Carrying the blended composition instead let a trickle out of a volume holding no vapour take
+     * the other end's vapour with it: its moles went negative, its pool "evaporated" below empty to make them up, and
+     * the vessel's energy followed until Newton failed (a still's vent, idle in the sun, after a minute).
+     */
+    private static final double Q_SPLIT = 1e-6;
 
     /** One end of the passage: a reacting-gas volume, or a reservoir of fixed pressure, temperature and composition. */
     public static final class End {
@@ -211,21 +220,31 @@ public final class MixtureBranch implements Element {
         double rhoA = Math.max(sa[0], 1) * sa[2] / (R * sa[1]), rhoB = Math.max(sb[0], 1) * sb[2] / (R * sb[1]);
         double dp = Math.signum(sa[0] - sb[0]) * (pHi - Math.min(pLoEff, pHi)) - 0.5 * (rhoA + rhoB) * 9.80665 * dz;
         f[0] = dp - k * mdot * Math.abs(mdot) / (2 * rho * aEff * aEff) - 32 * mu * length * mdot / (rho * aEff * diameter * diameter);
-        double h = 0;
-        double[] xu = new double[m];
-        for (int i = 0; i < m; i++) {
-            xu[i] = w * sa[3 + i] + (1 - w) * sb[3 + i];
-            h += xu[i] * sp[i].enthalpy(tUp);
-        }
+        double[] nf = new double[m];
+        double hf = carried(q, sa, sb, nf);
         for (int side = 0; side < 2; side++) {
             End e = side == 0 ? a : b;
             if (e.gas == null) continue;
             double sgn = side == 0 ? 1 : -1; // flow leaves a, enters b
             int o = 1 + side * (2 + m);
-            f[o + 1] = sgn * q * h;
-            for (int i = 0; i < m; i++) f[o + 2 + i] = sgn * q * xu[i];
+            f[o + 1] = sgn * hf;
+            for (int i = 0; i < m; i++) f[o + 2 + i] = sgn * nf[i];
         }
         return f;
+    }
+
+    /**
+     * What the flow carries from a to b: each species' moles/s into {@code nf}, and the enthalpy flow [W] returned —
+     * its forward part a's gas at a's temperature, its backward part b's at b's (h including formation enthalpies).
+     */
+    private double carried(double q, double[] sa, double[] sb, double[] nf) {
+        double qf = 0.5 * (q + Math.sqrt(q * q + Q_SPLIT * Q_SPLIT)), qb = qf - q, hf = 0;
+        for (int i = 0; i < m(); i++) {
+            double na = qf * sa[3 + i], nb = qb * sb[3 + i];
+            nf[i] = na - nb;
+            hf += na * sp[i].enthalpy(sa[1]) - nb * sp[i].enthalpy(sb[1]);
+        }
+        return hf;
     }
 
     @Override
@@ -292,8 +311,8 @@ public final class MixtureBranch implements Element {
         int[] col = columns();
         double[] v = new double[col.length];
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = s.x(col[j]);
-        double q = v[0], w = 0.5 * (1 + Math.tanh(q / Q_BLEND));
-        return q * (w * endState(v, 0)[2] + (1 - w) * endState(v, 1)[2]);
+        double q = v[0], qf = 0.5 * (q + Math.sqrt(q * q + Q_SPLIT * Q_SPLIT));
+        return qf * endState(v, 0)[2] - (qf - q) * endState(v, 1)[2];
     }
 
     /** Enthalpy brought in from (or sent out to) reservoir ends: energy crossing the system boundary. */
@@ -303,13 +322,10 @@ public final class MixtureBranch implements Element {
         int[] col = columns();
         double[] v = new double[col.length];
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = s.x(col[j]);
-        double q = v[0], w = 0.5 * (1 + Math.tanh(q / Q_BLEND));
-        double[] sa = endState(v, 0), sb = endState(v, 1);
-        double tUp = w * sa[1] + (1 - w) * sb[1], h = 0;
-        for (int i = 0; i < m(); i++) h += (w * sa[3 + i] + (1 - w) * sb[3 + i]) * sp[i].enthalpy(tUp);
+        double h = carried(v[0], endState(v, 0), endState(v, 1), new double[m()]);
         double in = 0;
-        if (a.gas == null) in += q * h;  // from the reservoir at a into the system
-        if (b.gas == null) in -= q * h;  // out of the system into the reservoir at b
+        if (a.gas == null) in += h;  // from the reservoir at a into the system
+        if (b.gas == null) in -= h;  // out of the system into the reservoir at b
         return in;
     }
 

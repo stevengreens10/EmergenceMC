@@ -13,7 +13,7 @@ public final class RadiationExhibits {
     }
 
     /**
-     * A Geiger counter from parts: a Cs-137 check source, a Geiger–Müller tube on 500 V through 4.7 MΩ, its 1 kΩ
+     * A Geiger counter from parts: a Cs-137 check source, a Geiger–Müller tube on a 510 V battery through 4.7 MΩ, its 1 kΩ
      * cathode resistor feeding a Schmitt trigger that clocks a 4-bit counter chip, and four LEDs showing the count
      * in binary.
      */
@@ -22,7 +22,7 @@ public final class RadiationExhibits {
                 List.of("GEIGER COUNTER", "Cs-137 source, GM", "tube, counter chip:", "LEDs count in binary"),
                 "The check source holds caesium-137 (370 kBq, a school source); its barium-137m daughter emits a 662 keV "
                         + "gamma ray in nine decays out of ten. A gamma ray that interacts in the Geiger–Müller tube frees "
-                        + "an electron, and with 500 V on the anode it sets off an avalanche: the tube conducts until its "
+                        + "an electron, and with 510 V on the anode (a battery of 240 small cells) it sets off an avalanche: the tube conducts until its "
                         + "charge is spent, a few nanocoulombs flow through the 10 kΩ cathode resistor — a pulse of a few volts — and "
                         + "the gas quenches it. The Schmitt trigger squares each pulse and the counter chip counts them; "
                         + "the LEDs show the count in binary. The clicks come at random (Poisson), about two a second here; "
@@ -35,8 +35,9 @@ public final class RadiationExhibits {
         e.name("tube", e.add(GM_TUBE, "stainless_304", 6, 1, 7, Dir.EAST));
         e.add(RESISTOR, "alumina", 10, 1, 7, Dir.EAST, "resistance", 4.7e6);   // anode resistor
         e.add(CAPACITOR, "alumina", 10, 1, 4, Dir.EAST, "capacitance", 100e-12); // anode capacitor
-        int hv = e.add(CAPACITOR, "alumina", 14, 1, 7, Dir.EAST, "capacitance", 1e-5);
-        e.init(hv, new Exhibit.Initial(Double.NaN, 0, 500));
+        // the high tension: a battery of 240 small lead–acid cells, 510 V (survey meters ran on such stacks — the 510 V
+        // batteries of the 1950s); a charged capacitor in its place leaked below the tube's starting voltage in minutes
+        e.name("hv", e.add(BATTERY, "pvc", 14, 1, 7, Dir.EAST, "cells", 240, "capacity", 0.1));
         e.add(RESISTOR, "alumina", 4, 1, 11, Dir.SOUTH, "resistance", 10_000); // cathode resistor
         e.name("schmitt", e.add(LOGIC, "silicon", 10, 1, 10, Dir.EAST, "function", 7));
         e.name("counter", ComputerExhibit.chip(e, MsiChip.Type.COUNTER4, 14, 1, 10));

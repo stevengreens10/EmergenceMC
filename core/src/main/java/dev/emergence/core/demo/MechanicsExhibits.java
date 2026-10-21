@@ -94,7 +94,7 @@ public final class MechanicsExhibits {
                 "Two water-filled cylinders joined by a pipe. Push the small piston down (use its handle): the water "
                         + "cannot be squeezed, so its pressure rises — the same everywhere in it (Pascal's law) — and that "
                         + "pressure on the big piston, 17 times the area, pushes up with 17 times your force, lifting the "
-                        + "lead weight. Nothing is free: the big piston rises only 1/17 as far as you pushed, so the work "
+                        + "lead weights. Nothing is free: the big piston rises only 1/17 as far as you pushed, so the work "
                         + "in equals the work out (less friction). Meter the cylinders for the pressure.");
         String st = "steel_1045";
         // base and the water pipe joining the cylinders' heads, capped at both ends
@@ -109,13 +109,16 @@ public final class MechanicsExhibits {
         e.add(LINEAR_BEARING, st, 4, 5, 8, Dir.UP);
         e.fill(BLOCK, st, 5, 2, 8, 5, 5, 8, Dir.UP);              // a column standing on the pipe
         e.name("handle", e.add(BLOCK, "oak", 4, 7, 8, Dir.UP, "fill", 0.3));
-        // the ram: 5 cm bore, carrying a lead weight
+        // the ram: 5 cm bore, carrying two lead weights (6.2 kg in all: 31 kPa under the ram, more than the pump's own
+        // 0.2 kg presses on its 1.2 cm piston, 18 kPa — with one weight the pump sank under its own weight, lifting the ram
+        // until it lay on its stop)
         e.name("ram", e.add(CYLINDER, st, 10, 2, 8, Dir.UP, "bore", 0.05, "fluid", 1));
         int rrod = e.fill(SHAFT, st, 10, 3, 8, 10, 6, 8, Dir.UP, "diameter", 0.02);
         e.name("ramRod", rrod);
         e.add(LINEAR_BEARING, st, 10, 5, 8, Dir.UP);
         e.fill(BLOCK, st, 9, 2, 8, 9, 5, 8, Dir.UP);
         e.name("weight", e.add(BLOCK, "lead", 10, 7, 8, Dir.UP));
+        e.add(BLOCK, "lead", 10, 8, 8, Dir.UP);
         return e.view(7, 5, 15, 12);
     }
 

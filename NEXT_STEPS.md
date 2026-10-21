@@ -3,9 +3,9 @@
 0. **The demo as a player plays it** (tour with hands and checks, world built by placement are in):
    - (done: 44 pre-charged capacitor banks are batteries now, lead–acid or nickel–metal hydride) the Geiger counter's
      500 V comes from a pre-charged capacitor: a high-voltage converter built from parts;
-   - in the tour the hydraulic press's pump moves 0.44 mm and the propeller cart 0.006 mm, identically every run, while
-     the core moves them millimetres: the world's compile matches body by body, so trace the hand's push in the world;
-   - the electronic governor droops 8 % braked in the world against 3 % in the core;
+   - (fixed: the press's pump sank under its own weight, the propeller cart was parked by the wind, the governors were
+     judged mid-recovery, the gas engine ran as half of itself while its chunks loaded) the periscope's island takes in
+     the gas engine next door by line of sight;
    - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
      flywheels and the fan train are still pre-spun;
      keep only boilers, fires and furnaces pre-started;

@@ -240,6 +240,10 @@ public final class DemoBuilder {
         BlockPos spawn = build(level, top);
         // the whole gallery loaded (forced) while each exhibit is compared with its definition, once its blocks have
         // registered with the simulation
+        // held still meanwhile: the chunks arrive one by one, and a machine straddling two would run on half of itself
+        // (an engine's crankshaft braked to a stop before its cylinder's chunk came) and be saved like that
+        var sim = dev.emergence.mod.sim.SimulationManager.get(level);
+        sim.setPaused(true);
         List<int[]> forced = new java.util.ArrayList<>();
         int width = plotOffset(Exhibits.all(), Exhibits.all().size());
         for (int cx = Math.floorDiv(top.getX() - 4, 16); cx <= Math.floorDiv(top.getX() + width + 4, 16); cx++)
@@ -252,6 +256,7 @@ public final class DemoBuilder {
             if (wait[0]-- != 0) return;
             verifyAgainstDefinitions(level, top);
             for (int[] c : forced) level.setChunkForced(c[0], c[1], false);
+            sim.setPaused(false);
         });
         level.setDefaultSpawnPos(spawn, 180f);
         level.setDayTime(6000);

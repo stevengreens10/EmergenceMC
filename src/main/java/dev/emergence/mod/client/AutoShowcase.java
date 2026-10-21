@@ -185,8 +185,8 @@ public final class AutoShowcase {
                 Step s = new Step(id.equals("corrosion") ? 60 : 30, view, shot.apply("on"));
                 if (id.equals("dcmotor")) {
                     s.check(key + " the motor turns", () -> atLeast("rotor speed [rad/s]", motion(server, at.apply("rotor"), PartKind.SHAFT), 2))
-                            .check(key + " it draws current from its capacitor bank",
-                                    () -> atLeast("bank current [A]", Math.abs(current(server, at.apply("capacitor"), PartKind.CAPACITOR)), 0.02));
+                            .check(key + " it draws current from its battery",
+                                    () -> atLeast("battery current [A]", Math.abs(current(server, at.apply("battery"), null)), 0.02));
                 } else {
                     s.check(key + " joined to copper, the zinc corrodes faster: a current flows between them",
                             () -> atLeast("current through the switch [mA]", 1e3 * Math.abs(current(server, at.apply("switch"), PartKind.SWITCH)), 0.01));
@@ -480,17 +480,26 @@ public final class AutoShowcase {
             if (id.equals("unbalance")) {
                 // the lopsided wheel coasts down: a little shaking at speed, hard shaking at resonance, calm below
                 BlockPos shaftAt = at.apply("shaft");
-                Swing swing = new Swing(10); // one-second windows (a sample every other tick)
-                STEPS.add(new Step(20, NOTHING, shot.apply("fast")).sample(swing, () -> where(server, at.apply("rod"), PartKind.SHAFT)));
-                STEPS.add(new Step(3000, NOTHING, shot.apply("resonance"), () -> Math.abs(wheelSpeed(server, shaftAt)) < 10.5)
-                        .sample(swing, () -> where(server, at.apply("rod"), PartKind.SHAFT))
-                        .check(key + " it coasts down to resonance", () -> atMost("wheel speed [rad/s]", motion(server, shaftAt, PartKind.SHAFT), 11)));
-                STEPS.add(new Step(3000, NOTHING, shot.apply("calm"), () -> Math.abs(wheelSpeed(server, shaftAt)) < 6)
-                        .sample(swing, () -> where(server, at.apply("rod"), PartKind.SHAFT))
-                        .check(key + " near resonance the platform shakes hardest", () -> that(swing.peak() > 1.5 * swing.first(),
-                                String.format("largest swing %.2f mm, %.2f mm at full speed, expected well over", 1e3 * swing.peak(), 1e3 * swing.first())))
-                        .check(key + " and calms again below it", () -> that(swing.last() < 0.7 * swing.peak(),
-                                String.format("swing now %.2f mm, %.2f mm at its largest, expected well under", 1e3 * swing.last(), 1e3 * swing.peak()))));
+                // the platform's swing in one-second windows, by the wheel's speed: well above resonance (the least,
+                // once any start-up transient has died away), through it (the most), and well below (now)
+                Swing fast = new Swing(10), res = new Swing(10), slow = new Swing(10);
+                java.util.function.DoubleSupplier rod = () -> where(server, at.apply("rod"), PartKind.SHAFT);
+                java.util.function.DoubleSupplier wheel = () -> Math.abs(motion(server, shaftAt, PartKind.SHAFT));
+                Step coast = new Step(3000, NOTHING, shot.apply("resonance"), () -> Math.abs(wheelSpeed(server, shaftAt)) < 6)
+                        .sample(fast, () -> wheel.getAsDouble() > 16 ? rod.getAsDouble() : Double.NaN)
+                        .sample(res, () -> Math.abs(wheel.getAsDouble() - 11.5) < 3 ? rod.getAsDouble() : Double.NaN)
+                        .sample(slow, () -> wheel.getAsDouble() < 8 ? rod.getAsDouble() : Double.NaN)
+                        .check(key + " it coasts down through resonance", () -> atMost("wheel speed [rad/s]", motion(server, shaftAt, PartKind.SHAFT), 7))
+                        .check(key + " near resonance the platform shakes hardest", () -> that(res.peak() > 1.5 * fast.least(),
+                                String.format("swing %.2f mm near resonance, %.2f mm well above it, expected well over", 1e3 * res.peak(), 1e3 * fast.least())))
+                        .check(key + " and calms again below it", () -> that(slow.last() < 0.7 * res.peak(),
+                                String.format("swing now %.2f mm, %.2f mm near resonance, expected well under", 1e3 * slow.last(), 1e3 * res.peak())));
+                // spin it up by its crank, as a player would, then let go and watch it coast down
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.hold(key + " spin the wheel up", part.apply("crank", PartKind.CRANK), false)));
+                STEPS.add(new Step(800, NOTHING, null, () -> Math.abs(wheelSpeed(server, shaftAt)) > 22));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+                STEPS.add(new Step(10, NOTHING, shot.apply("fast")));
+                STEPS.add(coast);
             }
             if (id.equals("fancooling")) {
                 // a hand on the crank: the fan's jet cools its plate until it is well below its twin in still air
@@ -503,7 +512,7 @@ public final class AutoShowcase {
             }
             if (id.equals("governor")) {
                 // apply the brake: the speed sags, the drive rises and brings it back
-                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.05, at.apply("battery"));
+                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.05, at.apply("battery"), 4);
             }
             if (id.equals("contactgov")) {
                 // the rotor's speed on the logger; close the switch (it comes up to its governed speed and holds), then
@@ -511,13 +520,13 @@ public final class AutoShowcase {
                 logOn(key, part.apply("rotor", PartKind.SHAFT), "angular velocity", 2, server, logger);
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " close the switch", part.apply("switch", PartKind.SWITCH), logger)));
                 nudge(key, part.apply("rotor", PartKind.SHAFT), false);
-                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, logger, 0.03, at.apply("battery"));
+                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, logger, 0.05, at.apply("battery"), 4); // (the core test holds it within 2 %; five-second windows on its contact's limit cycle read coarser)
             }
             if (id.equals("flyball")) {
                 // close the switch: the weights fly out and the push rod turns the rheostat in; then brake it
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
                 nudge(key, part.apply("rotor", PartKind.SHAFT), false);
-                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.06, at.apply("battery"));
+                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.10, at.apply("battery"), 30); // (a governor without reset: it droops)
             }
             if (id.equals("column")) {
                 // the heater on: the pot boils, the trays warm one by one and the condensate runs back down
@@ -641,7 +650,7 @@ public final class AutoShowcase {
                 // spin the propeller up by its crank, let go, and the cart runs along its rail on the propeller's thrust
                 double[] x0 = {Double.NaN};
                 STEPS.add(new Step(0, () -> x0[0] = where(server, at.apply("cart"), null), null)
-                        .act(PlayerHand.hold(key + " spin the propeller up (backwards: the wind holds the cart at its east stop)", part.apply("crank", PartKind.CRANK), true)));
+                        .act(PlayerHand.hold(key + " spin the propeller up", part.apply("crank", PartKind.CRANK), false)));
                 STEPS.add(new Step(40, NOTHING, null).check(key + " the crank spins the propeller", () ->
                         atLeast("propeller speed [rad/s]", motion(server, at.apply("shaft"), PartKind.SHAFT), 10)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
@@ -844,16 +853,19 @@ public final class AutoShowcase {
      * in pulses, so one instant's reading says little.
      */
     private static void governed(String key, net.minecraft.server.MinecraftServer server, BlockPos shaftAt, PartKind kind, PlayerHand.Target brake,
-                                 Runnable view, java.util.function.Function<String, String> shot, ItemStack inHand, double droop, BlockPos battery) {
+                                 Runnable view, java.util.function.Function<String, String> shot, ItemStack inHand, double droop, BlockPos battery,
+                                 double warmUp) {
         Sampler w0 = new Sampler(), a0 = new Sampler(), w1 = new Sampler(), a1 = new Sampler();
-        STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), 4, key + "gov")).show(inHand != null));
+        // up to speed first: at least warmUp seconds of its own time (a flyball governor's weights take half a minute)
+        STEPS.add(new Step(3600, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), warmUp, key + "gov")).show(inHand != null));
         STEPS.add(new Step(100, NOTHING, shot.apply("governing")).show(inHand != null)
                 .sample(w0, () -> motion(server, shaftAt, kind)).sample(a0, () -> Math.abs(current(server, battery, null)))
                 .check(key + " it runs at its governed speed", () -> atLeast("mean speed [rad/s]", w0.mean(), 5)));
         STEPS.add(new Step(0, NOTHING, null).act(inHand == null ? PlayerHand.click(key + " apply the brake", brake)
                 : PlayerHand.clickWith(key + " apply the brake", brake, inHand)));
         // judged once the speed has settled again, in simulated time
-        STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), 4, key + "brk")).show(inHand != null));
+        // the controller takes some ten seconds to win the speed back: judged once that is over
+        STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), 10, key + "brk")).show(inHand != null));
         STEPS.add(new Step(100, NOTHING, shot.apply("braked")).show(inHand != null)
                 .sample(w1, () -> motion(server, shaftAt, kind)).sample(a1, () -> Math.abs(current(server, battery, null)))
                 .check(key + " braked, it keeps its speed", () -> {
@@ -961,6 +973,16 @@ public final class AutoShowcase {
         return b == null || b.isStatic() ? 0 : c.angle(b);
     }
 
+    /** A slide's state for diagnosis: position, velocity and travel stops [m, m/s]. */
+    private static String slideInfo(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        PlacedPart p = any(s, at, PartKind.SHAFT);
+        CompiledAssembly c = compiled(s, at);
+        var b = p == null || c == null ? null : c.bodyOf(p.id);
+        if (b == null) return "none";
+        return String.format("at %.5f m moving %.5f m/s, stops %.5f…%.5f, %.3f kg%s", c.angle(b), c.angularVelocity(b), b.strokeLo(), b.strokeHi(), b.mass(),
+                b.isStatic() ? " (static!)" : "");
+    }
+
     /** Pressure of the fluid in a vessel or pipe [Pa]. */
     private static double pressure(net.minecraft.server.MinecraftServer s, BlockPos at, PartKind k) {
         PlacedPart p = any(s, at, k);
@@ -1029,9 +1051,11 @@ public final class AutoShowcase {
 
     /**
      * True once a quantity has settled in simulated time: at least {@code after} seconds of the island's own time
-     * since the step began, and its mean over the last 1.5 simulated seconds within 0.5 % of its mean over the 1.5 s
-     * before. (Means, since a commutator motor's speed ripples and a governor hunts; simulated time, since a costly
-     * machine runs slower than real time: judged by the clock on the wall it would look steady while it is still moving.)
+     * since the step began, and its means over the last three 1.5 s windows of simulated time all within 0.5 % of one
+     * another. (Means, since a commutator motor's speed ripples and a governor hunts; three windows, since two agree at
+     * the bottom of a dip as it turns — a governor recovering from a load was judged mid-recovery; simulated time,
+     * since a costly machine runs slower than real time: judged by the clock on the wall it would look steady while
+     * it is still moving.)
      */
     private static java.util.function.BooleanSupplier settledIn(net.minecraft.server.MinecraftServer server, BlockPos at,
                                                                 java.util.function.DoubleSupplier read, double after, String key) {
@@ -1043,24 +1067,23 @@ public final class AutoShowcase {
             if (tick[0]++ % 3 != 0) return false;
             double t = onServer(server, key + "t", () -> simTime(server, at)), v = onServer(server, key + "v", read::getAsDouble);
             if (Double.isNaN(t) || Double.isNaN(v)) return false;
-            if (Double.isNaN(t0[0])) t0[0] = t;
-            hist.addLast(new double[]{t, v});
-            while (hist.size() > 2 && hist.peekFirst()[0] < t - 2 * w) hist.removeFirst();
-            if (t - t0[0] < after || t - hist.peekFirst()[0] < 1.9 * w) return false;
-            double s1 = 0, s2 = 0;
-            int n1 = 0, n2 = 0;
-            for (double[] h : hist) {
-                if (h[0] < t - w) {
-                    s1 += h[1];
-                    n1++;
-                } else {
-                    s2 += h[1];
-                    n2++;
-                }
+            if (Double.isNaN(t0[0]) || t < t0[0]) { // (the island recompiled: its clock restarted)
+                t0[0] = t;
+                hist.clear();
             }
-            if (n1 < 3 || n2 < 3) return false;
-            double m1 = s1 / n1, m2 = s2 / n2;
-            return Math.abs(m2 - m1) < 0.005 * Math.abs(m2);
+            hist.addLast(new double[]{t, v});
+            while (hist.size() > 2 && hist.peekFirst()[0] < t - 3 * w) hist.removeFirst();
+            if (t - t0[0] < after || t - hist.peekFirst()[0] < 2.9 * w) return false;
+            double[] s = new double[3];
+            int[] n = new int[3];
+            for (double[] h : hist) {
+                int k = Math.min(2, (int) ((t - h[0]) / w)); // 0: the latest window
+                s[k] += h[1];
+                n[k]++;
+            }
+            if (n[0] < 3 || n[1] < 3 || n[2] < 3) return false;
+            double m0 = s[0] / n[0], m1 = s[1] / n[1], m2 = s[2] / n[2], tol = 0.005 * Math.abs(m0);
+            return Math.abs(m0 - m1) < tol && Math.abs(m1 - m2) < tol && Math.abs(m0 - m2) < tol;
         };
     }
 
@@ -1130,7 +1153,7 @@ public final class AutoShowcase {
     static final class Swing extends Sampler {
         private final double[] ring;
         private int k, seen;
-        private double first = Double.NaN, peak = Double.NaN, last = Double.NaN;
+        private double first = Double.NaN, peak = Double.NaN, last = Double.NaN, least = Double.NaN;
 
         Swing(int window) {
             ring = new double[window];
@@ -1151,6 +1174,11 @@ public final class AutoShowcase {
             last = hi - lo;
             if (Double.isNaN(first)) first = last;
             if (Double.isNaN(peak) || last > peak) peak = last;
+            if (Double.isNaN(least) || last < least) least = last;
+        }
+
+        synchronized double least() {
+            return least;
         }
 
         synchronized double first() {

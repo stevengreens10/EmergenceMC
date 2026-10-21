@@ -179,6 +179,12 @@ public final class CompiledAssembly {
     }
 
     /** A link's tension [N] (negative: it is pushing). NaN if not part of a working link. */
+    /** How far a link bar is from its built length now [m] (the drift its stabilisation is pulling back; NaN if none). */
+    public double linkDrift(long partId) {
+        LinkPiece l = links.get(partId);
+        return l == null ? Double.NaN : l.link().length(solver) - l.link().builtLength();
+    }
+
     public double linkTension(long partId) {
         LinkPiece l = links.get(partId);
         return l == null ? Double.NaN : l.link().tension(solver);

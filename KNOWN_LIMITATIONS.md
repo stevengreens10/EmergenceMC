@@ -170,7 +170,9 @@ multimeter, oscilloscope/data logging.
   split, so a resistor's own thermocouple EMFs are ignored. Block-scale Bi₂Te₃ legs are 6 cm long, so a Peltier
   couple at that scale needs hundreds of amperes; real modules (mm legs) are a miniature-scale build.
 ## Simulation pace
-* Machines advance only within the simulation distance of a player (like Minecraft's block ticking); all islands
+* Machines advance only within the simulation distance of a player (like Minecraft's block ticking), and not while
+  part of them may still be unloaded (their reach crosses into a chunk not loaded) or for half a second after parts
+  arrive — so a machine placed or loaded pauses briefly before it runs; all islands
   together are held to ~35 ms per tick by slowing every island in proportion when the world holds too many.
 * One island's step is cut off after 60 ms of wall time: how far a costly machine gets each tick then depends on the
   machine running it, so in the world its slow motion is not reproducible tick for tick (the physics of each accepted

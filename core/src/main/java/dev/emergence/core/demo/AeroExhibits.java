@@ -73,37 +73,37 @@ public final class AeroExhibits {
     static Exhibit propellerCart(double pitch) {
         Exhibit e = new Exhibit("propcart", "Propeller cart",
                 List.of("PROPELLER CART", "The spinning propeller", "throws air back:", "the cart goes forward"),
-                "A light aluminium cart runs on a two-metre rail through two bushings. On it, a flywheel and a two-bladed "
+                "A light aluminium cart runs on a one-metre rail through two bushings. On it, a flywheel and a two-bladed "
                         + "propeller turn on one shaft, along the rail. Each blade, set at an angle to its path, deflects "
                         + "the air it meets (lift and drag from its angle of attack, element by element), and together "
                         + "they drive a stream of air through the disc they sweep — momentum theory sets how fast. The "
                         + "air pushed one way, the propeller is pushed the other with the same force, and the cart with "
                         + "it: nothing else touches the cart. The faster the cart goes, the less its blades bite (they "
                         + "meet the air already moving towards them) and the thrust falls; the flywheel runs down as "
-                        + "the air takes its energy. Crank the flywheel to spin it up again. Aircraft propellers, "
-                        + "airboats and the fans of a hovercraft all push this way.");
-        e.plots = 2;
+                        + "the air takes its energy. The rail runs north–south, across the wind (from the west): the "
+                        + "bushings take the wind's push sideways, so only the propeller drives the cart along. Crank the "
+                        + "flywheel to spin it up. Aircraft propellers, airboats and the fans of a hovercraft all push this way.");
         String st = "steel_1045", al = "aluminium_6061";
-        int y = 3, ya = y + 8; // the propeller high enough for long blades to clear the rail
-        // the rail: a rod through two bushings on posts, nearly two metres long
-        e.fill(BLOCK, st, 16, 0, 8, 17, y - 1, 8, Dir.UP);
-        e.add(LINEAR_BEARING, st, 16, y, 8, Dir.EAST, "viscosity", 0.05);
-        e.add(LINEAR_BEARING, st, 17, y, 8, Dir.EAST, "viscosity", 0.05);
-        e.name("rail", e.fill(SHAFT, st, 2, y, 8, 31, y, 8, Dir.EAST, "diameter", 0.012));
-        // the cart: an aluminium deck on the rod and a bracket up to the propeller's bearing
-        e.name("cart", e.fill(BLOCK, al, 4, y, 8, 6, y, 8, Dir.EAST, "fill", 0.3));
-        e.fill(BLOCK, al, 5, y + 1, 8, 5, ya - 1, 8, Dir.EAST, "fill", 0.3); // upright plates: one strip
-        e.add(BEARING, st, 5, ya, 8, Dir.EAST);
-        int shaft = e.fill(SHAFT, st, 3, ya, 8, 8, ya, 8, Dir.EAST, "diameter", 0.01);
+        int y = 3, ya = y + 8, x = 8; // the propeller high enough for long blades to clear the rail
+        // the rail: a rod along the plot through two bushings on posts at its south end
+        e.fill(BLOCK, st, x, 0, 13, x, y - 1, 14, Dir.UP);
+        e.add(LINEAR_BEARING, st, x, y, 13, Dir.SOUTH, "viscosity", 0.05);
+        e.add(LINEAR_BEARING, st, x, y, 14, Dir.SOUTH, "viscosity", 0.05);
+        e.name("rail", e.fill(SHAFT, st, x, y, 0, x, y, 15, Dir.SOUTH, "diameter", 0.012));
+        // the cart: an aluminium deck on the rod at its north end and a bracket up to the propeller's bearing
+        e.name("cart", e.fill(BLOCK, al, x, y, 2, x, y, 4, Dir.SOUTH, "fill", 0.3));
+        e.fill(BLOCK, al, x, y + 1, 3, x, ya - 1, 3, Dir.SOUTH, "fill", 0.3); // upright plates: one strip
+        e.add(BEARING, st, x, ya, 3, Dir.SOUTH);
+        int shaft = e.fill(SHAFT, st, x, ya, 1, x, ya, 6, Dir.SOUTH, "diameter", 0.01);
         e.name("shaft", shaft);
         // the propeller: two blades across the shaft's end, pitched into the turn
-        e.add(BLOCK, al, 3, ya, 8, Dir.UP, "fill", 0.5);
+        e.add(BLOCK, al, x, ya, 1, Dir.UP, "fill", 0.5);
         // long blades: a hand can turn the propeller only so fast, and thrust grows with the cube of their length
-        e.fill(BLADE, al, 3, ya, 1, 3, ya, 7, Dir.NORTH, "face", Dir.UP.ordinal(), "pitch", pitch);
-        e.fill(BLADE, al, 3, ya, 9, 3, ya, 15, Dir.SOUTH, "face", Dir.UP.ordinal(), "pitch", pitch);
+        e.fill(BLADE, al, x + 1, ya, 1, x + 7, ya, 1, Dir.EAST, "face", Dir.UP.ordinal(), "pitch", pitch);
+        e.fill(BLADE, al, x - 7, ya, 1, x - 1, ya, 1, Dir.WEST, "face", Dir.UP.ordinal(), "pitch", pitch);
         // the flywheel, and a crank to spin it up
-        e.name("flywheel", e.fill(BLOCK, "brass", 7, ya - 1, 7, 7, ya + 1, 9, Dir.EAST, "fill", 0.3));
-        e.name("crank", e.add(CRANK, st, 8, ya, 8, Dir.EAST, "radius", 0.1));
-        return e.view(17, 9, 24, 25);
+        e.name("flywheel", e.fill(BLOCK, "brass", x - 1, ya - 1, 5, x + 1, ya + 1, 5, Dir.SOUTH, "fill", 0.3));
+        e.name("crank", e.add(CRANK, st, x, ya, 6, Dir.SOUTH, "radius", 0.1));
+        return e.view(18, 9, 8, 25, 90);
     }
 }

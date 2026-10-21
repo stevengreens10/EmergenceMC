@@ -1154,8 +1154,12 @@ class DemoExhibitsTest {
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = compile(e, b);
         long pump = b.id(e, "pumpRod"), ram = b.id(e, "ramRod");
-        run(c, 0.5);
+        // left alone (as the gallery leaves it until someone comes), it must not run itself down: the pump's own weight
+        // must not lift the loaded ram
+        run(c, 30);
         double p0 = c.probe(pump).angle(), r0 = c.probe(ram).angle();
+        System.out.printf("hydraulic press: left alone 30 s, the pump at %+.1f mm, the ram at %+.2f mm%n", 1000 * p0, 1000 * r0);
+        assertTrue(p0 > -0.01, "the pump has not sunk under its own weight: " + p0);
         c.setPushEffort(pump, -1);
         for (int i = 0; i < 100; i++) c.step(0.01);
         c.setPushEffort(pump, 0);
@@ -1927,7 +1931,8 @@ class DemoExhibitsTest {
         double[] w = new double[2], amps = new double[2], turn = new double[2], out = new double[2];
         for (int m = 0; m < 2; m++) {
             if (m == 1) c.toggleSwitch(b.id(e, "brake"));
-            run(c, 8);
+            // its steady state, not its first seconds: with too small a rheostat it crept past its range over a minute
+            run(c, m == 0 ? 40 : 20);
             int n = 40;
             for (int k = 0; k < n; k++) {
                 c.step(0.05);
@@ -1942,7 +1947,8 @@ class DemoExhibitsTest {
                 w[1], amps[1], 1e3 * out[1], Math.toDegrees(turn[1]), 1e3 * c.probe(b.id(e, "sleeve")).angle(), c.energyError());
         assertTrue(out[0] > 0.003 && out[0] < 0.027, "the weights ride out between their stops: " + out[0]);
         assertTrue(turn[0] > Math.toRadians(2), "the push rod has turned the rheostat in: " + turn[0]);
-        assertTrue(Math.abs(w[1] - w[0]) < 0.04 * w[0], "braked, it keeps its speed within a few percent: " + w[0] + " → " + w[1]);
+        // a spring-loaded centrifugal governor without reset holds its speed only proportionally: some droop under load
+        assertTrue(Math.abs(w[1] - w[0]) < 0.10 * w[0], "braked, it keeps its speed within a tenth: " + w[0] + " → " + w[1]);
         assertTrue(turn[1] < turn[0] && out[1] < out[0], "the weights sink in and the rheostat backs off");
         assertTrue(amps[1] > 1.08 * amps[0], "so the motor takes more current: " + amps[0] + " → " + amps[1]);
     }

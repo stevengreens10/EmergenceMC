@@ -335,7 +335,7 @@ public final class Exhibits {
                 {4, 8, 12}, {4, 8, 11}, {4, 8, 10}, {4, 8, 9}, {4, 8, 8}, {5, 8, 8}});
         e.name("switch", e.add(SWITCH, "brass", 10, 8, 13, Dir.EAST));
         int cap = e.add(BATTERY, "pvc", 8, 8, 13, Dir.EAST, "cells", 11, "capacity", 7); // 11 lead–acid cells: 23.4 V full
-        e.name("capacitor", cap);
+        e.name("battery", cap);
         return e.view(8.5, 11, 22, 22);
     }
 

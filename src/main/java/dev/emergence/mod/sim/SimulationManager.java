@@ -98,6 +98,11 @@ public final class SimulationManager {
          * grown by the near distance.
          */
         boolean near, watched, resetLogged;
+        /** Its blocks reach into a chunk not loaded: perhaps not all of the machine is here, so it is not run. */
+        boolean incomplete;
+        /** Rebuilt as parts arrived: it waits until this tick for the rest of it (see {@link #arrived}). */
+        long settleUntil;
+
         net.minecraft.world.phys.AABB bounds, box;
         /** For the pace log: simulated and wall time when last logged. */
         double paceSim = Double.NaN;
@@ -131,7 +136,16 @@ public final class SimulationManager {
     public void register(BlockPos pos, AssemblyBlockEntity be) {
         blocks.put(pos.immutable(), be);
         markDirty(pos);
+        arrived = true;
     }
+
+    /**
+     * Parts arrived (a chunk loaded, or a part was placed) since the last rebuild. A chunk counts as loaded a tick
+     * before its block entities register, so a machine straddling two chunks can be rebuilt with one half; the
+     * machines rebuilt then wait {@link #SETTLE_TICKS} before they run, for the rest of them to arrive.
+     */
+    private boolean arrived;
+    private static final int SETTLE_TICKS = 10;
 
     public void unregister(BlockPos pos) {
         Island isl = islandOf.get(pos);
@@ -155,6 +169,16 @@ public final class SimulationManager {
 
     // ------------------------------------------------------------------ ticking
 
+    /**
+     * Held: islands are built and compiled but not stepped (the demo builder's check force-loads the whole gallery for a
+     * moment; machines whose chunks arrived one by one would otherwise run on half of themselves meanwhile).
+     */
+    private boolean paused;
+
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+    }
+
     public void tick() {
         tickCount++;
         if (!dirty.isEmpty()) {
@@ -164,6 +188,7 @@ public final class SimulationManager {
             long ms = (System.nanoTime() - r0) / 1_000_000;
             if (ms > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: rebuilding the islands around {} changed blocks took {} ms", n, ms);
         }
+        if (paused) return;
         Set<Island> islands = new HashSet<>(islandOf.values());
         double watchedTotal = 0, nearTotal = 0, farTotal = 0;
         Set<Island> nearest = nearestToPlayers(islands);
@@ -173,6 +198,16 @@ public final class SimulationManager {
             // away their state waits, intact. A machine reaching into simulation distance runs as a whole (judging
             // it by an arbitrary one of its blocks made one straddling a chunk border run or freeze by chance)
             if (!anyTicking(isl)) continue;
+            // part of the machine may lie in a chunk not loaded yet (it straddles a border at the edge of the loaded
+            // world): run on what is here, an engine braked its crankshaft to a stop before its cylinder's chunk came.
+            // It waits, as it is, until all of it can be here (its blocks arriving rebuild it; a chunk arriving empty is
+            // noticed within a second)
+            if (isl.incomplete && (tickCount % 20 != 0 || reachesUnloaded(isl))) {
+                if (LOG_PACE && tickCount % 200 == 0) EmergenceMod.LOG.info("Held: island at {} ({} blocks) reaches into a chunk not loaded", isl.blocks.iterator().next(), isl.blocks.size());
+                continue;
+            }
+            if (tickCount < isl.settleUntil) continue;
+            isl.incomplete = false;
             updateCranks(isl);
             updateWind(isl);
             isl.near = nearPlayer(isl);
@@ -216,8 +251,11 @@ public final class SimulationManager {
             bubbles(isl);
             ventPlumes(isl);
             if (tickCount % 20 == 0) daylight(isl);
-            if (tickCount % 400 == 0 && Boolean.getBoolean("emergence.debugIslands") && (isl.compiled.sunlightAbsorbed() > 100 || isl.costMs > 1)) {
+            if (tickCount % 100 == 0 && Boolean.getBoolean("emergence.debugIslands") && (isl.compiled.sunlightAbsorbed() > 100 || isl.costMs > 1)) {
                 long hot = isl.partPos.keySet().stream().max(java.util.Comparator.comparingDouble(isl.compiled::temperature)).orElse(-1L);
+                double fastest = 0;
+                for (var body : isl.compiled.bodies()) if (!body.isStatic()) fastest = Math.max(fastest, Math.abs(isl.compiled.angularVelocity(body)));
+                EmergenceMod.LOG.info("Island at {}: fastest body {} rad/s, {} blocks", isl.blocks.iterator().next(), String.format("%.2f", fastest), isl.blocks.size());
                 EmergenceMod.LOG.info("Island at {}: t = {} s, time scale {}, {} ms/step, hottest {} at {} K", isl.blocks.iterator().next(),
                         Math.round(isl.compiled.time()), String.format("%.3f", isl.timeScale * scaleOf(isl)), String.format("%.1f", isl.costMs),
                         hot < 0 ? "-" : isl.compiled.assembly().get(hot).kind() + "@" + isl.partPos.get(hot).toShortString(),
@@ -479,6 +517,8 @@ public final class SimulationManager {
         // collect affected islands (and their state) then re-flood-fill from dirty positions
         Set<BlockPos> seeds = new HashSet<>(dirty);
         dirty.clear();
+        boolean arrivedNow = arrived;
+        arrived = false;
         Set<Island> old = new HashSet<>();
         // block-scale parts interact across air gaps (magnets near coils: 2 blocks); large gears' rims reach further,
         // and optical parts couple whatever lies in their line of sight — both as symmetric links, so island
@@ -526,8 +566,11 @@ public final class SimulationManager {
                 isl.blocks.add(b);
                 islandOf.put(b, isl);
                 // only blocks of the same grid resolution form one machine
+                int bcx = b.getX() >> 4, bcz = b.getZ() >> 4;
                 forNeighbours(b, isl.resolution == AssemblyBlockEntity.BLOCK_SCALE ? blockReach : 1, n -> {
                     if (blocks.containsKey(n) && blocks.get(n).resolution() == isl.resolution && visited.add(n)) q.add(n);
+                    // a neighbour in a chunk not loaded: the machine may go on there, unseen
+                    else if (((n.getX() >> 4) != bcx || (n.getZ() >> 4) != bcz) && !level.isLoaded(n)) isl.incomplete = true;
                 });
                 for (BlockPos n : sight.getOrDefault(b, Set.of())) {
                     if (blocks.containsKey(n) && blocks.get(n).resolution() == isl.resolution && visited.add(n)) q.add(n);
@@ -535,6 +578,7 @@ public final class SimulationManager {
             }
             AssemblyState st = mergeWithSaved(isl, merged);
             isl.compiled = compile(isl, st);
+            if (arrivedNow) isl.settleUntil = tickCount + SETTLE_TICKS;
         }
     }
 
@@ -633,6 +677,23 @@ public final class SimulationManager {
             if (chunk == lastChunk) continue;
             lastChunk = chunk;
             if (level.shouldTickBlocksAt(b)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * True if an island's blocks still reach into a chunk not loaded (a chunk with more of the machine in it rebuilds the
+     * island when it loads; this catches one that loads with none).
+     */
+    private boolean reachesUnloaded(Island isl) {
+        int reach = isl.resolution == AssemblyBlockEntity.BLOCK_SCALE ? 2 : 1;
+        for (BlockPos b : isl.blocks) {
+            int bcx = b.getX() >> 4, bcz = b.getZ() >> 4;
+            boolean[] out = {false};
+            forNeighbours(b, reach, n -> {
+                if (!out[0] && ((n.getX() >> 4) != bcx || (n.getZ() >> 4) != bcz) && !level.isLoaded(n)) out[0] = true;
+            });
+            if (out[0]) return true;
         }
         return false;
     }
@@ -870,7 +931,10 @@ public final class SimulationManager {
     public boolean pushSlider(BlockPos pos, long partId, Player player) {
         Island isl = islandAt(pos);
         if (isl == null || isl.compiled == null) return false;
-        if (!isl.compiled.setPushEffort(partId, player.isShiftKeyDown() ? -1 : 1)) return false;
+        boolean ok = isl.compiled.setPushEffort(partId, player.isShiftKeyDown() ? -1 : 1);
+        if (LOG_PACE && ok && !isl.pushTicks.containsKey(partId)) EmergenceMod.LOG.info("Hand: push on part {} at {} ({})", partId, pos.toShortString(),
+                player.isShiftKeyDown() ? "sneaking, back" : "forward");
+        if (!ok) return false;
         isl.pushTicks.put(partId, 6);
         return true;
     }

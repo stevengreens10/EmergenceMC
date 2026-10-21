@@ -565,7 +565,7 @@ public final class PartParameters {
         new B(PartKind.BATTERY).made("pvc", in(MaterialCategory.POLYMER))
                 .choice("chemistry", "Chemistry", 0, List.of(new Choice(0, "lead–acid (2.1 V a cell)"), new Choice(1, "nickel–metal hydride (1.3 V a cell)")),
                         "Lead–acid: car and standby batteries. Nickel–metal hydride: rechargeable AA cells; four make a 5 V supply.")
-                .integer("cells", "Cells in series", 1, 200, 6, "Its voltage is the cells' voltages added.")
+                .integer("cells", "Cells in series", 1, 400, 6, "Its voltage is the cells' voltages added.")
                 .log().real("capacity", "Capacity", "A·h", 0.05, 500, 7, "Charge it holds; bigger cells also have less internal resistance.")
                 .shown("%", 100).real("charge", "Charged to", "", 0, 1, 1, "How full it is when placed.")
                 .adv().shown("cm²", 1e4).log().real("surface_area", "Cooling surface", "m²", 1e-4, 1, 0.02, "Its case's surface to the air.")

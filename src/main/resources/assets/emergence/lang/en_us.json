@@ -31,6 +31,7 @@
   "tooltip.emergence.switch": "Right-click to open/close.",
   "tooltip.emergence.brush": "Sliding contact: conducts to a rotating conductor in front of its face.",
   "tooltip.emergence.multimeter": "Right-click a part: temperature, voltage, current, power, speed.",
+  "tooltip.emergence.edit_hint": "Right-click the air to set it up: material, size, ratings, stock variants. Middle-click a placed part to copy it.",
   "tooltip.emergence.place_hint": "Fills the block in front of the clicked face (scale model, 1 block = 6.25 cm). Click a shaft's side to mount on it; sneak to place along your view. Tweezers in off-hand: miniature mode.",
   "message.emergence.does_not_fit": "That part does not fit inside one block space here.",
   "message.emergence.blocked": "Cannot place there.",

@@ -172,9 +172,19 @@ public final class PartItem extends Item {
             tooltip.add(Component.literal("ρ = " + Units.formatSI(m.get(MaterialProperty.ELECTRICAL_RESISTIVITY), "Ω·m")).withStyle(ChatFormatting.DARK_GRAY));
         if (m.has(MaterialProperty.REMANENCE))
             tooltip.add(Component.literal("Bᵣ = " + Units.formatSI(m.get(MaterialProperty.REMANENCE), "T")).withStyle(ChatFormatting.DARK_GRAY));
+        // its settings as the part editor names them ("Diameter: 1.5 mm"), what is not set left at its default
+        var schema = dev.emergence.core.assembly.PartParameters.of(kind);
         for (var e : s.params().entrySet()) {
-            tooltip.add(Component.literal(e.getKey() + " = " + String.format("%.4g", e.getValue())).withStyle(ChatFormatting.DARK_GRAY));
+            var p = schema.param(e.getKey());
+            String text = p == null ? e.getKey() + " = " + String.format("%.4g", e.getValue())
+                    : p.label() + ": " + switch (p.type()) {
+                        case TOGGLE -> e.getValue() > 0.5 ? "yes" : "no";
+                        case CHOICE -> p.choiceLabel(e.getValue()) == null ? String.valueOf(e.getValue()) : p.choiceLabel(e.getValue());
+                        default -> dev.emergence.core.assembly.ParamText.format(p, e.getValue());
+                    };
+            tooltip.add(Component.literal(text).withStyle(ChatFormatting.DARK_GRAY));
         }
+        tooltip.add(Component.translatable("tooltip.emergence.edit_hint").withStyle(ChatFormatting.YELLOW));
         tooltip.add(Component.translatable("tooltip.emergence.place_hint").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
     }
 

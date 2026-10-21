@@ -699,3 +699,33 @@ focal length, a battery's voltage and energy). The server checks every specifica
 test checks that all 72 exhibits and every preset pass it. A part with many possible materials (a block: forty) opens a picker that shows them all at
 once, grouped by kind with their properties on hover; a slider at zero says what zero means ("0 (flat)", "0 (none)");
 and pick block (middle click) on a placed part gives an item with all of its settings, to build another like it.
+
+**Three exhibits that were wrong for the world they stood in.** The press and the propeller cart failed identically
+on every tour while their core tests passed, and the build check found their bodies exactly as defined. A log of the
+hand's pushes showed the press's pump being pushed all along; a log of its slides showed it already sinking before
+anyone touched it: the pump rod's own 0.2 kg on its 1.2 cm piston makes 18 kPa, more than the 3.4 kg ram needed, so
+left running for the length of a tour the pump lay on its stop. A second lead weight on the ram (31 kPa) and a test
+that the press, left alone 30 s, still answers a push. The propeller cart ran along the west wind: the wind parked it
+against its east stop before the tour arrived, and a hand-cranked propeller could not push it back. Its rail now runs
+north–south, across the wind. And the governors were judged mid-recovery: two consecutive windows of speed agree at
+the bottom of a dip as it turns, so settling now needs three to agree, and ten seconds after braking. Cut-short steps
+(the 60 ms limit) are physically consistent: an engine cut to 1 ms a call reaches 148.2 rad/s at 20 s exactly as one
+run whole. Part items' tooltips now give their settings as the editor names them and say how to edit and copy a part.
+
+**Half an engine.** The gas engine stopped in the tour but ran alone, and ran for five minutes, through recompiles, cut
+steps and slow motion in the core. Its island logged at its first tick showed why: it began at 8.7 rad/s, then (after
+a fix) 1.7, instead of the 30 it is built turning at — it had already run as half of itself. The engine straddles a
+chunk border; chunks arrive one by one, and the half in the first chunk (crankshaft, brake, flywheel) ran without the
+cylinder and glow plug and braked to a stop. Three ways in: the demo build's check force-loaded the gallery for three
+seconds while machines ran (now the simulation is held still meanwhile); a machine whose reach crosses into a chunk not
+yet loaded is held as it is until it can be whole; and since a chunk counts as loaded a tick before its parts register,
+a machine rebuilt as parts arrive waits half a second for the rest. Requiring every chunk a machine touches to tick was
+tried and dropped: it froze the GameTests' structures, whose neighbouring chunks load but do not tick.
+
+**Two more exhibits that only worked at first.** The Geiger counter ran its tube from a capacitor charged to 500 V:
+it leaked below the tube's 350 V starting voltage in two minutes, and the gallery had stood for longer than that when
+anyone arrived. It now has a battery of 240 small cells, 510 V — as survey meters had. The flyball governor held 30 rad/s
+in its eight-second test, but over a minute it crept up until the weights lay on their stops: with a 6 Ω rheostat, even
+fully turned in, the motor at this light load ran faster than the governed speed. With 150 Ω it holds 27.6 rad/s
+indefinitely; braked (3 N) it settles 8 % lower — the droop of a governor without a reset, as its sign now says. Its test
+now judges the steady state, and the tour allows that droop.

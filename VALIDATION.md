@@ -478,8 +478,8 @@ run found that a crank sharing its cell with its shaft could not be turned by a 
 cell, not by the outline hit), that a switch clicked as soon as it was placed did not latch, and that brakes were never
 applied by the old tour (its toggle found no switch in the brake's block).
 
-The latest full tour (all 72 exhibits, 25 minutes, the gallery as it stands after minutes of running) passes 136 of
-137 checks; the last (the light barrier's vane, watched for two seconds at a hand's pace) passes with a longer watch.
+The latest full tour (all 72 exhibits, 26 minutes, the gallery as it stands after minutes of running) passes all 137
+checks; the build check finds every exhibit's bodies (parts, mass, inertia, travel) exactly as defined.
 
 ## Known validation gaps
 No tests yet for: diode temperature dependence, brush/commutator contacts, multi-coil mutual coupling on

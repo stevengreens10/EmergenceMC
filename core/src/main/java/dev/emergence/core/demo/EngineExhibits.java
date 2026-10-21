@@ -32,21 +32,29 @@ public final class EngineExhibits {
                         + "two: both valves shut, the charge is squeezed and heated. At the top it meets the hot cylinder "
                         + "head and ignites: down stroke three is the power stroke. Up stroke four: the exhaust valve opens "
                         + "and the burnt gas is pushed out. The flywheel carries the engine through the three strokes that "
-                        + "take work instead of giving it. Meter the cylinder for its pressure and composition.");
+                        + "take work instead of giving it. It stands still, its head kept hot by the glow plug: open the "
+                        + "fuel (the needle valve by the bottles), then hold the starting handle at the end of the "
+                        + "crankshaft until it fires and runs away from your hand. Once it runs, put the brake on: it "
+                        + "carries the load. Shut the fuel and it stops. Meter the cylinder for its pressure and "
+                        + "composition.");
         String st = "steel_1045";
         // frame: two columns carrying the crankshaft (y 3) and the camshaft (y 7) bearings
         for (int x : new int[]{0, 11}) {
             e.fill(BLOCK, st, x, 0, 8, x, 2, 8, Dir.UP);
             e.fill(BLOCK, st, x, 4, 8, x, 6, 8, Dir.UP);
         }
-        int crank = e.fill(SHAFT, st, 0, 3, 8, 11, 3, 8, Dir.EAST, "diameter", 0.014);
-        e.name("crankshaft", crank);
-        e.init(crank, new Exhibit.Initial(Double.NaN, 30, 0)); // given a spin to start
+        int crank = e.fill(SHAFT, st, 0, 3, 8, 12, 3, 8, Dir.EAST, "diameter", 0.014);
+        e.name("crankshaft", crank); // at rest: started with the handle
         e.add(BEARING, st, 0, 3, 8, Dir.EAST);
         e.add(BEARING, st, 11, 3, 8, Dir.EAST);
+        // the starting handle on the crankshaft's end: a hand drives it only while it turns no faster than the hand
+        // follows, so once the engine fires it runs away from the handle (as a dog clutch lets go); on the shaft's
+        // stub, clear of the bearing (a part touching the bearing's housing would be fixed with it). Short (5 cm), so a
+        // hand spins it fast: at a hand's pace on a long handle the hot wall lights each charge before the top of its
+        // stroke, and the engine kicks back
+        e.name("handle", e.add(CRANK, st, 13, 3, 8, Dir.EAST, "radius", 0.05));
         int cam = e.fill(SHAFT, st, 0, 7, 8, 11, 7, 8, Dir.EAST, "diameter", 0.012);
         e.name("camshaft", cam);
-        e.init(cam, new Exhibit.Initial(Double.NaN, -15, 0)); // half the crank's speed, the other way (external gears)
         e.add(BEARING, st, 0, 7, 8, Dir.EAST);
         e.add(BEARING, st, 11, 7, 8, Dir.EAST);
         // crank, flywheel, the timing gears (2:1)
@@ -54,8 +62,7 @@ public final class EngineExhibits {
         e.name("flywheel", e.fill(BLOCK, st, 7, 2, 7, 7, 4, 9, Dir.EAST, "fill", 0.4));
         // load: a Prony brake, an oak block sprung against the underside of the flywheel (a dynamometer)
         int brake = e.add(BRAKE, "oak", 7, 1, 8, Dir.UP, "force", 12);
-        e.name("brake", brake);
-        e.latch(brake); // applied
+        e.name("brake", brake); // off: an engine is started unloaded and the brake put on once it runs
         e.add(BLOCK, st, 7, 0, 8, Dir.UP);
         e.add(GEAR, st, 9, 3, 8, Dir.EAST, "pitch_radius", 4.0 / 3 / 16, "teeth", 16, "thickness", 0.012);
         e.add(GEAR, st, 9, 7, 8, Dir.EAST, "pitch_radius", 8.0 / 3 / 16, "teeth", 32, "thickness", 0.012);
@@ -63,8 +70,10 @@ public final class EngineExhibits {
         // compression ratio 9: 3.75 mm of clearance over the 30 mm stroke
         int cyl = e.add(CYLINDER, st, 3, 5, 8, Dir.DOWN, "bore", 0.035, "ring_friction", 2.0, "clearance", 0.00375);
         e.name("cylinder", cyl);
-        e.init(cyl, new Exhibit.Initial(550, 0, 0)); // warm from running
+        // warm, as a hot-head engine is before it is started (its head heated for some minutes first)
+        e.init(cyl, new Exhibit.Initial(550, 0, 0));
         int head = e.add(BLOCK, st, 3, 6, 8, Dir.UP, "fill", 0.3);
+        e.name("head", head);
         e.init(head, new Exhibit.Initial(900, 0, 0));
         // valves beside the cylinder, under the camshaft's cams
         e.name("exhaust", e.add(VALVE, "brass", 2, 5, 8, Dir.WEST, "bore", 0.010, "lap", 0.7));
@@ -76,8 +85,8 @@ public final class EngineExhibits {
         // primed: the mixing box starts with a burnable charge (as a choke gives a cold engine a rich one)
         e.name("mixer", e.add(TANK, st, 6, 5, 8, Dir.UP, "wall", 0.002, "x_CH4", 0.095, "x_O2", 0.19, "x_N2", 0.715));
         e.add(PIPE, st, 6, 5, 9, Dir.SOUTH, "bore", 0.012);                 // air inlet, open at its far end
+        // shut while it stands (left open, the gas would go on leaking into the box until it is too rich to burn)
         e.name("needle", e.add(VALVE, "brass", 6, 5, 7, Dir.SOUTH, "bore", 2.5e-5));
-        e.latch(e.parts.size() - 1);
         // three 200 bar bottles in a column (half an hour of running), on a stand
         e.name("fuel", e.add(TANK, st, 6, 5, 6, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006));
         e.add(TANK, st, 6, 4, 6, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);

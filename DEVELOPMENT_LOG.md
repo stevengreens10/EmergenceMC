@@ -753,3 +753,13 @@ latch's halves are never matched; the chip's latches now balance a hair above th
 falls to 0 and the counter counts again. The flywheels and the eddy brake now open at rest too: the tour
 spins each flywheel by its rim and cranks each eddy disc, and their tests do the same (the eddy brake's energy check
 counts the disc's heat from the moment it is let go — cranking against the magnets warms it first).
+
+**A starting handle.** The gas engine was the last machine opening already turning. It now stands still with its
+fuel shut, and a player starts it the way small hot-head engines were started: open the needle valve, swing the
+starting handle until it fires, and put the brake on once it runs. The physics had things to say about each step.
+Left open while it stood, the needle flooded the mixing box to 98 % methane, past what burns: hence the fuel shut.
+On a 10 cm handle a hand turns it at 30 rad/s, slow enough that the hot wall lights each charge before the top of its
+stroke and kicks the crank back — the hot-bulb engine's known habit; a 5 cm handle a hand can spin to 60 rad/s gets it
+past that. And with the brake on it fires but cannot pick up, so it is started unloaded. The handle drives only while
+the shaft turns no faster than a hand, so a running engine leaves it behind like a dog clutch. In the world the tour
+opens the fuel, holds the handle until the engine outruns it, and checks that it then carries the brake (77 W).

@@ -585,8 +585,24 @@ public final class AutoShowcase {
                         () -> atLeast("plate temperature [K]", maxTemperature(server, plate), 800)));
             }
             if (id.equals("engine")) {
-                STEPS.add(new Step(200, NOTHING, shot.apply("running")).check(key + " the engine runs on its own",
-                        () -> atLeast("crankshaft speed [rad/s]", motion(server, at.apply("crankshaft"), PartKind.SHAFT), 5)));
+                // standing, as a player finds it: the fuel opened, the handle swung until it fires, then the brake put on
+                BlockPos shaft = at.apply("crankshaft");
+                double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.05; // the 5 cm handle
+                double[] free = {Double.NaN};
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open the fuel", part.apply("needle", PartKind.VALVE))));
+                // held until it fires and runs away from the hand (a hand cannot drive it faster than handTop)
+                STEPS.add(new Step(1200, NOTHING, null, () -> motion(server, shaft, PartKind.SHAFT) > handTop + 5)
+                        .act(PlayerHand.hold(key + " swing the starting handle until it fires", part.apply("handle", PartKind.CRANK), false)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+                STEPS.add(new Step(200, view, shot.apply("running")).check(key + " it fires and runs on, faster than a hand can turn it",
+                        () -> atLeast("crankshaft speed [rad/s]", motion(server, shaft, PartKind.SHAFT), handTop))
+                        .after(() -> free[0] = motion(server, shaft, PartKind.SHAFT)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake on", part.apply("brake", PartKind.BRAKE))));
+                STEPS.add(new Step(200, view, shot.apply("loaded")).check(key + " it carries the brake: still running, working against it", () -> {
+                    double w = motion(server, shaft, PartKind.SHAFT), p = brakePower(server, at.apply("brake"));
+                    return that(w > 20 && p > 5, String.format("crankshaft %.0f rad/s under the brake (%.0f free), the brake taking %.1f W; expected above 20 rad/s and 5 W",
+                            w, free[0], p));
+                }));
             }
             if (id.equals("rack")) {
                 // crank the rack up, then let go: the weight runs it back down
@@ -935,6 +951,14 @@ public final class AutoShowcase {
     }
 
     /** Speed of the body carrying the part: |ω| [rad/s], or |v| [m/s] for a slide (NaN if it is not simulated). */
+    /** The power a brake pad is absorbing [W] (NaN if there is none at the block). */
+    private static double brakePower(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        PlacedPart p = any(s, at, PartKind.BRAKE);
+        CompiledAssembly c = compiled(s, at);
+        double[] b = p == null || c == null ? null : c.brake(p.id);
+        return b == null ? Double.NaN : Math.abs(b[1]);
+    }
+
     private static double motion(net.minecraft.server.MinecraftServer s, BlockPos at, PartKind k) {
         PlacedPart p = partIn(s, at, k);
         CompiledAssembly c = compiled(s, at);

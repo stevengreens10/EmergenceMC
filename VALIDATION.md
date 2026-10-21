@@ -216,9 +216,15 @@ P/P_cr = 0.5000 and 2.0000 (Euler exactly), its top swaying most; a hanging (ten
 exhibit: the short strip at 0.568 of its critical load (Euler 0.53, plus self-weight and the base joint), the
 tall strip with the same 27 N block at 1.743 (Euler 1.72): it fails, the short one stands.
 
-Gas engine: the four-stroke engine fires every cycle near top dead centre (peak 7.7 MPa, compression ratio 9),
-burns its methane to CO₂ (up to 9.5 %), and its power strokes take the crank from 30 to 115 rad/s in 10 s against
-a Prony brake; unbraked, its fixed fuel flow governs it near 200 rad/s as the mixture leans out. Cam-worked gas
+Gas engine: the four-stroke engine fires every cycle near top dead centre (peak 5.6 MPa from a hand start,
+compression ratio 9) and burns its methane to CO₂ (up to 9.5 %). It starts as a player finds it: standing ten
+minutes with its fuel shut (glow plug 1366 K, head down to 582 K), the fuel opened, ten seconds at its 5 cm starting
+handle take it to 62 rad/s, and it runs on by itself at 69–89 rad/s, faster than a hand can turn the handle (60
+rad/s); the Prony brake then put on, it holds above 59 rad/s delivering 34 W. Left with its fuel open while it
+stands, the needle fills the mixing box to 98 % methane, too rich to burn, and it will not start (flooded); on the
+long 10 cm handle a hand turns it only at 30 rad/s, where the hot wall lights each charge before top dead centre and
+it kicks back; with the brake on from the start it fires but cannot pick up. In the world (tour): fired by hand,
+171 rad/s free, 170 rad/s with the brake taking 77 W. Cam-worked gas
 valve (`MixtureFlowTest`): open, a tank fills from 2 bar; shut, 1.3 Pa leaks in 2 s.
 
 Ray optics (`OpticsTest`): Fresnel 4 % at normal incidence, R_p = 0 at Brewster's angle, total reflection past

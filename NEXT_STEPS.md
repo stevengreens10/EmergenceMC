@@ -7,9 +7,9 @@
      judged mid-recovery, the gas engine ran as half of itself while its chunks loaded) the periscope's island takes in
      the gas engine next door by line of sight;
    - start exhibits cold where warm-up is short (motors, four-bar, unbalanced rotor: the tour turns them by hand);
-     (done: the fan train, governors, unbalanced rotor, flywheels and eddy brake start at rest and are started by hand)
-     still opening in motion: the heat engines on their pre-heated plants (the gas engine needs a starting handle — a
-     hand-turned crank too slow to fire it is the honest test), the four-bar (its consistent start is what its test
+     (done: the fan train, governors, unbalanced rotor, flywheels, eddy brake and gas engine start at rest and are
+     started by hand — the engine with its fuel, a starting handle and the brake off) still opening in motion: the
+     steam engines on their pre-heated plants, the four-bar (its consistent start is what its test
      measures; the tour turns its crank), the flyball (minutes to spin up) and the fatigue rig (150 rad/s: a motor's
      job, not a hand's — a motor from parts to drive it);
      keep only boilers, fires and furnaces pre-started;
@@ -24,6 +24,8 @@
      to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:
      an audio-rate partition that sleeps while nothing vibrates;
    - the miniature exhibit is still placed directly (tweezers placement);
+   - the gas engine's island runs at a fifth of real time once it fires (combustion steps at 170 rad/s): the tour
+     holds its handle a minute of real time for a dozen simulated seconds;
    - the full tour, then every exhibit's checks green.
 
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →

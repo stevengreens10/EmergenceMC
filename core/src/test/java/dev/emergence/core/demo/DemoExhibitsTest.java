@@ -1509,29 +1509,62 @@ class DemoExhibitsTest {
     }
 
     /**
-     * The gas engine runs: cam-timed valves draw in methane and air on the first stroke, it fires near the top of the
-     * second (the glow plug lights the squeezed charge), and the power strokes accelerate the crank against the brake.
+     * The gas engine, standing as a player finds it, starts by hand: the fuel opened and a few seconds at the starting
+     * handle turn it over, the cam-timed valves draw in methane and air, the glow plug's hot wall lights the squeezed
+     * charge, and once it fires it runs away from the handle. Then the brake goes on and it carries the load.
      */
     @Test
-    void gasEngineFiresAndRunsOnItsOwn() {
+    void gasEngineStartsByHandAndCarriesTheBrake() {
         Exhibit e = EngineExhibits.gasEngine();
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = compile(e, b);
         var ch = dev.emergence.core.chem.Chemistry.standard();
-        long crank = b.id(e, "crankshaft"), cyl = b.id(e, "cylinder");
-        double w0 = c.probe(crank).angularVelocity(), pPeak = 0, co2 = 0;
+        long crank = b.id(e, "crankshaft"), cyl = b.id(e, "cylinder"), handle = b.id(e, "handle"), brake = b.id(e, "brake");
+        assertEquals(0, c.probe(crank).angularVelocity(), 1e-9, "at rest");
+        // it stands for ten minutes before anyone comes: the glow plug keeps its wall hot, the shut fuel keeps the box lean
+        run(c, 600);
+        var mg = c.gas(b.id(e, "mixer"));
+        System.out.printf("gas engine: after 10 min standing, head %.0f K, glow plug %.0f K, mixing box %.1f %% methane%n",
+                c.temperature(b.id(e, "head")), c.temperature(b.id(e, "glow")), 100 * mg.moleFraction(c.solverView(), mg.indexOf(ch.species("CH4"))));
+        assertTrue(Math.abs(c.probe(crank).angularVelocity()) < 0.5, "it does not start itself");
+        // the fuel opened, and the engine swung at the handle for ten seconds
+        c.toggleSwitch(b.id(e, "needle"));
+        double wHand = 0, pPeak = 0, co2 = 0;
+        for (int i = 0; i < 200; i++) {
+            c.setCrankEffort(handle, 1, false);
+            c.step(0.05);
+            wHand = Math.max(wHand, c.probe(crank).angularVelocity());
+        }
+        c.setCrankEffort(handle, 0, false);
+        double w0 = c.probe(crank).angularVelocity(), wMin = Double.MAX_VALUE;
         for (int i = 0; i < 2000; i++) {
             c.step(0.005);
             var g = c.gas(cyl);
             pPeak = Math.max(pPeak, g.pressure(c.solverView()));
             co2 = Math.max(co2, g.moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))));
+            if (i >= 1000) wMin = Math.min(wMin, c.probe(crank).angularVelocity());
         }
-        double w = c.probe(crank).angularVelocity();
-        System.out.printf("gas engine: crank %.0f → %.0f rad/s in 10 s against the brake, peak cylinder pressure %.1f MPa, CO2 up to %.1f %%%n",
-                w0, w, pPeak / 1e6, 100 * co2);
+        // a hand cannot turn the 5 cm handle faster than this
+        double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.05;
+        System.out.printf("  cranked by hand to %.0f rad/s (let go at %.0f); 10 s on its own: %.0f rad/s (no less than %.0f in the last 5 s; "
+                + "a hand tops out at %.0f), peak cylinder pressure %.1f MPa, CO2 up to %.1f %%%n", wHand, w0, c.probe(crank).angularVelocity(),
+                wMin, handTop, pPeak / 1e6, 100 * co2);
         assertTrue(pPeak > 2e6, "it fires: combustion pressure well above compression alone");
         assertTrue(co2 > 0.02, "methane burns to CO2");
-        assertTrue(w > 2 * w0, "the power strokes accelerate it against its load: " + w);
+        assertTrue(wMin > handTop, "it runs on its own, faster than a hand can turn it: " + wMin);
+        // the brake on: it carries the load
+        c.toggleSwitch(brake);
+        double wLoad = Double.MAX_VALUE, work = 0;
+        for (int i = 0; i < 2000; i++) {
+            c.step(0.005);
+            if (i >= 1000) {
+                wLoad = Math.min(wLoad, c.probe(crank).angularVelocity());
+                work += c.brake(brake)[1] * 0.005;
+            }
+        }
+        System.out.printf("  the brake on: no less than %.0f rad/s over the last 5 s, absorbing %.1f W%n", wLoad, work / 5);
+        assertTrue(wLoad > 20, "it keeps running under the brake: " + wLoad);
+        assertTrue(work / 5 > 5, "it does work against the brake: " + work / 5 + " W");
     }
 
     /** Periscope: two 45° mirrors carry the LED's beam over the wall to the photodiode; without one, nothing arrives. */

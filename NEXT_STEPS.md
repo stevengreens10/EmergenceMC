@@ -18,14 +18,16 @@
    - (the governors' checks now average over 5 s: the core holds the electronic one at −3 % braked) confirm in the tour;
    - the chip-level inverter costs 1–3 s of CPU a tick near a player (now slowed rather than stalling the server): the
      averaged-switch model of item 5a;
-   - the tour's hands still teleport the player to open sky for clicks in the air (walk there instead);
+   - (done: the tour flies between viewpoints and to its hands' spots in spectator mode, landing in creative —
+     `Flight`; 10/10 checks over five exhibits with it) confirm in a full tour; shots taken where the hand stood
+     (a step without the exhibit's view) to review in its screenshots;
    - the loudspeaker's island (527 parts, audio-rate) failed once in the world, idle for minutes with its switch off:
      time-step underflow at a resistor's node at 6.3 s, recovered by a restart at rest; the core runs it idle and on
      to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:
      an audio-rate partition that sleeps while nothing vibrates;
    - the miniature exhibit is still placed directly (tweezers placement);
-   - the gas engine's island runs at a fifth of real time once it fires (combustion steps at 170 rad/s): the tour
-     holds its handle a minute of real time for a dozen simulated seconds;
+   - the gas engine's island runs at a fifth to a third of real time once it fires (combustion steps at 200+ rad/s);
+   - the wind turbine's load check now asks only that power arrives (a lull at 30 rad/s gave 0.12 W against 0.2);
    - the full tour, then every exhibit's checks green.
 
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →

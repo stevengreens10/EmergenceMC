@@ -253,13 +253,13 @@ public final class Exhibits {
         return e.view(7.5, 4, 13, 32);
     }
 
-    /** Identical flywheels spun to 60 rad/s, one on ball bearings, one on a lubricated bronze bushing. */
+    /** Identical flywheels, spun by hand, one on ball bearings, one on a lubricated bronze bushing. */
     public static Exhibit flywheels() {
         Exhibit e = new Exhibit("flywheels", "Bearing friction",
-                List.of("BEARINGS", "Left: ball bearing", "Right: plain bushing", "Both start 573 rpm"),
-                "Two identical aluminium flywheels start at 60 rad/s. The ball bearing's rolling friction "
+                List.of("BEARINGS", "Left: ball bearing", "Right: plain bushing", "Spin each by hand"),
+                "Two identical aluminium flywheels stand at rest: give each a spin by hand. The ball bearing's rolling friction "
                         + "(SKF model, μ ≈ 0.0015) lets its flywheel run for a long time; the bronze bushing's "
-                        + "boundary friction and oil shear (Petroff) stop the other within about a minute. "
+                        + "boundary friction and oil shear (Petroff) stop the other far sooner. "
                         + "The lost kinetic energy ends up as heat in the bearings.");
         String st = "steel_1045";
         int[] xs = {4, 11};

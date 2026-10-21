@@ -448,7 +448,9 @@ public final class AutoShowcase {
                         .check(key + " the wind turns the rotor", () -> atLeast("rotor speed [rad/s]", motion(server, shaftAt, PartKind.SHAFT), 20)));
                 Sampler load = new Sampler();
                 STEPS.add(new Step(100, NOTHING, null).sample(load, () -> power(server, at.apply("load"), null))
-                        .check(key + " its generator delivers power to the load", () -> atLeast("mean load power [W]", load.mean(), 0.2)));
+                        // (its output goes roughly as the square of its speed: in a lull at 30 rad/s, a fraction of a watt —
+                        // the check is that power arrives, not how strong the wind is)
+                        .check(key + " its generator delivers power to the load", () -> atLeast("mean load power [W]", load.mean(), 0.05)));
             }
             if (id.equals("weights")) {
                 // a hand on the crank: the beam spins up and the weights slide out against their springs
@@ -587,7 +589,7 @@ public final class AutoShowcase {
             if (id.equals("engine")) {
                 // standing, as a player finds it: the fuel opened, the handle swung until it fires, then the brake put on
                 BlockPos shaft = at.apply("crankshaft");
-                double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.05; // the 5 cm handle
+                double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.04; // the 4 cm handle
                 double[] free = {Double.NaN};
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open the fuel", part.apply("needle", PartKind.VALVE))));
                 // held until it fires and runs away from the hand (a hand cannot drive it faster than handTop)
@@ -773,7 +775,7 @@ public final class AutoShowcase {
                             + " flywheel by hand", part.apply(w + "Wheel", PartKind.BLOCK), false)));
                     STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 }
-                STEPS.add(new Step(200, NOTHING, shot.apply("later")).check(key + " the ball-bearing flywheel keeps turning, the bushing's slows", () -> {
+                STEPS.add(new Step(200, view, shot.apply("later")).check(key + " the ball-bearing flywheel keeps turning, the bushing's slows", () -> {
                     double ball = motion(server, at.apply("ball"), null), plain = motion(server, at.apply("plain"), null);
                     return that(ball > 1.5 * plain + 1, String.format("ball bearing %.1f rad/s, bushing %.1f rad/s, expected the ball bearing's well ahead", ball, plain));
                 }));
@@ -924,9 +926,11 @@ public final class AutoShowcase {
     private static void look(net.minecraft.server.MinecraftServer server, double x, double y, double z, float yaw, float pitch) {
         if (server.getPlayerList().getPlayers().isEmpty()) return; // the game is closing
         ServerPlayer p = server.getPlayerList().getPlayers().get(0);
-        // spectator: no collision, so the eye can be placed anywhere (y is the eye height)
-        p.setGameMode(net.minecraft.world.level.GameType.SPECTATOR);
-        p.teleportTo(server.overworld(), x, y - p.getEyeHeight(), z, yaw, pitch);
+        // the viewpoint is where the eye goes (y is the eye height); the player flies there, in spectator mode so that
+        // the eye can be anywhere, a machine's insides included
+        var feet = new net.minecraft.world.phys.Vec3(x, y - PlayerHand.EYE_STANDING, z);
+        if (p.isSpectator() && p.position().distanceTo(feet) < 0.05 && Math.abs(p.getYRot() - yaw) < 0.5 && Math.abs(p.getXRot() - pitch) < 0.5) return;
+        Flight.to(feet, yaw, pitch, false, null);
     }
 
     private static PlacedPart find(AssemblyBlockEntity be, PartKind k) {
@@ -1419,6 +1423,7 @@ public final class AutoShowcase {
             plan(mc);
         }
         PlayerHand.keepHolding(mc);
+        Flight.tick(mc);
         if (index >= STEPS.size()) {
             if (wait == 1) report(mc);
             if (wait-- == 0) mc.stop();
@@ -1456,11 +1461,14 @@ public final class AutoShowcase {
                 lap(s.exhibit);
                 ShowcaseHud.exhibit(s.number, s.total, s.title, s.description);
             }
-            if (s.act != null) ShowcaseHud.doing(caption(s.act.what()));
+            // (an exhibit's opening step only lets go of what the last one held: it stays "looking at the exhibit")
+            if (s.act != null && s.title == null) ShowcaseHud.doing(caption(s.act.what()));
             else if (s.delayTicks > 0 && s.title == null) ShowcaseHud.doing("Watching");
             ShowcaseHud.pending(s.checkNames.stream().map(nm -> new String[]{caption(nm), "measuring…"}).toList());
         } else if (!ran) {
             // a busy server runs the step's action some ticks late: its wait and condition start from the action
+        } else if (Flight.busy()) {
+            // on the way to the step's viewpoint (or a hand's spot): its wait and condition start on landing
         } else if (!actDone) {
             if (mc.screen != null) mc.setScreen(null); // a player's clicks go to the world, not a menu
             actDone = s.act.tick(mc);

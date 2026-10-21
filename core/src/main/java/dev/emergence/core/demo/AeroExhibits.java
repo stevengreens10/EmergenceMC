@@ -109,6 +109,7 @@ public final class AeroExhibits {
         // a windbreak to the west, clear of the blades: the wind veers ±25° about west, and a quartering wind on the
         // propeller's disc turned it into a windmill that pinned the cart to the end of its rail
         e.scenery(-1, 0, -3, -1, ya + 2, 22, "stone_bricks");
-        return e.view(18, 9, 8, 25, 90);
+        // back far enough to take in the whole rail (the cart runs most of it) and the propeller above
+        return e.view(25, 12, 8, 24, 90);
     }
 }

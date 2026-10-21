@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The showcase's hands: it works the demo world as a player does. To use a part it flies (creative) to a free spot
+ * The showcase's hands: it works the demo world as a player does. To use a part it flies ({@link Flight}) to a free spot
  * within reach that has a clear line of sight to it, turns to look at it, waits until the crosshair is on that very
  * part, and then presses the use or attack key — in-game key state, not OS input — so the click travels the same road
  * as a player's: the client's pick against the parts' outlines, the item in hand, the packet, the server's block and
@@ -141,7 +141,7 @@ final class PlayerHand {
 
             @Override
             public String what() {
-                return "Lets go";
+                return "Letting go";
             }
         };
     }
@@ -168,18 +168,15 @@ final class PlayerHand {
                     return true;
                 }
                 if (mc.player.position().distanceTo(spot[0]) > 0.3) {
-                    var server = mc.getSingleplayerServer();
-                    Vec3 to = spot[0];
-                    server.execute(() -> {
-                        ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                    Flight.to(spot[0], mc.player.getYRot(), -90, false, p -> {
+                        p.setGameMode(GameType.CREATIVE);
                         p.getAbilities().flying = false;
                         p.onUpdateAbilities();
-                        p.teleportTo(server.overworld(), to.x, to.y, to.z, p.getYRot(), -90);
                     });
                 }
                 return false;
             }
-            if (mc.player.position().distanceTo(spot[0]) > 0.3) return false;
+            if (Flight.busy() || mc.player.position().distanceTo(spot[0]) > 0.3 || mc.gameMode.getPlayerMode() != GameType.CREATIVE) return false;
             mc.player.setXRot(-90);
             mc.player.xRotO = -90;
             Boolean ok = done.get();
@@ -285,8 +282,8 @@ final class PlayerHand {
 
     /**
      * Goes within reach of a part and acts on it once the crosshair is on it: finds a free spot with a clear line
-     * of sight (preferring the side the exhibit is viewed from), asks the server to put the player there (creative,
-     * flying, the item in hand: what a player does by flying over and picking it from the inventory), then looks at
+     * of sight (preferring the side the exhibit is viewed from), flies there and lands in creative mode
+     * with the item in hand (what a player does by flying over and picking it from the inventory), then looks at
      * the part each tick until the client's own pick lands on it.
      */
     private static final class Reach implements Act {
@@ -369,17 +366,15 @@ final class PlayerHand {
                     fail(what + ": no spot within reach with a clear view of the " + t.kind.name().toLowerCase() + " at " + t.block.toShortString());
                     return true;
                 }
-                var server = mc.getSingleplayerServer();
-                Vec3 feet = stand;
+                // flown there (the item picked from the inventory on the way); in creative on landing, hovering only
+                // where there is nothing to stand on
                 boolean fly = flying;
-                server.execute(() -> {
-                    ServerPlayer p = server.getPlayerList().getPlayers().get(0);
+                Flight.to(stand, mc.player.getYRot(), mc.player.getXRot(), true, p -> {
                     p.setGameMode(GameType.CREATIVE);
                     p.getAbilities().flying = fly;
                     p.onUpdateAbilities();
                     p.getInventory().selected = 0;
                     p.setItemInHand(InteractionHand.MAIN_HAND, item.copy());
-                    p.teleportTo(server.overworld(), feet.x, feet.y, feet.z, p.getYRot(), p.getXRot());
                     moved.set(true);
                 });
                 return false;

@@ -395,7 +395,8 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   downstream pressure felt is never below the critical ratio (2/(γ+1))^{γ/(γ−1)} of the upstream; with K ≈ 2 an
   orifice reproduces the isentropic choked mass flow within 0.5 %). It carries species ṅ·x_i and enthalpy ṅ·h(T_up)
   (formation enthalpy included); flow to or from a reservoir is the system's external power. What it carries is split
-  smoothly into the flow's two ways, ṅ = ṅ⁺ − ṅ⁻ (width 10⁻⁶ mol/s, about what diffusion exchanges through these bores),
+  smoothly into the flow's two ways, ṅ = ṅ⁺ − ṅ⁻ (width 10⁻⁶ mol/s for a 6 mm bore or wider, about what diffusion
+  exchanges through it, and in proportion to the open area below that, so a shut valve exchanges next to nothing),
   each carrying only its own end's gas at that end's temperature: a volume never sends what it does not hold. (The
   momentum balance keeps its blended properties.) Carrying the blend instead let a trickle out of a pipe holding no
   vapour take its neighbour's: the pipe's moles went negative, then its energy, and the solver failed.

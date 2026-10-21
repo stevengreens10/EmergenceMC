@@ -216,15 +216,15 @@ P/P_cr = 0.5000 and 2.0000 (Euler exactly), its top swaying most; a hanging (ten
 exhibit: the short strip at 0.568 of its critical load (Euler 0.53, plus self-weight and the base joint), the
 tall strip with the same 27 N block at 1.743 (Euler 1.72): it fails, the short one stands.
 
-Gas engine: the four-stroke engine fires every cycle near top dead centre (peak 5.6 MPa from a hand start,
-compression ratio 9) and burns its methane to CO₂ (up to 9.5 %). It starts as a player finds it: standing ten
-minutes with its fuel shut (glow plug 1366 K, head down to 582 K), the fuel opened, ten seconds at its 5 cm starting
-handle take it to 62 rad/s, and it runs on by itself at 69–89 rad/s, faster than a hand can turn the handle (60
-rad/s); the Prony brake then put on, it holds above 59 rad/s delivering 34 W. Left with its fuel open while it
-stands, the needle fills the mixing box to 98 % methane, too rich to burn, and it will not start (flooded); on the
-long 10 cm handle a hand turns it only at 30 rad/s, where the hot wall lights each charge before top dead centre and
-it kicks back; with the brake on from the start it fires but cannot pick up. In the world (tour): fired by hand,
-171 rad/s free, 170 rad/s with the brake taking 77 W. Cam-worked gas
+Gas engine: the four-stroke engine fires near top dead centre (peak 4–5 MPa, compression ratio 9) and burns its
+methane to CO₂. It starts as a player finds it: standing with its fuel shut (glow plug ~1330–1370 K, head cooling
+from 900 K to 801 K in a minute, 582 K in ten, 503 K in thirty), the fuel opened, a few seconds at its 4 cm starting
+handle (a hand turns it at up to 75 rad/s) and it fires while still being cranked, runs away from the hand to
+225–273 rad/s, and carries the Prony brake at 100–124 W. What does not work, as in life: left with its fuel open
+while it stands, the needle floods the mixing box (98 % methane, too rich to burn); on a 10 cm handle (30 rad/s) the
+hot surfaces light each charge before top dead centre and it kicks back, running backwards; on a 5 cm one (60 rad/s)
+it caught only now and then — the needle's fixed flow is rich at that speed, and a slowing engine only gets richer;
+with the brake on from the start it fires but cannot pick up. Cam-worked gas
 valve (`MixtureFlowTest`): open, a tank fills from 2 bar; shut, 1.3 Pa leaks in 2 s.
 
 Ray optics (`OpticsTest`): Fresnel 4 % at normal incidence, R_p = 0 at Brewster's angle, total reflection past

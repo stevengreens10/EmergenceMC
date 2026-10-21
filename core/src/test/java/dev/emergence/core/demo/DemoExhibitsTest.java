@@ -1544,8 +1544,8 @@ class DemoExhibitsTest {
             co2 = Math.max(co2, g.moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))));
             if (i >= 1000) wMin = Math.min(wMin, c.probe(crank).angularVelocity());
         }
-        // a hand cannot turn the 5 cm handle faster than this
-        double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.05;
+        // a hand cannot turn the 4 cm handle faster than this
+        double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.04;
         System.out.printf("  cranked by hand to %.0f rad/s (let go at %.0f); 10 s on its own: %.0f rad/s (no less than %.0f in the last 5 s; "
                 + "a hand tops out at %.0f), peak cylinder pressure %.1f MPa, CO2 up to %.1f %%%n", wHand, w0, c.probe(crank).angularVelocity(),
                 wMin, handTop, pPeak / 1e6, 100 * co2);

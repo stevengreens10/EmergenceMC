@@ -89,6 +89,34 @@ class MixtureFlowTest {
         System.out.printf("equalised at %.0f Pa: a %.1f K, b %.1f K%n", a.pressure(s), a.temperature(s), b.temperature(s));
     }
 
+    /**
+     * Two volumes at one pressure, one nitrogen and one oxygen, joined by a passage: with no pressure difference the
+     * only exchange is the split's diffusion-like width, which follows the open area — a 6 mm bore trades about 10⁻⁶
+     * mol/s each way, a shut valve next to nothing (a fixed width once let a shut needle valve fill a mixing box with
+     * a bottle's methane).
+     */
+    @Test
+    void aShutValveExchangesNothing() {
+        double[] crossed = new double[2];
+        for (int k = 0; k < 2; k++) {
+            Network n = new Network();
+            double v = 1e-3, p = 101325, t = 300, nt = p * v / (R * t);
+            Node ta = n.node(Domain.THERMAL, "aT", t), pa = n.node(Domain.FLUID, "ap", p);
+            Node tb = n.node(Domain.THERMAL, "bT", t), pb = n.node(Domain.FLUID, "bp", p);
+            GasReactor a = n.add(new GasReactor(AIR, List.of(), v, ta, new double[]{nt, 0, 0}).withPressureNode(pa));
+            GasReactor b = n.add(new GasReactor(AIR, List.of(), v, tb, new double[]{0, nt, 0}).withPressureNode(pb));
+            MixtureBranch valve = n.add(new MixtureBranch(AIR, MixtureBranch.End.of(a), MixtureBranch.End.of(b),
+                    Math.PI * 0.003 * 0.003, 6e-3, 0.06, 2).withTag("valve"));
+            if (k == 1) valve.setOpening(0);
+            TransientSolver s = new TransientSolver(n).method(IntegrationMethod.BDF2);
+            s.advance(600);
+            crossed[k] = b.moles(s, 0); // nitrogen that has reached b
+        }
+        System.out.printf("exchange in 10 min at equal pressure: open 6 mm bore %.3g mol of N2, shut %.3g mol%n", crossed[0], crossed[1]);
+        assertEquals(600 * 0.5e-6, crossed[0], 0.3 * 600 * 0.5e-6, "open: about half the split's width each way");
+        assertTrue(crossed[1] < 2e-6 * crossed[0], "shut: next to nothing (its shut passage is 10⁻⁶ of the open one)");
+    }
+
     /** A 10 bar supply through an orifice to 1 bar is choked: the isentropic critical mass flow, independent of p_down. */
     @Test
     void chokedOrificeFlow() {

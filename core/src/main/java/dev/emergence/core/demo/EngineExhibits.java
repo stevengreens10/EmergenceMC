@@ -49,10 +49,11 @@ public final class EngineExhibits {
         e.add(BEARING, st, 11, 3, 8, Dir.EAST);
         // the starting handle on the crankshaft's end: a hand drives it only while it turns no faster than the hand
         // follows, so once the engine fires it runs away from the handle (as a dog clutch lets go); on the shaft's
-        // stub, clear of the bearing (a part touching the bearing's housing would be fixed with it). Short (5 cm), so a
-        // hand spins it fast: at a hand's pace on a long handle the hot wall lights each charge before the top of its
-        // stroke, and the engine kicks back
-        e.name("handle", e.add(CRANK, st, 13, 3, 8, Dir.EAST, "radius", 0.05));
+        // stub, clear of the bearing (a part touching the bearing's housing would be fixed with it). Short (4 cm), so a
+        // hand spins it fast (75 rad/s): slower, the hot surfaces light each charge before the top of its stroke and
+        // the engine kicks back or dies (at 30 rad/s on a 10 cm handle it ran backwards; at 60 on a 5 cm one it caught
+        // only now and then)
+        e.name("handle", e.add(CRANK, st, 13, 3, 8, Dir.EAST, "radius", 0.04));
         int cam = e.fill(SHAFT, st, 0, 7, 8, 11, 7, 8, Dir.EAST, "diameter", 0.012);
         e.name("camshaft", cam);
         e.add(BEARING, st, 0, 7, 8, Dir.EAST);

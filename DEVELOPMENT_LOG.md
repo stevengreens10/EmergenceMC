@@ -763,3 +763,13 @@ stroke and kicks the crank back — the hot-bulb engine's known habit; a 5 cm ha
 past that. And with the brake on it fires but cannot pick up, so it is started unloaded. The handle drives only while
 the shaft turns no faster than a hand, so a running engine leaves it behind like a dog clutch. In the world the tour
 opens the fuel, holds the handle until the engine outruns it, and checks that it then carries the brake (77 W).
+
+**A shut valve that wasn't.** In the full tour, after half an hour standing, the engine would not catch. The mixing
+box held more methane the longer it stood, the needle shut. The cause was in every gas passage: the smooth split of
+a flow into its two ways (each carrying only its own end's gas) had a fixed width of 10⁻⁶ mol/s, so near zero flow
+each way carried half of that — whatever the opening. A shut 25 µm needle traded bottle methane for box air as
+freely as an open 6 mm pipe. The width stands for diffusion through the bore, so it now scales with the open area
+below a 6 mm bore's: a shut valve passes a millionth of what an open one does (`MixtureFlowTest.aShutValveExchangesNothing`).
+The leak had also been propping the engine up. Without it, on the 5 cm handle it caught only now and then: at 60 rad/s
+the needle's fixed flow is rich, and a slowing engine gets richer. On a 4 cm handle a hand reaches 75 rad/s; it fires
+while still being cranked and runs away to 225–273 rad/s, after standing a minute, ten or thirty.

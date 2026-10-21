@@ -39,9 +39,14 @@ public final class MixtureBranch implements Element {
      * end's gas: 10⁻⁶ mol/s, about what diffusion alone exchanges through these bores (D·A·c/L ≈ 4·10⁻⁷ mol/s for a 6 mm
      * bore over 6 cm). Carrying the blended composition instead let a trickle out of a volume holding no vapour take
      * the other end's vapour with it: its moles went negative, its pool "evaporated" below empty to make them up, and
-     * the vessel's energy followed until Newton failed (a still's vent, idle in the sun, after a minute).
+     * the vessel's energy followed until Newton failed (a still's vent, idle in the sun, after a minute). As diffusion
+     * does, it scales with the open area below that bore's ({@link #A_SPLIT}): a shut valve exchanges next to nothing
+     * (a fixed width let a shut needle valve trade a bottle's methane for a mixing box's air at the full rate, until the
+     * box was too rich to burn).
      */
     private static final double Q_SPLIT = 1e-6;
+    /** The bore the split's full width belongs to [m²]: 6 mm. */
+    private static final double A_SPLIT = Math.PI * 0.003 * 0.003;
 
     /** One end of the passage: a reacting-gas volume, or a reservoir of fixed pressure, temperature and composition. */
     public static final class End {
@@ -221,7 +226,7 @@ public final class MixtureBranch implements Element {
         double dp = Math.signum(sa[0] - sb[0]) * (pHi - Math.min(pLoEff, pHi)) - 0.5 * (rhoA + rhoB) * 9.80665 * dz;
         f[0] = dp - k * mdot * Math.abs(mdot) / (2 * rho * aEff * aEff) - 32 * mu * length * mdot / (rho * aEff * diameter * diameter);
         double[] nf = new double[m];
-        double hf = carried(q, sa, sb, nf);
+        double hf = carried(q, split(v), sa, sb, nf);
         for (int side = 0; side < 2; side++) {
             End e = side == 0 ? a : b;
             if (e.gas == null) continue;
@@ -237,14 +242,20 @@ public final class MixtureBranch implements Element {
      * What the flow carries from a to b: each species' moles/s into {@code nf}, and the enthalpy flow [W] returned —
      * its forward part a's gas at a's temperature, its backward part b's at b's (h including formation enthalpies).
      */
-    private double carried(double q, double[] sa, double[] sb, double[] nf) {
-        double qf = 0.5 * (q + Math.sqrt(q * q + Q_SPLIT * Q_SPLIT)), qb = qf - q, hf = 0;
+    private double carried(double q, double q0, double[] sa, double[] sb, double[] nf) {
+        double qf = 0.5 * (q + Math.sqrt(q * q + q0 * q0)), qb = qf - q, hf = 0;
         for (int i = 0; i < m(); i++) {
             double na = qf * sa[3 + i], nb = qb * sb[3 + i];
             nf[i] = na - nb;
             hf += na * sp[i].enthalpy(sa[1]) - nb * sp[i].enthalpy(sb[1]);
         }
         return hf;
+    }
+
+    /** The width [mol/s] of the split into the flow's two ways, for the passage's open area now. */
+    private double split(double[] v) {
+        double open = cam == null ? opening : opening * camLift(v[v.length - 1]);
+        return Math.max(1e-15, Q_SPLIT * Math.min(1, Math.max(open, 1e-6) * area / A_SPLIT));
     }
 
     @Override
@@ -311,7 +322,7 @@ public final class MixtureBranch implements Element {
         int[] col = columns();
         double[] v = new double[col.length];
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = s.x(col[j]);
-        double q = v[0], qf = 0.5 * (q + Math.sqrt(q * q + Q_SPLIT * Q_SPLIT));
+        double q = v[0], q0 = split(v), qf = 0.5 * (q + Math.sqrt(q * q + q0 * q0));
         return qf * endState(v, 0)[2] - (qf - q) * endState(v, 1)[2];
     }
 
@@ -322,7 +333,7 @@ public final class MixtureBranch implements Element {
         int[] col = columns();
         double[] v = new double[col.length];
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = s.x(col[j]);
-        double h = carried(v[0], endState(v, 0), endState(v, 1), new double[m()]);
+        double h = carried(v[0], split(v), endState(v, 0), endState(v, 1), new double[m()]);
         double in = 0;
         if (a.gas == null) in += h;  // from the reservoir at a into the system
         if (b.gas == null) in -= h;  // out of the system into the reservoir at b

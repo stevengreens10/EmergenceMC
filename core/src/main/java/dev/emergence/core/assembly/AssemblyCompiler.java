@@ -1412,7 +1412,7 @@ public final class AssemblyCompiler {
                 c.leadsOfPart.put(q.id(), new Node[]{a != null ? a : gnd, b != null ? b : gnd});
             }
             // CMOS input capacitance and the supply bypass capacitor beside every chip
-            for (Node n : in) c.network.add(new Capacitor(n, gnd, 5e-12));
+            for (Node n : in) c.network.add(Capacitor.parasitic(n, gnd, 5e-12));
             c.network.add(new Capacitor(vdd, gnd, 100e-9));
         }
 
@@ -1600,7 +1600,7 @@ public final class AssemblyCompiler {
                         Node[] l = leads(p);
                         c.deviceOfPart.put(p.id(), c.network.add(new Led(l[0], l[1], p.param("wavelength", 630),
                                 p.param("efficiency", 0.2), th)));
-                        c.network.add(new Capacitor(l[0], l[1], 20e-12));
+                        c.network.add(Capacitor.parasitic(l[0], l[1], 20e-12));
                     }
                     case CHIP -> buildChip(p, th);
                     case POTENTIOMETER -> {
@@ -1620,7 +1620,7 @@ public final class AssemblyCompiler {
                         c.deviceOfPart.put(p.id(), c.network.add(new Potentiometer(l[0], l[1], w, tr, sense,
                                 p.param("resistance", 10_000), Math.toRadians(p.param("travel", 270)), p.param("wiper", 0.5),
                                 p.param("stop_stiffness", 20) * size * size * size, th)));
-                        c.network.add(new Capacitor(w, l[0], 5e-12));
+                        c.network.add(Capacitor.parasitic(w, l[0], 5e-12));
                     }
                     case OPAMP -> {
                         Node inP = enode("p" + p.id() + "a"), inN = enode("p" + p.id() + "b"), o = enode("p" + p.id() + "o"),
@@ -1629,9 +1629,9 @@ public final class AssemblyCompiler {
                                 p.param("slew", 13e6), th)));
                         c.leadsOfPart.put(p.id(), new Node[]{n, o});
                         // input capacitances and the supply bypass capacitor
-                        c.network.add(new Capacitor(inP, n, 3e-12));
-                        c.network.add(new Capacitor(inN, n, 3e-12));
-                        c.network.add(new Capacitor(o, n, 10e-12));
+                        c.network.add(Capacitor.parasitic(inP, n, 3e-12));
+                        c.network.add(Capacitor.parasitic(inN, n, 3e-12));
+                        c.network.add(Capacitor.parasitic(o, n, 10e-12));
                         c.network.add(new Capacitor(v, n, 100e-9));
                     }
                     case PHOTODIODE -> {
@@ -1639,7 +1639,7 @@ public final class AssemblyCompiler {
                         var pd = c.network.add(new Photodiode(l[0], l[1], p.param("area", 7.5e-6), th));
                         c.deviceOfPart.put(p.id(), pd);
                         // junction capacitance ≈ 70 pF per 7.5 mm² at zero bias
-                        c.network.add(new Capacitor(l[0], l[1], Math.max(5e-12, 70e-12 * p.param("area", 7.5e-6) / 7.5e-6)));
+                        c.network.add(Capacitor.parasitic(l[0], l[1], Math.max(5e-12, 70e-12 * p.param("area", 7.5e-6) / 7.5e-6)));
                     }
                     case LOGIC -> {
                         int fn = (int) Math.round(p.param("function", 2));
@@ -1653,8 +1653,8 @@ public final class AssemblyCompiler {
                                 p.param("delay", 10e-9), p.param("output_resistance", 50), th)));
                         c.leadsOfPart.put(p.id(), new Node[]{gnd, o});
                         // CMOS input capacitance, and the supply bypass capacitor every logic chip sits next to
-                        c.network.add(new Capacitor(in, gnd, 5e-12));
-                        if (inB != null) c.network.add(new Capacitor(inB, gnd, 5e-12));
+                        c.network.add(Capacitor.parasitic(in, gnd, 5e-12));
+                        if (inB != null) c.network.add(Capacitor.parasitic(inB, gnd, 5e-12));
                         c.network.add(new Capacitor(v, gnd, 100e-9));
                     }
                     case TRANSISTOR -> {
@@ -1666,8 +1666,8 @@ public final class AssemblyCompiler {
                             // small-signal BJT (2N3904/2N3906 class); depletion capacitances C_je, C_jc
                             dev = c.network.add(new Bjt(l[1], gate, l[0], type == 1, p.param("saturation_current", 1e-14),
                                     p.param("beta", 150), p.param("beta_r", 2), p.param("early_voltage", 75), th));
-                            c.network.add(new Capacitor(gate, l[0], p.param("c_be", 18e-12)));
-                            c.network.add(new Capacitor(gate, l[1], p.param("c_bc", 4e-12)));
+                            c.network.add(Capacitor.parasitic(gate, l[0], p.param("c_be", 18e-12)));
+                            c.network.add(Capacitor.parasitic(gate, l[1], p.param("c_bc", 4e-12)));
                             if (PartGeometry.isPhototransistor(p)) {
                                 // a phototransistor: its collector–base junction, enlarged under a window, is a photodiode
                                 // whose photocurrent (collector → base) is the base current the transistor amplifies;
@@ -1675,15 +1675,15 @@ public final class AssemblyCompiler {
                                 double area = p.param("photo", 0);
                                 Node anode = type == 1 ? l[1] : gate, cathode = type == 1 ? gate : l[1];
                                 c.photoJunction.put(p.id(), c.network.add(new Photodiode(anode, cathode, area, th)));
-                                c.network.add(new Capacitor(gate, l[1], Math.max(5e-12, 70e-12 * area / 7.5e-6)));
+                                c.network.add(Capacitor.parasitic(gate, l[1], Math.max(5e-12, 70e-12 * area / 7.5e-6)));
                             }
                         } else {
                             // small-signal MOSFET (2N7000/BS250 class); gate capacitances C_gs, C_gd
                             boolean pch = type == 3;
                             dev = c.network.add(new Mosfet(l[1], gate, l[0], pch, p.param("threshold", 1.6),
                                     p.param("transconductance", pch ? 0.05 : 0.1), p.param("slope", 1.5), p.param("lambda", 0.01), th));
-                            c.network.add(new Capacitor(gate, l[0], p.param("c_gs", 40e-12)));
-                            c.network.add(new Capacitor(gate, l[1], p.param("c_gd", 8e-12)));
+                            c.network.add(Capacitor.parasitic(gate, l[0], p.param("c_gs", 40e-12)));
+                            c.network.add(Capacitor.parasitic(gate, l[1], p.param("c_gd", 8e-12)));
                         }
                         c.deviceOfPart.put(p.id(), dev);
                     }
@@ -2071,7 +2071,7 @@ public final class AssemblyCompiler {
                 Node[] l = leads(t);
                 var tube = new GeigerTube(l[1], l[0], t.param("start", 350), t.param("stop", 300), 1e5, nd.gmBackground(),
                         t.id() * 0x9E3779B97F4A7C15L, c.thermalOfPart.get(t.id()));
-                c.network.add(new Capacitor(l[1], l[0], 2e-12)); // the tube's own anode–cathode capacitance
+                c.network.add(Capacitor.parasitic(l[1], l[0], 2e-12)); // the tube's own anode–cathode capacitance
                 double area = t.param("area", 3e-4);
                 for (Part sp : parts) {
                     if (sp.kind() != PartKind.SOURCE) continue;

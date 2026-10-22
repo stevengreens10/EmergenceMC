@@ -17,6 +17,18 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 | RC mesh 30×30 | 901 | ~230 | 235 — **exceeds budget** |
 | RC mesh 60×60 | 3601 | ~235 | 1040 — **exceeds budget** |
 
+### Running exhibits (`coreTest --tests *RunningExhibitsBenchTest*`, switched on; 2026-10-22)
+| Exhibit | Unknowns | ms/tick | × real time |
+|---|---|---|---|
+| Inverter | 245 | 11.1 | 0.22 (59.5 s of CPU per 10 s before the Schmitt event: ≈ 6×) |
+| Boost converter | 171 | 24.7 | 0.49 |
+| PWM motor | 398 | 40.9 | 0.82 |
+| H-bridge (forward) | 276 | 3.8 | 0.08 |
+| Loudspeaker, idle (its oscillator runs) | 505 | 429 | 8.6 (12.4 before parasitic tolerances) |
+| Loudspeaker, switched on | 505 | 821 | 16.4 (22.4 before) |
+Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
+and the steam engine (23).
+
 ## Time dilation
 Each island has a wall-clock budget of 12 ms per server tick. An island whose smoothed cost exceeds it
 simulates less time per tick (down to 5 %) and recovers when cheap: the physics stays exact and the
@@ -109,6 +121,13 @@ compile or island step over 1 s ("Slow simulation: …"), naming the island's bl
   whose wires came within 6 blocks across an aisle merged — the periscope, lens and solar furnace became one island
   costing 10 ms a step (0.13× real time). Reach is now 2 for every block, with large gears' rims and optical lines
   of sight as symmetric links: the furnace runs alone at 0.6–0.7× in the full gallery.
+
+* Schmitt trigger as an event (its threshold a discrete state flipped where the input crosses it): the inverter
+  59.5 → 3.0 s of CPU per 10 simulated s, Newton failures 26 700 → 0.
+* Device capacitances as parasitics (2026-10-22): a gate's, a junction's or a pin's picofarads are integrated as before
+  but their truncation error is held to 100 mV, not 1 mV. A step trace of the loudspeaker showed its 8 pF gate–drain
+  capacitance limiting some forty steps per half-period, down to 50 ns, through each inductive turn-off. Loudspeaker
+  322 → 214 steps per 10 ms, 12.4× → 8.6× real time; PWM 0.92× → 0.82×.
 
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC

@@ -34,14 +34,19 @@
      0.76 W, the supply current fell 0.217 → 0.205 A, speed −2.6 %) — find the drag, and where the brake's power
      comes from if not the supply (the flywheel's speed? the rheostat at its stop?) — found: the tour averaged aliased
      samples of a rippling current (now the charge drawn over the window); and the governor creeps for minutes towards
-     ~28 rad/s from either start (a time constant to find: the springs? the rheostat warming?); confirmed in the tour:
+     ~28 rad/s from either start — the friction dead band creeping: dry friction is τ_c·tanh(v/v_s), so a part held by it
+     creeps at ~v_s·(net/limit) (the rheostat at 1.7e-4 rad/s against v_s = 1e-2: a net torque under 2 % of its
+     friction), towards the frictionless balance from either side; a true stick state (switched as an event, like the
+     Schmitt trigger's) would hold it where it stops, as real stiction does; confirmed in the tour:
      all three governors pass, the flyball braked 28.0 → 26.3 rad/s on 0.28 → 0.42 A, as in the core;
    - (confirmed in the world: the fatigue rig cranked to 187 rad/s through its gears, the aluminium shaft cracked; the
      inverter, waiting for its first full cycle, lit both LEDs and gave 44 V);
    - the gas engine ran at 82 rad/s in one full tour, and in the next never ran away from the hand at all (60 rad/s,
      stalling under the brake), against 173–273 alone: sunlight (as for the jack) under test; its rich low-speed regime;
    - (fixed in the tour: its load power is averaged over the island's own time at every solver step, a pulsing
-     generator's output having aliased to 0.008 W) the wind turbine's check to confirm;
+     generator's output having aliased to 0.008 W) confirmed: 0.36 W; and with the hand given up to 3 minutes the gas
+     engine fired and carried the brake (160 rad/s, 72 W); the Schmitt-event exhibits (inverter, boost, PWM, Geiger,
+     light barrier, thermostat, counter, EM-4, periscope, optocoupler, loudspeaker) 23 of 23 in the world;
    - the loudspeaker's island (527 parts, audio-rate) failed once in the world, idle for minutes with its switch off:
      time-step underflow at a resistor's node at 6.3 s, recovered by a restart at rest; the core runs it idle and on
      to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:

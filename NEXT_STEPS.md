@@ -58,6 +58,20 @@
    - (done: `runWatchDemoBuild` builds the gallery where it can be watched; it found five machines held by scaffolding
      that had gone, now rebuilt when a world block beside them changes) confirm a full watched build matches its
      definitions, 72 of 72;
+   - the full tour of 2026-10-22 (75 exhibits, 146 of 155 checks): fixed since — the light barrier's beam was sampled a
+     tenth of a second apart and its 20 ms cuts fell between (now read at every solver step); the spring's bounce had
+     rung down before the tour came (machines near a player run at full pace now: the tour pushes it). Still open:
+     - the flyball braked: in the world it governs at 31.5 rad/s on 0.145 A and, braked, saturates (0.67 A, the
+       rheostat backed right off) at 24.7 rad/s (−15 to −21 %), where the core holds 29.8 → 28.0 on 0.19 → 0.28 A
+       (−6 %): the brake loads it far harder in the world — find why (it now starts at rest and is started by hand);
+     - the optocoupler's LED stays dark when the tour comes to it after other exhibits (after the gas engine, and in
+       the full tour), lit when it is visited alone or after the light barrier;
+     - the PWM motor's hands found no spot within reach in the full tour (fine in a short one);
+     - the gas engine runs up and carries its brake when the tour visits it alone (333 rad/s, 149 W), but twice
+       failed to run up past ~35–39 rad/s when visited after other exhibits — like the optocoupler, something an
+       earlier visit leaves behind;
+     - the governed engine rose 5.9 % with its brake off in the world (0.7 % in the core);
+     - one of the 17 in-world tests failed once in five demo builds (not captured);
    - the full tour, then every exhibit's checks green.
 
 0b. **Every exhibit at real time** (asked for 2026-10-22; measure first: `SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`

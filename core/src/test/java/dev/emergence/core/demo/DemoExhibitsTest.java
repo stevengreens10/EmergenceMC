@@ -1252,12 +1252,12 @@ class DemoExhibitsTest {
         var seat = c.branchesOf(b.id(e, "regulator")).stream().filter(dev.emergence.core.sim.elements.FluidBranch::hasCam).findFirst().orElseThrow();
         java.util.function.Supplier<String> state = () -> String.format("crank %.2f rad/s, weight out %.1f mm, rod %.2f mm, throttle %.3f open",
                 c.probe(shaft).angularVelocity(), 1e3 * c.probe(weight).angle(), 1e3 * c.probe(rod).angle(), seat.opening(c.solverView()));
-        // braked: 20 s to settle, then the next 10 s averaged; then the brake off, the same
+        // braked: 20 s to settle, then the next 10 s averaged; then the brake off, the same again
         double[] braked = phase(c, shaft, seat, 20, 10), free;
         double weightOut = c.probe(weight).angle();
         System.out.println("governed, braked: " + state.get());
         c.toggleSwitch(brake);
-        free = phase(c, shaft, seat, 10, 10);
+        free = phase(c, shaft, seat, 20, 10); // (its first surge, to +6 %, is won back in some ten seconds)
         System.out.println("governed, brake off: " + state.get());
         System.out.printf("governed: braked %.2f rad/s at %.3f open; free %.2f rad/s at %.3f open (%+.1f %%)%n",
                 braked[0], braked[1], free[0], free[1], 100 * (free[0] / braked[0] - 1));

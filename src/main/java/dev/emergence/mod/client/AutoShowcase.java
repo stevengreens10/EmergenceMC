@@ -274,19 +274,24 @@ public final class AutoShowcase {
                 // running on its governor (the weights out, the throttle mostly shut); take the brake off: it hardly
                 // speeds up, the governor shutting the steam off; put it back
                 BlockPos shaft = at.apply("shaft"), rod = at.apply("throttleRod");
-                double[] braked = {Double.NaN}, rod0 = {Double.NaN};
+                double[] rod0 = {Double.NaN}, off = {Double.NaN};
+                // its speed as the mean over ten seconds of its own time, at every solver step: it surges and slows with
+                // each stroke and as the governor hunts, and a moment's reading compares two points of that swing
+                Sampler braked = shaftSpeed(server, shaft), free = shaftSpeed(server, shaft);
                 STEPS.add(new Step(80, NOTHING, shot.apply("running"))
                         .check(key + " the engine runs on its boiler's steam", () -> atLeast("crankshaft speed [rad/s]", motion(server, shaft, PartKind.SHAFT), 8))
                         .check(key + " the governor's weights have flown out", () -> atLeast("weight out [mm]",
-                                1e3 * Math.abs(where(server, at.apply("weightA"), PartKind.BLOCK)), 5))
-                        .after(() -> {
-                            braked[0] = motion(server, shaft, PartKind.SHAFT);
-                            rod0[0] = where(server, rod, PartKind.SHAFT);
-                        }));
+                                1e3 * Math.abs(where(server, at.apply("weightA"), PartKind.BLOCK)), 5)));
+                STEPS.add(new Step(200, NOTHING, null).sample(braked, () -> motion(server, shaft, PartKind.SHAFT))
+                        .after(() -> rod0[0] = where(server, rod, PartKind.SHAFT)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " take the brake off", part.apply("brake", PartKind.BRAKE))));
-                STEPS.add(new Step(200, view, shot.apply("free"))
-                        .check(key + " unloaded, it hardly speeds up", () -> atMost("speed change [%]",
-                                100 * Math.abs(motion(server, shaft, PartKind.SHAFT) / braked[0] - 1), 6))
+                // the governor wins the first surge back over some ten seconds (to +6 % in the core): judged after 20 s
+                STEPS.add(new Step(1200, () -> off[0] = simTime(server, shaft), null,
+                        () -> onServer(server, key + "t", () -> simTime(server, shaft)) - off[0] > 20));
+                STEPS.add(new Step(200, view, shot.apply("free")).sample(free, () -> motion(server, shaft, PartKind.SHAFT))
+                        .check(key + " unloaded, it hardly speeds up", () -> that(Math.abs(free.mean() / braked.mean() - 1) <= 0.06,
+                                String.format("mean speed %.2f → %.2f rad/s (%+.1f %%), expected within ±6 %%", braked.mean(), free.mean(),
+                                        100 * (free.mean() / braked.mean() - 1))))
                         .check(key + " the throttle rod still on its seat's side of open", () -> atMost("throttle rod raised [mm]",
                                 1e3 * (where(server, rod, PartKind.SHAFT) - rod0[0]), 1)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake back", part.apply("brake", PartKind.BRAKE))));
@@ -684,7 +689,8 @@ public final class AutoShowcase {
                 BlockPos shaft = at.apply("crankshaft");
                 double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.04; // the 4 cm handle
                 double[] free = {Double.NaN};
-                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open the fuel", part.apply("needle", PartKind.VALVE))));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open the fuel", part.apply("needle", PartKind.VALVE)))
+                        .after(() -> dumpIf(server, key, shaft)));
                 // held until it fires and runs away from the hand (a hand cannot drive it faster than handTop): ten seconds of
                 // its own time do it, but a busy full tour runs its island at a fifth of real time or less, so up to 3 minutes
                 STEPS.add(new Step(3600, NOTHING, null, () -> motion(server, shaft, PartKind.SHAFT) > handTop + 5)
@@ -692,7 +698,10 @@ public final class AutoShowcase {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 STEPS.add(new Step(200, view, shot.apply("running")).check(key + " it fires and runs on, faster than a hand can turn it",
                         () -> atLeast("crankshaft speed [rad/s]", motion(server, shaft, PartKind.SHAFT), handTop))
-                        .after(() -> free[0] = motion(server, shaft, PartKind.SHAFT)));
+                        .after(() -> {
+                            free[0] = motion(server, shaft, PartKind.SHAFT);
+                            dumpIf(server, key, shaft);
+                        }));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake on", part.apply("brake", PartKind.BRAKE))));
                 STEPS.add(new Step(200, view, shot.apply("loaded")).check(key + " it carries the brake: still running, working against it", () -> {
                     double w = motion(server, shaft, PartKind.SHAFT), p = brakePower(server, at.apply("brake"));
@@ -1031,11 +1040,7 @@ public final class AutoShowcase {
         // sags gently, slower than the settling test can tell from a stop): judged once that is over
         STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), Math.max(10, 0.4 * warmUp), key + "brk")).show(inHand != null));
         STEPS.add(new Step(100, NOTHING, shot.apply("braked")).show(inHand != null)
-                // -Demergence.dumpIslands=flyball,…: the island written out once braked, to replay it in the core
-                .after(() -> {
-                    if (java.util.Arrays.asList(System.getProperty("emergence.dumpIslands", "").split(",")).contains(key.replaceAll(":.*", "").trim()))
-                        dev.emergence.mod.sim.SimulationManager.get(server.overworld()).dumpIsland(shaftAt);
-                })
+                .after(() -> dumpIf(server, key, shaftAt))
                 .sample(w1, () -> motion(server, shaftAt, kind)).sample(a1, () -> Math.abs(current(server, battery, null)))
                 .sample(q1, () -> chargeDelivered(server, battery)).sample(t1, () -> simTime(server, battery))
                 .check(key + " braked, it keeps its speed", () -> {
@@ -1310,6 +1315,28 @@ public final class AutoShowcase {
         PlacedPart p = partIn(s, at, PartKind.LED);
         CompiledAssembly c = compiled(s, at);
         return p == null || c == null ? Double.NaN : c.lightOutput(p.id);
+    }
+
+    /**
+     * With -Demergence.dumpIslands=flyball,engine,…: the island at {@code at} written out (island-dump-*.txt in the game
+     * directory) when the exhibit's tour reaches this point, to replay it in the core (IslandDumpReplayTest).
+     */
+    private static void dumpIf(net.minecraft.server.MinecraftServer server, String key, BlockPos at) {
+        if (java.util.Arrays.asList(System.getProperty("emergence.dumpIslands", "").split(",")).contains(key.replaceAll(":.*", "").trim()))
+            server.execute(() -> dev.emergence.mod.sim.SimulationManager.get(server.overworld()).dumpIsland(at));
+    }
+
+    /** A shaft's |ω| averaged over its island's own time (see {@link TimeAverage}). */
+    private static Sampler shaftSpeed(net.minecraft.server.MinecraftServer server, BlockPos at) {
+        return new TimeAverage(() -> compiled(server, at), () -> {
+            PlacedPart p = partIn(server, at, PartKind.SHAFT);
+            if (p == null) return null;
+            long id = p.id;
+            return c -> {
+                Probe pr = c.probe(id);
+                return pr == null ? Double.NaN : Math.abs(pr.angularVelocity());
+            };
+        });
     }
 
     /** A quantity recorded through a step (every other tick, on the server): its least, greatest and mean values. */

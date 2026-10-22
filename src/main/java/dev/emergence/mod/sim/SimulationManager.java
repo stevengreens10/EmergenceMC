@@ -286,7 +286,7 @@ public final class SimulationManager {
                 // run, from nothing
                 EmergenceMod.LOG.error("Simulation of island at {} ({} parts) failed; restarting it at rest{}; {}", isl.blocks.iterator().next(),
                         isl.compiled.assembly().parts().size(), partHint(isl, err.getMessage()), stateSummary(isl), err);
-                if (Boolean.getBoolean("emergence.dumpFailures")) dumpFailure(isl);
+                if (Boolean.getBoolean("emergence.dumpFailures")) dumpFailure(isl, isl.startState, "island-failure-");
                 AssemblyState keep = isl.compiled.exportState().recovery();
                 isl.compiled = compile(isl, keep);
                 try {
@@ -849,11 +849,17 @@ public final class SimulationManager {
         return st;
     }
 
+    /** Writes the island at {@code pos} and its present state as a failure dump would (island-dump-*.txt), to replay it in the core. */
+    public void dumpIsland(BlockPos pos) {
+        Island isl = islandAt(pos);
+        if (isl != null && isl.compiled != null) dumpFailure(isl, isl.compiled.exportState(), "island-dump-");
+    }
+
     /**
      * Writes a failed island's parts, anchoring, ambient and start state to {@code island-failure-*.txt} in the game
      * directory (system property {@code emergence.dumpFailures}), for replaying it in the core tests.
      */
-    private void dumpFailure(Island isl) {
+    private void dumpFailure(Island isl, AssemblyState st, String prefix) {
         var asm = isl.compiled.assembly();
         StringBuilder b = new StringBuilder();
         b.append("ambient ").append(asm.ambientTemperature()).append(' ').append(asm.ambientPressure()).append('\n');
@@ -864,8 +870,8 @@ public final class SimulationManager {
                     .append(' ').append(asm.isAnchored(p) ? 1 : 0);
             p.params().forEach((k, v) -> b.append(' ').append(k).append('=').append(v));
             b.append('\n');
+            p.state().forEach((k, v) -> b.append("S ").append(p.id()).append(' ').append(k).append(' ').append(v).append('\n'));
         }
-        AssemblyState st = isl.startState;
         if (st != null) {
             st.temperatures().forEach((k, v) -> b.append("T ").append(k).append(' ').append(v).append('\n'));
             st.coilCurrents().forEach((k, v) -> b.append("I ").append(k).append(' ').append(v).append('\n'));
@@ -875,7 +881,7 @@ public final class SimulationManager {
             st.chemistry().forEach((k, v) -> b.append("C ").append(k).append(' ').append(v).append('\n'));
         }
         try {
-            java.nio.file.Files.writeString(java.nio.file.Path.of("island-failure-" + System.currentTimeMillis() + ".txt"), b);
+            java.nio.file.Files.writeString(java.nio.file.Path.of(prefix + System.currentTimeMillis() + ".txt"), b);
         } catch (java.io.IOException e) {
             EmergenceMod.LOG.warn("Could not write island dump", e);
         }

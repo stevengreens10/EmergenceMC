@@ -2170,8 +2170,9 @@ class DemoExhibitsTest {
         double[] w = new double[2], amps = new double[2], turn = new double[2], out = new double[2];
         for (int m = 0; m < 2; m++) {
             if (m == 1) c.toggleSwitch(b.id(e, "brake"));
-            // its steady state, not its first seconds: with too small a rheostat it crept past its range over a minute
-            run(c, m == 0 ? 40 : 20);
+            // its steady state, not its first seconds: up from rest takes a minute; braked, it settles in some twenty
+            // seconds (an earlier, unloaded build drifted for minutes, its readings here transients)
+            run(c, m == 0 ? 80 : 30);
             int n = 40;
             for (int k = 0; k < n; k++) {
                 c.step(0.05);
@@ -2188,9 +2189,9 @@ class DemoExhibitsTest {
         assertTrue(out[0] > 0.003 && out[0] < 0.027, "the weights ride out between their stops: " + out[0]);
         assertTrue(turn[0] > Math.toRadians(2), "the push rod has turned the rheostat in: " + turn[0]);
         // a spring-loaded centrifugal governor without reset holds its speed only proportionally: some droop under load
-        assertTrue(Math.abs(w[1] - w[0]) < 0.10 * w[0], "braked, it keeps its speed within a tenth: " + w[0] + " → " + w[1]);
+        assertTrue(Math.abs(w[1] - w[0]) < 0.06 * w[0], "braked, it keeps its speed within 6 %: " + w[0] + " → " + w[1]);
         assertTrue(turn[1] < turn[0] && out[1] < out[0], "the weights sink in and the rheostat backs off");
-        assertTrue(amps[1] > 1.08 * amps[0], "so the motor takes more current: " + amps[0] + " → " + amps[1]);
+        assertTrue(amps[1] > 1.3 * amps[0], "so the motor takes more current: " + amps[0] + " → " + amps[1]);
     }
 
     /**

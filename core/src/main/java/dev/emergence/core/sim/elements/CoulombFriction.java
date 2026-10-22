@@ -49,6 +49,11 @@ public final class CoulombFriction implements Element {
     }
 
     @Override
+    public String toString() {
+        return "CoulombFriction(" + a.name() + " – " + b.name() + ")";
+    }
+
+    @Override
     public void setup(SetupContext ctx) {
         if (!STICTION) return;
         // the bristles' torque resolved to 0.1 % of its limit (10⁻⁹ absolute: a light slide whose friction reverses with

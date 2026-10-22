@@ -322,20 +322,24 @@ public final class ControlExhibits {
                         + "motor. Close the switch: the motor speeds up; the weights, needing m·ω²·r towards the axis that "
                         + "only their springs can give, slide out, pull the sleeve down through their bars, and the push "
                         + "rod turns the rheostat towards more resistance — the motor's current and torque fall, and its "
-                        + "speed settles where the two agree, near 28 radians a second with the weights 9 mm out. Brake it "
-                        + "(right-click the pad): the weights sink in, the resistance falls and the motor takes more "
-                        + "current, and the speed sags — by some percent. (Below about 25 rad/s the springs, fitted "
-                        + "16 mm short, hold the weights against their stops.) Unlike the electronic governor this one "
-                        + "has no integrator: it holds the speed only roughly, a little lower under load (droop) — "
-                        + "the price Watt's engines paid, and why later governors added a reset. Its rheostat (150 Ω) "
-                        + "must be able to all but cut the motor off: at this light load a few ohms could not hold it down, "
-                        + "and it crept up until the weights lay on their stops.");
+                        + "speed settles where the two agree, near 23 radians a second with the weights some 10 mm out. "
+                        + "The motor always has work to do: a viscous damper on its spindle, inside the frame, stands for "
+                        + "the machinery a governor runs. Brake it as well (right-click the pad): the weights sink in, the "
+                        + "resistance falls and the motor takes twice the current, and the speed sags — by a few percent. "
+                        + "(Below about 22 rad/s the springs, fitted 50 mm short, hold the weights against their stops.) "
+                        + "Unlike the electronic governor this one has no integrator: it holds the speed only roughly, a "
+                        + "little lower under load (droop) — the price Watt's engines paid, and why later governors added a "
+                        + "reset. Two things make it hold that well. Its springs are soft (wide coils), barely stiffer than "
+                        + "the weights' own m·ω² — a stiff spring would need a big change of speed for each millimetre the "
+                        + "weights move. And the steady load keeps it working at a few ohms, where each ohm matters: an "
+                        + "idle motor runs through a hundred ohms or more, where the governor can hardly move it — built "
+                        + "that way it took minutes to settle, and sagged a fifth under the brake.");
         e.plots = 2;
         String st = "steel_1045", al = "aluminium_6061", ny = "nylon_66";
         int shaft = brushedMotor(e, 16);
         // turning already: its heavy rotor takes minutes of the world's time to come up to speed (in the world it runs at a
         // fraction of real time), so the gallery opens with it running — just past the dead point
-        e.init(shaft, new Exhibit.Initial(Double.NaN, 28, 0, 0.3));
+        e.init(shaft, new Exhibit.Initial(Double.NaN, 22, 0, 0.3));
         e.path(INSULATED_WIRE, "copper", new int[][]{{8, 9, 10}, {8, 8, 10}, {8, 7, 10}, {9, 7, 10}, {10, 7, 10}, {11, 7, 10},
                 {11, 6, 10}, {11, 5, 10}, {11, 5, 9}, {11, 5, 8}});
         // ---- a brake: an aluminium disc on the spindle above the frame, a bronze pad on a post
@@ -346,6 +350,11 @@ public final class ControlExhibits {
         e.add(BLOCK, al, 9, 14, 8, Dir.UP, "fill", 0.15);
         e.fill(BLOCK, st, 5, 13, 8, 5, 14, 8, Dir.UP);
         e.name("brake", e.add(BRAKE, "bronze", 6, 14, 8, Dir.EAST, "force", 2));
+        // ---- its steady work: a viscous drag on the spindle inside the frame, under its top (a silicone-filled rotary
+        // damper hung from the frame's top bar), some 17 mN·m at the governed speed — what the machinery a governor
+        // runs takes all the time
+        e.name("load", e.add(BEARING, st, 8, 11, 8, Dir.UP, "type", 2, "viscosity", 0.072));
+        e.add(BLOCK, st, 7, 11, 8, Dir.UP);
         // ---- the governor on the spindle: a cross at y = 16, risers, the weights on their rods at y = 18
         e.add(BLOCK, al, 8, 16, 8, Dir.UP, "fill", 0.5);                                     // the hub
         e.fill(BLOCK, al, 2, 16, 8, 7, 16, 8, Dir.UP, "fill", 0.12);
@@ -363,8 +372,10 @@ public final class ControlExhibits {
                     : e.fill(SHAFT, st, 9, 18, 8, weight, 18, 8, Dir.EAST, "diameter", 0.008);
             e.name(side == 0 ? "rodA" : "rodB", rod);
             e.name(side == 0 ? "weightA" : "weightB", e.add(BLOCK, "brass", weight, 18, 8, Dir.UP, "fill", 0.3));
+            // wide coils (soft: k ≈ 1.9 kN/m, not far above the weight's m·ω² ≈ 0.3 kN/m, so it rides out 6 mm per rad/s)
+            // fitted 50 mm short (≈ 95 N: the weights leave their stops near 22 rad/s)
             e.name(side == 0 ? "springA" : "springB", e.add(SPRING, st, spring, 18, 8, Dir.EAST, "wire", 0.0037, "turns", 6,
-                    "preload", 0.016));
+                    "coil", 0.055, "preload", 0.05));
             // the bar up from the weight's top and across to the sleeve's arm: it runs straight, at a slant
             e.name(side == 0 ? "barA" : "barB", e.fill(LINK, st, weight, 19, 8, weight, 22, 8, Dir.UP));
             e.fill(LINK, st, 8 - 3 * s, 22, 8, 8 - 2 * s, 22, 8, Dir.EAST);
@@ -382,12 +393,12 @@ public final class ControlExhibits {
         e.add(BLOCK, ny, 9, 25, 8, Dir.UP, "fill", 0.5);                                      // its hub
         // (the rheostat and its post behind the governor, out of the way of the view)
         e.name("crankShaft", e.fill(SHAFT, st, 9, 25, 6, 9, 25, 8, Dir.SOUTH, "diameter", 0.01));
-        e.name("rheostat", e.add(POTENTIOMETER, ny, 9, 25, 6, Dir.SOUTH, "resistance", 150, "travel", 15, "wiper", 0));
+        e.name("rheostat", e.add(POTENTIOMETER, ny, 9, 25, 6, Dir.SOUTH, "resistance", 50, "travel", 30, "wiper", 0));
         e.fill(BLOCK, st, 9, 26, 1, 9, 26, 6, Dir.UP);                                        // its bracket
         e.fill(BLOCK, st, 9, 0, 0, 9, 26, 0, Dir.UP);                                         // and post
-        // ---- supply: a 24 V bank and a switch, through the rheostat (end A to the wiper) to the brushes
+        // ---- supply: a 12 V bank and a switch, through the rheostat (end A to the wiper) to the brushes
         int f = 1;
-        int bat = e.add(BATTERY, "pvc", 16, f, 4, Dir.EAST, "cells", 11, "capacity", 20); // 11 lead–acid cells: 23.4 V full
+        int bat = e.add(BATTERY, "pvc", 16, f, 4, Dir.EAST, "cells", 6, "capacity", 20); // 6 lead–acid cells: 12.7 V full
         e.name("battery", bat);
         e.name("switch", e.add(SWITCH, "brass", 19, f, 4, Dir.EAST));
         Router r = new Router(e, 0, 0, 0, 22, 27, 15);

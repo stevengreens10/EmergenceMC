@@ -11,7 +11,10 @@ import java.util.Map;
 
 /**
  * Replays an island the game could not simulate, from the dump it writes with -Demergence.dumpFailures=true
- * ({@code island-failure-*.txt}): run with {@code -Ddiag.dump=<file>} to compile it from the dumped state and step it.
+ * ({@code island-failure-*.txt}), or one the tour wrote out with -Demergence.dumpIslands=<exhibit>
+ * ({@code island-dump-*.txt}): run with {@code -Ddiag.dump=<file>} to compile it from the dumped state and step it,
+ * {@code -Ddiag.dumpSeconds} long (default 1), printing each second the probes of the parts in {@code -Ddiag.dumpProbe}
+ * (comma-separated ids).
  */
 class IslandDumpReplayTest {
     @Test
@@ -48,6 +51,8 @@ class IslandDumpReplayTest {
         for (String line : Files.readAllLines(Path.of(System.getProperty("diag.dump")))) {
             String[] f = line.trim().split(" ");
             if (f[0].equals("P") && f[11].equals("1")) anchored.add(Long.parseLong(f[1]));
+            // a part's own state (a switch's position, a knob's setting)
+            if (f[0].equals("S")) a.get(Long.parseLong(f[1])).setState(f[2], Double.parseDouble(f[3]));
         }
         a.anchoredWhen(p -> anchored.contains(p.id()));
         if (Boolean.getBoolean("diag.rest")) st = st.recovery();
@@ -58,9 +63,40 @@ class IslandDumpReplayTest {
             System.out.printf("body %d static=%s slider=%s: %s%n", b.index(), b.isStatic(), b.slider, sb);
         }
         c.warnings().forEach(w -> System.out.println("warning: " + w));
-        for (int i = 0; i < 20; i++) {
+        double seconds = Double.parseDouble(System.getProperty("diag.dumpSeconds", "1"));
+        String[] probes = System.getProperty("diag.dumpProbe", "").isBlank() ? new String[0] : System.getProperty("diag.dumpProbe").split(",");
+        for (int i = 0; i < Math.round(seconds / 0.05); i++) {
             c.step(0.05);
-            System.out.printf("t=%.2f%n", c.time());
+            if (probes.length == 0) System.out.printf("t=%.2f%n", c.time());
+            else if ((i + 1) % 20 == 0) {
+                StringBuilder sb = new StringBuilder(String.format("t=%.2f", c.time()));
+                for (String id : probes) {
+                    var pr = c.probe(Long.parseLong(id.trim()));
+                    sb.append(String.format("  %s: ω %.3f, I %.4f A, V %.4f V, T %.2f K", id.trim(), pr.angularVelocity(), pr.current(),
+                            pr.voltage(), pr.temperature()));
+                }
+                System.out.println(sb);
+            }
+        }
+        // -Ddiag.dumpFriction=<W>: every Coulomb friction dissipating more than that at the end
+        if (System.getProperty("diag.dumpFriction") != null) {
+            double min = Double.parseDouble(System.getProperty("diag.dumpFriction"));
+            for (var el : c.network().elements())
+                if (el instanceof dev.emergence.core.sim.elements.CoulombFriction f) {
+                    double[] tp = f.torqueAndPower(c.solver());
+                    if (Math.abs(tp[1]) > min)
+                        System.out.printf("friction %s: limit %.4g, torque %.4g, %.4f W%n", f, f.frictionTorque(), tp[0], tp[1]);
+                }
+        }
+        // -Ddiag.dumpCurrents=<A>: every part carrying more than that at the end, where the current goes
+        if (System.getProperty("diag.dumpCurrents") != null) {
+            double min = Double.parseDouble(System.getProperty("diag.dumpCurrents"));
+            for (Part p : a.parts()) {
+                var pr = c.probe(p.id());
+                if (pr != null && (Math.abs(pr.current()) > min || Math.abs(pr.power()) > 10 * min))
+                    System.out.printf("current %s %s at %d,%d,%d–%d,%d,%d: %.4f A, %.4f V, %.4f W%n", p.kind(), p.material().id(), p.minX(), p.minY(),
+                            p.minZ(), p.maxX(), p.maxY(), p.maxZ(), pr.current(), pr.voltage(), pr.power());
+            }
         }
     }
 }

@@ -160,6 +160,8 @@ final class PlayerHand {
                 mc.options.keyShift.setDown(false);
                 return true;
             }
+            // (the place round the player loaded on the client first: unloaded, it reads as solid — see Reach)
+            if (spot[0] == null && !around(mc, mc.player.blockPosition()) && ticks[0] < 600) return false;
             if (spot[0] == null) {
                 // first step out from under the machine to where there is open sky overhead, as a player would
                 spot[0] = openSky(mc);
@@ -200,6 +202,15 @@ final class PlayerHand {
             pause[0] = 10; // the server's answer comes back before the next click
             return false;
         });
+    }
+
+    /** Whether the client holds the chunks within 16 blocks of {@code pos}. */
+    static boolean around(Minecraft mc, net.minecraft.core.BlockPos pos) {
+        int cx = pos.getX() >> 4, cz = pos.getZ() >> 4;
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+                if (!mc.level.getChunkSource().hasChunk(cx + dx, cz + dz)) return false;
+        return true;
     }
 
     /** The nearest place to stand (feet) within 8 blocks with nothing overhead within reach; null if none. */
@@ -298,7 +309,7 @@ final class PlayerHand {
         private Effect effect = Effect.NONE;
         private long partId;
         private boolean wasClosed;
-        private int attempts, since, waited, waitedForServer;
+        private int attempts, since, waited, waitedForServer, waitedForChunks;
         /** When the crosshair first settled on the part [System.nanoTime()], 0 until then. */
         private long aimedAt;
         /** Set once the server has moved the player (a busy server runs the move late; the waiting starts after it). */
@@ -360,6 +371,9 @@ final class PlayerHand {
                 if (heldAim == null) mc.options.keyShift.setDown(false);
                 return true;
             }
+            // the client's copy of the place first: deep in a long tour its chunks come late, and until they do there is
+            // no part to see and every space round it counts as solid (up to 30 s)
+            if (ticks == 0 && !around(mc, t.block) && waitedForChunks++ < 600) return false;
             if (ticks++ == 0) {
                 releaseAll(mc);
                 if (!plan(mc)) {

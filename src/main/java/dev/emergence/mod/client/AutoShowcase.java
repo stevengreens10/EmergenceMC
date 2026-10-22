@@ -615,7 +615,7 @@ public final class AutoShowcase {
                 // close the switch: the weights fly out and the push rod turns the rheostat in; then brake it
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
                 nudge(key, part.apply("rotor", PartKind.SHAFT), false);
-                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.10, at.apply("battery"), 45); // (a governor without reset: it droops; slow to settle)
+                governed(key, server, at.apply("rotor"), PartKind.SHAFT, part.apply("brake", PartKind.BRAKE), view, shot, null, 0.06, at.apply("battery"), 70); // (a governor without reset: it droops a few percent; a minute up from rest)
             }
             if (id.equals("column")) {
                 // the heater on: the pot boils, the trays warm one by one and the condensate runs back down
@@ -904,7 +904,7 @@ public final class AutoShowcase {
                 // a push on the weight sets it bouncing (its starting bounce has rung down by the time the tour comes:
                 // every machine around a player runs at its full pace now)
                 Sampler x = new Sampler();
-                STEPS.add(new Step(4, NOTHING, null).act(PlayerHand.hold(key + " push the weight down", part.apply("rod", PartKind.SHAFT), true)));
+                STEPS.add(new Step(4, NOTHING, null).act(PlayerHand.hold(key + " push the weight down", part.apply("weight", PartKind.BLOCK), true)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 STEPS.add(new Step(60, NOTHING, shot.apply("bouncing")).sample(x, () -> where(server, at.apply("rod"), PartKind.SHAFT))
                         .check(key + " the weight bounces on its spring", () -> atLeast("weight's swing [mm]", 1e3 * x.range(), 1)));
@@ -1027,9 +1027,15 @@ public final class AutoShowcase {
         STEPS.add(new Step(0, NOTHING, null).act(inHand == null ? PlayerHand.click(key + " apply the brake", brake)
                 : PlayerHand.clickWith(key + " apply the brake", brake, inHand)));
         // judged once the speed has settled again, in simulated time
-        // the controller takes some ten seconds to win the speed back: judged once that is over
-        STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), 10, key + "brk")).show(inHand != null));
+        // the controller takes some ten seconds to win the speed back (a slow one, two fifths of its warm-up: a flyball
+        // sags gently, slower than the settling test can tell from a stop): judged once that is over
+        STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), Math.max(10, 0.4 * warmUp), key + "brk")).show(inHand != null));
         STEPS.add(new Step(100, NOTHING, shot.apply("braked")).show(inHand != null)
+                // -Demergence.dumpIslands=flyball,…: the island written out once braked, to replay it in the core
+                .after(() -> {
+                    if (java.util.Arrays.asList(System.getProperty("emergence.dumpIslands", "").split(",")).contains(key.replaceAll(":.*", "").trim()))
+                        dev.emergence.mod.sim.SimulationManager.get(server.overworld()).dumpIsland(shaftAt);
+                })
                 .sample(w1, () -> motion(server, shaftAt, kind)).sample(a1, () -> Math.abs(current(server, battery, null)))
                 .sample(q1, () -> chargeDelivered(server, battery)).sample(t1, () -> simTime(server, battery))
                 .check(key + " braked, it keeps its speed", () -> {

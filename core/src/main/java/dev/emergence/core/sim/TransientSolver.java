@@ -31,7 +31,7 @@ public final class TransientSolver implements StateView {
     private final LinearSystem jac;
     private final LoadContext ctx = new LoadContext();
 
-    private final double[] x, xPrev, xTrial, f, dx;
+    private final double[] x, xPrev, xTrial, f, dx, dxPrev;
     private final double[] q0, q1, qd0, qd1, qNew, qdNew;
     private final double[] absTol, slotTol;
     private final double[] gmin;
@@ -119,6 +119,7 @@ public final class TransientSolver implements StateView {
         xTrial = new double[n];
         f = new double[n];
         dx = new double[n];
+        dxPrev = new double[n];
         q0 = new double[ns];
         q1 = new double[ns];
         qd0 = new double[ns];
@@ -259,6 +260,19 @@ public final class TransientSolver implements StateView {
                 for (int s = 0; s < ns && !stores; s++) stores = slotsOf[k][s];
                 if (!stores) continue;
                 for (int i = 0; i < n; i++) if (rows[k][i] && isNode[i] && thermal[i]) slowNode[i] = true;
+            }
+            // a thermal node written by candidates alone is slow too, though none stores heat there: the ambient, held by
+            // its fixed temperature, which every part's convection and radiation touch (counted fast, they were loaded at
+            // every fast step — a quarter of the loudspeaker's time at audio rate)
+            for (int i = 0; i < n; i++) {
+                if (!isNode[i] || !thermal[i] || slowNode[i]) continue;
+                boolean any = false, allCand = true;
+                for (int k = 0; k < ne && allCand; k++) {
+                    if (!rows[k][i]) continue;
+                    any = true;
+                    allCand = cand[k];
+                }
+                if (any && allCand) slowNode[i] = true;
             }
             for (int k = 0; k < ne; k++) {
                 if (!cand[k]) continue;
@@ -757,7 +771,7 @@ public final class TransientSolver implements StateView {
         }
         ctx.x = xTrial;
 
-        boolean converged = false;
+        boolean converged = false, damped = false;
         for (int it = 0; it < maxNewton; it++) {
             newtonIterations++;
             Arrays.fill(f, 0.0);
@@ -796,8 +810,23 @@ public final class TransientSolver implements StateView {
             }
             if (frozen != null) for (int i = 0; i < n; i++) if (frozen[i]) dx[i] = 0;
             boolean small = true;
-            // damping: limit enormous Newton updates on nonlinear elements
-            double scale = 1.0;
+            // damping: limit enormous Newton updates on nonlinear elements; and halve the updates for the rest of the
+            // solve once two in succession point nearly opposite ways — the iteration bouncing between two states
+            // across a steep edge (a comparator switching under an inductive load, its battery current ±1 A an iteration)
+            // (only far from converging: near the solution, rounding noise alternates too, and halving it there costs
+            // conservation and iterations)
+            if (it >= 3 && !damped) {
+                double dot = 0, n1 = 0, n2 = 0, far = 0;
+                for (int i = 0; i < n; i++) {
+                    dot += dx[i] * dxPrev[i];
+                    n1 += dx[i] * dx[i];
+                    n2 += dxPrev[i] * dxPrev[i];
+                    far = Math.max(far, Math.abs(dx[i]) / (relTol * Math.abs(xTrial[i]) + absTol[i]));
+                }
+                damped = far > 1e3 && dot < -0.9 * Math.sqrt(n1 * n2);
+            }
+            System.arraycopy(dx, 0, dxPrev, 0, n);
+            double scale = damped ? 0.5 : 1.0;
             for (int i = 0; i < n; i++) {
                 if (!Double.isFinite(dx[i])) {
                     lastBadUnknown = net.unknownName(i) + " (non-finite" + nonFiniteSource() + ")";

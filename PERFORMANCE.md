@@ -20,12 +20,12 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 ### Running exhibits (`coreTest --tests *RunningExhibitsBenchTest*`, switched on; 2026-10-22)
 | Exhibit | Unknowns | ms/tick | × real time |
 |---|---|---|---|
-| Inverter | 245 | 11.1 | 0.22 (59.5 s of CPU per 10 s before the Schmitt event: ≈ 6×) |
-| Boost converter | 171 | 24.7 | 0.49 |
-| PWM motor | 398 | 40.9 | 0.82 |
-| H-bridge (forward) | 276 | 3.8 | 0.08 |
-| Loudspeaker, idle (its oscillator runs) | 505 | 429 | 8.6 (12.4 before parasitic tolerances) |
-| Loudspeaker, switched on | 505 | 821 | 16.4 (22.4 before) |
+| Inverter | 245 | 7.8 | 0.16 (59.5 s of CPU per 10 s before the Schmitt event: ≈ 6×) |
+| Boost converter | 171 | 13–22 | 0.26–0.44 (0.49 before the ambient was slow) |
+| PWM motor | 398 | 25 | 0.50 (0.92 at the start of the day) |
+| H-bridge (forward) | 276 | 2.2 | 0.04 |
+| Loudspeaker, idle (its oscillator runs) | 505 | 255 | 5.1 (12.4 at the start of the day) |
+| Loudspeaker, switched on | 505 | 500 | 10.0 (22.4) |
 Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
 and the steam engine (23).
 
@@ -128,6 +128,11 @@ compile or island step over 1 s ("Slow simulation: …"), naming the island's bl
   but their truncation error is held to 100 mV, not 1 mV. A step trace of the loudspeaker showed its 8 pF gate–drain
   capacitance limiting some forty steps per half-period, down to 50 ns, through each inductive turn-off. Loudspeaker
   322 → 214 steps per 10 ms, 12.4× → 8.6× real time; PWM 0.92× → 0.82×.
+* The ambient in the slow partition: a thermal node only became slow where something stored heat, so the ambient,
+  held by its fixed temperature, stayed fast, and with it every part's natural convection and radiation. They were
+  loaded at every Newton iteration of every fast step, a quarter of the loudspeaker's samples (JFR). A thermal node
+  written by slow candidates alone is now slow too. With a conductor's resistance cached on its (held) temperature,
+  every switching exhibit is 1.5–2× faster: the loudspeaker 8.6× → 5.1×, PWM 0.82× → 0.50×.
 
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC

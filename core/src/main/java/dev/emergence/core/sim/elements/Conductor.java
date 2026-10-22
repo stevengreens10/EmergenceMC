@@ -88,8 +88,12 @@ public final class Conductor implements Element {
             return;
         }
         double T = temperature(ctx);
-        double r = material.resistivity(T) * geom;
-        double drdT = material.resistivityDerivative(T) * geom;
+        if (T != rAtT) {
+            rCached = material.resistivity(T) * geom;
+            drdTCached = material.resistivityDerivative(T) * geom;
+            rAtT = T;
+        }
+        double r = rCached, drdT = drdTCached;
         double v = ctx.x(a.index()) - ctx.x(b.index());
         double g = 1.0 / r;
         ctx.addFlow(a, b, g * v);
@@ -107,9 +111,18 @@ public final class Conductor implements Element {
         }
     }
 
+    /** The resistance and its temperature slope at {@link #rAtT} (held through a fast partition's steps: computed once). */
+    private double rAtT = Double.NaN, rCached, drdTCached;
+
     private void loadThermoelectric(LoadContext ctx) {
         int t = thermal.index(), ia = a.index(), ib = b.index();
-        double T = ctx.x(t), r = material.resistivity(T) * geom, drdT = material.resistivityDerivative(T) * geom;
+        double T = ctx.x(t);
+        if (T != rAtT) {
+            rCached = material.resistivity(T) * geom;
+            drdTCached = material.resistivityDerivative(T) * geom;
+            rAtT = T;
+        }
+        double r = rCached, drdT = drdTCached;
         double ta = weighted(ctx, aNodes, aW), tb = weighted(ctx, bNodes, bW);
         double v = ctx.x(ia) - ctx.x(ib), emf = seebeck * (tb - ta), g = 1 / r;
         double i = g * (v - emf);

@@ -864,3 +864,19 @@ it used to creep 0.55 mrad/s. Two first attempts failed instructively. Damping i
 up to 45 % above τ_c to break away through, so a propeller's thrust no longer moved its cart; the bristles are now
 damped in their own deflection rate, as LuGre's are. A smoothed |Δω| below |Δω| (Δω·tanh) let slow sliding settle
 the bristles far above τ_c, which locked a fan-driven windmill at rest; it is now √(Δω² + ε²).
+
+**Towards real time.** Measured first: the switching exhibits as they run (`RunningExhibitsBenchTest`). With the
+Schmitt event the inverter, boost, PWM and H-bridge were already under real time. The loudspeaker was 12× over idle
+and 22× switched on. A step trace and a profile then showed three things:
+- the MOSFET's 8 pF gate–drain capacitance resolved to a millivolt through every inductive turn-off;
+- every part's convection and radiation evaluated at audio-rate steps, because the ambient they touch counted as
+  fast;
+- conductors re-reading their resistivity tables at a held temperature.
+
+Device capacitances are now parasitics held to 100 mV, the ambient is slow, and the resistance is cached. The
+loudspeaker is down to 5× idle (10× on); the PWM motor runs at half real time. Moving the ambient changed the PWM
+motor's step sequence enough to show a latent fragility: Newton bouncing between two states across its comparator's
+edge, the battery current ±1.2 A each iteration, at steps down to 10⁻¹⁰ s. Newton now halves its updates for the rest
+of a solve once two in succession point nearly opposite ways while far from converging. A first version damped near
+convergence too; there rounding noise also alternates, and halving it cost conservation in four tests and starved
+two start-ups.

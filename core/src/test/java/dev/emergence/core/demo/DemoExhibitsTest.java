@@ -1892,6 +1892,43 @@ class DemoExhibitsTest {
         assertTrue(Math.toDegrees(turn[2] - turn[0]) > 3, "a fan several degrees wide");
     }
 
+    /**
+     * Relay memory: START pulls the relay in and its own contacts then feed its coil, so it holds with START let go;
+     * STOP breaks the hold, and closed again leaves it out.
+     */
+    @Test
+    void relayLatchHoldsItselfInUntilStopped() {
+        Exhibit e = Exhibits.relayLatch();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertTrue(c.warnings().isEmpty(), c.warnings().toString());
+        long slide = b.id(e, "slide"), lamp = b.id(e, "lamp"), start = b.id(e, "start"), stop = b.id(e, "stop");
+        run(c, 0.5);
+        double down = -0.0015, up = 0.0015;
+        assertEquals(down, c.probe(slide).angle(), 1e-4, "at rest, out");
+        c.toggleSwitch(start); // START closed: it pulls in
+        run(c, 0.6);
+        double pulled = c.probe(slide).angle(), lit = c.probe(lamp).current();
+        c.toggleSwitch(start); // START opened again: it holds itself in through its own contacts
+        run(c, 1.0);
+        double held = c.probe(slide).angle(), stillLit = c.probe(lamp).current();
+        c.toggleSwitch(stop); // STOP opened: the hold is broken
+        run(c, 0.6);
+        double dropped = c.probe(slide).angle();
+        c.toggleSwitch(stop); // STOP closed again: it stays out
+        run(c, 1.0);
+        double after = c.probe(slide).angle(), dark = c.probe(lamp).current();
+        System.out.printf("relay memory: START → %.2f mm (LED %.1f mA); released START → %.2f mm (LED %.1f mA); STOP → %.2f mm; "
+                + "STOP closed again → %.2f mm (LED %.3g mA)%n", 1e3 * pulled, 1e3 * lit, 1e3 * held, 1e3 * stillLit, 1e3 * dropped, 1e3 * after, 1e3 * dark);
+        assertEquals(up, pulled, 1e-4, "START pulls it in");
+        assertTrue(lit > 2e-3, "the LED shows it energised: " + lit);
+        assertEquals(up, held, 1e-4, "START let go, it holds itself in");
+        assertTrue(stillLit > 2e-3, "still energised through its own contacts: " + stillLit);
+        assertEquals(down, dropped, 1e-4, "STOP breaks the hold");
+        assertEquals(down, after, 1e-4, "STOP closed again, it stays out");
+        assertTrue(dark < 1e-5, "and dark: " + dark);
+    }
+
     /** Relay: the energised coil pulls the armature across its gap, closing the lamp circuit; released, it drops open. */
     @Test
     void relayCoilPullsTheArmatureAndClosesTheContacts() {

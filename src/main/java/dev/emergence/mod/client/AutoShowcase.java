@@ -384,6 +384,23 @@ public final class AutoShowcase {
                         .check(key + " the coil pulls the armature up", () -> atLeast("armature travel [mm]",
                                 1e3 * Math.abs(where(server, at.apply("slide"), PartKind.SHAFT) - arm0[0]), 0.2)));
             }
+            if (id.equals("latch")) {
+                // START on and off again: it holds itself in; STOP off and on again: it stays out
+                double[] arm0 = {Double.NaN};
+                java.util.function.DoubleSupplier arm = () -> where(server, at.apply("slide"), PartKind.SHAFT);
+                PlayerHand.Target start = part.apply("start", PartKind.SWITCH), stop = part.apply("stop", PartKind.SWITCH);
+                STEPS.add(new Step(0, () -> arm0[0] = arm.getAsDouble(), null).act(PlayerHand.click(key + " close START", start)));
+                STEPS.add(new Step(40, view, shot.apply("pulled")).check(key + " START pulls it in", () -> atLeast(
+                        "armature raised [mm]", 1e3 * (arm.getAsDouble() - arm0[0]), 2)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open START again", start)));
+                STEPS.add(new Step(60, view, shot.apply("held")).check(key + " START let go, it holds itself in", () -> atLeast(
+                        "armature raised [mm]", 1e3 * (arm.getAsDouble() - arm0[0]), 2)).check(key + " its LED stays lit", () -> lit(server, at.apply("lamp"))));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open STOP", stop)));
+                STEPS.add(new Step(40, NOTHING, null));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close STOP again", stop)));
+                STEPS.add(new Step(60, view, shot.apply("released")).check(key + " STOP broke the hold; closed again, it stays out", () -> that(
+                        Math.abs(arm.getAsDouble() - arm0[0]) < 0.3e-3, String.format("armature %.2f mm from where it rested", 1e3 * (arm.getAsDouble() - arm0[0])))));
+            }
             if (id.equals("still")) {
                 // heater on: the warm pot boils and distillate gathers in the receiver
                 BlockPos pot = at.apply("pot");

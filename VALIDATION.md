@@ -274,6 +274,11 @@ the armature closed) on 24 V pulls a 1.9 kg armature across its 3 mm gap once it
 the current dipping as the gap closes (back EMF); the contacts close and the LED carries 12 mA; the energy error over
 the pull-in is 3 mJ. Released, the armature drops to its stop and the circuit opens.
 
+Relay memory (`DemoExhibitsTest.relayLatchHoldsItselfInUntilStopped`): the relay's coil fed through START or through its
+own normally-open contacts. START closed: the armature rises to its upper stop (+1.52 mm), the LED across the coil at
+9.6 mA; START opened again, it stays there on its own contacts' current; STOP opened, it drops to −1.54 mm; STOP closed
+again, it stays down, the LED dark — a bit of memory from the magnetics, gravity and the wiring alone.
+
 Trembler (`DemoExhibitsTest.tremblerOscillates`): the same relay feeding its coil through its own normally-closed
 contacts, a flyback diode across the coil, on 36 V: it pulls up and drops back 31 times in 4 s (7.9 Hz) with the coil
 current peaking at 0.84 A; no oscillator was programmed — the period is the coil's L/R rise to the pull-in current,

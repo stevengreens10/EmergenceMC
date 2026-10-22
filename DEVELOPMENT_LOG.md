@@ -888,3 +888,10 @@ pointing along its axis, or onto a shaft's side for the bearings and the rotor's
 lay a square cross-section, so the two 3 × 6 top plates are now each two 3 × 3 tiles, welded into the same frame.
 Placed so, it matches its definition part for part, and the world's compiled island matches the core's. The
 definition check now covers miniatures too: 72 of 72 exhibits, 0 differences.
+
+**A relay that remembers.** A new exhibit, Relay memory: the relay from next door, rewired as every motor starter's
+latch. Its coil is fed through START or through its own normally-open contacts, and both paths come through STOP.
+Nothing in it is a memory element. START pulls the armature in, the contacts close, and from then on the coil feeds
+itself; let START go and it holds. STOP breaks the hold, and once broken it stays broken. In the core it works as
+built: in at 1.52 mm with the LED at 9.6 mA, held, dropped, and out again. The tour flips START on and off and STOP
+off and on, and checks the armature at each turn.

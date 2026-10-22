@@ -25,7 +25,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ControlExhibits.flyball(), Exhibits.rectifier(), Exhibits.boost(), ControlExhibits.hBridge(), ControlExhibits.pwmMotor(), ControlExhibits.inverter(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), MechanicsExhibits.fourBar(), AeroExhibits.windTurbine(), AeroExhibits.propellerCart(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ControlExhibits.flyball(), Exhibits.rectifier(), Exhibits.boost(), ControlExhibits.hBridge(), ControlExhibits.pwmMotor(), ControlExhibits.inverter(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), MechanicsExhibits.fourBar(), AeroExhibits.windTurbine(), AeroExhibits.propellerCart(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.relayLatch(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
                 miniatureGenerator());
     }
 
@@ -581,6 +581,63 @@ public final class Exhibits {
         r.pin("lk", 11, 1, 15).pin("lk", 12, 1, 15);
         r.pin("lr", 14, 1, 15).pin("lr", 14, 1, 13).pin("lr", 9, 5, 8);
         r.pin("fx", 7, 7, 8).pin("fx", 1, 1, 15);
+        r.route();
+        return e.view(7, 6, 15, 15, 160);
+    }
+
+    /**
+     * Relay memory (a self-holding relay, the motor starter's latch): the relay's coil is fed through a START switch, or
+     * through the relay's own contacts once they have closed — which they do as soon as the coil pulls the armature in.
+     * So START need only be closed a moment: opened again, the relay holds itself in. A STOP switch in the supply breaks
+     * the hold; closed again, nothing comes back on until START is pressed. A flyback diode across the coil, and an LED
+     * across it to show it energised.
+     */
+    public static Exhibit relayLatch() {
+        Exhibit e = new Exhibit("latch", "Relay memory",
+                List.of("RELAY MEMORY", "START: it pulls in", "and holds itself;", "STOP: it lets go"),
+                "A relay that remembers. Its coil can be fed two ways: through the START switch, or through the relay's "
+                        + "own contacts — and those close as soon as the coil pulls the armature in. So close START: the "
+                        + "relay pulls in, its contacts close, and the coil now feeds itself through them. Open START "
+                        + "again and nothing changes: the relay holds itself in, the amber LED stays lit. Only the STOP "
+                        + "switch, in the supply to both paths, can break the hold: the field collapses (the diode across "
+                        + "the coil takes its current as it dies), gravity drops the armature, the contacts part — and when "
+                        + "STOP closes again the relay stays out, until START is pressed. One bit of memory from a "
+                        + "magnet, a spring of gravity and two wires: every motor starter's latch, and the memory of the "
+                        + "first relay computers.");
+        String st = "steel_1045";
+        // the relay, as next door: a post and bracket with the coil, the armature on a short vertical slide
+        e.fill(BLOCK, st, 3, 0, 8, 3, 7, 8, Dir.UP);
+        e.fill(BLOCK, st, 4, 7, 8, 5, 7, 8, Dir.UP);
+        e.name("coil", e.add(COIL, "copper", 5, 6, 8, Dir.DOWN, "turns", 2000, "wire_diameter", 0.5e-3, "core", 1,
+                "bore_fraction", 0.6, "lead_axis", 2));
+        e.name("armature", e.add(BLOCK, st, 5, 5, 8, Dir.UP, "fill", 0.4));
+        e.name("slide", e.fill(SHAFT, st, 5, 1, 8, 5, 4, 8, Dir.UP, "diameter", 0.012));
+        e.add(LINEAR_BEARING, st, 5, 2, 8, Dir.UP, "travel", 0.0015);
+        e.fill(BLOCK, st, 4, 0, 8, 4, 2, 8, Dir.UP);
+        // normally open contacts: the copper arm rises against a fixed wire above it; a brush takes the arm's current
+        e.add(BLOCK, "copper", 6, 5, 8, Dir.UP, "fill", 0.2);
+        e.name("moving", e.add(BLOCK, "copper", 7, 5, 8, Dir.UP, "fill", 0.2));
+        e.name("fixed", e.add(WIRE, "copper", 7, 6, 8, Dir.UP, "diameter", 0.002));
+        e.add(BRUSH, "graphite", 8, 5, 8, Dir.WEST);
+        e.add(BLOCK, "nylon_66", 8, 6, 8, Dir.UP);
+        e.add(BLOCK, "nylon_66", 8, 6, 9, Dir.UP);
+        e.fill(BLOCK, "nylon_66", 8, 0, 9, 8, 5, 9, Dir.UP);
+        // supply through STOP (closed) to START and, in parallel, the contacts; both feed the coil
+        e.add(BATTERY, "pvc", 2, 1, 12, Dir.EAST, "cells", 11, "capacity", 7); // 11 lead–acid cells: 23.4 V full
+        int stop = e.add(SWITCH, "brass", 6, 1, 12, Dir.EAST);
+        e.name("stop", stop);
+        e.latch(stop);
+        e.name("start", e.add(SWITCH, "brass", 6, 1, 15, Dir.EAST));
+        e.name("diode", e.add(DIODE, "silicon", 11, 1, 12, Dir.EAST));
+        e.name("lamp", e.add(LED, "silicon", 11, 1, 15, Dir.EAST, "wavelength", 590, "face", 3, "beam", 20));
+        e.add(RESISTOR, "alumina", 14, 1, 15, Dir.EAST, "resistance", 2200);
+        Router r = new Router(e, 0, 0, 0, 16, 8, 16);
+        r.keepClear(6, 4, 8, 7, 4, 8); // nothing under the moving arm (it would make a second, lower contact)
+        r.pin("b+", 3, 1, 12).pin("b+", 5, 1, 12);                                      // battery to STOP
+        r.pin("x", 7, 1, 12).pin("x", 5, 1, 15).pin("x", 7, 7, 8);                       // STOP to START and the fixed contact
+        r.pin("c+", 7, 1, 15).pin("c+", 5, 6, 9).pin("c+", 9, 5, 8).pin("c+", 12, 1, 12).pin("c+", 10, 1, 15); // START, brush → coil +, diode K, LED A
+        r.pin("c-", 5, 6, 7).pin("c-", 1, 1, 12).pin("c-", 10, 1, 12).pin("c-", 15, 1, 15);     // coil −, battery, diode A, LED's resistor
+        r.pin("lr", 12, 1, 15).pin("lr", 13, 1, 15);
         r.route();
         return e.view(7, 6, 15, 15, 160);
     }

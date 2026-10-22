@@ -67,8 +67,11 @@
       (first step done: the Schmitt trigger's threshold as an event, the inverter 20× cheaper);
    2. the loudspeaker: 12× → 5× idle, 22× → 10× on (parasitic tolerances, the ambient slow); its oscillator runs
       whenever powered, so "idle" is 500 edges a second: what is left is per-step cost (505 unknowns; the sparse
-      matrix's assembly and refactorisation, ~35 % of samples) and ~40 steps a half-period — factorisation reuse, a
-      lighter matrix assembly, the comparator as an event;
+      matrix's assembly and refactorisation, ~35 % of samples) and ~40 steps a half-period — a lighter matrix assembly,
+      fewer unknowns (series wire cells), the comparator as an event. (Tried: chord Newton, the factored Jacobian
+      reused while each update at least halved the last — slower on the inverter, 8.5 → 10.4 ms a tick, since these
+      solves converge in two or three quadratic iterations, and it failed the boost converter at a switching edge:
+      reverted);
    3. the gas engine: ignition and valve timing as events, factorisation reuse (⅕–⅓ of real time once firing);
    4. the steam engines: profile their ~80 steps a revolution (valve events, two-phase flow reversal);
    5. general: async island compilation, factorisation reuse for linear islands, cheaper conductor loads.

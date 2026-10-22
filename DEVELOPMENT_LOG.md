@@ -967,3 +967,19 @@ of its face): 53 mW, 6 K above the air. In the same hunt: the gas engine failed 
 tour's hand reached it while it was still compiling off the server thread, and a crank turned on nothing. Any hand on a
 machine mid-compile now waits for it. And the light barrier's beam cuts last 20 ms, which samples taken every tenth of a
 second could miss altogether; the tour now reads the beam at every solver step.
+
+**The flyball, replayed from the world.** The tour now writes an island out when asked
+(`-Demergence.dumpIslands=flyball`): its parts, anchoring, part states (switch positions) and dynamic state. Run in the
+core it sagged exactly as in the world, 24.5 rad/s on 0.83 A, so the world was not the cause. Cell by cell the dump was
+the definition (only the order of parts sharing a cell differed). Cut into one part per cell as a player places it,
+the core build behaved as before. Started at the world's speed it did not: from 0, 20, 24.65, 26 and 32 rad/s, five
+"steady" speeds after 40 s. Run for minutes, every one drifted on: braked, the governor ends at 23.9 rad/s on 1 A, a
+sag of a fifth. The core test had read transients, and the world had simply been nearer the truth. The physics behind
+it: an idle motor runs through a hundred ohms or more, where a few ohms more or less hardly change its torque; and stiff
+springs (6 kN/m against the weights' m·ω² of 0.5) moved the weights only 1.8 mm per rad/s, so the loop gain was tiny and
+its time constant minutes. (Its motor is no ideal machine either: its coils' EMF comes in short peaks as they pass the
+magnets, so with resistance in series the current falls just as the EMF peaks. It made 0.035 N·m per ampere against the
+0.117 V·s its mean EMF suggests; energy balanced to the joule.) Redesigned: soft springs (coils 55 mm wide, fitted 50 mm
+short), a viscous damper on the spindle as the steady work a governor's engine always has, and a 12 V bank with a 50 Ω
+rheostat. It now settles in a minute and sags 4 % braked, the current doubling. The core test and the tour judge it once
+settled.

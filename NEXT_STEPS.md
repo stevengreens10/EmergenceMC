@@ -61,14 +61,12 @@
    - the full tour of 2026-10-22 (75 exhibits, 146 of 155 checks): fixed since — the light barrier's beam was sampled a
      tenth of a second apart and its 20 ms cuts fell between (now read at every solver step); the spring's bounce had
      rung down before the tour came (machines near a player run at full pace now: the tour pushes it). Still open:
-     - the flyball braked: in the world it governs at 31.5 rad/s on 0.145 A and, braked, saturates (0.67 A, the
-       rheostat backed right off) at 24.7 rad/s (−15 to −21 %), where the core holds 29.8 → 28.0 on 0.19 → 0.28 A
-       (−6 %). The brake takes the same 0.7–0.8 W in both, so it is the motor side that needs 0.67 A against 0.28 —
-       some 9 W more. Not today's changes: the same with the circuits ungrounded (`-Ddiag.noDatum=true`), with the
-       islands stepped in turn and compiled on the server thread (`-Demergence.simThreads=1
-       -Demergence.compileWaitMs=-1`); not the noon sun (the core test with `-Ddiag.sun=true`), nor the biome (plains
-       are 20 °C, as the core); the island runs at real time. Next: dump the world island's state and run it in the
-       core;
+     - (fixed: the flyball braked sagged 15–23 % in the world against 6 % in the core — the world was right. Its
+       island dumped mid-tour (`-Demergence.dumpIslands=flyball`) and replayed in the core reproduced it exactly; the
+       dump matched the definition cell for cell (`IslandDumpDiffTest`), and the core build started at the world's
+       speed read the same: the unloaded governor took minutes to settle, and the core test had read transients.
+       Redesigned — soft springs, a steady viscous load, a 12 V bank — it now settles in a minute and holds −4 %
+       braked; `SplitExhibitDiagTest` keeps the long-run probes) confirm in the world;
      - (fixed: the optocoupler's phototransistor burnt out in the noon sun before the tour came — a small receiver took
        its cell's whole face of sunlight as heat, 2.3 W; the gas engine missed its starting hand when it came mid-compile
        — a hand on a machine still compiling now waits for it);

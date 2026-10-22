@@ -427,11 +427,14 @@ m·r·ω²·(1 + r/l) = 2.00 N within the second-harmonic approximation. Four-ba
 (`DemoExhibitsTest.fourBarRockerSwingsBetweenTheToggleAngles`): the rocker swings 44.5°, the angle between the two
 toggle positions (crank and coupler in line) by the law of cosines, 44.5°; energy error 6·10⁻⁴ J of 0.69 J over 3 s.
 
-Flyball governor (`DemoExhibitsTest.flyballGovernorReinsTheMotorIn`): the weights (springs preloaded 16 mm, lift-off
-near 25 rad/s) ride 15 mm out at 30.3 rad/s; through their slanting bars the sleeve is drawn 9.6 mm down and the push
-rod turns the 6 Ω, 15° rheostat 11.4°. Braked (0.3 N·m), the speed sags 2.6 % to 29.6 rad/s: the weights sink to
-12.6 mm, the rheostat backs off to 9.3° and the current rises from 2.77 to 3.12 A. Without the push rod the same motor
-creeps on past 75 rad/s.
+Flyball governor (`DemoExhibitsTest.flyballGovernorReinsTheMotorIn`), judged in steady state (80 s up from the
+gallery's start, 30 s braked): the weights (soft wide-coiled springs, k ≈ 1.9 kN/m, fitted 50 mm short: lift-off near
+22 rad/s) ride 10.0 mm out at 23.7 rad/s and the push rod turns the 50 Ω, 30° rheostat 7.2°; the motor works a viscous
+damper on its spindle all the time. Braked (0.64 W), the speed sags 4.4 % to 22.6 rad/s: the weights sink to 3.8 mm,
+the rheostat backs off to 2.5° and the current rises from 0.72 to 1.50 A. The first build (stiff springs, no steady
+load, a 24 V bank through 150 Ω) took minutes to settle — an idle motor runs through so much resistance that the
+rheostat hardly moves it — and sagged a fifth under the brake in steady state; 40 s windows had read −6 %
+(`SplitExhibitDiagTest` runs it for minutes from any start, and replays a world island's dump).
 
 Aerodynamics (`AerofoilsTest`): a flat plate at 5° in a 10 m/s wind is lifted by exactly ½ρV²A·C_L (C_L 0.503 against
 the thin-aerofoil 2πα 0.548); a windmill swept over tip-speed ratios 3–12 and pitches −6…6° never exceeds the

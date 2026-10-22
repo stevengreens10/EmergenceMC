@@ -828,6 +828,18 @@ public final class AutoShowcase {
                 BlockPos crank = at.apply("crank");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.hold(key + " turn the crank", part.apply("crank", PartKind.CRANK), false)));
                 Sampler sig = new Sampler();
+                // the beam's current at every step of the island's solver: the vane cuts it for some 20 ms a pass, which
+                // samples a tenth of a second apart can miss every time (the hand turns the crank at a steady 25 rad/s)
+                BlockPos pdAt = id.equals("lightbarrier") ? at.apply("pd") : null;
+                Sampler beam = pdAt == null ? sig : new TimeAverage(() -> compiled(server, pdAt), () -> {
+                    PlacedPart p = any(server, pdAt, PartKind.PHOTODIODE);
+                    if (p == null) return null;
+                    long pdId = p.id;
+                    return c -> {
+                        Probe pr = c.probe(pdId);
+                        return pr == null ? Double.NaN : Math.abs(pr.current());
+                    };
+                });
                 // (the light barrier's vane must come round past the beam at a hand's pace: a longer watch)
                 Step cranked = new Step(id.equals("lightbarrier") ? 100 : id.equals("fan") ? 300 : 40, NOTHING, shot.apply("cranked")).check(key + " the crank turns when held",
                         () -> atLeast("crank speed [rad/s]", motion(server, crank, PartKind.CRANK), 1));
@@ -841,9 +853,9 @@ public final class AutoShowcase {
                 });
                 if (id.equals("miniature") || id.equals("generator")) cranked.sample(sig, () -> Math.abs(current(server, at.apply("load"), PartKind.RESISTOR)))
                         .check(key + " the generator drives a current through its load", () -> atLeast("peak load current [mA]", 1e3 * sig.max(), 0.1));
-                if (id.equals("lightbarrier")) cranked.sample(sig, () -> Math.abs(current(server, at.apply("pd"), PartKind.PHOTODIODE)))
-                        .check(key + " the vane cuts the beam: the photodiode's current dips", () -> that(sig.max() > 0 && sig.min() < 0.5 * sig.max(),
-                                String.format("photodiode %.3g–%.3g µA, expected to dip as the vane passes", 1e6 * sig.min(), 1e6 * sig.max())));
+                if (id.equals("lightbarrier")) cranked.sample(beam, () -> Math.abs(current(server, at.apply("pd"), PartKind.PHOTODIODE)))
+                        .check(key + " the vane cuts the beam: the photodiode's current dips", () -> that(beam.max() > 0 && beam.min() < 0.5 * beam.max(),
+                                String.format("photodiode %.3g–%.3g µA, expected to dip as the vane passes", 1e6 * beam.min(), 1e6 * beam.max())));
                 STEPS.add(cranked);
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
             }
@@ -882,7 +894,11 @@ public final class AutoShowcase {
                         1e6 * deposit(server, at.apply("zinc"), null), 0.1)));
             }
             if (id.equals("springmass")) {
+                // a push on the weight sets it bouncing (its starting bounce has rung down by the time the tour comes:
+                // every machine around a player runs at its full pace now)
                 Sampler x = new Sampler();
+                STEPS.add(new Step(4, NOTHING, null).act(PlayerHand.hold(key + " push the weight down", part.apply("rod", PartKind.SHAFT), true)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 STEPS.add(new Step(60, NOTHING, shot.apply("bouncing")).sample(x, () -> where(server, at.apply("rod"), PartKind.SHAFT))
                         .check(key + " the weight bounces on its spring", () -> atLeast("weight's swing [mm]", 1e3 * x.range(), 1)));
             }
@@ -1333,6 +1349,8 @@ public final class AutoShowcase {
         private dev.emergence.core.sim.TransientSolver solver;
         private java.util.function.Consumer<dev.emergence.core.sim.TransientSolver> listener;
         private double integral, span, lastT = Double.NaN, lastV;
+        /** The least and greatest values at any of the island's steps (a dip lasting milliseconds falls between ticks). */
+        private double stepMin = Double.POSITIVE_INFINITY, stepMax = Double.NEGATIVE_INFINITY;
 
         TimeAverage(java.util.function.Supplier<CompiledAssembly> island,
                     java.util.function.Supplier<java.util.function.ToDoubleFunction<CompiledAssembly>> quantity) {
@@ -1357,6 +1375,8 @@ public final class AutoShowcase {
                 }
                 if (!Double.isFinite(x)) return;
                 synchronized (this) {
+                    stepMin = Math.min(stepMin, x);
+                    stepMax = Math.max(stepMax, x);
                     double t = s.time();
                     if (Double.isFinite(lastT) && t > lastT) {
                         integral += 0.5 * (x + lastV) * (t - lastT);
@@ -1371,11 +1391,27 @@ public final class AutoShowcase {
 
         @Override
         synchronized double mean() {
+            detach();
+            return span > 1e-3 ? integral / span : super.mean();
+        }
+
+        @Override
+        synchronized double min() {
+            detach();
+            return Math.min(super.min(), stepMin);
+        }
+
+        @Override
+        synchronized double max() {
+            detach();
+            return Math.max(super.max(), stepMax);
+        }
+
+        private void detach() {
             if (solver != null) {
                 solver.removeStepListener(listener);
                 solver = null;
             }
-            return span > 1e-3 ? integral / span : super.mean();
         }
     }
 

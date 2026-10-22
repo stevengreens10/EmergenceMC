@@ -2250,6 +2250,9 @@ public final class AssemblyCompiler {
                     // a turning body may also sweep into the path at other angles: test every body with off-axis parts
                     for (CompiledAssembly.Body b : c.bodies)
                         if (!b.isStatic && !b.slider && b.carrier == null && mover == null && sweeps(b, samples)) mover = b;
+                    if (Boolean.getBoolean("diag.optics"))
+                        System.out.println("OPTICS LED #" + tx.id() + " → photodiode #" + rx.id() + ": geo " + geo + ", mover " + (mover == null ? "none" : mover.parts.size() + " parts")
+                                + ", bodies " + c.bodies.size() + ", static-blocked " + java.util.Arrays.toString(staticBlocked) + " [" + Thread.currentThread().getName() + "]");
                     if (mover == null) {
                         int open = 0;
                         for (boolean bl : staticBlocked) if (!bl) open++;

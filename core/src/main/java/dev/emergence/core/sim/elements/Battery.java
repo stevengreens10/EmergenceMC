@@ -165,6 +165,11 @@ public final class Battery implements Element {
         return s.across(pos, neg);
     }
 
+    /** Charge delivered since the island started [C]: the time integral of its current, exactly. */
+    public double chargeDelivered(StateView s) {
+        return s.x(qIdx);
+    }
+
     /** Charge held, as a fraction of the capacity. */
     public double stateOfCharge(StateView s) {
         return soc(s.x(qIdx));

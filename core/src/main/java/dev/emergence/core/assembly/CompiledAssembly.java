@@ -263,6 +263,15 @@ public final class CompiledAssembly {
         return solver.time();
     }
 
+    /**
+     * The charge a battery has delivered since this island started [C] (NaN for any other part): the integral of its
+     * current, so that its change over a window gives the window's mean current whatever ripples within it — as an
+     * integrating ammeter reads.
+     */
+    public double batteryChargeDelivered(long partId) {
+        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Battery bt ? bt.chargeDelivered(solver) : Double.NaN;
+    }
+
     /** Simulated time the solver fell behind wall-clock requests (step budget exhausted) [s]. */
     public double lag() {
         return lag;

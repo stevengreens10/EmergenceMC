@@ -917,11 +917,16 @@ public final class AutoShowcase {
     private static void governed(String key, net.minecraft.server.MinecraftServer server, BlockPos shaftAt, PartKind kind, PlayerHand.Target brake,
                                  Runnable view, java.util.function.Function<String, String> shot, ItemStack inHand, double droop, BlockPos battery,
                                  double warmUp) {
-        Sampler w0 = new Sampler(), a0 = new Sampler(), w1 = new Sampler(), a1 = new Sampler();
+        Sampler w0 = new Sampler(), a0 = new Sampler(), w1 = new Sampler(), a1 = new Sampler(), q0 = new Sampler(), t0 = new Sampler(),
+                q1 = new Sampler(), t1 = new Sampler();
+        // the window's mean supply current from the charge the battery gave up over it, in the island's own time: the
+        // motor's current ripples at its commutation rate, and tick-by-tick samples of it alias
+        java.util.function.BiFunction<Sampler, Sampler, Double> amps = (q, t) -> t.change() > 0.5 ? Math.abs(q.change() / t.change()) : Double.NaN;
         // up to speed first: at least warmUp seconds of its own time (a flyball governor's weights take half a minute)
         STEPS.add(new Step(3600, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), warmUp, key + "gov")).show(inHand != null));
         STEPS.add(new Step(100, NOTHING, shot.apply("governing")).show(inHand != null)
                 .sample(w0, () -> motion(server, shaftAt, kind)).sample(a0, () -> Math.abs(current(server, battery, null)))
+                .sample(q0, () -> chargeDelivered(server, battery)).sample(t0, () -> simTime(server, battery))
                 .check(key + " it runs at its governed speed", () -> atLeast("mean speed [rad/s]", w0.mean(), 5)));
         STEPS.add(new Step(0, NOTHING, null).act(inHand == null ? PlayerHand.click(key + " apply the brake", brake)
                 : PlayerHand.clickWith(key + " apply the brake", brake, inHand)));
@@ -930,12 +935,18 @@ public final class AutoShowcase {
         STEPS.add(new Step(2400, view, null, settledIn(server, shaftAt, () -> motion(server, shaftAt, kind), 10, key + "brk")).show(inHand != null));
         STEPS.add(new Step(100, NOTHING, shot.apply("braked")).show(inHand != null)
                 .sample(w1, () -> motion(server, shaftAt, kind)).sample(a1, () -> Math.abs(current(server, battery, null)))
+                .sample(q1, () -> chargeDelivered(server, battery)).sample(t1, () -> simTime(server, battery))
                 .check(key + " braked, it keeps its speed", () -> {
                     double was = w0.mean(), now = w1.mean();
                     return that(Math.abs(now - was) <= droop * was, String.format("mean speed %.2f → %.2f rad/s (%+.1f %%), expected within ±%.0f %%",
                             was, now, 100 * (now - was) / was, 100 * droop));
                 }).check(key + " by taking more current from its supply", () -> {
-                    double was = a0.mean(), now = a1.mean();
+                    // (from the charge drawn where the island ran long enough in each window, else the samples' mean)
+                    double was = amps.apply(q0, t0), now = amps.apply(q1, t1);
+                    if (Double.isNaN(was) || Double.isNaN(now)) {
+                        was = a0.mean();
+                        now = a1.mean();
+                    }
                     return that(now > 1.03 * was + 0.005, String.format("mean supply current %.3f → %.3f A (the brake taking %.2f W), expected to rise",
                             was, now, brakePower(server, brake.block())));
                 }));
@@ -1071,6 +1082,13 @@ public final class AutoShowcase {
         return pr == null ? Double.NaN : pr.current();
     }
 
+    /** The charge the battery in block {@code at} has delivered since its island started [C]. */
+    private static double chargeDelivered(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        PlacedPart p = any(s, at, PartKind.BATTERY);
+        CompiledAssembly c = compiled(s, at);
+        return p == null || c == null ? Double.NaN : c.batteryChargeDelivered(p.id);
+    }
+
     private static double power(net.minecraft.server.MinecraftServer s, BlockPos at, PartKind k) {
         PlacedPart p = any(s, at, k);
         CompiledAssembly c = compiled(s, at);
@@ -1194,11 +1212,13 @@ public final class AutoShowcase {
 
     /** A quantity recorded through a step (every other tick, on the server): its least, greatest and mean values. */
     static class Sampler {
-        double min = Double.POSITIVE_INFINITY, max = Double.NEGATIVE_INFINITY, sum;
+        double min = Double.POSITIVE_INFINITY, max = Double.NEGATIVE_INFINITY, sum, first = Double.NaN, last = Double.NaN;
         int n;
 
         synchronized void add(double v) {
             if (Double.isNaN(v)) return;
+            if (n == 0) first = v;
+            last = v;
             min = Math.min(min, v);
             max = Math.max(max, v);
             sum += v;
@@ -1219,6 +1239,11 @@ public final class AutoShowcase {
 
         double range() {
             return max() - min();
+        }
+
+        /** The change from the first sample to the last. */
+        synchronized double change() {
+            return last - first;
         }
     }
 

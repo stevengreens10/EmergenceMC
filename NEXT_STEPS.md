@@ -72,7 +72,11 @@
       fewer unknowns (series wire cells), the comparator as an event. (Tried: chord Newton, the factored Jacobian
       reused while each update at least halved the last — slower on the inverter, 8.5 → 10.4 ms a tick, since these
       solves converge in two or three quadratic iterations, and it failed the boost converter at a switching edge:
-      reverted; growth ×4 just after a restart while the error is tiny: no gain on the loudspeaker);
+      reverted; growth ×4 just after a restart while the error is tiny: no gain on the loudspeaker). Local fixes are near
+      their end here (5× needs a 5× cut): its oscillator always switches 500 times a second, each edge resolved at
+      device level across ~300 fast unknowns — the microphone's idle amplifier among them. Structural: solve weakly
+      coupled sub-circuits apart (the acoustic path is the only link between driver and microphone), or the averaged
+      switch fidelity level for the whole driver;
    3. the gas engine: 1.32× real time running (species slopes reused within a step, flows resolved to 10⁻⁸ mol/s);
       the exhaust valve and a vent to the air still keep Newton iterating (`diag.newtonLaggards`) — the choked-flow
       soft maximum at blowdown?; ~1100 rejected steps per 2 s; ignition as an event;

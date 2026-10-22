@@ -828,3 +828,13 @@ A player would meet the same thing: knock away the block a wheel was resting aga
 island now remembers which world blocks beside it were solid when it compiled; when one of them stops being so, or a
 block that was not becomes so, the island is rebuilt (`knockingAwayAWorldBlockFreesTheWheelItHeld`). Other changes —
 a furnace lit, a fire burning on — leave it alone.
+
+**The jack in the sun.** The hydraulic jack failed in the world, never in the core, with Newton unable to settle the
+open air's energy intake. Noon sunlight was the difference: run in the core with the sun on every part it failed
+too, somewhere between 6 and 70 s depending on the order its parts compiled in. The sun warms the pipes unevenly, the
+water expands, and a trickle (10⁻⁷ kg/s) spills over the brim of the reservoir's standpipe into the open air. Every
+branch flow had converged to its own tolerance — the flow that 10 mPa drives, some 10⁻⁵ kg/s — but the open air's
+intake, the sum of those flows, was held to 10⁻¹² kg/s and its energy to a microwatt, so the flows' permitted
+wobble (10⁻⁸ kg/s times 1.2 MJ/kg) failed it at every step size down to 10⁻¹⁰ s. A vent now tells the solver its
+reservoir cannot be resolved more finely than the vent's own flow (`noiseFloor`, the mechanism the gas passages
+already used). The EM-4 and the loudspeaker run clean under the same sun, so theirs is another cause.

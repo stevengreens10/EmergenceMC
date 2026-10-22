@@ -72,7 +72,9 @@ behaviour; where physics is missing the effect is simply absent.
   nozzle are under-powered (the throttling loss stays in the gas as heat).
 * Phase change for water only (`water_steam`); other fluids are single-phase. Phases are in equilibrium
   in each volume (no superheated liquid, no subcooled vapour, no nucleation delay) and separated by
-  gravity; no non-condensable gas mixed with steam (a steam vent's back-flow is steam, not air). Ice
+  gravity; no non-condensable gas mixed with steam (a steam vent's back-flow is steam, not air: a brim-full water
+  standpipe overflowing at a trickle, inside the upwind blend's 1 mm/s band, carries a blend of water's and steam's
+  enthalpy — some 0.1 W of spurious heat in the sunlit jack). Ice
   is not modelled (T clamped at the triple point). Slightly superheated (≲ 10 K) and very slightly
   compressed states pass through smoothing joins with a few per cent pressure error. One fluid per
   connected network; open vessels hold no free surface to the air.

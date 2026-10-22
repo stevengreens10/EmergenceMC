@@ -1225,6 +1225,27 @@ class DemoExhibitsTest {
         assertTrue(c.probe(ram).angle() < held - 0.5 * rise, "opening the release valve lets it down");
     }
 
+    /**
+     * The jack in the noon sun, pumped as the tour pumps it: the sun warms its pipes unevenly and a trickle of water
+     * (10⁻⁷ kg/s) spills from its brim-full standpipe into the open air. That once failed Newton within a minute or so
+     * (the open air's intake held to a finer tolerance than the vent's own flow), as it did in the world.
+     */
+    @Test
+    void hydraulicJackPumpsInTheNoonSun() {
+        Exhibit e = MechanicsExhibits.hydraulicJack();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long pump = b.id(e, "pumpRod"), ram = b.id(e, "ramRod");
+        double r0 = c.probe(ram).angle();
+        for (int tick = 0; tick < 20 * 90; tick++) {
+            c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
+            int phase = tick < 100 ? -1 : ((tick - 100) / 12) % 2; // from 5 s on: 0.6 s down, 0.6 s up
+            c.setPushEffort(pump, phase < 0 ? 0 : phase == 0 ? -1 : 1);
+            c.step(0.05);
+        }
+        assertTrue(c.probe(ram).angle() - r0 > 0.02, "pumped, the ram rose: " + (c.probe(ram).angle() - r0));
+    }
+
     /** Rack and pinion: the rack travels r_p per radian of the crank; let go, the weight runs it back. */
     @Test
     void rackAndPinionLiftsAndRunsBack() {

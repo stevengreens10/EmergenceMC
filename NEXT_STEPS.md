@@ -25,8 +25,9 @@
      time-step underflow at 71.5 s with a chip output Newton-stepped to 563 V, recovered by a restart at rest; the
      core runs it with the switch flipped at 30–60 s, steps of 45 and 50 ms, to 130 s without failing (the same
      world-only pattern as the loudspeaker's below — look for what the world adds: sunlight, a partial step);
-   - the hydraulic jack's island (70 parts) failed once mid-stroke in the world (time-step underflow, the reservoir's
-     energy unknown not converging at 69.8 s); the core pumps it with the tour's timing after 1–70 s at rest cleanly;
+   - (fixed: the hydraulic jack's world-only failure was the noon sun — a trickle over its standpipe's brim, the open
+     air's intake held to a finer tolerance than the vent's flow; `hydraulicJackPumpsInTheNoonSun`) the EM-4 and the
+     loudspeaker run clean in the core under the same sun: theirs is something else the world adds;
    - the flyball governs lower in the world than in the core (27.4 rad/s at 0.23 A against 29.8 at 0.20, as if under
      more drag — sun-warmed parts?), so braked it nears its stops and took no more current (twice: the brake taking
      0.76 W, the supply current fell 0.217 → 0.205 A, speed −2.6 %) — find the drag, and where the brake's power

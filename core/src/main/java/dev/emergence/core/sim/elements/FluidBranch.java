@@ -276,10 +276,29 @@ public final class FluidBranch implements Element {
         boolean wet = fluid instanceof dev.emergence.core.fluids.WaterSteam;
         double rho = wet ? 0.6 : fluid.density(101_325, 293.15), mu = wet ? 1.2e-5 : fluid.viscosity(293.15);
         double g = rho * area * dh * dh / (32 * mu * Math.max(length, 1e-3));
-        mIdx = ctx.allocUnknown("mdot" + tag, Math.max(1e-6 * mScale, 1e-2 * g));
+        mTol = Math.max(1e-6 * mScale, 1e-2 * g);
+        mIdx = ctx.allocUnknown("mdot" + tag, mTol);
+    }
+
+    /** The flow's convergence tolerance [kg/s]. */
+    private double mTol;
+    /** The reservoir its b end opens into (a vent), or null. */
+    private FluidReservoir sink;
+
+    /**
+     * Marks this branch as a vent into {@code r}: the reservoir's intake is then resolved no more finely than this
+     * branch's own flow. Its mass and energy unknowns are the sums of the flows into it, and holding them to a finer
+     * tolerance than the flows themselves (10 mPa's worth) failed Newton on a trickle that changed nothing — a
+     * sun-warmed standpipe overflowing at 10⁻⁷ kg/s, its energy wobbling by the flow's tolerance times the enthalpy.
+     */
+    public FluidBranch withSinkReservoir(FluidReservoir r) {
+        this.sink = r;
+        return this;
     }
 
     private final double[] endA = new double[5], endB = new double[5];
+    /** The specific enthalpies of the two ends at the last evaluation [J/kg]. */
+    private double lastHA, lastHB;
     private double camOpening = 1;
 
     /** Evaluates [R (Pa), energy leaving a (W), energy leaving b (W), torque taken from the rotor (N·m)]. */
@@ -340,6 +359,8 @@ public final class FluidBranch implements Element {
             torque = -bodySense * (-ft) * rotorRadius; // torque taken from the body node (= −torque on the rotor)
         }
         double h = up * hA + (1 - up) * hB;
+        lastHA = hA;
+        lastHB = hB;
         double flowH = m * h;
         // orifice branch: flow set by the nozzle relation (residual in kg/s)
         out[0] = orifice ? (m - orificeFlow(pA, pB, tA, tB, ported ? endA : null, ported ? endB : null)) * 1e5 / Math.max(mScale * 1e3, 1e-12)
@@ -390,6 +411,10 @@ public final class FluidBranch implements Element {
         double[] f0 = new double[4];
         boolean closed = opening <= 0;
         eval(val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], f0);
+        if (sink != null) {
+            ctx.noiseFloor(sink.massIndex(), mTol);
+            ctx.noiseFloor(sink.energyIndex(), mTol * Math.max(Math.abs(lastHA), Math.abs(lastHB)));
+        }
         int[] rows = {mIdx, ta.index(), tb.index(), rotor == null ? -1 : rotor.index()};
         if (closed) {
             ctx.addF(mIdx, val[0] * 1e3);

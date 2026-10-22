@@ -3059,6 +3059,8 @@ public final class AssemblyCompiler {
         }
 
         final Node[] atmSteam = new Node[2];
+        /** The open air's reservoirs, for the vents into them (by their pressure node). */
+        final Map<Node, FluidReservoir> reservoirOf = new HashMap<>();
         /** Height the single-fluid network's atmosphere node stands for [m]; vents above it see less pressure. */
         double ventRef;
 
@@ -3066,7 +3068,7 @@ public final class AssemblyCompiler {
             if (atm[0] == null) {
                 atm[0] = c.network.node(Domain.FLUID, "atm.p", pAtm);
                 atm[1] = c.network.node(Domain.THERMAL, "atm.T", ambientT);
-                c.network.add(new FluidReservoir(atm[0], atm[1], pAtm, ambientT));
+                reservoirOf.put(atm[0], c.network.add(new FluidReservoir(atm[0], atm[1], pAtm, ambientT)));
             }
             FluidVolume v = c.fluidOfPart.get(p.id());
             Node[] sink = atm;
@@ -3077,7 +3079,7 @@ public final class AssemblyCompiler {
                     double ts = dev.emergence.core.fluids.WaterSteam.tSat(pAtm) + 1;
                     atmSteam[0] = c.network.node(Domain.FLUID, "atm.steam.p", pAtm);
                     atmSteam[1] = c.network.node(Domain.THERMAL, "atm.steam.T", ts);
-                    c.network.add(new FluidReservoir(atmSteam[0], atmSteam[1], pAtm, ts));
+                    reservoirOf.put(atmSteam[0], c.network.add(new FluidReservoir(atmSteam[0], atmSteam[1], pAtm, ts)));
                 }
                 sink = atmSteam;
             }
@@ -3085,7 +3087,7 @@ public final class AssemblyCompiler {
             // exit (or entry) loss K = 1 of a free jet
             FluidBranch b = new FluidBranch(v.pressureNode(), v.temperatureNode(), sink[0], sink[1], v.fluid(), half,
                     equivalentDiameter(PartGeometry.passageArea(p)), roughness(p), 1.0, d.dy * half)
-                    .withTag(p.kind() + "#" + p.id() + "->air");
+                    .withTag(p.kind() + "#" + p.id() + "->air").withSinkReservoir(reservoirOf.get(sink[0]));
             // the outside air's own column: without it, two open ends at different heights of a cold duct would
             // draw a draft through it forever (the column inside weighs on its lower end, the outside would not)
             double rhoAir = pAtm * 0.028965 / (dev.emergence.core.units.PhysicalConstants.GAS_CONSTANT * ambientT);

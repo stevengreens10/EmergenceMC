@@ -47,6 +47,15 @@ public final class FluidReservoir implements Element {
         ctx.addJ(eIdx, t.index(), 1);
     }
 
+    /** Its unknowns: the mass flow [kg/s] and the energy flow [W] it absorbs. */
+    public int massIndex() {
+        return mIdx;
+    }
+
+    public int energyIndex() {
+        return eIdx;
+    }
+
     /** Mass flow currently absorbed by the reservoir [kg/s] (negative when it supplies fluid). */
     public double massAbsorbed(StateView s) {
         return s.x(mIdx);

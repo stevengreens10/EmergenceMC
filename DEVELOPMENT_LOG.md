@@ -838,3 +838,19 @@ intake, the sum of those flows, was held to 10⁻¹² kg/s and its energy to a m
 wobble (10⁻⁸ kg/s times 1.2 MJ/kg) failed it at every step size down to 10⁻¹⁰ s. A vent now tells the solver its
 reservoir cannot be resolved more finely than the vent's own flow (`noiseFloor`, the mechanism the gas passages
 already used). The EM-4 and the loudspeaker run clean under the same sun, so theirs is another cause.
+
+**A Schmitt trigger decides.** The chip-level circuits — the inverter, the boost converter, the PWM controller —
+cost several times real time, nearly all of it at the Schmitt oscillator's edges. The trigger's threshold
+followed its own output through a steep sigmoid, a fold that Newton fell into at every edge: 26 700 failures in 10 s
+of the inverter. The threshold is now a discrete state, flipped as a solver event at the crossing, which the trigger
+locates by secant from the accepted steps. The first attempt left the input stage free short of the threshold. It
+began switching the output early, the timing capacitor stalled just short of the threshold, and the oscillator
+crawled at 1.2 Hz with 450 s of CPU. With the decided state alone setting where the output heads, the inverter
+simulates 10 s in 3.0 s of CPU (59.5 s before) with no Newton failures, at 2.70 Hz (2.77 before, 2.62 ideal). All
+280 core tests pass.
+
+**136 of 139.** The full tour after the anchoring and vent fixes ran 32 minutes with no island failing. The wind
+turbine read 0.008 W at the same speed that once gave 0.12 W: its generator's output pulses as each magnet passes, and
+tick samples alias. Its load power is now time-averaged at every solver step in the island's own time, as a wattmeter
+reads. The gas engine never ran away from the hand (60 rad/s, then stalling under the brake), where alone it reaches
+200–270.

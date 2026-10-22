@@ -16,8 +16,9 @@
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
    - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;
    - (the governors' checks now average over 5 s: the core holds the electronic one at −3 % braked) confirm in the tour;
-   - the chip-level inverter costs 1–3 s of CPU a tick near a player (now slowed rather than stalling the server): the
-     averaged-switch model of item 5a;
+   - (much eased: a Schmitt trigger's threshold is now a discrete state flipped as a solver event, the inverter 20×
+     cheaper — 3 s of CPU for 10 s, no Newton failures) the switching edges themselves (~100 steps each through the
+     gate charges) and the averaged-switch model of item 5a; the boost and PWM exhibits to profile again;
    - (done: the tour flies between viewpoints and to its hands' spots in spectator mode, landing in creative —
      `Flight`; 10/10 checks over five exhibits with it) confirm in a full tour; shots taken where the hand stood
      (a step without the exhibit's view) to review in its screenshots;
@@ -37,7 +38,10 @@
      all three governors pass, the flyball braked 28.0 → 26.3 rad/s on 0.28 → 0.42 A, as in the core;
    - (confirmed in the world: the fatigue rig cranked to 187 rad/s through its gears, the aluminium shaft cracked; the
      inverter, waiting for its first full cycle, lit both LEDs and gave 44 V);
-   - the gas engine ran at 82 rad/s in the full tour against 173–273 alone (it passed): its rich low-speed regime;
+   - the gas engine ran at 82 rad/s in one full tour, and in the next never ran away from the hand at all (60 rad/s,
+     stalling under the brake), against 173–273 alone: sunlight (as for the jack) under test; its rich low-speed regime;
+   - (fixed in the tour: its load power is averaged over the island's own time at every solver step, a pulsing
+     generator's output having aliased to 0.008 W) the wind turbine's check to confirm;
    - the loudspeaker's island (527 parts, audio-rate) failed once in the world, idle for minutes with its switch off:
      time-step underflow at a resistor's node at 6.3 s, recovered by a restart at rest; the core runs it idle and on
      to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:

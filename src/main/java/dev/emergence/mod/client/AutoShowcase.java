@@ -449,8 +449,18 @@ public final class AutoShowcase {
                 BlockPos shaftAt = at.apply("shaft");
                 STEPS.add(new Step(2400, NOTHING, shot.apply("turning"), () -> Math.abs(wheelSpeed(server, shaftAt)) > 30)
                         .check(key + " the wind turns the rotor", () -> atLeast("rotor speed [rad/s]", motion(server, shaftAt, PartKind.SHAFT), 20)));
-                Sampler load = new Sampler();
-                STEPS.add(new Step(100, NOTHING, null).sample(load, () -> power(server, at.apply("load"), null))
+                // (time-averaged at every solver step: the output pulses as each magnet passes the coils)
+                BlockPos loadAt = at.apply("load");
+                Sampler load = new TimeAverage(() -> compiled(server, loadAt), () -> {
+                    PlacedPart p = any(server, loadAt, null);
+                    if (p == null) return null;
+                    long loadId = p.id;
+                    return c -> {
+                        Probe pr = c.probe(loadId);
+                        return pr == null ? Double.NaN : Math.abs(pr.power());
+                    };
+                });
+                STEPS.add(new Step(100, NOTHING, null).sample(load, () -> power(server, loadAt, null))
                         // (its output goes roughly as the square of its speed: in a lull at 30 rad/s, a fraction of a watt —
                         // the check is that power arrives, not how strong the wind is)
                         .check(key + " its generator delivers power to the load", () -> atLeast("mean load power [W]", load.mean(), 0.05)));
@@ -606,8 +616,9 @@ public final class AutoShowcase {
                 double handTop = dev.emergence.core.assembly.HumanEffort.MAX_HAND_SPEED / 0.04; // the 4 cm handle
                 double[] free = {Double.NaN};
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " open the fuel", part.apply("needle", PartKind.VALVE))));
-                // held until it fires and runs away from the hand (a hand cannot drive it faster than handTop)
-                STEPS.add(new Step(1200, NOTHING, null, () -> motion(server, shaft, PartKind.SHAFT) > handTop + 5)
+                // held until it fires and runs away from the hand (a hand cannot drive it faster than handTop): ten seconds of
+                // its own time do it, but a busy full tour runs its island at a fifth of real time or less, so up to 3 minutes
+                STEPS.add(new Step(3600, NOTHING, null, () -> motion(server, shaft, PartKind.SHAFT) > handTop + 5)
                         .act(PlayerHand.hold(key + " swing the starting handle until it fires", part.apply("handle", PartKind.CRANK), false)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 STEPS.add(new Step(200, view, shot.apply("running")).check(key + " it fires and runs on, faster than a hand can turn it",
@@ -1244,6 +1255,65 @@ public final class AutoShowcase {
         /** The change from the first sample to the last. */
         synchronized double change() {
             return last - first;
+        }
+    }
+
+    /**
+     * The time average of a quantity over the island's own simulated time, integrated (trapezoidally) at every step the
+     * solver accepts — as a wattmeter or an integrating ammeter reads — where tick-by-tick samples would alias a quantity
+     * that pulses (a generator's output as each magnet passes its coils). It attaches to the island on its first
+     * sample and lets go when read; the samples' own mean stands in if the island ran less than a millisecond meanwhile.
+     */
+    static final class TimeAverage extends Sampler {
+        private final java.util.function.Supplier<CompiledAssembly> island;
+        /** Made on the server thread when it attaches (it may look up parts); what it makes reads only the island. */
+        private final java.util.function.Supplier<java.util.function.ToDoubleFunction<CompiledAssembly>> quantity;
+        private dev.emergence.core.sim.TransientSolver solver;
+        private java.util.function.Consumer<dev.emergence.core.sim.TransientSolver> listener;
+        private double integral, span, lastT = Double.NaN, lastV;
+
+        TimeAverage(java.util.function.Supplier<CompiledAssembly> island,
+                    java.util.function.Supplier<java.util.function.ToDoubleFunction<CompiledAssembly>> quantity) {
+            this.island = island;
+            this.quantity = quantity;
+        }
+
+        @Override
+        synchronized void add(double v) {
+            super.add(v);
+            if (solver != null) return;
+            CompiledAssembly c = island.get();
+            java.util.function.ToDoubleFunction<CompiledAssembly> q = c == null ? null : quantity.get();
+            if (q == null) return;
+            solver = c.solver();
+            listener = s -> {
+                double x;
+                try {
+                    x = q.applyAsDouble(c);
+                } catch (RuntimeException e) {
+                    return;
+                }
+                if (!Double.isFinite(x)) return;
+                synchronized (this) {
+                    double t = s.time();
+                    if (Double.isFinite(lastT) && t > lastT) {
+                        integral += 0.5 * (x + lastV) * (t - lastT);
+                        span += t - lastT;
+                    }
+                    lastT = t;
+                    lastV = x;
+                }
+            };
+            solver.addStepListener(listener);
+        }
+
+        @Override
+        synchronized double mean() {
+            if (solver != null) {
+                solver.removeStepListener(listener);
+                solver = null;
+            }
+            return span > 1e-3 ? integral / span : super.mean();
         }
     }
 

@@ -126,7 +126,22 @@ public final class MixtureBranch implements Element {
         return this;
     }
 
+    /** A valve whose plug is on a sliding body (as {@link FluidBranch#withPlug}). */
+    public MixtureBranch withPlug(AngleTracker slide, double seat, double sense, double travel) {
+        this.cam = slide;
+        this.plug = true;
+        this.camPhase = seat;
+        this.camLap = sense * Math.max(Math.abs(travel), 1e-6);
+        return this;
+    }
+
+    private boolean plug;
+
     double camLift(double theta) {
+        if (plug) {
+            double u = Math.max(0, Math.min(1, (theta - camPhase) / camLap));
+            return u * u * (3 - 2 * u);
+        }
         double u = (Math.cos(theta - camPhase) - camLap) / (1 - camLap);
         u = Math.max(0, Math.min(1, u));
         return u * u * (3 - 2 * u);

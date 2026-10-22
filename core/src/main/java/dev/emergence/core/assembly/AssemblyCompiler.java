@@ -2863,6 +2863,13 @@ public final class AssemblyCompiler {
                 b.setOpening(1);
                 return;
             }
+            double[] plug = plugs.computeIfAbsent(v.id(), k -> findPlug(v));
+            if (plug.length > 0) {
+                // a valve whose plug is on a slide: opened by the slide's travel (no hand wheel)
+                b.withPlug(plugBody.get(v.id()).tracker, plug[0], plug[1], plug[2]);
+                b.setOpening(1);
+                return;
+            }
             b.setOpening(v.switchClosed() ? 1 : 0);
             c.mixtureValves.computeIfAbsent(v.id(), kk -> new ArrayList<>()).add(b);
         }
@@ -3014,7 +3021,49 @@ public final class AssemblyCompiler {
                 b.setOpening(1);
                 return false;
             }
+            double[] plug = plugs.computeIfAbsent(valve.id(), k -> findPlug(valve));
+            if (plug.length > 0) {
+                b.withPlug(plugBody.get(valve.id()).tracker, plug[0], plug[1], plug[2]);
+                b.setOpening(1);
+                return false;
+            }
             return true;
+        }
+
+        final Map<Long, double[]> plugs = new HashMap<>();
+        final Map<Long, CompiledAssembly.Body> plugBody = new HashMap<>();
+
+        /**
+         * The slide that works a valve's plug: the first part found looking out from the valve across its axis (through
+         * empty cells, up to 12: a rod) that rides a sliding body moving along that line. Pushed fully in towards the
+         * valve the plug is seated; drawn back it opens over the slide's stroke ({@code plug_travel} [m] on the valve
+         * for a shorter one). Returns {seat displacement, sense, travel} or an empty array.
+         */
+        double[] findPlug(Part valve) {
+            CompiledAssembly.Body vb = c.bodyOfPart.get(valve.id());
+            if (vb != null && !vb.isStatic) return new double[0];
+            int a0 = valve.axis().axis();
+            for (Dir d : Dir.values()) {
+                if (d.axis() == a0) continue;
+                for (int k = 1; k <= 12; k++) {
+                    List<Part> here = a.at(valve.minX() + d.dx * k, valve.minY() + d.dy * k, valve.minZ() + d.dz * k);
+                    if (here.isEmpty()) continue;
+                    CompiledAssembly.Body slide = null;
+                    for (Part q : here) {
+                        CompiledAssembly.Body bq = c.bodyOfPart.get(q.id());
+                        if (bq != null && bq.slider && Math.abs(Math.abs(bq.axis.dot(d.vec())) - 1) < 1e-9) slide = bq;
+                    }
+                    if (slide == null) break;
+                    double stroke = slide.strokeHi - slide.strokeLo;
+                    if (!(stroke > 0)) break;
+                    // moving towards the valve is along −d: the end it seats at, and the way it opens
+                    boolean inIsUp = slide.axis.dot(d.vec()) < 0;
+                    double pt = valve.param("plug_travel", 0), travel = pt > 0 ? Math.min(pt, stroke) : stroke;
+                    plugBody.put(valve.id(), slide);
+                    return new double[]{inIsUp ? slide.strokeHi : slide.strokeLo, inIsUp ? -1 : 1, travel};
+                }
+            }
+            return new double[0];
         }
 
         final Map<Long, Object[]> cams = new HashMap<>();

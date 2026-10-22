@@ -727,7 +727,7 @@ public final class CompiledAssembly {
         return v == null ? null : v.fluid().name();
     }
 
-    private List<FluidBranch> branchesOf(long partId) {
+    public List<FluidBranch> branchesOf(long partId) {
         List<FluidBranch> out = new ArrayList<>();
         for (dev.emergence.core.sim.Element e : network.elements()) {
             if (e instanceof FluidBranch b && b.touches(fluidOfPart.get(partId))) out.add(b);

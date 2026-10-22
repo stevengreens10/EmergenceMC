@@ -424,6 +424,7 @@ public final class PartParameters {
                 .log().real("bore", "Seat bore", "m", 1e-5, 0.056, PartGeometry.DEFAULT_PIPE_BORE, "The opening at its seat when open.")
                 .choice("fluid", "Fluid", 0, fluids, "What it passes.")
                 .log().real("relief", "Relief pressure", "Pa", 0, 1e7, 0, "0: an ordinary valve. Above 0 it is a safety valve: it lifts by itself at this pressure.")
+                .adv().real("plug_travel", "Plug travel", "m", 0, 1, 0, "With a rod on a slide pointing into its side, the slide works its plug: seated pushed in, open this far back (0: over the whole stroke).")
                 .adv().shown("%", 100).real("lap", "Lap", "", 0, 1, 0, "Worked by a cam: how much of the cam's turn it stays shut.")
                 .build();
         new B(PartKind.ROTOR).made("aluminium_6061", MECHANICAL)

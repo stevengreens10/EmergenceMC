@@ -190,6 +190,12 @@ A₁/A₂ × 150.7 mm = 24.11 mm; the 4.6 % surplus is water drawn in through bo
 ram coasts up over a vapour cavity (lowest ram pressure 3.1 kPa ≈ p_v); the outlet valve holds it and the release
 valve lets it down.
 
+Slide valve (`DemoExhibitsTest.slideValveThrottlesWithItsRod`): built with its rod pushed home, the plug seated, the
+10 bar receiver holds and the rotor stands. Drawn back 31.6 mm by hand, the seat passes 0.021 kg/s, the rotor reaches
+74 rad/s, and the receiver runs down to 1.01 bar in 2 s. Pushed home again, the seat passes about 10⁻⁶ kg/s, the rod
+resting 0.34 mm off its seat after its collar's rebound. The receiver's pressure then rises 1.12 → 1.30 bar as its
+walls warm the air its expansion cooled (its mass, not its pressure, is what the seat holds).
+
 Cavitation (`FluidValidationTest`): water drained from a closed 0.1 L vessel towards a 200 Pa sink holds at 3.32 kPa
 (p_v = 3.16 kPa by Antoine at 25 °C, CRC 3.17 kPa) while 7 % of it leaves, mass conserved; ∂ρ/∂p and ∂ρ/∂T match
 finite differences across the onset.

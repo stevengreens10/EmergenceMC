@@ -1189,6 +1189,56 @@ class DemoExhibitsTest {
     }
 
     /** The jack: strokes of the pump ratchet the ram up through the check valves; it holds; the release lets it down. */
+    /**
+     * The slide valve: shut as built (the rod pushed in, its plug seated) — the receiver holds its air and the rotor
+     * stands; the rod drawn back by hand opens it and the rotor spins up on the air; pushed back in, the flow stops and
+     * the receiver holds what is left (its pressure rising a little as its walls warm the air the expansion cooled).
+     */
+    @Test
+    void slideValveThrottlesWithItsRod() {
+        Exhibit e = MechanicsExhibits.slideValve();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long knob = b.id(e, "knob"), receiver = b.id(e, "receiver"), rod = b.id(e, "rod"), shaft = b.id(e, "shaft");
+        // the flow through the seat: the valve's passage that its plug works
+        var seat = c.branchesOf(b.id(e, "valve")).stream().filter(dev.emergence.core.sim.elements.FluidBranch::hasCam).findFirst().orElseThrow();
+        java.util.function.DoubleSupplier through = () -> Math.abs(seat.massFlow(c.solverView()));
+        run(c, 2);
+        double p0 = c.fluid(receiver)[0], w0 = Math.abs(c.probe(shaft).angularVelocity());
+        // draw the rod back
+        for (int i = 0; i < 20; i++) {
+            c.setPushEffort(knob, 1);
+            c.step(0.05);
+        }
+        c.setPushEffort(knob, 0);
+        double out = c.probe(rod).angle();
+        c.step(0.05);
+        double q0 = through.getAsDouble(); // fully open, the receiver still near 10 bar
+        run(c, 2);
+        double p1 = c.fluid(receiver)[0], w1 = Math.abs(c.probe(shaft).angularVelocity()), q1 = through.getAsDouble();
+        // and push it back in
+        for (int i = 0; i < 20; i++) {
+            c.setPushEffort(knob, -1);
+            c.step(0.05);
+        }
+        c.setPushEffort(knob, 0);
+        double in = c.probe(rod).angle();
+        run(c, 0.5);
+        double p2 = c.fluid(receiver)[0], q2 = through.getAsDouble();
+        run(c, 3);
+        double p3 = c.fluid(receiver)[0], q3 = through.getAsDouble();
+        System.out.printf("slide valve: shut %.0f rad/s at %.2f bar; rod out %.1f mm → %.0f rad/s, %.2f bar; rod in %.1f mm → %.3f bar → %.3f bar%n",
+                w0, p0 / 1e5, 1e3 * out, w1, p1 / 1e5, 1e3 * in, p2 / 1e5, p3 / 1e5);
+        assertTrue(Math.abs(out) > 0.025, "the rod drawn back to its collar: " + out);
+        assertTrue(Math.abs(in) < 0.002, "the rod pushed back in: " + in);
+        assertTrue(w0 < 1 && p0 > 9.9e5, "shut as built: the rotor stands, the receiver full");
+        assertTrue(w1 > 50 && p1 < p0 - 1e4, "open: the air spins the rotor up as the receiver empties: " + w1 + " rad/s");
+        // (its pressure rises as the walls warm the air its expansion cooled; nothing passes the seat)
+        System.out.printf("slide valve: through the seat %.3g kg/s just opened, %.3g as the receiver ran out; %.3g and %.3g kg/s shut again (rod at %.2f mm)%n",
+                q0, q1, q2, q3, 1e3 * c.probe(rod).angle());
+        assertTrue(q2 < 1e-3 * q0 && q3 < 1e-3 * q0, "shut again: next to nothing passes the seat");
+    }
+
     @Test
     void hydraulicJackRatchetsUp() {
         Exhibit e = MechanicsExhibits.hydraulicJack();

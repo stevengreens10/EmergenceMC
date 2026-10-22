@@ -236,7 +236,13 @@ self-heating error appears naturally. A RESISTOR part with an `ntc_beta` paramet
   **Relief/check valves** (`relief` = cracking pressure): spring-loaded discs passing flow only along +axis,
   lift ∝ excess pressure. **Cam-worked valves**: a valve whose stem lines up with an eccentric on a turning
   shaft opens with it, opening = smoothstep((cos(θ − θ_c) − lap)/(1 − lap)); the eccentric's `phase` sets
-  the timing, `lap` the open fraction of the revolution (valve-gear forces neglected).
+  the timing, `lap` the open fraction of the revolution (valve-gear forces neglected). **Slide-worked (plug)
+  valves**: a valve with a rod on a slide pointing into its side (the first part looking out across its axis, through
+  up to 12 empty cells, riding a slider along that line) has its plug on the rod. Pushed in to the stroke's end nearest
+  the valve the plug is seated; drawn back it opens as smoothstep(travel / `plug_travel`), over the whole stroke unless
+  `plug_travel` is shorter. In steam, water, air and gas-mixture passages alike. The plug is balanced: the fluid's force
+  on it is not modelled, so no work passes between flow and slide. A throttle any moving thing can work: a hand, a
+  governor's sleeve, a float.
 
 ## Brake pad (`BRAKE` part)
 Dry Coulomb friction τ = μ·F·r between the turning body in front of the pad and the stationary frame

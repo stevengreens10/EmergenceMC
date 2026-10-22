@@ -938,3 +938,13 @@ meanwhile (parts placed tick after tick), a compile is interrupted at the compil
 compiles had queued up behind each other. A stress run with every compile sent off-thread found only tests that read a
 machine in the tick it was built. In passing: the in-world test server ticks about a millisecond apart, so "120 ticks"
 of waiting there was 140 ms.
+
+**Valves worked by a slide.** A valve could be opened by hand or by a cam on a turning shaft. Now a rod on a slide
+pointing into its side carries its plug: pushed home, the plug seats; drawn back, the valve opens with the travel. The
+new exhibit, Slide valve, is the air turbine's receiver throttled that way by a rod with a knob. The first try, water
+run from a raised tank, could not work: plain water always fills its vessel (a hydraulic circuit, no free surface). Two
+honest surprises in the tests. A rod pushed home hard bounced off its collar and rolled back out on a ball bushing's
+μ = 0.003; a valve stem runs in a packed gland, so its bearing now has the drag of one. And after the receiver had
+emptied through the valve, its pressure rose again behind the shut plug, 1.12 → 1.30 bar, as the walls warmed the air
+its expansion had cooled. The plug is taken as balanced for now, so the fluid's force on it is not modelled. The
+point is what can move such a rod: a governor's sleeve throttling an engine is next.

@@ -173,6 +173,47 @@ public final class MechanicsExhibits {
     }
 
     /**
+     * A throttle worked by a slide: a receiver of air at 10 bar discharges through a valve into a duct with a bladed
+     * rotor. The valve's plug is on a rod in a linear bearing pointing into its side — pushed in, the plug sits in its
+     * seat; drawn back, the valve opens in proportion to the travel, and the rotor spins up. Nothing turns a hand wheel:
+     * whatever moves the rod sets the flow (a hand here; a governor's sleeve, a float).
+     */
+    public static Exhibit slideValve() {
+        Exhibit e = new Exhibit("slidevalve", "Slide valve",
+                List.of("SLIDE VALVE", "Pull the rod out:", "the air runs the rotor.", "Push it in: shut"),
+                "The valve between the air receiver and the turbine's duct has no hand wheel. Its plug is on the end "
+                        + "of the rod beside it, which slides in a linear bearing: pushed in, the plug sits in its seat "
+                        + "and nothing passes; drawn back, the seat opens in proportion to how far, up to its full 10 mm "
+                        + "bore at 3 cm. Air at 10 bar rushes through and spins the bladed rotor in the duct; push the rod "
+                        + "part way back and it throttles the flow and the rotor slows. Friction in the bearing holds the "
+                        + "rod wherever you leave it (its bearing is packed stiff, as a valve stem's gland is). Any moving thing can work such a rod — a flyball governor's sleeve "
+                        + "throttling an engine as it speeds up, a float closing the inlet of a cistern as it fills.");
+        String st = "steel_1045";
+        e.fill(BLOCK, st, 0, 0, 7, 3, 0, 9, Dir.UP);
+        e.name("receiver", e.fill(TANK, st, 0, 1, 7, 3, 3, 9, Dir.UP, "pressure", 1e6, "wall", 0.004, "gauge_range", 16));
+        e.name("valve", e.add(VALVE, "brass", 4, 2, 8, Dir.EAST, "bore", 0.010));
+        e.add(PIPE, st, 5, 2, 8, Dir.EAST, "bore", 0.04);
+        e.name("rotor", e.add(ROTOR, "aluminium_6061", 6, 2, 8, Dir.EAST, "blade_angle", 60, "pitch", 1));
+        e.add(PIPE, st, 7, 2, 8, Dir.EAST, "bore", 0.04);
+        e.add(PIPE, st, 7, 3, 8, Dir.UP, "bore", 0.04);
+        e.name("shaft", e.fill(SHAFT, st, 6, 2, 8, 13, 2, 8, Dir.EAST, "diameter", 0.012));
+        e.add(BEARING, st, 9, 2, 8, Dir.EAST);
+        e.add(BEARING, st, 13, 2, 8, Dir.EAST);
+        e.fill(BLOCK, st, 9, 0, 8, 9, 1, 8, Dir.UP);
+        e.fill(BLOCK, st, 13, 0, 8, 13, 1, 8, Dir.UP);
+        e.name("disk", e.add(BLOCK, "aluminium_6061", 11, 2, 8, Dir.EAST, "fill", 0.15));
+        // the rod: across the valve's axis, a cell clear of it (touching, it would be welded to the valve), in a linear
+        // bearing on a column; built pushed in, it may be drawn back 3 cm; an oak knob on its end. The bearing is packed
+        // stiff, as a valve stem's gland is (a free ball bushing let the rod, pushed home hard, bounce off its collar
+        // and roll back out)
+        e.name("rod", e.fill(SHAFT, st, 4, 2, 10, 4, 2, 12, Dir.SOUTH, "diameter", 0.01));
+        e.add(LINEAR_BEARING, st, 4, 2, 11, Dir.SOUTH, "travel_fwd", 0.03, "travel_back", 0, "viscosity", 30);
+        e.fill(BLOCK, st, 4, 0, 11, 4, 1, 11, Dir.UP);
+        e.name("knob", e.add(BLOCK, "oak", 4, 2, 13, Dir.UP, "fill", 0.3));
+        return e.view(6.5, 6, 18, 22);
+    }
+
+    /**
      * Rack and pinion: a crank turns a pinion that meshes with a toothed bar on a vertical slide carrying a lead
      * weight. Every turn lifts the rack one pitch circumference; let go and the weight runs it back down.
      */

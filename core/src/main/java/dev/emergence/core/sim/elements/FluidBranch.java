@@ -55,6 +55,10 @@ import dev.emergence.core.units.PhysicalConstants;
  * <b>Cam-operated valves</b> ({@link #withCam}): the orifice opening follows a cam (an eccentric) on a turning
  * body, opening fraction smoothstep((cos(θ − θ_c) − c)/(1 − c)): open while the cam's throw is within
  * arccos(c) of pointing at the valve. Valve gear inertia, spring and friction forces on the cam are neglected.
+ * <p>
+ * <b>Plug valves</b> ({@link #withPlug}): the opening follows a sliding body's travel instead — a rod pushed into the
+ * valve seats its plug; drawn back, it opens in proportion, smoothstep(s·(x − x_seat)/travel). The plug is taken as
+ * balanced (the fluid's force on it is not modelled: no work passes between the flow and the slide).
  */
 public final class FluidBranch implements Element {
     private final Node pa, ta, pb, tb;
@@ -229,8 +233,26 @@ public final class FluidBranch implements Element {
         return this;
     }
 
-    /** Cam opening fraction at body angle θ. */
+    /**
+     * The valve's plug on a sliding body: seated at displacement {@code seat}, fully open {@code travel} [m] from it in
+     * the direction {@code sense} (±1).
+     */
+    public FluidBranch withPlug(AngleTracker slide, double seat, double sense, double travel) {
+        this.cam = slide;
+        this.plug = true;
+        this.camPhase = seat;
+        this.camLap = sense * Math.max(Math.abs(travel), 1e-6);
+        return this;
+    }
+
+    private boolean plug;
+
+    /** Cam opening fraction at body angle θ (for a plug: at the slide's displacement). */
     public double camLift(double theta) {
+        if (plug) {
+            double u = Math.max(0, Math.min(1, (theta - camPhase) / camLap));
+            return u * u * (3 - 2 * u);
+        }
         double u = (Math.cos(theta - camPhase) - camLap) / (1 - camLap);
         u = Math.max(0, Math.min(1, u));
         return u * u * (3 - 2 * u);

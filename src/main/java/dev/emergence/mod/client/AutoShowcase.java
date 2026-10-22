@@ -348,6 +348,30 @@ public final class AutoShowcase {
                 STEPS.add(new Step(10, view, shot.apply("pumped")).check(key + " pumping raises the ram",
                         () -> atLeast("ram's rise [mm]", 1e3 * (position(server, ram, PartKind.SHAFT) - before[0]), 0.5)));
             }
+            if (id.equals("slidevalve")) {
+                // draw the rod out by its knob: the plug leaves its seat and the air spins the rotor; push it home and the
+                // receiver holds what is left (its pressure even rising as its walls warm the air the expansion cooled)
+                BlockPos rod = at.apply("rod"), receiver = at.apply("receiver");
+                PlayerHand.Target knob = part.apply("knob", PartKind.BLOCK);
+                double[] p0 = {Double.NaN}, x0 = {Double.NaN}, pShut = {Double.NaN};
+                STEPS.add(new Step(0, () -> {
+                    p0[0] = pressure(server, receiver, PartKind.TANK);
+                    x0[0] = where(server, rod, PartKind.SHAFT);
+                }, null));
+                STEPS.add(new Step(6, NOTHING, null).act(PlayerHand.hold(key + " draw the rod out", knob, false)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+                STEPS.add(new Step(8, view, shot.apply("open"))
+                        .check(key + " the rod is drawn back", () -> atLeast("rod's travel [mm]", 1e3 * Math.abs(where(server, rod, PartKind.SHAFT) - x0[0]), 20))
+                        .check(key + " the air turns the rotor", () -> atLeast("shaft speed [rad/s]", Math.abs(spin(server, at.apply("shaft"), PartKind.SHAFT)), 5))
+                        .check(key + " the receiver empties through the seat", () -> atLeast("receiver pressure drop [kPa]",
+                                1e-3 * (p0[0] - pressure(server, receiver, PartKind.TANK)), 10)));
+                STEPS.add(new Step(6, NOTHING, null).act(PlayerHand.hold(key + " push the rod home", knob, true)));
+                STEPS.add(new Step(0, () -> pShut[0] = pressure(server, receiver, PartKind.TANK), null).act(PlayerHand.release()));
+                STEPS.add(new Step(30, view, shot.apply("shut"))
+                        .check(key + " the rod is home", () -> atMost("rod's travel [mm]", 1e3 * Math.abs(where(server, rod, PartKind.SHAFT) - x0[0]), 3))
+                        .check(key + " the plug seated, the receiver holds its air", () -> atLeast("receiver pressure change [kPa]",
+                                1e-3 * (pressure(server, receiver, PartKind.TANK) - pShut[0]), -1)));
+            }
             if (id.equals("burst")) {
                 // switch the heaters on: the copper box bursts within a minute of simulated time (longer in the tour,
                 // where the whole gallery in view shares the time budget)

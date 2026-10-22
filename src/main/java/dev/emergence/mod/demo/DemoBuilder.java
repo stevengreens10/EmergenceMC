@@ -64,6 +64,7 @@ public final class DemoBuilder {
         List<Exhibit> exhibits = Exhibits.all();
         List<String> problems = new java.util.ArrayList<>();
         var sim = dev.emergence.mod.sim.SimulationManager.get(level);
+        sim.awaitCompiles(); // (a slow machine may still be compiling off the server thread)
         {
             Exhibit e = exhibits.get(i);
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);

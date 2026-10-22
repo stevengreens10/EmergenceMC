@@ -111,6 +111,9 @@ public final class SimulationManager {
         /** For the pace log: simulated and wall time when last logged. */
         double paceSim = Double.NaN;
         long paceWall;
+        /** Its compiling, while a worker does it (not stepped meanwhile: {@link #compiled} is null). */
+        java.util.concurrent.Future<CompiledAssembly> pending;
+        long pendingSince;
         /** This tick's step (possibly on a worker thread): its length, its cost, and what came of it. */
         double stepDt;
         long stepNanos;
@@ -215,6 +218,7 @@ public final class SimulationManager {
             long ms = (System.nanoTime() - r0) / 1_000_000;
             if (ms > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: rebuilding the islands around {} changed blocks took {} ms", n, ms);
         }
+        installCompiled();
         if (paused) return;
         Set<Island> islands = new HashSet<>(islandOf.values());
         double watchedTotal = 0, nearTotal = 0, farTotal = 0;
@@ -626,8 +630,15 @@ public final class SimulationManager {
         }
         AssemblyState merged = AssemblyState.empty();
         for (Island i : old) {
-            if (i.compiled != null) {
-                AssemblyState s = i.compiled.exportState();
+            // (one still compiling: the state it is being compiled from — it has not run since)
+            AssemblyState from = i.compiled != null ? i.compiled.exportState() : i.pending != null ? i.startState : null;
+            if (i.pending != null) {
+                if (DEBUG_ISLANDS) EmergenceMod.LOG.info("Island at {} rebuilt while still compiling", i.blocks.iterator().next());
+                i.pending.cancel(true); // (interrupted: the compile stops at its next phase, the worker freed for the new one)
+                i.pending = null;
+            }
+            if (from != null) {
+                AssemblyState s = from;
                 merged.temperatures().putAll(s.temperatures());
                 merged.bodyMotion().putAll(s.bodyMotion());
                 merged.coilCurrents().putAll(s.coilCurrents());
@@ -664,7 +675,7 @@ public final class SimulationManager {
                 }
             }
             AssemblyState st = mergeWithSaved(isl, merged);
-            isl.compiled = compile(isl, st);
+            compileAsync(isl, st);
             if (arrivedNow) isl.settleUntil = tickCount + SETTLE_TICKS;
         }
     }
@@ -898,12 +909,99 @@ public final class SimulationManager {
     /** A rebuild, compile or step taking longer than this [ms] is logged: the server's tick is 50 ms. */
     private static final long SLOW_MS = 1000;
 
+    /** Compiles the island now, on this thread (a restart after a failure). */
     private CompiledAssembly compile(Island isl, AssemblyState state) {
+        Assembly asm = prepare(isl, state);
+        return asm == null ? null : finish(isl.blocks.iterator().next(), isl.blocks.size(), asm, state);
+    }
+
+    /**
+     * Compiles the island off the server thread: the assembly and what the compiler asks of the world are taken now,
+     * the compiling done by a worker. The server waits for it a moment ({@link #COMPILE_WAIT_MS}), so an ordinary
+     * machine is ready the same tick, as before; a slow one (an optical bench tracing its light, a second or more)
+     * is left pending, and the machine waits, its state as it was, while everything else runs on — not the server.
+     */
+    private void compileAsync(Island isl, AssemblyState state) {
+        Assembly asm = prepare(isl, state);
+        isl.compiled = null;
+        if (asm == null) return;
+        BlockPos at = isl.blocks.iterator().next();
+        int n = isl.blocks.size();
+        java.util.concurrent.Future<CompiledAssembly> job = COMPILE_POOL.submit(() -> finish(at, n, asm, state));
+        try {
+            isl.compiled = COMPILE_WAIT_MS < 0 ? job.get() : job.get(COMPILE_WAIT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            isl.pending = job;
+            isl.pendingSince = tickCount;
+        } catch (java.util.concurrent.ExecutionException e) {
+            EmergenceMod.LOG.error("Failed to compile island", e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            isl.pending = job;
+        }
+    }
+
+    /** Installs the islands whose compiling has finished. */
+    private void installCompiled() {
+        for (Island isl : new HashSet<>(islandOf.values())) {
+            if (isl.pending == null || !isl.pending.isDone()) continue;
+            try {
+                isl.compiled = isl.pending.get();
+            } catch (java.util.concurrent.ExecutionException e) {
+                EmergenceMod.LOG.error("Failed to compile island", e.getCause());
+            } catch (InterruptedException | java.util.concurrent.CancellationException e) {
+                isl.compiled = null;
+            }
+            if (DEBUG_ISLANDS) EmergenceMod.LOG.info("Island at {} compiled off the server thread ({} ticks){}", isl.blocks.iterator().next(),
+                    tickCount - isl.pendingSince, isl.compiled == null ? ", failed" : "");
+            isl.pending = null;
+        }
+    }
+
+    private static final boolean DEBUG_ISLANDS = Boolean.getBoolean("emergence.debugIslands");
+
+    /** Waits for every island still compiling and installs it (the demo builder's check reads them all at once). */
+    public void awaitCompiles() {
+        for (Island isl : new HashSet<>(islandOf.values())) {
+            if (isl.pending == null) continue;
+            try {
+                isl.pending.get();
+            } catch (Exception ignored) {
+                // reported when installed
+            }
+        }
+        installCompiled();
+    }
+
+    /**
+     * How long the server waits for a compile before leaving it pending [ms]; where the budgets are lifted (in-world
+     * tests, demo generation) it waits for it whatever it takes, as they expect every machine compiled at once.
+     */
+    private static final long COMPILE_WAIT_MS = Long.getLong("emergence.compileWaitMs", GLOBAL_BUDGET_MS >= 1e6 ? -1 : 20);
+
+    /** Two workers compiling (a compile is parallel within itself where it can be: magnet tables, light by band). */
+    private static final java.util.concurrent.ExecutorService COMPILE_POOL = java.util.concurrent.Executors.newFixedThreadPool(2, r -> {
+        Thread t = new Thread(r, "Emergence compile");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /** Compiles a prepared assembly. It touches nothing of the world, so it may run on any thread. */
+    private static CompiledAssembly finish(BlockPos at, int blocks, Assembly asm, AssemblyState state) {
         long c0 = System.nanoTime();
-        CompiledAssembly c = compileTimed(isl, state);
-        long ms = (System.nanoTime() - c0) / 1_000_000;
-        if (ms > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: compiling the island at {} ({} blocks) took {} ms", isl.blocks.iterator().next(), isl.blocks.size(), ms);
-        return c;
+        try {
+            CompiledAssembly c = AssemblyCompiler.compile(asm, state).wallBudget(STEP_WALL_MS);
+            for (String w : c.warnings()) EmergenceMod.LOG.debug("Island warning: {}", w);
+            long ms = (System.nanoTime() - c0) / 1_000_000;
+            if (ms > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: compiling the island at {} ({} blocks) took {} ms", at, blocks, ms);
+            if (DEBUG_ISLANDS) EmergenceMod.LOG.info("Island at {} ({} parts) compiled in {} ms on {}", at, asm.parts().size(), ms, Thread.currentThread().getName());
+            return c;
+        } catch (AssemblyCompiler.Cancelled e) {
+            return null; // no longer wanted: the machine changed again
+        } catch (RuntimeException e) {
+            EmergenceMod.LOG.error("Failed to compile island", e);
+            return null;
+        }
     }
 
     /**
@@ -914,7 +1012,8 @@ public final class SimulationManager {
      */
     private static final double STEP_WALL_MS = Double.parseDouble(System.getProperty("emergence.stepWallMs", GLOBAL_BUDGET_MS >= 1e6 ? "0" : "60"));
 
-    private CompiledAssembly compileTimed(Island isl, AssemblyState state) {
+    /** The island's parts as an assembly, with what the compiler will ask of the world read now (on this thread). */
+    private Assembly prepare(Island isl, AssemblyState state) {
         isl.startState = state;
         Assembly asm = new Assembly();
         isl.partPos.clear();
@@ -941,10 +1040,17 @@ public final class SimulationManager {
         asm.ambientPressure(airPressure(first));
         // open pipe ends inside world blocks are capped; ends in air (or water...) stay open
         int res = isl.resolution;
+        // (the blocks beside it, read now: the compiler may run on another thread; a pipe's end looks one cell on)
+        Set<BlockPos> own = new HashSet<>(isl.blocks), solidCells = new HashSet<>();
+        for (BlockPos b : own) {
+            for (Direction d : Direction.values()) {
+                BlockPos n = b.relative(d);
+                if (!own.contains(n) && (!level.isLoaded(n) || level.getBlockState(n).isSolid())) solidCells.add(n);
+            }
+        }
         asm.solidWhen((x, y, z) -> {
             BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
-            if (isl.blocks.contains(bp)) return false;
-            return !level.isLoaded(bp) || level.getBlockState(bp).isSolid();
+            return !own.contains(bp) && solidCells.contains(bp);
         });
         asm.anchoredWhen(p -> anchored.containsKey(p.id()));
         if (asm.parts().isEmpty()) return null;
@@ -952,14 +1058,7 @@ public final class SimulationManager {
             EmergenceMod.LOG.info("Compiling island {} parts, anchored {}", asm.parts().size(),
                     asm.parts().stream().filter(p -> anchored.containsKey(p.id())).map(p -> p.kind() + "@" + p.minY()).toList());
         }
-        try {
-            CompiledAssembly c = AssemblyCompiler.compile(asm, state).wallBudget(STEP_WALL_MS);
-            for (String w : c.warnings()) EmergenceMod.LOG.debug("Island warning: {}", w);
-            return c;
-        } catch (RuntimeException e) {
-            EmergenceMod.LOG.error("Failed to compile island", e);
-            return null;
-        }
+        return asm;
     }
 
     /** True if the part's cell box reaches a face of its block that touches a solid world block. */
@@ -1306,8 +1405,9 @@ public final class SimulationManager {
     }
 
     private void saveIsland(Island isl, boolean markChanged) {
-        if (isl.compiled == null) return;
-        AssemblyState s = isl.compiled.exportState();
+        // (still compiling: the state it is being compiled from, which it has not run on from)
+        AssemblyState s = isl.compiled != null ? isl.compiled.exportState() : isl.pending != null ? isl.startState : null;
+        if (s == null) return;
         for (BlockPos b : isl.blocks) {
             AssemblyBlockEntity be = be(b);
             if (be == null) continue;

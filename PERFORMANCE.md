@@ -37,7 +37,13 @@ A machine is compiled when it is built, changed or loaded: on the server thread,
 take 14 s in all; the slowest were the optics: the colour-filter bench 6.2 s and the spectrometer 2.7 s. Light from
 hot filaments is traced as ray tubes band by band (18 bands, both hemispheres: 108 traces for the filters' three
 lamps). The bands are now traced side by side (each band's scene on one thread), so 1.6 s and 0.76 s. Magnet field
-tables were already sampled in parallel. Next: compile off the server thread altogether (NEXT_STEPS 0b.5).
+tables were already sampled in parallel. And compiling is off the server thread now. The world around the machine is
+read first, then a worker compiles while the server waits 20 ms. An ordinary machine is still ready the same tick; a
+slower one (an optical bench, a machine with magnets: 0.1–1.6 s) pauses, its state as it was, while the server and
+every other machine run on. A machine changed again while compiling has its stale compile interrupted at the
+compiler's next phase. In-world tests and demo generation wait for every compile, as before.
+(`-Demergence.compileWaitMs=0` sends every compile off-thread: the in-world tests then fail only where they read a
+machine the same tick it was built.)
 
 ## Time dilation
 Each island has a wall-clock budget of 12 ms per server tick. An island whose smoothed cost exceeds it

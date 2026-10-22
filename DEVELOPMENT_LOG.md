@@ -929,3 +929,12 @@ could have thrown while the tour added one).
 spectrometer 2.7 s. Each was a server freeze whenever either was built, changed or loaded. All of it was tracing light
 from hot filaments through the optics, band by band, as ray tubes. The 18 bands are independent, each with its own
 scene, so they are now traced side by side: 1.6 s and 0.76 s.
+
+**Compiling off the server thread.** Every change to a machine recompiled it on the server thread: a hitch for every
+player, from a tenth of a second (a machine with magnets) to over a second (an optical bench). Now the server takes
+the assembly and the world blocks around it, and a worker compiles. The server waits 20 ms, so an ordinary machine is
+ready the same tick as before; a slower one pauses, its state as it was, while everything else runs on. Rebuilt
+meanwhile (parts placed tick after tick), a compile is interrupted at the compiler's next phase. Left running, stale
+compiles had queued up behind each other. A stress run with every compile sent off-thread found only tests that read a
+machine in the tick it was built. In passing: the in-world test server ticks about a millisecond apart, so "120 ticks"
+of waiting there was 140 ms.

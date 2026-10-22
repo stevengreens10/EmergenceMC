@@ -83,7 +83,11 @@
       rejected steps per 2 s (the cylinders' gas the step limiter — combustion), ignition as an event; the steam
       engines' liquid/steam branches (`mdot[...]` laggards) may take the same two-form flow equation;
    4. (done: the steam engines run at 0.38× and 0.46× real time);
-   5. general: async island compilation, factorisation reuse for linear islands, cheaper conductor loads.
+   5. general: (done: islands step side by side on worker threads; compiling is off the server thread; contacts
+      have no node of their own) factorisation reuse for linear islands, series wire nodes (78 of the loudspeaker's
+      413 unknowns join exactly two conductors: eliminable, with their voltages rebuilt for probes);
+   6. in the game an island gets 12 ms a tick (35 ms while watched), not the bench's 50: the gas engine (50 ms) runs at
+      about 70 % while watched, the loudspeaker (190–360 ms) at 10–20 %.
    Expected: 1 and 2 reach real time; a fast combustion engine may stay costly (real time alone near a player, the
    slow-motion fallback when several are).
 

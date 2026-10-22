@@ -55,6 +55,20 @@ public final class AssemblyCompiler {
     }
 
     /**
+     * Thrown by a compile whose thread is interrupted: one no longer wanted (in the game, the machine changed again while
+     * it compiled off the server thread). Checked between the compiler's phases and its costlier steps.
+     */
+    public static final class Cancelled extends RuntimeException {
+        Cancelled() {
+            super("compile cancelled", null, false, false);
+        }
+    }
+
+    static void checkpoint() {
+        if (Thread.currentThread().isInterrupted()) throw new Cancelled();
+    }
+
+    /**
      * True if part p makes electrical contact through face d of its cell (x, y, z): a wire, a component's lead or
      * terminal there, or a conductor (renderers use this to draw leads only where they connect).
      */
@@ -114,15 +128,20 @@ public final class AssemblyCompiler {
             buildBodies();
             buildWireRuns();
             buildThermal();
+            checkpoint();
             buildMechanics();
             buildAero();
             buildBrakes();
+            checkpoint();
             buildFluids();
             buildJets();
+            checkpoint();
             buildElectrical();
             buildAbsorbedLight();
             c.fatigue = ShaftFatigue.build(a, c, prev);
-            c.network.compile();
+            checkpoint();
+            c.network.compile(); // (the magnet field tables)
+            checkpoint();
             applyPreviousElectricalState();
             // the thermal network stepped apart from the rest (see TransientSolver#multirate); -Demergence.multirate=false
             // steps everything together
@@ -1703,10 +1722,14 @@ public final class AssemblyCompiler {
                 }
             }
             buildBrushContacts();
+            checkpoint();
             buildOptics();
+            checkpoint();
             buildRadiation();
             buildElectrochemistry();
+            checkpoint();
             buildMagnetics();
+            checkpoint();
             buildEddyCurrents();
             buildAcoustics();
         }
@@ -2312,6 +2335,7 @@ public final class AssemblyCompiler {
             int nb = Photodiode.BAND_EDGES.length - 1;
             dev.emergence.core.optics.OpticalScene[] scenes = new dev.emergence.core.optics.OpticalScene[nb];
             for (Part src : parts) {
+                checkpoint();
                 Node tn = c.thermalOfPart.get(src.id());
                 if (tn == null || !c.leadsOfPart.containsKey(src.id()) || !conductive(src)) continue;
                 double tMax = Math.min(PartGeometry.failureTemperature(src), 5999);

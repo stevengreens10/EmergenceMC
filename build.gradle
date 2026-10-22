@@ -115,6 +115,8 @@ neoForge {
             // the tests check behaviour within tick counts, not throughput: no slow motion when they all run at once
             systemProperty 'emergence.globalBudgetMs', '1e9'
             systemProperty 'emergence.islandBudgetMs', '1e9'
+            // -Demergence.compileWaitMs=0: every compile left pending (the off-thread path, as a slow machine takes it)
+            if (System.getProperty('emergence.compileWaitMs')) systemProperty 'emergence.compileWaitMs', System.getProperty('emergence.compileWaitMs')
         }
         // Generates the showcase world: a game-test server (no EULA prompt, creative flat world) that
         // builds the exhibit gallery at spawn on start-up, runs the in-world tests and saves.

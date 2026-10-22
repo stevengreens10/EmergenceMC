@@ -65,7 +65,10 @@ class IslandDumpReplayTest {
         c.warnings().forEach(w -> System.out.println("warning: " + w));
         double seconds = Double.parseDouble(System.getProperty("diag.dumpSeconds", "1"));
         String[] probes = System.getProperty("diag.dumpProbe", "").isBlank() ? new String[0] : System.getProperty("diag.dumpProbe").split(",");
+        // -Ddiag.dumpCrank=<crank part id>:<s>: a hand on that crank for the first s seconds (as the tour's hand)
+        String[] crank = System.getProperty("diag.dumpCrank", "").isBlank() ? null : System.getProperty("diag.dumpCrank").split(":");
         for (int i = 0; i < Math.round(seconds / 0.05); i++) {
+            if (crank != null) c.setCrankEffort(Long.parseLong(crank[0]), (i + 1) * 0.05 <= Double.parseDouble(crank[1]) ? 1 : 0, false);
             c.step(0.05);
             if (probes.length == 0) System.out.printf("t=%.2f%n", c.time());
             else if ((i + 1) % 20 == 0) {

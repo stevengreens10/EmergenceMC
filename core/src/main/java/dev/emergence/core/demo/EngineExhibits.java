@@ -71,11 +71,14 @@ public final class EngineExhibits {
         // compression ratio 9: 3.75 mm of clearance over the 30 mm stroke
         int cyl = e.add(CYLINDER, st, 3, 5, 8, Dir.DOWN, "bore", 0.035, "ring_friction", 2.0, "clearance", 0.00375);
         e.name("cylinder", cyl);
-        // warm, as a hot-head engine is before it is started (its head heated for some minutes first)
-        e.init(cyl, new Exhibit.Initial(550, 0, 0));
+        // warm, as a hot-head engine stands with its glow plug on: near where the plug holds it after a while (left at
+        // 900 K, as one just stopped, it cools through a window near 650 K where the charge lights too early in its
+        // squeeze to give net work at a hand's speed, and a player arriving five minutes after it was built could not
+        // start it)
+        e.init(cyl, new Exhibit.Initial(480, 0, 0));
         int head = e.add(BLOCK, st, 3, 6, 8, Dir.UP, "fill", 0.3);
         e.name("head", head);
-        e.init(head, new Exhibit.Initial(900, 0, 0));
+        e.init(head, new Exhibit.Initial(520, 0, 0));
         // valves beside the cylinder, under the camshaft's cams
         e.name("exhaust", e.add(VALVE, "brass", 2, 5, 8, Dir.WEST, "bore", 0.010, "lap", 0.7));
         e.name("intake", e.add(VALVE, "brass", 4, 5, 8, Dir.WEST, "bore", 0.010, "lap", 0.7));

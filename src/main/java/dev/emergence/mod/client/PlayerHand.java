@@ -222,7 +222,8 @@ final class PlayerHand {
         for (int dx = -8; dx <= 8; dx++) {
             for (int dz = -8; dz <= 8; dz++) {
                 double x = bx + dx + 0.5, z = bz + dz + 0.5;
-                for (int k = 0; k <= 12 * 16; k++) {
+                // (from 4 blocks above the feet down to 20 below: the player may be up at a high viewpoint)
+                for (int k = 0; k <= 24 * 16; k++) {
                     double fy = by + 4 - k / 16.0;
                     AABB body = new AABB(x - 0.3, fy, z - 0.3, x + 0.3, fy + 1.8, z + 0.3);
                     if (!mc.level.noCollision(mc.player, body)) continue;
@@ -377,7 +378,8 @@ final class PlayerHand {
             if (ticks++ == 0) {
                 releaseAll(mc);
                 if (!plan(mc)) {
-                    fail(what + ": no spot within reach with a clear view of the " + t.kind.name().toLowerCase() + " at " + t.block.toShortString());
+                    fail(what + ": no spot within reach with a clear view of the " + t.kind.name().toLowerCase() + " at " + t.block.toShortString()
+                            + " (" + planFailure + ")");
                     return true;
                 }
                 // flown there (the item picked from the inventory on the way); in creative on landing, hovering only
@@ -441,15 +443,28 @@ final class PlayerHand {
          * plain view, as near the side the exhibit is watched from as may be — and, only if no such footing exists and
          * the job needs no sneaking (sneaking while flying sinks), hovering in creative flight.
          */
+        /** Why the last plan found nothing (for the failure's message). */
+        private String planFailure = "";
+
         private boolean plan(Minecraft mc) {
-            if (!(mc.level.getBlockEntity(t.block) instanceof AssemblyBlockEntity be)) return false;
+            if (!(mc.level.getBlockEntity(t.block) instanceof AssemblyBlockEntity be)) {
+                planFailure = "the client has no assembly there";
+                return false;
+            }
             PlacedPart part = null;
             for (PlacedPart p : be.parts()) if (p.kind == t.kind && part == null) part = p;
-            if (part == null) return false;
+            if (part == null) {
+                planFailure = "the client's block there holds no such part: " + be.parts().size() + " parts";
+                return false;
+            }
             // aim at the middle of the part's biggest box (on the wanted face, if one is wanted)
             AABB best = null;
             for (AABB b : PartShapes.boxes(be, part)) if (best == null || b.getSize() > best.getSize()) best = b;
-            if (best == null) return false;
+            if (best == null) {
+                planFailure = "the part has no shape";
+                return false;
+            }
+            planFailure = "no footing in reach with a clear line of sight";
             Vec3 c = best.getCenter();
             if (t.face != null) {
                 c = new Vec3(t.face.getStepX() > 0 ? best.maxX : t.face.getStepX() < 0 ? best.minX : c.x,

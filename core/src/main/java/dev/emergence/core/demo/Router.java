@@ -21,14 +21,20 @@ public final class Router {
     private final Map<Long, String> pinNet = new HashMap<>(), wireNet = new HashMap<>();
     private final Map<String, List<Long>> pins = new LinkedHashMap<>();
 
+    /** The exhibit's origin when this router was made: its box, pins and clear zones are given relative to it. */
+    private final int ox, oy, oz;
+
     public Router(Exhibit e, int x0, int y0, int z0, int x1, int y1, int z1) {
         this.e = e;
-        this.x0 = x0;
-        this.y0 = y0;
-        this.z0 = z0;
-        this.x1 = x1;
-        this.y1 = y1;
-        this.z1 = z1;
+        this.ox = e.ox;
+        this.oy = e.oy;
+        this.oz = e.oz;
+        this.x0 = x0 + ox;
+        this.y0 = y0 + oy;
+        this.z0 = z0 + oz;
+        this.x1 = x1 + ox;
+        this.y1 = y1 + oy;
+        this.z1 = z1 + oz;
         scan();
     }
 
@@ -64,9 +70,9 @@ public final class Router {
 
     /** Keeps a box of cells free of wire (the space a moving part sweeps through). */
     public Router keepClear(int ax, int ay, int az, int bx, int by, int bz) {
-        for (int x = ax; x <= bx; x++)
-            for (int y = ay; y <= by; y++)
-                for (int z = az; z <= bz; z++) blocked.add(key(x, y, z));
+        for (int x = ax + ox; x <= bx + ox; x++)
+            for (int y = ay + oy; y <= by + oy; y++)
+                for (int z = az + oz; z <= bz + oz; z++) blocked.add(key(x, y, z));
         return this;
     }
 
@@ -80,7 +86,8 @@ public final class Router {
         return pin(net, x, y, z, true);
     }
 
-    private Router pin(String net, int x, int y, int z, boolean shared) {
+    private Router pin(String net, int lx, int ly, int lz, boolean shared) {
+        int x = lx + ox, y = ly + oy, z = lz + oz;
         long k = key(x, y, z);
         if (blocked.contains(k)) throw new IllegalStateException("pin cell " + x + "," + y + "," + z + " of " + net + " is occupied");
         String other = pinNet.putIfAbsent(k, net);
@@ -183,8 +190,8 @@ public final class Router {
         for (var en : wireNet.entrySet()) {
             int[] c = cell(en.getKey());
             Double hot = insulation.get(en.getValue());
-            int idx = hot == null ? e.add(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "color", colour.get(en.getValue()))
-                    : e.add(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "color", colour.get(en.getValue()),
+            int idx = hot == null ? e.addAt(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "color", colour.get(en.getValue()))
+                    : e.addAt(PartKind.INSULATED_WIRE, "copper", c[0], c[1], c[2], Dir.UP, "color", colour.get(en.getValue()),
                     "max_temperature", hot);
             e.nets.put(idx, en.getValue());
         }

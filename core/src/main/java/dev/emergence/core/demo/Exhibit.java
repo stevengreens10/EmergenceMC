@@ -89,8 +89,26 @@ public final class Exhibit {
         this.description = description;
     }
 
+    /**
+     * Where the builder's own coordinates start: every part added from now on (and every {@link Router} made) is moved
+     * by this much — so one machine's builder can put it anywhere in a larger one. (0, 0, 0) by default.
+     */
+    int ox, oy, oz;
+
+    public Exhibit origin(int x, int y, int z) {
+        ox = x;
+        oy = y;
+        oz = z;
+        return this;
+    }
+
     /** Adds a single-cell part; returns its index. */
     public int add(PartKind k, String material, int x, int y, int z, Dir axis, Object... kv) {
+        return addAt(k, material, x + ox, y + oy, z + oz, axis, kv);
+    }
+
+    /** As {@link #add}, at absolute coordinates (the origin not applied). */
+    int addAt(PartKind k, String material, int x, int y, int z, Dir axis, Object... kv) {
         Map<String, Double> m = new LinkedHashMap<>();
         for (int i = 0; i + 1 < kv.length; i += 2) m.put((String) kv[i], ((Number) kv[i + 1]).doubleValue());
         int idx = parts.size();
@@ -107,7 +125,7 @@ public final class Exhibit {
         Map<String, Double> m = new LinkedHashMap<>();
         for (int i = 0; i + 1 < kv.length; i += 2) m.put((String) kv[i], ((Number) kv[i + 1]).doubleValue());
         int idx = parts.size();
-        parts.add(new PartDef(idx, k, material, x0, y0, z0, x1, y1, z1, axis, m));
+        parts.add(new PartDef(idx, k, material, x0 + ox, y0 + oy, z0 + oz, x1 + ox, y1 + oy, z1 + oz, axis, m));
         return idx;
     }
 

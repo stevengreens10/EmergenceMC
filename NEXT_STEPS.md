@@ -70,8 +70,16 @@
      - (fixed: the optocoupler's phototransistor burnt out in the noon sun before the tour came — a small receiver took
        its cell's whole face of sunlight as heat, 2.3 W; the gas engine missed its starting hand when it came mid-compile
        — a hand on a machine still compiling now waits for it);
-     - the PWM motor's hands found no spot within reach in the full tour (fine in a short one);
-     - the governed engine rose 5.9 % with its brake off in the world (0.7 % in the core);
+     - (fixed: the PWM motor's hands found no spot late in the full tour — the player stood at its high viewpoint and
+       the search for open sky stopped 8 blocks below the feet; a hand also waits for the client's chunks, and says
+       why a plan fails) confirm in the next full tour;
+     - (fixed: the governed engine 'rose 5.9–7.9 %' with its brake off — the tour compared two moments of its
+       stroke-by-stroke swing, the second inside the first surge; now ten-second means of its own time, 20 s after:
+       +0.4 % in the core) passed in the full tour of 2026-10-22 17:03 (150 of 155);
+     - (fixed: the gas engine would not start late in a full tour — its island, dumped at the fuel and replayed,
+       burnt its charges at hand speed without gaining: the head, built at 900 K, was cooling through a window
+       near 650 K where the charge lights too early; built near the glow plug's standing temperature, 485 K, it
+       starts in 2–3 s whenever cranked) confirmed in a tour of it;
      - one of the 17 in-world tests failed once in five demo builds (not captured);
    - the full tour, then every exhibit's checks green.
 

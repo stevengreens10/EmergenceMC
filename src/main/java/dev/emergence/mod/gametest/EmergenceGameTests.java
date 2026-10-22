@@ -224,7 +224,7 @@ public final class EmergenceGameTests {
     }
 
     /** Phase 4 in the world: the EM-4 computer's chips run the ROM program (PC advances, ACC follows it). */
-    @GameTest(template = "arena", timeoutTicks = 400, batch = "computer")
+    @GameTest(template = "arena", timeoutTicks = 800, batch = "computer")
     public static void computerRunsItsProgramInWorld(GameTestHelper h) {
         BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
         dev.emergence.core.demo.Exhibit ex = dev.emergence.core.demo.ComputerExhibit.build();
@@ -234,7 +234,8 @@ public final class EmergenceGameTests {
         BlockPos accAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "acc");
         PlacedPart pc = only(h, pcAt, PartKind.CHIP), acc = only(h, accAt, PartKind.CHIP);
         // from tick 300, checked every tick until it holds: a single sample can land while the accumulator's adder is
-        // still rippling (ACC 6 = 0110 between 4 and 8 was once read at PC 4, in the busy demo world)
+        // still rippling (ACC 6 = 0110 between 4 and 8 was once read at PC 4, in the busy demo world); and until tick 800,
+        // not 400: once, in the demo world, the 100 ticks left after tick 300 ended on PC 1 with ACC still 0
         h.runAtTickTime(300, () -> h.succeedWhen(() -> {
             var c = sim.compiledAt(pcAt);
             h.assertTrue(c != null && c.warnings().isEmpty(), "computer compiles without warnings: " + (c == null ? "-" : c.warnings()));

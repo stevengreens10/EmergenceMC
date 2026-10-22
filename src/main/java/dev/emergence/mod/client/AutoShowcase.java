@@ -270,6 +270,27 @@ public final class AutoShowcase {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " flip the sense switch", part.apply("sense", PartKind.SWITCH))));
                 STEPS.add(new Step(200, view, shot.apply("reverse")));
             }
+            if (id.equals("governed")) {
+                // running on its governor (the weights out, the throttle mostly shut); take the brake off: it hardly
+                // speeds up, the governor shutting the steam off; put it back
+                BlockPos shaft = at.apply("shaft"), rod = at.apply("throttleRod");
+                double[] braked = {Double.NaN}, rod0 = {Double.NaN};
+                STEPS.add(new Step(80, NOTHING, shot.apply("running"))
+                        .check(key + " the engine runs on its boiler's steam", () -> atLeast("crankshaft speed [rad/s]", motion(server, shaft, PartKind.SHAFT), 8))
+                        .check(key + " the governor's weights have flown out", () -> atLeast("weight out [mm]",
+                                1e3 * Math.abs(where(server, at.apply("weightA"), PartKind.BLOCK)), 5))
+                        .after(() -> {
+                            braked[0] = motion(server, shaft, PartKind.SHAFT);
+                            rod0[0] = where(server, rod, PartKind.SHAFT);
+                        }));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " take the brake off", part.apply("brake", PartKind.BRAKE))));
+                STEPS.add(new Step(200, view, shot.apply("free"))
+                        .check(key + " unloaded, it hardly speeds up", () -> atMost("speed change [%]",
+                                100 * Math.abs(motion(server, shaft, PartKind.SHAFT) / braked[0] - 1), 6))
+                        .check(key + " the throttle rod still on its seat's side of open", () -> atMost("throttle rod raised [mm]",
+                                1e3 * (where(server, rod, PartKind.SHAFT) - rod0[0]), 1)));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake back", part.apply("brake", PartKind.BRAKE))));
+            }
             if (id.equals("steam") || id.equals("condensing")) {
                 BlockPos shaft = at.apply("shaft");
                 double[] running = {Double.NaN};

@@ -23,7 +23,7 @@ public final class Exhibits {
 
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
-                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(),
+                daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(), governedEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
                 OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ControlExhibits.flyball(), Exhibits.rectifier(), Exhibits.boost(), ControlExhibits.hBridge(), ControlExhibits.pwmMotor(), ControlExhibits.inverter(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), MechanicsExhibits.fourBar(), AeroExhibits.windTurbine(), AeroExhibits.propellerCart(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.slideValve(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.relayLatch(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
                 miniatureGenerator());
@@ -941,11 +941,41 @@ public final class Exhibits {
     }
 
     /**
+     * The steam engine with Watt's flyball governor on its throttle. A pair of bevel gears off the crankshaft turns an
+     * upright spindle at twice its speed; on the spindle, two brass weights slide out on radial rods against springs
+     * and draw a sleeve down through slanting bars; a bar from the sleeve's top works a rod whose plug sits in the
+     * throttle valve's side. The faster the engine, the further the weights fly out and the less steam the throttle
+     * passes: the engine holds its own speed, a little lower under load.
+     */
+    public static Exhibit governedEngine() {
+        return steamEngine(false, 8, true);
+    }
+
+    public static Exhibit steamEngine(boolean condensing, double brakeForce) {
+        return steamEngine(condensing, brakeForce, false);
+    }
+
+    /**
      * @param condensing the exhaust into a sealed, cooled condenser instead of the air
      * @param brakeForce the Prony brake's spring force [N]
+     * @param governed   a flyball governor on the throttle (and a wider throttle for it to work)
      */
-    public static Exhibit steamEngine(boolean condensing, double brakeForce) {
-        Exhibit e = condensing ? new Exhibit("condensing", "Condensing steam engine",
+    public static Exhibit steamEngine(boolean condensing, double brakeForce, boolean governed) {
+        Exhibit e = governed ? new Exhibit("governed", "Governed steam engine",
+                List.of("GOVERNED ENGINE", "Flyballs on the", "throttle: it holds", "its own speed"),
+                "The steam engine again, with James Watt's governor (1788). A pair of bevel gears off the end of the "
+                        + "crankshaft turns an upright spindle at twice the engine's speed. On the spindle a cross carries "
+                        + "two brass weights on radial rods, held in by springs; slanting bars link them to a sleeve "
+                        + "that slides on the spindle's axis, and from the sleeve's top a bar runs over to a rod standing "
+                        + "in the side of the throttle valve, its plug in the seat. As the engine speeds up the weights "
+                        + "fly out, pull the sleeve and the rod down, and the plug closes the throttle; as it slows they "
+                        + "sink back and open it. The engine finds the speed at which the steam it is let have just "
+                        + "carries its load. Take the brake off and it hardly speeds up — the governor shuts the steam "
+                        + "off; put it back and it hardly slows. Hardly: with no integrator a flyball governor holds a "
+                        + "little lower speed under more load (droop). The throttle here is wide enough to race the "
+                        + "engine without it. Nothing in it is a speed controller: the weights' m·ω²·r against their "
+                        + "springs, the bars and the valve's seat are all there is.")
+                : condensing ? new Exhibit("condensing", "Condensing steam engine",
                 List.of("CONDENSING ENGINE", "Exhaust into a", "vacuum: twice the", "load, same steam"),
                 "The steam engine next door again, with one change: the exhaust valve opens into a sealed copper "
                         + "condenser instead of the air. The condenser holds only water and its own vapour, kept near 40 °C "
@@ -979,7 +1009,7 @@ public final class Exhibits {
         String st = "steel_1045";
         int y = 3;
         Object[] steam = {"fluid", 7};
-        int shaft = e.fill(SHAFT, st, 0, y, 8, 9, y, 8, Dir.EAST, "diameter", 0.012);
+        int shaft = e.fill(SHAFT, st, 0, y, 8, governed ? 11 : 9, y, 8, Dir.EAST, "diameter", 0.012);
         e.name("shaft", shaft);
         e.init(shaft, new Exhibit.Initial(Double.NaN, 15, 0, 0.3)); // running: given a turn to start
         e.add(BEARING, st, 0, y, 8, Dir.EAST);
@@ -1014,9 +1044,11 @@ public final class Exhibits {
         int elbow = e.add(PIPE, "copper", 5, y + 2, 8, Dir.SOUTH, with(steam, "bore", 0.008));
         e.add(BLOCK, st, 5, y + 2, 7, Dir.UP, "fill", 0.2); // blind flange
         int l1 = e.add(PIPE, "copper", 5, y + 2, 9, Dir.SOUTH, with(steam, "bore", 0.008));
-        int reg = e.add(VALVE, "brass", 5, y + 2, 10, Dir.NORTH, with(steam, "bore", 0.0012)); // the throttle
+        // the throttle: by hand, or (governed) a wider one whose plug is on the governor's rod
+        int reg = governed ? e.add(VALVE, "brass", 5, y + 2, 10, Dir.NORTH, with(steam, "bore", GOVERNED_THROTTLE_BORE, "plug_travel", GOVERNED_PLUG_TRAVEL))
+                : e.add(VALVE, "brass", 5, y + 2, 10, Dir.NORTH, with(steam, "bore", 0.0012));
         e.name("regulator", reg);
-        e.latch(reg); // open
+        if (!governed) e.latch(reg); // open
         int l2 = e.add(PIPE, "copper", 5, y + 2, 11, Dir.SOUTH, with(steam, "bore", 0.008));
         int l3 = e.add(PIPE, "copper", 5, y + 2, 12, Dir.SOUTH, with(steam, "bore", 0.008));
         int riser = e.add(PIPE, "copper", 5, y + 2, 13, Dir.UP, with(steam, "bore", 0.012));
@@ -1048,11 +1080,82 @@ public final class Exhibits {
                 "surface_area", 0.002, "mass", 0.05);
         e.name("jacket", jacket);
         e.init(jacket, new Exhibit.Initial(430, 0, 0));
+        if (governed) {
+            e.plots = 2; // the governor's cross sweeps out to x = 18
+            governor(e, y);
+        }
         Router r = new Router(e, 0, 0, 0, 15, y + 4, 15);
         r.pin("f+", 6, y, 13).pin("f+", 9, 0, 14).pin("f+", 3, y + 3, 9);
         r.pin("f-", 4, y, 13).pin("f-", 7, 0, 14).pin("f-", 3, y + 1, 9);
+        if (governed) {
+            r.keepClear(10, 0, 5, 14, y + 4, 11);   // the bevel gears and the spindle
+            r.keepClear(5, y + 3, 9, 6, y + 4, 11); // the throttle's rod and its post
+        }
         r.route();
-        return e.view(4.5, 11, 18, 42);
+        return governed ? e.view(8, 15, 21, 32) : e.view(4.5, 11, 18, 42);
+    }
+
+    /** The governed engine's throttle bore [m] (wide: the engine would race on it), its plug's travel to fully open [m]. */
+    static final double GOVERNED_THROTTLE_BORE = 0.002, GOVERNED_PLUG_TRAVEL = 0.006;
+    /** Where the throttle rod's plug seats, below the rod as built [m] (the sleeve's travel as the weights fly out). */
+    static final double GOVERNED_SEAT = 0.009;
+
+    /**
+     * Watt's governor for the steam engine (crankshaft along x at height y, ending at x = 11): a 32-tooth bevel gear
+     * on the crankshaft's end drives a 16-tooth one on an upright spindle at (12, ·, 8) at twice its speed; the
+     * flyball governor of the {@code flyball} exhibit on the spindle (its cross at y + 5); a bar from the sleeve's top
+     * over to a rod standing above the throttle (5, y + 2, 10), its plug in the throttle's side.
+     */
+    static void governor(Exhibit e, int y) {
+        String st = "steel_1045", al = "aluminium_6061";
+        double cell = 1.0 / 16;
+        int ax = 12, az = 8, hub = y + 5;
+        e.add(GEAR, st, 11, y, 8, Dir.EAST, "teeth", 32, "pitch_radius", 2 * cell, "thickness", 0.01);
+        e.add(GEAR, st, ax, y + 2, az, Dir.UP, "teeth", 16, "pitch_radius", cell, "thickness", 0.01);
+        int spindle = e.fill(SHAFT, st, ax, y + 2, az, ax, hub - 1, az, Dir.UP, "diameter", 0.012);
+        e.name("spindle", spindle);
+        e.init(spindle, new Exhibit.Initial(Double.NaN, 30, 0, 0)); // turning with the engine
+        // its bearing on a bracket from a post behind it
+        e.add(BEARING, st, ax, y + 3, az, Dir.UP);
+        e.fill(BLOCK, st, ax, y + 3, az + 1, ax, y + 3, az + 3, Dir.UP);
+        e.fill(BLOCK, st, ax, 0, az + 4, ax, y + 3, az + 4, Dir.UP);
+        // the governor: a hub and cross, weights on radial rods held in by springs, bars to the sleeve
+        e.add(BLOCK, al, ax, hub, az, Dir.UP, "fill", 0.5);
+        e.fill(BLOCK, al, ax - 6, hub, az, ax - 1, hub, az, Dir.UP, "fill", 0.12);
+        e.fill(BLOCK, al, ax + 1, hub, az, ax + 6, hub, az, Dir.UP, "fill", 0.12);
+        for (int side = 0; side < 2; side++) {
+            int s = side == 0 ? 1 : -1;
+            int seat = ax - 6 * s, spring = ax - 5 * s, weight = ax - 4 * s, bush = ax - 2 * s;
+            e.add(BLOCK, al, seat, hub + 1, az, Dir.UP, "fill", 0.12);
+            e.add(BLOCK, al, seat, hub + 2, az, Dir.UP, "fill", 0.12);
+            e.add(BLOCK, al, bush, hub + 1, az, Dir.UP, "fill", 0.12);
+            e.add(LINEAR_BEARING, st, bush, hub + 2, az, s > 0 ? Dir.EAST : Dir.WEST, "travel_fwd", 0, "travel_back", 0.03);
+            e.name(side == 0 ? "rodA" : "rodB", s > 0 ? e.fill(SHAFT, st, weight, hub + 2, az, ax - 1, hub + 2, az, Dir.EAST, "diameter", 0.008)
+                    : e.fill(SHAFT, st, ax + 1, hub + 2, az, weight, hub + 2, az, Dir.EAST, "diameter", 0.008));
+            e.name(side == 0 ? "weightA" : "weightB", e.add(BLOCK, "brass", weight, hub + 2, az, Dir.UP, "fill", 0.3));
+            e.add(SPRING, st, spring, hub + 2, az, Dir.EAST, "wire", 0.0037, "turns", 6, "preload", 0.016);
+            e.fill(LINK, st, weight, hub + 3, az, weight, hub + 6, az, Dir.UP);
+            e.fill(LINK, st, ax - 3 * s, hub + 6, az, ax - 2 * s, hub + 6, az, Dir.EAST);
+        }
+        // the sleeve on the axis, sliding in a bushing held up from the hub by a bracket; a collar with two arms
+        e.fill(BLOCK, al, ax, hub, az + 1, ax, hub + 4, az + 1, Dir.UP, "fill", 0.5);
+        e.add(LINEAR_BEARING, st, ax, hub + 4, az, Dir.UP, "travel", 0.03);
+        e.name("sleeve", e.fill(SHAFT, st, ax, hub + 3, az, ax, hub + 6, az, Dir.UP, "diameter", 0.01));
+        e.add(BLOCK, st, ax, hub + 6, az, Dir.UP, "fill", 0.5);
+        e.add(BLOCK, st, ax - 1, hub + 6, az, Dir.UP, "fill", 0.5);
+        e.add(BLOCK, st, ax + 1, hub + 6, az, Dir.UP, "fill", 0.5);
+        // the throttle's rod: upright above the valve, a cell clear of it, in a bushing on a post; built with the plug
+        // GOVERNED_SEAT above its seat (the travel down to it)
+        int rx = 5, rz = 10, r0 = y + 4;
+        e.name("throttleRod", e.fill(SHAFT, st, rx, r0, rz, rx, r0 + 3, rz, Dir.UP, "diameter", 0.01));
+        e.add(LINEAR_BEARING, st, rx, r0 + 2, rz, Dir.UP, "travel_fwd", 0.03, "travel_back", GOVERNED_SEAT);
+        e.fill(BLOCK, st, rx + 1, 0, rz, rx + 1, r0 + 2, rz, Dir.UP);
+        // the bar from the sleeve's top over to the rod's top: up the axis, across above everything, down to the rod
+        int top = hub + 9;
+        e.name("bar", e.fill(LINK, st, ax, hub + 7, az, ax, top, az, Dir.UP));
+        e.fill(LINK, st, rx, top, az, ax - 1, top, az, Dir.EAST);
+        e.fill(LINK, st, rx, top, az + 1, rx, top, rz, Dir.SOUTH);
+        e.fill(LINK, st, rx, r0 + 4, rz, rx, top - 1, rz, Dir.UP);
     }
 
     /** Plate thickness (as a fraction of the cell) and material of each shelf, north to south. */

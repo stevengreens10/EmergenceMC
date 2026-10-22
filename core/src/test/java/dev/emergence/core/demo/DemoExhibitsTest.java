@@ -1239,6 +1239,48 @@ class DemoExhibitsTest {
         assertTrue(q2 < 1e-3 * q0 && q3 < 1e-3 * q0, "shut again: next to nothing passes the seat");
     }
 
+    /**
+     * The governed steam engine: the governor's weights fly out, the throttle partly closes and the engine holds its
+     * speed; with the brake off it barely speeds up (the governor shuts the steam off), with it back on it returns.
+     */
+    @Test
+    void governorHoldsTheEngineSpeed() {
+        Exhibit e = Exhibits.governedEngine();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long shaft = b.id(e, "shaft"), rod = b.id(e, "throttleRod"), weight = b.id(e, "weightA"), brake = b.id(e, "brake");
+        var seat = c.branchesOf(b.id(e, "regulator")).stream().filter(dev.emergence.core.sim.elements.FluidBranch::hasCam).findFirst().orElseThrow();
+        java.util.function.Supplier<String> state = () -> String.format("crank %.2f rad/s, weight out %.1f mm, rod %.2f mm, throttle %.3f open",
+                c.probe(shaft).angularVelocity(), 1e3 * c.probe(weight).angle(), 1e3 * c.probe(rod).angle(), seat.opening(c.solverView()));
+        // braked: 20 s to settle, then the next 10 s averaged; then the brake off, the same
+        double[] braked = phase(c, shaft, seat, 20, 10), free;
+        double weightOut = c.probe(weight).angle();
+        System.out.println("governed, braked: " + state.get());
+        c.toggleSwitch(brake);
+        free = phase(c, shaft, seat, 10, 10);
+        System.out.println("governed, brake off: " + state.get());
+        System.out.printf("governed: braked %.2f rad/s at %.3f open; free %.2f rad/s at %.3f open (%+.1f %%)%n",
+                braked[0], braked[1], free[0], free[1], 100 * (free[0] / braked[0] - 1));
+        assertTrue(braked[0] > 12 && braked[0] < 17, "the engine runs at the governor's speed: " + braked[0]);
+        assertTrue(Math.abs(weightOut) > 0.005, "with the weights out: " + weightOut);
+        assertTrue(braked[1] < 0.5, "the governor holds the wide throttle mostly shut: " + braked[1]);
+        assertTrue(free[1] < braked[1], "the brake off, it shuts it further");
+        assertTrue(Math.abs(free[0] / braked[0] - 1) < 0.05, "and the speed hardly changes (droop under 5 %)");
+    }
+
+    /** Runs {@code settle} s, then averages the crank's speed and the throttle's opening over {@code span} s. */
+    private static double[] phase(CompiledAssembly c, long shaft, dev.emergence.core.sim.elements.FluidBranch seat, double settle, double span) {
+        run(c, settle);
+        double w = 0, o = 0;
+        int n = (int) Math.round(span / 0.05);
+        for (int i = 0; i < n; i++) {
+            c.step(0.05);
+            w += Math.abs(c.probe(shaft).angularVelocity());
+            o += seat.opening(c.solverView());
+        }
+        return new double[]{w / n, o / n};
+    }
+
     @Test
     void hydraulicJackRatchetsUp() {
         Exhibit e = MechanicsExhibits.hydraulicJack();

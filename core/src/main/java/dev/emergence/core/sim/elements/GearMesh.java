@@ -45,6 +45,15 @@ public final class GearMesh implements Element {
     }
 
     /**
+     * A bevel pair: two gears on intersecting axes, their pitch cones rolling on each other, r_a·ω_a + s·r_b·ω_b = 0 with
+     * s = ±1 from the geometry (the pitch points' velocities agree at the contact). Tooth friction as for a spur pair.
+     */
+    public static GearMesh bevel(Node a, Node b, double pitchRadiusA, double pitchRadiusB, int teethA, int teethB, double s,
+                                 double frictionCoefficient, Node thermal) {
+        return new GearMesh(a, b, pitchRadiusA, pitchRadiusB, s, frictionCoefficient * Math.PI * (1.0 / teethA + 1.0 / teethB), thermal);
+    }
+
+    /**
      * Rack and pinion: a pinion of pitch radius r and z teeth (node a, angular velocity) driving a rack on a slide
      * (node b, velocity): r·ω + s·v = 0, s = ±1 from the geometry. Tooth friction as for a gear pair with the rack's
      * 1/z = 0.

@@ -491,6 +491,11 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * **Rams**: a cylinder whose rod side touches a slide moving along its bore has a straight-rod piston
   (`LinearPiston`): s = s₀ + sign·x, V = A·(c + s); the slide's travel is also stopped where the piston meets the
   head or the rod end. `PistonCoupling` passes (p − p_atm)·A to the slide, as it passes torque to a crank.
+* **Bevel gears** (`GearMesh.bevel`): two gears on perpendicular axes that cross mesh where each one's pitch circle
+  passes through the other's: gear 2's centre r₁ from gear 1's along gear 2's axis and r₂ along gear 1's. Their pitch
+  points roll together at the contact, so r₁ω₁ + s·r₂ω₂ = 0, with the sign from which way each turns past it. Same
+  constraint, lossless transmission and Buckingham tooth friction as a spur pair; the cones' axial thrust is not
+  modelled. A right-angle drive: a governor's upright spindle off a crankshaft, a differential.
 * **Rack and pinion** (`GearMesh.rackAndPinion`, part RACK): a spur gear whose pitch circle touches a rack's toothed
   face (same module) constrains r_p·ω + s·v = 0 (Lagrange multiplier = tooth force; s = ±1 from the geometry), lossless
   but for tooth sliding friction f ≈ μπ/z (Buckingham, the rack's 1/z = 0). The rack's slide is stopped before the

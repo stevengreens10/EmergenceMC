@@ -103,7 +103,7 @@ Every new mechanic: core tests → in-world GameTest where it matters → demo e
 regenerate the demo world → screenshot tour → docs → commit.
 
 1. **Control**: (the flyball governor is in, working a rheostat through link bars; slide-worked plug valves are in,
-   `slidevalve`) a governor on a steam engine's (or the air turbine's) throttle through such a valve; the fluid's
+   `slidevalve`; and Watt's governor on the steam engine's throttle, `governed`, through bevel gears) the fluid's
    force on a plug (unbalanced valves, spring-loaded regulators); floats (buoyancy on slides) for cistern valves; contact bounce and arcing for the travel contacts; the EM-4
    closing a loop through a light-barrier encoder; integrator wind-up limits. (The servo is a PID loop, the
    electronic speed governor a PI loop.)

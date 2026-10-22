@@ -948,3 +948,12 @@ honest surprises in the tests. A rod pushed home hard bounced off its collar and
 emptied through the valve, its pressure rose again behind the shut plug, 1.12 → 1.30 bar, as the walls warmed the air
 its expansion had cooled. The plug is taken as balanced for now, so the fluid's force on it is not modelled. The
 point is what can move such a rod: a governor's sleeve throttling an engine is next.
+
+**Watt's governor on a steam engine, and bevel gears.** The governor needed an upright spindle off a horizontal
+crankshaft: a governor on the crankshaft's own axis, three blocks up, would sweep its cross through the floor. So gears
+now also mesh on crossing axes. A bevel pair is the same rolling constraint as a spur pair, with its sign from the
+geometry at the contact; a test checks 2 : 1 and that the pitch points move together there. The new exhibit is the
+steam engine with the flyball governor from next door on a spindle geared off its crankshaft. A bar from the governor's
+sleeve works a rod whose plug sits in a throttle wide enough to race the engine. It worked first time: 14.2 rad/s
+braked, 14.3 unloaded, the throttle 6–8 % open. In passing, one of the 17 in-world tests failed once during a demo
+world build and passed on the rerun; which one was not captured.

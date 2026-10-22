@@ -190,6 +190,15 @@ A₁/A₂ × 150.7 mm = 24.11 mm; the 4.6 % surplus is water drawn in through bo
 ram coasts up over a vapour cavity (lowest ram pressure 3.1 kPa ≈ p_v); the outlet valve holds it and the release
 valve lets it down.
 
+Bevel gears (`BevelGearTest`): a cranked 32-tooth gear on a horizontal shaft drives a 16-tooth one on a vertical shaft
+at 2.00000 times its speed (25.0 → 50.0 rad/s), the two pitch points' velocities at the contact equal (3.125 m/s along
++z); no other exhibit meshes gears on crossing axes by accident.
+
+Governed steam engine (`DemoExhibitsTest.governorHoldsTheEngineSpeed`): the flyball governor on a spindle bevel-geared
+to the crankshaft at 2 : 1 holds the engine at 14.23 rad/s under its brake, the weights 10.6 mm out and the 2 mm
+throttle 7.6 % open on average; with the brake off it runs at 14.33 rad/s (+0.7 %, the governor's droop), the throttle
+6.6 % open.
+
 Slide valve (`DemoExhibitsTest.slideValveThrottlesWithItsRod`): built with its rod pushed home, the plug seated, the
 10 bar receiver holds and the rotor stands. Drawn back 31.6 mm by hand, the seat passes 0.021 kg/s, the rotor reaches
 74 rad/s, and the receiver runs down to 1.01 bar in 2 s. Pushed home again, the seat passes about 10⁻⁶ kg/s, the rod

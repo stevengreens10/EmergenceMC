@@ -1239,7 +1239,11 @@ public final class AssemblyCompiler {
 
         void tryMesh(Part g1, Part g2) {
             CompiledAssembly.Body b1 = c.bodyOfPart.get(g1.id()), b2 = c.bodyOfPart.get(g2.id());
-            if (b1 == b2 || g1.axis().axis() != g2.axis().axis() || b1.slider || b2.slider) return;
+            if (b1 == b2 || b1.slider || b2.slider) return;
+            if (g1.axis().axis() != g2.axis().axis()) {
+                tryBevel(g1, g2, b1, b2);
+                return;
+            }
             if (!sameFrame(b1, b2)) {
                 c.warnings.add("Gears #" + g1.id() + " and #" + g2.id() + ": one rides on a slide past the other and they are not meshed");
                 return;
@@ -1274,6 +1278,46 @@ public final class AssemblyCompiler {
             double mu = lub ? 0.05 : Math.max(g1.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4),
                     g2.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4));
             c.network.add(new GearMesh(na, nb, r1, r2, z1, z2, false, mu, c.thermalOfPart.get(g1.id())));
+            thermalLink(g1, g2);
+        }
+
+        /**
+         * Bevel gears: two gears on perpendicular axes that cross (their pitch cones share an apex) mesh where each one's
+         * pitch circle passes through the other's: gear 2's centre lies r₁ from gear 1's along gear 2's axis and r₂ from it
+         * along gear 1's (and level with it the third way). Their pitch points then roll together at the contact, so
+         * r₁·ω₁ and r₂·ω₂ agree there — the sign from which way each turns past it.
+         */
+        void tryBevel(Part g1, Part g2, CompiledAssembly.Body b1, CompiledAssembly.Body b2) {
+            Vec3 a1 = g1.axis().vec(), a2 = g2.axis().vec();
+            Vec3 u = g2.center().sub(g1.center());
+            double r1 = PartGeometry.gearPitchRadius(g1), r2 = PartGeometry.gearPitchRadius(g2);
+            int z1 = PartGeometry.gearTeeth(g1), z2 = PartGeometry.gearTeeth(g2);
+            double m1 = 2 * r1 / z1, m2 = 2 * r2 / z2, tol = 0.3 * Math.max(m1, m2);
+            double h2 = u.dot(a2), h1 = u.dot(a1), across = u.sub(a1.mul(h1)).sub(a2.mul(h2)).length();
+            if (across > tol || Math.abs(Math.abs(h2) - r1) > tol || Math.abs(Math.abs(h1) - r2) > tol) return;
+            if (Math.abs(m1 - m2) > 0.1 * Math.max(m1, m2)) {
+                c.warnings.add("Bevel gears #" + g1.id() + " and #" + g2.id() + " have different tooth modules and cannot mesh");
+                return;
+            }
+            if (!sameFrame(b1, b2)) {
+                c.warnings.add("Bevel gears #" + g1.id() + " and #" + g2.id() + ": one is carried past the other and they are not meshed");
+                return;
+            }
+            // the contact: on gear 1's pitch circle towards gear 2 (along gear 2's axis), and the common tangent there
+            Vec3 p = g1.center().add(a2.mul(Math.signum(h2) * r1));
+            Vec3 t = a1.cross(a2);
+            // each body's ω is about its own axis vector: the pitch point's speed along t per unit ω
+            CompiledAssembly.Body ra = b1, rb = b2;
+            Vec3 w1 = ra.isStatic ? a1 : ra.axis, w2 = rb.isStatic ? a2 : rb.axis;
+            double k1 = w1.cross(p.sub(g1.center())).dot(t), k2 = w2.cross(p.sub(g2.center())).dot(t);
+            // rolling: k1·ω1 = k2·ω2, i.e. r1·ω1 + s·r2·ω2 = 0 with s = −sign(k1)·sign(k2)
+            double s = -Math.signum(k1) * Math.signum(k2);
+            Node na = ra.isStatic ? refR : ra.node, nb = rb.isStatic ? refR : rb.node;
+            boolean lub = g1.param("lubricated", 1) > 0 || g2.param("lubricated", 1) > 0;
+            double mu = lub ? 0.05 : Math.max(g1.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4),
+                    g2.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4));
+            c.network.add(GearMesh.bevel(na, nb, r1, r2, z1, z2, s, mu, c.thermalOfPart.get(g1.id())));
+            c.bevels++;
             thermalLink(g1, g2);
         }
 

@@ -226,6 +226,12 @@ public final class CompiledAssembly {
     /** electrode part id -> {cell, electrode, electrolyte part id} entries */
     final Map<Long, List<Object[]>> electrodes = new HashMap<>();
     final List<String> warnings = new ArrayList<>();
+    /** Bevel gear pairs meshed (gears on crossing axes). */
+    int bevels;
+
+    public int bevelMeshes() {
+        return bevels;
+    }
     Node ambient;
     private double lag;
     private int maxStepsPerAdvance = 4000;

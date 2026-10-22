@@ -916,3 +916,11 @@ builds touches the electrical reference, so every circuit's absolute potential h
 10⁻¹² shunts, and fewer nodes made that direction softer still. The solver now grounds one node of each circuit, where
 by Kirchhoff nothing flows. Circuits are found from the Jacobian's pattern, which can only over-join them, so none gets
 two grounds.
+
+**Machines side by side.** Every island stepped in turn on the server thread, so the machines around a player shared
+one core's 35 ms a tick, even on a machine with eight cores. Islands share nothing in the core: an audit found only
+lazily loaded databases (double-checked) and debug flags as static state, and the core suite already steps hundreds of
+assemblies concurrently. They now step side by side on worker threads, with the world read before and written after
+on the server thread, and the budgets weighing each island's share of the wall clock. The step listeners an
+instrument hangs on a solver from another thread now sit in a copy-on-write list (an indexed loop over a plain list
+could have thrown while the tour added one).

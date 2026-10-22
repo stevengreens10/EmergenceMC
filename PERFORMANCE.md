@@ -48,6 +48,13 @@ seconds pushed it for a fraction of one. Watched islands log their pace every te
 simulation distance (≈ 190 blocks) runs, the exhibit being watched keeps its pace instead of sharing it with dozens
 out of sight. In-world tests and demo generation lift both budgets (they test tick counts, not throughput).
 
+The islands step side by side, on worker threads (one fewer than the processors, at most 8; `emergence.simThreads=1`
+steps them in turn on the server thread). Each step touches only its own island's compiled machine; the world is read
+before (cranks, wind, daylight) and written after (light, failures, sync), on the server thread. The budgets weigh the
+server's time: each island's cost counts at its share of the wall clock the steps took together. So the machines
+around a player each get their own 12 ms (35 ms for the one being watched) on a core of their own, rather than a share
+of one core's 35 ms.
+
 Those controllers act on the next tick's step size, so a single step can still cost seconds: a burst of switching
 edges in chip-level logic (the inverter: 1–3 s a tick), or a model failing Newton over and over. One island's step is
 therefore also cut off at 60 ms of wall time (`emergence.stepWallMs`; off where the budgets are lifted): it ends on

@@ -26,7 +26,8 @@ public final class TransientSolver implements StateView {
     private final Network net;
     private final List<Element> elements;
     private final List<EventSource> eventSources = new java.util.ArrayList<>();
-    private final List<java.util.function.Consumer<TransientSolver>> stepListeners = new java.util.ArrayList<>();
+    /** (Added and removed from other threads — an instrument averaging what it reads — while the solver steps.) */
+    private final List<java.util.function.Consumer<TransientSolver>> stepListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final int n, ns;
     private final LinearSystem jac;
     private final LoadContext ctx = new LoadContext();
@@ -1088,7 +1089,7 @@ public final class TransientSolver implements StateView {
 
         for (Element e : elements) e.acceptStep(this, t, h);
         updateLedger(ph, h, m);
-        for (int i = 0; i < stepListeners.size(); i++) stepListeners.get(i).accept(this);
+        for (var l : stepListeners) l.accept(this);
         return 0;
     }
 

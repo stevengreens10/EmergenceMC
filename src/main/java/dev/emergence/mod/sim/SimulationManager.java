@@ -111,6 +111,11 @@ public final class SimulationManager {
         /** For the pace log: simulated and wall time when last logged. */
         double paceSim = Double.NaN;
         long paceWall;
+        /** This tick's step (possibly on a worker thread): its length, its cost, and what came of it. */
+        double stepDt;
+        long stepNanos;
+        List<Long> stepFailed;
+        RuntimeException stepError;
 
         public double timeScale() {
             return timeScale;
@@ -214,6 +219,8 @@ public final class SimulationManager {
         Set<Island> islands = new HashSet<>(islandOf.values());
         double watchedTotal = 0, nearTotal = 0, farTotal = 0;
         Set<Island> nearest = nearestToPlayers(islands);
+        // the islands to step this tick, their inputs set from the world (on this thread)
+        List<Island> run = new ArrayList<>();
         for (Island isl : islands) {
             if (isl.compiled == null) continue;
             // like block entities, machines advance only within the simulation distance of a player; further
@@ -234,15 +241,47 @@ public final class SimulationManager {
             updateWind(isl);
             isl.near = nearPlayer(isl);
             isl.watched = isl.near && (nearest.contains(isl) || watchedBy(isl));
-            List<Long> failed;
-            long t0 = System.nanoTime();
+            isl.stepDt = TICK_SECONDS * isl.timeScale * scaleOf(isl);
+            run.add(isl);
+        }
+        // the steps: each island alone with its own compiled machine (nothing in the core is shared between them), so
+        // on several cores at once — the machines around a player each get their budget, not a share of one
+        long wall0 = System.nanoTime();
+        if (STEP_POOL == null || run.size() < 2) {
+            for (Island isl : run) stepIsolated(isl);
+        } else {
+            List<java.util.concurrent.Callable<Void>> jobs = new ArrayList<>(run.size());
+            for (Island isl : run) jobs.add(() -> {
+                stepIsolated(isl);
+                return null;
+            });
             try {
-                failed = isl.compiled.step(TICK_SECONDS * isl.timeScale * scaleOf(isl));
-            } catch (RuntimeException e) {
+                for (var f : STEP_POOL.invokeAll(jobs)) {
+                    try {
+                        f.get();
+                    } catch (java.util.concurrent.ExecutionException e) {
+                        if (e.getCause() instanceof Error err) throw err;
+                        throw new IllegalStateException(e.getCause());
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        long wall = System.nanoTime() - wall0, cpu = 0;
+        for (Island isl : run) cpu += isl.stepNanos;
+        // what the budgets weigh is the server's time: the steps' share of the wall clock they took together
+        double share = cpu > 0 ? Math.min(1, (double) wall / cpu) : 1;
+        // the results, applied to the world (on this thread)
+        for (Island isl : run) {
+            RuntimeException err = isl.stepError;
+            isl.stepError = null;
+            if (err != null) {
                 // restart from the last good state at rest (charges, heat, positions kept); if even that will not
                 // run, from nothing
                 EmergenceMod.LOG.error("Simulation of island at {} ({} parts) failed; restarting it at rest{}; {}", isl.blocks.iterator().next(),
-                        isl.compiled.assembly().parts().size(), partHint(isl, e.getMessage()), stateSummary(isl), e);
+                        isl.compiled.assembly().parts().size(), partHint(isl, err.getMessage()), stateSummary(isl), err);
                 if (Boolean.getBoolean("emergence.dumpFailures")) dumpFailure(isl);
                 AssemblyState keep = isl.compiled.exportState().recovery();
                 isl.compiled = compile(isl, keep);
@@ -254,21 +293,23 @@ public final class SimulationManager {
                 }
                 continue;
             }
+            List<Long> failed = isl.stepFailed;
+            isl.stepFailed = null;
             if ((isl.compiled.coilCurrentsReset() || isl.compiled.motionReset()) && !isl.resetLogged) {
                 isl.resetLogged = true;
                 EmergenceMod.LOG.info("Island at {}: restored {} inconsistent with the build as loaded; started from rest",
                         isl.blocks.iterator().next(), isl.compiled.motionReset() ? "motion was" : "coil currents were");
             }
-            long cost = System.nanoTime() - t0;
+            long cost = isl.stepNanos;
             if (cost / 1_000_000 > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: a step of the island at {} ({} parts) took {} ms",
                     isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), cost / 1_000_000);
-            if (isl.watched) watchedTotal += cost / 1e6;
-            else if (isl.near) nearTotal += cost / 1e6;
-            else farTotal += cost / 1e6;
+            if (isl.watched) watchedTotal += share * cost / 1e6;
+            else if (isl.near) nearTotal += share * cost / 1e6;
+            else farTotal += share * cost / 1e6;
             Profiler.record(cost, isl.compiled.network().size());
             pace(isl, cost / 1e6, isl.watched ? Math.max(ISLAND_BUDGET_MS, GLOBAL_BUDGET_MS) : ISLAND_BUDGET_MS);
             if (LOG_PACE && isl.watched && tickCount % 200 == 0) logPace(isl);
-            if (!failed.isEmpty()) destroyParts(isl, failed);
+            if (failed != null && !failed.isEmpty()) destroyParts(isl, failed);
             updateLight(isl);
             bubbles(isl);
             ventPlumes(isl);
@@ -295,6 +336,30 @@ public final class SimulationManager {
         nearScale = adjust(nearScale, nearTotal, left, 0.02);
         farScale = adjust(farScale, farTotal, Math.max(left - nearTotal, 0.1 * GLOBAL_BUDGET_MS), 0.01);
     }
+
+    /** One island's step, touching nothing but its own compiled machine: its outcome and cost kept on it. */
+    private static void stepIsolated(Island isl) {
+        long t0 = System.nanoTime();
+        try {
+            isl.stepFailed = isl.compiled.step(isl.stepDt);
+        } catch (RuntimeException e) {
+            isl.stepError = e;
+        }
+        isl.stepNanos = System.nanoTime() - t0;
+    }
+
+    /**
+     * Worker threads stepping islands side by side: one fewer than the processors (the server thread waits on them),
+     * at most 8; {@code emergence.simThreads} overrides, and 1 steps them one after another on the server thread.
+     */
+    private static final int SIM_THREADS = Integer.getInteger("emergence.simThreads",
+            Math.max(1, Math.min(8, Runtime.getRuntime().availableProcessors() - 1)));
+    private static final java.util.concurrent.ExecutorService STEP_POOL = SIM_THREADS < 2 ? null
+            : java.util.concurrent.Executors.newFixedThreadPool(SIM_THREADS, r -> {
+                Thread t = new Thread(r, "Emergence simulation");
+                t.setDaemon(true);
+                return t;
+            });
 
     /** Logs how fast a watched island runs: simulated seconds per real second since the last log (and why, if slow). */
     private void logPace(Island isl) {

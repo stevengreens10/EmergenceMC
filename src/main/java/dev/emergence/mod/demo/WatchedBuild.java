@@ -120,7 +120,12 @@ public final class WatchedBuild {
                 if (!e.scenery.isEmpty()) doing = "Setting up its surroundings";
                 DemoBuilder.scenery(level, plot, e);
                 if (e.miniature) {
-                    DemoBuilder.place(level, plot, e);
+                    // with the tweezers, the whole block's parts at once
+                    List<String> made = PlayerBuilder.buildMiniature(level, plot.offset(DemoBuilder.MINIATURE_AT), e);
+                    synchronized (PROBLEMS) {
+                        PROBLEMS.addAll(made);
+                    }
+                    for (String pr : made) EmergenceMod.LOG.error("Watched build: {}", pr);
                     phase = Phase.SIGN;
                 } else {
                     job = new PlayerBuilder.Job(level, plot, e);

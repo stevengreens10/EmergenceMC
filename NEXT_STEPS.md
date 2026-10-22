@@ -51,7 +51,8 @@
      time-step underflow at a resistor's node at 6.3 s, recovered by a restart at rest; the core runs it idle and on
      to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:
      an audio-rate partition that sleeps while nothing vibrates;
-   - the miniature exhibit is still placed directly (tweezers placement);
+   - (done: the miniature generator is built with the precision tweezers, each part clicked into its cells or onto
+     its shaft, and compiles as its definition);
    - the gas engine's island runs at a fifth to a third of real time once it fires (combustion steps at 200+ rad/s);
    - the wind turbine's load check now asks only that power arrives (a lull at 30 rad/s gave 0.12 W against 0.2);
    - (done: `runWatchDemoBuild` builds the gallery where it can be watched; it found five machines held by scaffolding

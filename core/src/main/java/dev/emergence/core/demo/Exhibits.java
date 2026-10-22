@@ -1247,8 +1247,11 @@ public final class Exhibits {
         e.box(SHAFT, st, 8, 2, 8, 8, 10, 8, Dir.UP, "diameter", 0.004);
         e.add(BEARING, st, 8, 2, 8, Dir.UP);
         e.add(BEARING, st, 8, 8, 8, Dir.UP);
-        e.box(BLOCK, st, 9, 8, 7, 11, 8, 12, Dir.UP);
-        e.box(BLOCK, st, 5, 8, 7, 7, 8, 12, Dir.UP);
+        // the top plates, each two square tiles (the tweezers lay a square cross-section)
+        e.box(BLOCK, st, 9, 8, 7, 11, 8, 9, Dir.UP);
+        e.box(BLOCK, st, 9, 8, 10, 11, 8, 12, Dir.UP);
+        e.box(BLOCK, st, 5, 8, 7, 7, 8, 9, Dir.UP);
+        e.box(BLOCK, st, 5, 8, 10, 7, 8, 12, Dir.UP);
         e.box(BLOCK, st, 11, 0, 12, 11, 7, 12, Dir.UP);
         e.box(BLOCK, st, 5, 0, 12, 5, 7, 12, Dir.UP);
         e.name("crank", e.add(CRANK, st, 8, 11, 8, Dir.UP, "radius", 0.02));

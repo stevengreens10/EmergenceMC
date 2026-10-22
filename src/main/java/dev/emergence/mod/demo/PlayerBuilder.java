@@ -187,6 +187,110 @@ public final class PlayerBuilder {
         }
     }
 
+    /**
+     * Builds a miniature exhibit inside the block {@code at} as a player does with the precision tweezers in the
+     * off-hand: each part made in the part editor (its length and cross-section too) and placed with a click. The click
+     * lands on the face of the cell behind the part's anchor, the face pointing along the part's axis (so the part runs
+     * from its anchor that way, its square cross-section centred on it); a part whose cells take in a shaft's — a
+     * bearing, the rotor's plate — is clicked onto that shaft's side and mounted on it. What comes out otherwise than
+     * the exhibit defines it is reported.
+     */
+    public static List<String> buildMiniature(ServerLevel level, BlockPos at, Exhibit e) {
+        FakePlayer p = FakePlayerFactory.get(level, BUILDER);
+        p.setGameMode(GameType.CREATIVE);
+        p.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(dev.emergence.mod.registry.ModRegistries.TWEEZERS.get()));
+        p.setShiftKeyDown(false);
+        List<String> problems = new ArrayList<>();
+        List<Exhibit.PartDef> pending = new ArrayList<>(e.parts);
+        while (!pending.isEmpty()) {
+            boolean progress = false;
+            for (var it = pending.iterator(); it.hasNext(); ) {
+                Exhibit.PartDef d = it.next();
+                // a part to be mounted on a shaft waits for the shaft
+                boolean waits = pending.stream().anyMatch(q -> q != d && q.kind() == PartKind.SHAFT && overlaps(q, d));
+                if (waits) continue;
+                placeMiniature(level, p, at, d, problems, e.id);
+                it.remove();
+                progress = true;
+            }
+            if (!progress) {
+                for (var d : pending) problems.add(e.id + ": the " + d.kind() + " at " + cell(d) + " waits on a shaft that never comes");
+                break;
+            }
+        }
+        p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        p.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+        // what came out, against the definitions
+        if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+            List<String> want = new ArrayList<>(), got = new ArrayList<>();
+            for (var d : e.parts) want.add(d.kind() + " " + d.material() + " " + d.axis() + " " + d.x0() + "," + d.y0() + "," + d.z0()
+                    + "–" + d.x1() + "," + d.y1() + "," + d.z1());
+            for (PlacedPart q : be.parts()) got.add(q.kind + " " + q.spec.material() + " " + q.axis + " " + q.x0 + "," + q.y0 + "," + q.z0
+                    + "–" + q.x1 + "," + q.y1 + "," + q.z1);
+            List<String> onlyWant = new ArrayList<>(want), onlyGot = new ArrayList<>(got);
+            for (String s : got) onlyWant.remove(s);
+            for (String s : want) onlyGot.remove(s);
+            if (!onlyWant.isEmpty() || !onlyGot.isEmpty()) problems.add(e.id + ": placed with the tweezers it differs: wanted " + onlyWant + ", got " + onlyGot);
+        } else {
+            problems.add(e.id + ": nothing was placed");
+        }
+        return problems;
+    }
+
+    private static boolean overlaps(Exhibit.PartDef a, Exhibit.PartDef b) {
+        return a.x0() <= b.x1() && b.x0() <= a.x1() && a.y0() <= b.y1() && b.y0() <= a.y1() && a.z0() <= b.z1() && b.z0() <= a.z1();
+    }
+
+    private static void placeMiniature(ServerLevel level, FakePlayer p, BlockPos at, Exhibit.PartDef d, List<String> problems, String exhibit) {
+        int ax = d.axis().axis();
+        int[] lo = {d.x0(), d.y0(), d.z0()}, hi = {d.x1(), d.y1(), d.z1()};
+        int len = hi[ax] - lo[ax] + 1, cross = 1;
+        for (int k = 0; k < 3; k++) if (k != ax) cross = Math.max(cross, hi[k] - lo[k] + 1);
+        ItemStack stack = PartPresets.stack(d.kind(), PartSpec.of("steel_1045", 1, 1));
+        p.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        String why = PartSpecEdits.apply(p, InteractionHand.MAIN_HAND, new PartSpec(d.material(), len, cross, d.params()));
+        if (why != null) {
+            problems.add(exhibit + ": the editor refused the " + d.kind() + " at " + cell(d) + ": " + why);
+            return;
+        }
+        stack = p.getMainHandItem();
+        // onto a shaft's side, if the part takes in a shaft's cell
+        int[] mount = null;
+        Dir shaftAxis = null;
+        if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
+            for (PlacedPart q : be.parts()) {
+                if (q.kind != PartKind.SHAFT) continue;
+                for (int x = Math.max(lo[0], q.x0); x <= Math.min(hi[0], q.x1) && mount == null; x++)
+                    for (int y = Math.max(lo[1], q.y0); y <= Math.min(hi[1], q.y1) && mount == null; y++)
+                        for (int z = Math.max(lo[2], q.z0); z <= Math.min(hi[2], q.z1) && mount == null; z++) {
+                            mount = new int[]{x, y, z};
+                            shaftAxis = q.axis;
+                        }
+            }
+        }
+        Vec3 hit;
+        Direction face;
+        if (mount != null) {
+            int sideAxis = (shaftAxis.axis() + 1) % 3;
+            face = Direction.values()[Dir.fromAxis(sideAxis, true).ordinal()];
+            hit = cellCentre(at, mount).add(face.getStepX() * 0.5 / 16, face.getStepY() * 0.5 / 16, face.getStepZ() * 0.5 / 16);
+        } else {
+            // the anchor: the part's first cell along its axis, centred across it
+            int[] anchor = new int[3];
+            for (int k = 0; k < 3; k++) {
+                anchor[k] = k == ax ? (d.axis().sign() > 0 ? lo[k] : hi[k]) : lo[k] + (hi[k] - lo[k]) / 2;
+            }
+            face = Direction.values()[d.axis().ordinal()];
+            hit = cellCentre(at, anchor).subtract(face.getStepX() * 0.5 / 16, face.getStepY() * 0.5 / 16, face.getStepZ() * 0.5 / 16);
+        }
+        InteractionResult r = p.gameMode.useItemOn(p, level, stack, InteractionHand.MAIN_HAND, new BlockHitResult(hit, face, at, false));
+        if (!r.consumesAction()) problems.add(exhibit + ": clicking with the " + d.kind() + " placed nothing at " + cell(d) + " (" + r + ")");
+    }
+
+    private static Vec3 cellCentre(BlockPos at, int[] c) {
+        return new Vec3(at.getX() + (c[0] + 0.5) / 16, at.getY() + (c[1] + 0.5) / 16, at.getZ() + (c[2] + 0.5) / 16);
+    }
+
     private static String cell(Exhibit.PartDef d) {
         return "(" + d.x0() + ", " + d.y0() + ", " + d.z0() + ")";
     }

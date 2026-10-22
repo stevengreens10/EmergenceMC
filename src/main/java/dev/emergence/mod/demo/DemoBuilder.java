@@ -66,13 +66,13 @@ public final class DemoBuilder {
         var sim = dev.emergence.mod.sim.SimulationManager.get(level);
         {
             Exhibit e = exhibits.get(i);
-            if (e.miniature) return problems;
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
             // every island the exhibit's blocks belong to (one exhibit may be several machines)
             java.util.Map<dev.emergence.core.assembly.CompiledAssembly, BlockPos> islands = new java.util.IdentityHashMap<>();
             List<String> uncompiled = new java.util.ArrayList<>();
             for (Exhibit.PartDef d : e.parts) {
-                BlockPos at = plot.offset(d.x0(), d.y0(), d.z0());
+                // (a miniature's parts are all in its one block)
+                BlockPos at = e.miniature ? plot.offset(MINIATURE_AT) : plot.offset(d.x0(), d.y0(), d.z0());
                 var c = sim.compiledAt(at);
                 if (c != null) islands.putIfAbsent(c, at);
                 else if (uncompiled.size() < 3) uncompiled.add(d.kind() + " at (" + d.x0() + ", " + d.y0() + ", " + d.z0() + ")");
@@ -146,7 +146,7 @@ public final class DemoBuilder {
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
             scenery(level, plot, e);
             // as a player builds it: each part made in the part editor and placed with a click
-            if (e.miniature) place(level, plot, e);
+            if (e.miniature) problems.addAll(PlayerBuilder.buildMiniature(level, plot.offset(MINIATURE_AT), e));
             else problems.addAll(PlayerBuilder.build(level, plot, e));
             sign(level, plot, e);
         }

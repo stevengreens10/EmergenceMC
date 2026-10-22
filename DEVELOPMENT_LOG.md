@@ -880,3 +880,11 @@ edge, the battery current ±1.2 A each iteration, at steps down to 10⁻¹⁰ s.
 of a solve once two in succession point nearly opposite ways while far from converging. A first version damped near
 convergence too; there rounding noise also alternates, and halving it cost conservation in four tests and starved
 two start-ups.
+
+**The tweezers in hand.** The miniature generator was the last exhibit placed directly rather than built as a player
+builds. It is now made with the precision tweezers in the builder's off-hand. Each part is set up in the part editor,
+its length and cross-section included, and clicked into the block's 16³ grid: on the face behind its first cell,
+pointing along its axis, or onto a shaft's side for the bearings and the rotor's plate, which mount on it. The tweezers
+lay a square cross-section, so the two 3 × 6 top plates are now each two 3 × 3 tiles, welded into the same frame.
+Placed so, it matches its definition part for part, and the world's compiled island matches the core's. The
+definition check now covers miniatures too: 72 of 72 exhibits, 0 differences.

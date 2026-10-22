@@ -140,7 +140,7 @@ public final class TransientSolver implements StateView {
             gmin[node.index] = node.domain.gmin;
             relGmin[node.index] = node.domain == Domain.ELECTRICAL;
         }
-        if (net.isElectricalUngrounded()) {
+        if (net.isElectricalUngrounded() && !Boolean.getBoolean("diag.noDatum")) { // (diag.noDatum: the circuits left floating)
             circuitOf = new int[n];
             for (int i = 0; i < n; i++) circuitOf[i] = i;
             thermalUnknown = new boolean[n];

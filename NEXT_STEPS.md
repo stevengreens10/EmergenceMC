@@ -63,7 +63,12 @@
      rung down before the tour came (machines near a player run at full pace now: the tour pushes it). Still open:
      - the flyball braked: in the world it governs at 31.5 rad/s on 0.145 A and, braked, saturates (0.67 A, the
        rheostat backed right off) at 24.7 rad/s (−15 to −21 %), where the core holds 29.8 → 28.0 on 0.19 → 0.28 A
-       (−6 %): the brake loads it far harder in the world — find why (it now starts at rest and is started by hand);
+       (−6 %). The brake takes the same 0.7–0.8 W in both, so it is the motor side that needs 0.67 A against 0.28 —
+       some 9 W more. Not today's changes: the same with the circuits ungrounded (`-Ddiag.noDatum=true`), with the
+       islands stepped in turn and compiled on the server thread (`-Demergence.simThreads=1
+       -Demergence.compileWaitMs=-1`); not the noon sun (the core test with `-Ddiag.sun=true`), nor the biome (plains
+       are 20 °C, as the core); the island runs at real time. Next: dump the world island's state and run it in the
+       core;
      - the optocoupler's LED stays dark when the tour comes to it after other exhibits (after the gas engine, and in
        the full tour), lit when it is visited alone or after the light barrier;
      - the PWM motor's hands found no spot within reach in the full tour (fine in a short one);

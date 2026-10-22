@@ -2164,6 +2164,7 @@ class DemoExhibitsTest {
         long rotor = b.id(e, "rotor"), bat = b.id(e, "battery"), crank = b.id(e, "crankShaft"), rod = b.id(e, "rodA");
         assertFalse(Double.isNaN(c.linkTension(b.id(e, "barA"))), "the weights' bars work");
         assertFalse(Double.isNaN(c.linkTension(b.id(e, "pushRod"))), "the push rod works");
+        if (Boolean.getBoolean("diag.sun")) c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
         c.toggleSwitch(b.id(e, "switch"));
         startByHand(c, rotor); // at rest, as a player finds it
         double[] w = new double[2], amps = new double[2], turn = new double[2], out = new double[2];
@@ -2183,6 +2184,7 @@ class DemoExhibitsTest {
         System.out.printf("flyball: %.2f rad/s at %.2f A, weights out %.1f mm, rheostat turned %.1f°; braked %.2f rad/s at %.2f A, "
                         + "out %.1f mm, %.1f°; sleeve %.2f mm; energy error %.3g J%n", w[0], amps[0], 1e3 * out[0], Math.toDegrees(turn[0]),
                 w[1], amps[1], 1e3 * out[1], Math.toDegrees(turn[1]), 1e3 * c.probe(b.id(e, "sleeve")).angle(), c.energyError());
+        System.out.printf("flyball: braked, the brake takes %.3f W%n", c.brake(b.id(e, "brake"))[1]);
         assertTrue(out[0] > 0.003 && out[0] < 0.027, "the weights ride out between their stops: " + out[0]);
         assertTrue(turn[0] > Math.toRadians(2), "the push rod has turned the rheostat in: " + turn[0]);
         // a spring-loaded centrifugal governor without reset holds its speed only proportionally: some droop under load

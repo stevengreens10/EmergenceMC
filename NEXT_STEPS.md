@@ -59,6 +59,19 @@
      definitions, 72 of 72;
    - the full tour, then every exhibit's checks green.
 
+0b. **Every exhibit at real time** (asked for 2026-10-22; measure first: `SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`
+   prints ms per 50 ms tick and the unknowns that limit the step):
+   1. power electronics — fidelity switching: fast, decided states (a logic output's 10 ns slew, a gate's charge)
+      as events and quasi-static algebra while the solver's step dwarfs them; then an ideal-switch or averaged bridge
+      model with a detector for when its edges are not fast against the load (inverter, boost, PWM, H-bridge);
+      (first step done: the Schmitt trigger's threshold as an event, the inverter 20× cheaper);
+   2. the loudspeaker's audio-rate partition sleeping while nothing vibrates (30× → ~1× idle);
+   3. the gas engine: ignition and valve timing as events, factorisation reuse (⅕–⅓ of real time once firing);
+   4. the steam engines: profile their ~80 steps a revolution (valve events, two-phase flow reversal);
+   5. general: async island compilation, factorisation reuse for linear islands, cheaper conductor loads.
+   Expected: 1 and 2 reach real time; a fast combustion engine may stay costly (real time alone near a player, the
+   slow-motion fallback when several are).
+
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →
 regenerate the demo world → screenshot tour → docs → commit.
 

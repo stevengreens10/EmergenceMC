@@ -27,9 +27,10 @@ behaviour; where physics is missing the effect is simply absent.
 * Bulk metal parts are single electrical nodes (internal resistance neglected).
 
 ## Mechanical
-* Dry friction is smooth, τ_c·tanh(v/v_s), not a true stick state: a part held by friction creeps at about
-  v_s·(net force/friction limit) — slowly, but over minutes it crosses a friction dead band that real stiction would
-  hold (the flyball governor creeps ~2 rad/s towards its frictionless balance over five minutes from either side).
+* Dry friction is a Dahl bristle model: no Stribeck dip (static and kinetic friction are equal) and no
+  pre-sliding hysteresis beyond the bristles' 1 ms × ω_s deflection. A held load relaxes at 0.1/s of its smoothing, so
+  a part held at a fraction f of its friction limit still creeps at ≈ 10⁻⁴·ω_s·f/(1 − f), 10⁴ times slower than the
+  speed-only law it replaced (which let the flyball governor drift ~2 rad/s across its dead band in five minutes).
 * Rigid bodies rotate about fixed axes (bearing joints) or slide along them (linear bearings on the frame); a rotor
   may ride on a slide, or a slide on a rotor (two degrees of freedom each), but no deeper chains (no slide on a rotor
   on a slide). A carried slide's bushings feel only its weight, not the centrifugal and Coriolis loads. A carried slide can close a

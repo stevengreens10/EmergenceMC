@@ -854,3 +854,13 @@ turbine read 0.008 W at the same speed that once gave 0.12 W: its generator's ou
 tick samples alias. Its load power is now time-averaged at every solver step in the island's own time, as a wattmeter
 reads. The gas engine never ran away from the hand (60 rad/s, then stalling under the brake), where alone it reaches
 200–270.
+
+**Friction that holds.** The flyball's slow creep was dry friction's: τ_c·tanh(Δω/ω_s) is a function of the
+sliding speed alone, so anything held by friction slides at a speed set by how hard it is pushed, ω_s·artanh(τ/τ_c),
+and a governor's weights cross their dead band over minutes. Friction is now a Dahl bristle model (the LuGre model
+without its Stribeck term). The torque is a state that loads elastically over a pre-sliding 1 ms × ω_s and saturates
+at τ_c in sliding, so a held part stays held: a rotor pushed at half its friction limit for 100 s stays put, where
+it used to creep 0.55 mrad/s. Two first attempts failed instructively. Damping in the sliding speed added a hump of
+up to 45 % above τ_c to break away through, so a propeller's thrust no longer moved its cart; the bristles are now
+damped in their own deflection rate, as LuGre's are. A smoothed |Δω| below |Δω| (Δω·tanh) let slow sliding settle
+the bristles far above τ_c, which locked a fan-driven windmill at rest; it is now √(Δω² + ε²).

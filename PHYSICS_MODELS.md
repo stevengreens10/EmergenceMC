@@ -52,7 +52,7 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
 | `Inertia` | Σ τ = d(Jω)/dt (rotational) or d(mv)/dt |
 | `Spring` | rate-form Hooke's law d(τ/k)/dt = Δω; shaft torsion k = G·J_p/L |
 | `Damper` | τ = c·Δω |
-| `CoulombFriction` | τ = τ_c·tanh(Δω/ω_s), ω_s = 1e-2 rad/s (regularised stiction) |
+| `CoulombFriction` | Dahl/LuGre bristles: dτ_b/dt = (τ_c·Δω − |Δω|·τ_b)/θ₀, τ = τ_b + (θ₀/ω_s)·dτ_b/dt; θ₀ = ω_s·1 ms, |Δω| as √(Δω² + (10⁻⁴ω_s)²) — a held load stays held, sliding saturates at τ_c (`frictionHoldsALoadBelowItsLimitAndBreaksAwayAboveIt`) |
 | `GearMesh` | Lagrange-multiplier constraint r_a ω_a ± r_b ω_b = 0 (lossless); tooth sliding loss f ≈ μπ(1/z_a + 1/z_b) (Buckingham) as heat |
 | `HumanCrank` | Hill force–velocity relation F = F_max(1 − v/v_max), power cap; F_max 200 N, v_max 3 m/s, 100 W sustained / 250 W sprint |
 | Bearings (compiler) | Ball: SKF simplified M = ½·μ·P·d, μ = 0.0015, plus grease drag. Plain bushing: boundary friction μ·P·d/2 (μ = 0.4·μ_material) plus Petroff hydrodynamic drag c = μ_oil·2πr³L/clearance (oil 0.1 Pa·s, clearance 0.1 %·d). Load P = rotor weight / bearing count. |

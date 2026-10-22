@@ -62,6 +62,29 @@ class MechanicalThermalValidationTest {
         assertTrue(Math.abs(s.x(w)) < 0.01, "should have stopped, w=" + s.x(w));
     }
 
+    /**
+     * Stiction: a rotor in a bearing whose friction can hold 0.05 N·m, pushed by half that, stays where it is — the
+     * bristles carry the load — and pushed by more than the limit, it breaks away and accelerates at (τ − τ_c)/J. (The
+     * older law, friction a function of the speed alone, let it creep at ω_s·artanh(½), 0.55 mrad/s, without end.)
+     */
+    @Test
+    void frictionHoldsALoadBelowItsLimitAndBreaksAwayAboveIt() {
+        double J = 0.01, tc = 0.05;
+        Network n = new Network();
+        Node ref = n.reference(Domain.ROTATIONAL);
+        Node w = n.node(Domain.ROTATIONAL, "rotor", 0);
+        n.add(new Inertia(w, J));
+        n.add(new CoulombFriction(w, ref, tc, 1e-3, null));
+        double[] push = {0.5 * tc};
+        n.add(new FlowSource(ref, w, t -> push[0]));
+        TransientSolver s = new TransientSolver(n);
+        s.advance(100);
+        assertTrue(Math.abs(s.x(w)) < 1e-6, "held: it does not creep, w = " + s.x(w));
+        push[0] = 1.5 * tc;
+        s.advance(1.0);
+        assertEquals((1.5 * tc - tc) / J, s.x(w), 0.02 * (0.5 * tc / J), "it breaks away and accelerates at (τ − τc)/J");
+    }
+
     @Test
     void torsionalOscillatorFrequency() {
         double J = 0.01, k = 40; // ωn = 63.25 rad/s

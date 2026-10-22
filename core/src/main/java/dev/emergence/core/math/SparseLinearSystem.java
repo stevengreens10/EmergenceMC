@@ -131,6 +131,12 @@ public final class SparseLinearSystem implements LinearSystem {
     }
 
     @Override
+    public int visitPattern(int from, EntryVisitor v) {
+        for (int k = from; k < nnz; k++) v.visit(rowOf[k], colOf[k]);
+        return nnz;
+    }
+
+    @Override
     public void add(int row, int col, double v) {
         long key = (((long) row + 1) << 32) | (col & 0xffffffffL); // +1 so no key is 0 (empty marker)
         if (seg < 0) {

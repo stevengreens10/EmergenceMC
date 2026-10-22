@@ -139,6 +139,16 @@ public final class TransientSolver implements StateView {
             gmin[node.index] = node.domain.gmin;
             relGmin[node.index] = node.domain == Domain.ELECTRICAL;
         }
+        if (net.isElectricalUngrounded()) {
+            circuitOf = new int[n];
+            for (int i = 0; i < n; i++) circuitOf[i] = i;
+            thermalUnknown = new boolean[n];
+            electricalNode = new boolean[n];
+            for (Node node : net.nodes()) {
+                thermalUnknown[node.index] = node.domain == Domain.THERMAL;
+                electricalNode[node.index] = node.domain == Domain.ELECTRICAL;
+            }
+        }
         for (int s = 0; s < ns; s++) slotTol[s] = net.slotAbsTol(s);
         stepLimit = new double[n];
         for (int i = 0; i < n; i++) stepLimit[i] = net.stepLimit(i);
@@ -685,7 +695,7 @@ public final class TransientSolver implements StateView {
         return rescues;
     }
     /** Diagnostics: print the worst unknowns of each Newton iteration once the step has collapsed. */
-    public static boolean TRACE = false;
+    public static boolean TRACE = Boolean.getBoolean("diag.trace");
     private int worstSlot = -1;
     private final java.util.Map<String, Integer> limiterCounts = new java.util.HashMap<>();
 
@@ -705,6 +715,7 @@ public final class TransientSolver implements StateView {
     private static final boolean NEWTON_LAGGARDS = Boolean.getBoolean("diag.newtonLaggards");
     /** Diagnostics ({@code diag.lagTrace=<name part>}): each iteration that unknown holds Newton back, its value, update, residual and diagonal (400 lines). */
     private static final String LAG_TRACE = System.getProperty("diag.lagTrace");
+    private static final double STEP_TRACE_FROM = Double.parseDouble(System.getProperty("diag.stepTraceFrom", "-1"));
     private int lagLines;
     private final java.util.Map<String, Integer> newtonLaggards = new java.util.HashMap<>();
 
@@ -756,6 +767,50 @@ public final class TransientSolver implements StateView {
         }
     }
 
+    // ---- datums (Network.electricalUngrounded): one grounded node per galvanically connected circuit
+    /** Union–find over the unknowns, joined by the Jacobian's entries (thermal nodes left out: heat is no connection). */
+    private int[] circuitOf;
+    private boolean[] thermalUnknown, electricalNode;
+    /** How many of each matrix's entries have been joined in. */
+    private final java.util.Map<LinearSystem, Integer> datumSeen = new java.util.IdentityHashMap<>();
+    /** The datum's shunt [S]: what flows through it is the circuit's share of the other nodes' 10⁻¹² shunts. */
+    private static final double DATUM_G = 1.0;
+
+    private int circuit(int i) {
+        while (circuitOf[i] != i) i = circuitOf[i] = circuitOf[circuitOf[i]];
+        return i;
+    }
+
+    /**
+     * After an assembly: joins in the entries new to the matrix's pattern and, if circuits joined (or on the first call),
+     * grounds the lowest node of each circuit and only that one. Connectivity from the pattern can only over-join — every
+     * real coupling has an entry (a contact that closes adds one when it does) — so a circuit never gets two datums; two
+     * galvanically separate circuits coupled otherwise (a transformer's windings) share one, the other left as before.
+     */
+    private void updateDatums(LinearSystem js) {
+        Integer seen = datumSeen.get(js);
+        boolean[] joined = {seen == null};
+        int now = js.visitPattern(seen == null ? 0 : seen, (r, c) -> {
+            if (r == c || thermalUnknown[r] || thermalUnknown[c]) return;
+            int a = circuit(r), b = circuit(c);
+            if (a == b) return;
+            if (a < b) circuitOf[b] = a;
+            else circuitOf[a] = b;
+            joined[0] = true;
+        });
+        datumSeen.put(js, now);
+        if (!joined[0]) return;
+        boolean[] grounded = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            if (!electricalNode[i]) continue;
+            int r = circuit(i);
+            boolean datum = !grounded[r];
+            grounded[r] = true;
+            gmin[i] = datum ? DATUM_G : Domain.ELECTRICAL.gmin;
+            relGmin[i] = !datum;
+        }
+    }
+
     /** @return 0 accepted, 1 Newton failure, 2 LTE rejection */
     private int tryStep(Phase ph, double h) {
         LinearSystem jac = ph.jac;
@@ -786,11 +841,13 @@ public final class TransientSolver implements StateView {
         ctx.x = xTrial;
 
         boolean converged = false, damped;
+        int bounces = 0;
         for (int it = 0; it < maxNewton; it++) {
             newtonIterations++;
             Arrays.fill(f, 0.0);
             jac.clear();
             loadAll();
+            if (circuitOf != null) updateDatums(jac);
             if (ph.heatIn != null) for (int i : slowRows) f[i] -= ph.heatIn[i];
             if (frozen != null) {
                 // held unknowns: their rows (stamped with nothing else) say "do not move"
@@ -830,9 +887,11 @@ public final class TransientSolver implements StateView {
             // the solution, rounding noise alternates too, and halving it there costs conservation and iterations).
             // Only while it bounces: halving every update for the rest of the solve once it had made one Newton
             // converge at a rate of ½ — a gas passage's flow reversing once at an exhaust valve's opening, then ten
-            // more iterations to settle
-            damped = false;
-            if (it >= 3) {
+            // more iterations to settle. A bounce that recurs (a third time) is a cycle, not a single overshoot: from then on
+            // every update is halved, as before (a PWM comparator's op-amp at its rail, its supply's current ±0.2 A and
+            // its state ±0.3 V an iteration, to the iteration cap at every step size)
+            damped = bounces >= 3;
+            if (it >= 3 && !damped) {
                 double dot = 0, n1 = 0, n2 = 0, far = 0;
                 for (int i = 0; i < n; i++) {
                     dot += dx[i] * dxPrev[i];
@@ -841,6 +900,7 @@ public final class TransientSolver implements StateView {
                     far = Math.max(far, Math.abs(dx[i]) / (relTol * Math.abs(xTrial[i]) + absTol[i]));
                 }
                 damped = far > 1e3 && dot < -0.9 * Math.sqrt(n1 * n2);
+                if (damped) bounces++;
             }
             System.arraycopy(dx, 0, dxPrev, 0, n);
             double scale = damped ? 0.5 : 1.0;
@@ -880,7 +940,7 @@ public final class TransientSolver implements StateView {
                 final double[] ratio = new double[n];
                 for (int i = 0; i < n; i++) ratio[i] = Math.abs(dx[i]) / (relTol * Math.abs(xTrial[i]) + absTol[i]);
                 Arrays.sort(order, (p1, p2) -> Double.compare(ratio[p2], ratio[p1]));
-                StringBuilder sb = new StringBuilder("TRACE h=" + h + " it=" + it + ":");
+                StringBuilder sb = new StringBuilder("TRACE t=" + t + " h=" + h + " it=" + it + ":");
                 for (int k = 0; k < 5; k++) sb.append(" ").append(net.unknownName(order[k])).append("=").append(String.format("%.6g(dx %.3g)", xTrial[order[k]], dx[order[k]]));
                 System.out.println(sb);
             }
@@ -941,6 +1001,8 @@ public final class TransientSolver implements StateView {
         }
         double exponent = 1.0 / ((validHistory >= 2 ? p : 1) + 1);
         if (worstSlot >= 0 && err > 0.5) limiterCounts.merge(net.slotOwner(worstSlot) + "#" + worstSlot, 1, Integer::sum);
+        if (STEP_TRACE_FROM >= 0 && t >= STEP_TRACE_FROM && t < STEP_TRACE_FROM + 0.004)
+            System.out.printf("STEP t=%.7f h=%.3e err=%.2f %s%n", t, h, err, worstSlot >= 0 ? net.slotOwner(worstSlot) + "#" + worstSlot : "-");
         if (err > 1.0 && !skipLte) {
             ph.hNext = h * Math.max(0.1, 0.9 * Math.pow(err, -exponent));
             if (TRACE && h < 1e-8) System.out.println("TRACE LTE reject h=" + h + " err=" + err + " slot " + net.slotOwner(worstSlot)

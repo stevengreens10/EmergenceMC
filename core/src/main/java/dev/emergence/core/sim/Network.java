@@ -49,6 +49,23 @@ public final class Network {
         return references.computeIfAbsent(d, dd -> new Node(dd, "ref", true));
     }
 
+    private boolean electricalUngrounded;
+
+    /**
+     * Declares that no element connects to the electrical reference: every circuit floats, its potential defined only up
+     * to a constant. The solver then grounds one node of each galvanically connected circuit (its datum), where by
+     * Kirchhoff nothing flows; otherwise that constant is held only by the 10⁻¹² shunts every node has, a direction of
+     * the matrix 10¹² times softer than the rest, along which Newton's updates are noise.
+     */
+    public void electricalUngrounded() {
+        requireMutable();
+        electricalUngrounded = true;
+    }
+
+    public boolean isElectricalUngrounded() {
+        return electricalUngrounded;
+    }
+
     public <E extends Element> E add(E e) {
         requireMutable();
         elements.add(e);

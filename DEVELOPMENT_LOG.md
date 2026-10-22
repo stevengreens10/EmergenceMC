@@ -904,3 +904,15 @@ the ends' pressures barely follow the flow within the step; two bottles joined f
 forms until the choice weighed that. Separately, Newton's halving of bouncing updates had stayed on to the end of a
 solve once triggered, a convergence rate of ½. It now lasts only while the updates bounce. The engine runs at real time
 (1.33× before), and the inverter, boost and PWM gained 15–30 %.
+
+**Fewer nodes, and a ground.** A profile of the loudspeaker put a quarter of its time in conductor loads. 92 of its
+505 unknowns were contact nodes: each contact between two conductors had been split into two halves meeting at a node
+of its own, so each part receives its own half's Joule heat. Nothing else meets there, so a contact is now one element
+carrying both halves: each half's resistance at its own temperature, its own Joule heat, each half's Seebeck EMF and
+the junction's Peltier heat. A test checks it against the pair it replaces to the last digit, and its Jacobian against
+finite differences. The loudspeaker went from 5.1× to 3.75× real time idle, and every circuit got cheaper. Except the
+PWM motor, which got three times slower, with its whole ground net drifting volts per Newton iteration. Nothing a player
+builds touches the electrical reference, so every circuit's absolute potential had been held only by its nodes'
+10⁻¹² shunts, and fewer nodes made that direction softer still. The solver now grounds one node of each circuit, where
+by Kirchhoff nothing flows. Circuits are found from the Jacobian's pattern, which can only over-join them, so none gets
+two grounds.

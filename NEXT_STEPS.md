@@ -66,7 +66,8 @@
       as events and quasi-static algebra while the solver's step dwarfs them; then an ideal-switch or averaged bridge
       model with a detector for when its edges are not fast against the load (inverter, boost, PWM, H-bridge);
       (first step done: the Schmitt trigger's threshold as an event, the inverter 20× cheaper);
-   2. the loudspeaker: 12× → 5× idle, 22× → 10× on (parasitic tolerances, the ambient slow); its oscillator runs
+   2. the loudspeaker: 12× → 3.75× idle, 22× → 7.1× on (parasitic tolerances, the ambient slow, contacts without a
+      node); its oscillator runs
       whenever powered, so "idle" is 500 edges a second: what is left is per-step cost (505 unknowns; the sparse
       matrix's assembly and refactorisation, ~35 % of samples) and ~40 steps a half-period — a lighter matrix assembly,
       fewer unknowns (series wire cells), the comparator as an event. (Tried: chord Newton, the factored Jacobian

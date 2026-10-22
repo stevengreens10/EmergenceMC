@@ -34,6 +34,24 @@ class RunningExhibitsBenchTest {
         bench(dev.emergence.core.demo.AcousticsExhibits.loudspeaker(), "switch");
     }
 
+    /** The PWM motor alone (for diagnostics: {@code -Ddiag.trace=true} prints the solver's trace at hard steps). */
+    @Test
+    void pwm() {
+        dev.emergence.core.sim.TransientSolver.TRACE = Boolean.getBoolean("diag.trace");
+        try {
+            bench(ControlExhibits.pwmMotor());
+        } finally {
+            dev.emergence.core.sim.TransientSolver.TRACE = false;
+        }
+    }
+
+    /** The loudspeaker alone, idle and switched on (for diagnostics: {@code -Ddiag.stepTraceFrom=2.0}). */
+    @Test
+    void loudspeaker() {
+        bench(dev.emergence.core.demo.AcousticsExhibits.loudspeaker());
+        bench(dev.emergence.core.demo.AcousticsExhibits.loudspeaker(), "switch");
+    }
+
     /** The engines running: the gas engine started by hand (fuel open, ten seconds at its handle), the steam engines on. */
     @Test
     void engines() {

@@ -10,6 +10,8 @@ public final class DenseLinearSystem implements LinearSystem {
         this.n = n;
         this.a = new double[n * n];
         this.perm = new int[n];
+        this.seen = new boolean[n * n];
+        this.order = new int[n * n];
     }
 
     @Override
@@ -24,7 +26,23 @@ public final class DenseLinearSystem implements LinearSystem {
 
     @Override
     public void add(int row, int col, double v) {
-        a[row * n + col] += v;
+        int k = row * n + col;
+        a[k] += v;
+        if (v != 0 && !seen[k]) {
+            seen[k] = true;
+            order[seenCount++] = k;
+        }
+    }
+
+    /** The entries that have held a nonzero value, in the order they first did. */
+    private final boolean[] seen;
+    private final int[] order;
+    private int seenCount;
+
+    @Override
+    public int visitPattern(int from, EntryVisitor v) {
+        for (int i = from; i < seenCount; i++) v.visit(order[i] / n, order[i] % n);
+        return seenCount;
     }
 
     @Override

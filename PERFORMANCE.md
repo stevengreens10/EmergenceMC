@@ -20,14 +20,14 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 ### Running exhibits (`coreTest --tests *RunningExhibitsBenchTest*`, switched on; 2026-10-22)
 | Exhibit | Unknowns | ms/tick | × real time |
 |---|---|---|---|
-| Inverter | 245 | 7.0 | 0.14 (59.5 s of CPU per 10 s before the Schmitt event: ≈ 6×) |
-| Boost converter | 171 | 13 | 0.25 (0.49 before the ambient was slow) |
-| PWM motor | 398 | 21 | 0.41 (0.92 at the start of the day) |
-| H-bridge (forward) | 276 | 2.2 | 0.04 |
-| Loudspeaker, idle (its oscillator runs) | 505 | 255 | 5.1 (12.4 at the start of the day) |
-| Loudspeaker, switched on | 505 | 500 | 10.0 (22.4) |
+| Inverter | 199 | 6.0 | 0.12 (59.5 s of CPU per 10 s before the Schmitt event: ≈ 6×) |
+| Boost converter | 140 | 11 | 0.22 (0.49 before the ambient was slow) |
+| PWM motor | 342 | 18 | 0.36 (0.92 at the start of the day) |
+| H-bridge (forward) | 243 | 1.6 | 0.03 |
+| Loudspeaker, idle (its oscillator runs) | 413 | 187 | 3.75 (12.4 at the start of the day) |
+| Loudspeaker, switched on | 413 | 356 | 7.1 (22.4) |
 | Gas engine, running (141 rad/s) | 207 | 50 | 1.00 (80 steps a tick, 4.1 Newton iterations a step; 1.8 this morning) |
-| Steam engine / condensing engine | 140 / 150 | 19 / 23 | 0.38 / 0.46 |
+| Steam engine / condensing engine | 136 / 146 | 19 / 23 | 0.37 / 0.46 |
 
 Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
 and the steam engine (23).
@@ -153,6 +153,20 @@ compile or island step over 1 s ("Slow simulation: …"), naming the island's bl
   bottles joined face to face) the forms cycled. And Newton's halving of anti-parallel updates now lasts only while they
   bounce: once triggered it had halved every later update, a rate of ½ to the end. Gas engine 5.7 → 4.1 iterations a
   step, 1.33× → 1.00× real time; inverter 0.20 → 0.14×, boost 0.35 → 0.25×, PWM 0.50 → 0.41× (fewer failed solves).
+  (A bounce that recurs a third time is a cycle, not an overshoot: from then on the solve is halved throughout, as
+  before; a PWM comparator's op-amp at its rail needed it.)
+* A contact between two conductors was two half-conductors and a node between them (each half's Joule heat into its
+  own part). Nothing else meets at a contact face, so it is now one element, exactly equivalent
+  (`ThermoelectricTest`: same current and temperatures to the last digit, the Jacobian against finite differences).
+  That is 92 of the loudspeaker's 505 unknowns and as many loads: 5.1 → 3.75× idle, 9.3 → 7.1× on, and every circuit
+  10–20 % cheaper. It first made the PWM motor 3× slower. Every circuit floated, its potential held only by 10⁻¹²
+  shunts, and the fewer nodes the softer that direction. The solver now grounds one node per circuit (a datum, see
+  PHYSICS_MODELS).
+* The loudspeaker's remaining cost is honest work: about 50 steps per oscillator edge (≈ 10 regrowing from 10⁻⁷ s after
+  the trigger's event, ≈ 20 through the gate RC's exponential at a 10⁻³ error, ≈ 15 through the MOSFET switching its
+  floating drain), 500 edges a second. Each step costs ~0.18 ms: Jacobian stamping (~1500 entries a load) and the
+  sparse refactorisation are each a quarter of it. The bristles of its two light slides added 20 % once on; their
+  torque is now resolved to 0.1 % of its limit, not 10⁻⁹ absolute.
 * Tried and dropped: chord Newton (Jacobian reuse within a step: slower on circuits that converge in two or three
   quadratic iterations, and it failed the boost converter at an edge); PI step control (Gustafsson/Söderlind gains
   0.7/0.4: halved the gas engine's rejected steps, 9 % faster, but regrew the step more slowly after every switching

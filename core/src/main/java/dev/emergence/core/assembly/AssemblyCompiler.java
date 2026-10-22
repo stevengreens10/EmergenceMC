@@ -81,6 +81,7 @@ public final class AssemblyCompiler {
             this.parts = new ArrayList<>(a.parts());
             for (int i = 0; i < parts.size(); i++) idx.put(parts.get(i).id(), i);
             gndE = c.network.reference(Domain.ELECTRICAL);
+            c.network.electricalUngrounded(); // nothing a player builds touches it (the solver grounds each circuit once)
             refR = c.network.reference(Domain.ROTATIONAL);
             refT = c.network.reference(Domain.TRANSLATIONAL);
             ambientT = a.ambientTemperature();
@@ -1538,27 +1539,23 @@ public final class AssemblyCompiler {
                 }
                 double rHalfP = nodeToFace(p), rHalfQ = nodeToFace(q);
                 if (rHalfP >= CELL / 2 && rHalfQ >= CELL / 2) {
-                    // two bulk/wire conductors: split at the contact face so each half's Joule heat goes
+                    // two bulk/wire conductors: the halves to the contact face in series, each half's Joule heat
                     // into its own part (exact heat allocation, e.g. along a filament)
-                    Node mid = enode("m" + k.pk + "|" + k.qk);
                     Node tp = c.thermalOfPart.get(p.id()), tq = c.thermalOfPart.get(q.id());
-                    Conductor cp = new Conductor(np, mid, conductorMaterial(p), rHalfP, conductorArea(p), tp, ambientT);
-                    Conductor cq = new Conductor(mid, nq, conductorMaterial(q), rHalfQ, conductorArea(q), tq, ambientT);
                     // thermoelectricity: each half runs from its part's temperature to the contact's, which lies between
                     // the two parts' in proportion to the halves' thermal conductances
                     double sp = conductorMaterial(p).get(MaterialProperty.SEEBECK_COEFFICIENT, 0);
                     double sq = conductorMaterial(q).get(MaterialProperty.SEEBECK_COEFFICIENT, 0);
+                    double lp = 0.5;
                     if ((sp != 0 || sq != 0) && tp != tq) {
                         double gp = conductorMaterial(p).get(MaterialProperty.THERMAL_CONDUCTIVITY, 1) * conductorArea(p) / rHalfP;
                         double gq = conductorMaterial(q).get(MaterialProperty.THERMAL_CONDUCTIVITY, 1) * conductorArea(q) / rHalfQ;
-                        double lp = gp / (gp + gq);
-                        Node[] contact = {tp, tq};
-                        double[] w = {lp, 1 - lp};
-                        if (sp != 0) cp.withSeebeck(sp, new Node[]{tp}, new double[]{1}, contact, w);
-                        if (sq != 0) cq.withSeebeck(sq, contact, w, new Node[]{tq}, new double[]{1});
+                        lp = gp / (gp + gq);
+                    } else {
+                        sp = sq = 0;
                     }
-                    c.network.add(cp);
-                    c.network.add(cq);
+                    c.network.add(new dev.emergence.core.sim.elements.ContactConductor(np, nq, conductorMaterial(p), rHalfP / conductorArea(p), tp, sp,
+                            conductorMaterial(q), rHalfQ / conductorArea(q), tq, sq, lp, ambientT));
                     if (!joinedPairs.contains(pairKey(p.id(), q.id())) && c.bodyOfPart.get(p.id()) == c.bodyOfPart.get(q.id())) {
                         thermalLink(p, q);
                         joinedPairs.add(pairKey(p.id(), q.id()));

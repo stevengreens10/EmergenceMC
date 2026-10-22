@@ -20,6 +20,17 @@ public interface LinearSystem {
     default void beginSegment(int s) {
     }
 
+    /** Receives a structural entry (row, col). */
+    interface EntryVisitor {
+        void visit(int row, int col);
+    }
+
+    /**
+     * Visits the entries that have held a nonzero value at some assembly, from the {@code from}-th on (entries only ever
+     * join, in order), and returns how many there are now.
+     */
+    int visitPattern(int from, EntryVisitor v);
+
     /** Current value of diagonal entry (i, i) (0 if structurally absent). */
     double diagonal(int i);
 

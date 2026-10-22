@@ -16,6 +16,13 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   coil's peak magnet-flux swing).
 * **GMIN**: 1e-12 S shunt per node (relative 1e-12·|J_ii| for electrical nodes so floating conductive
   islands remain numerically well posed). Effect below any instrument resolution.
+* **Datums**: nothing a player builds connects to the electrical reference, so every circuit floats. The solver
+  grounds one node of each galvanically connected circuit through 1 S. By Kirchhoff nothing flows there but the
+  circuit's share of the GMIN shunts, so no current or stored charge changes. Without it, the circuit's absolute
+  potential was held only by those shunts: a direction of the matrix 10¹² times softer than the rest, along which
+  Newton's updates were noise (a PWM motor's whole ground net drifting volts an iteration). Circuits are found from
+  the Jacobian's pattern, without thermal nodes. Every real coupling has an entry (a contact that closes adds one
+  when it does), so circuits can only be over-joined, never split: one circuit never gets two datums.
 
 ## Electrical
 | Element | Model | Validity / error |
@@ -85,7 +92,9 @@ SI units throughout. Tests that validate each model are listed in VALIDATION.md.
   single-cell component also brings its − and + leads out on the −L and +L side faces of its lead axis L,
   parameter `lead_axis`, as on a real coil former); bulk metal
   conducts; only brushes conduct across a moving joint. Contacts are split at the face so each half's
-  Joule heat goes to its own part.
+  Joule heat goes to its own part: one element per contact, the two halves R_p(T_p) + R_q(T_q) in series, each half's
+  I²R into its part, the Seebeck EMF of each half and the junction's Peltier heat (S_p − S_q)·T_c·I at the contact
+  temperature, exactly as two conductors meeting at a contact node, without the node (`ContactConductor`).
 * **Failure**: parts are destroyed above their failure temperature (melting point; insulation, enamel,
   semiconductor and resistor limits).
 

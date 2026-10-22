@@ -26,6 +26,9 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 | H-bridge (forward) | 276 | 2.2 | 0.04 |
 | Loudspeaker, idle (its oscillator runs) | 505 | 255 | 5.1 (12.4 at the start of the day) |
 | Loudspeaker, switched on | 505 | 500 | 10.0 (22.4) |
+| Gas engine, running (141 rad/s) | 207 | 79–84 | 1.6–1.7 (81 steps a tick, 6 Newton iterations a step) |
+| Steam engine / condensing engine | 140 / 150 | 19 / 23 | 0.38 / 0.46 |
+
 Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
 and the steam engine (23).
 
@@ -133,6 +136,14 @@ compile or island step over 1 s ("Slow simulation: …"), naming the island's bl
   loaded at every Newton iteration of every fast step, a quarter of the loudspeaker's samples (JFR). A thermal node
   written by slow candidates alone is now slow too. With a conductor's resistance cached on its (held) temperature,
   every switching exhibit is 1.5–2× faster: the loudspeaker 8.6× → 5.1×, PWM 0.82× → 0.50×.
+* The reload after Newton converges (stored quantities re-evaluated at the converged point) is residuals only: it
+  assembled a Jacobian nothing used. Gas passages remember their species' enthalpies and heat capacities at the last
+  temperature: their finite-difference Jacobian evaluates the residual ~20 times a load, and only the temperature
+  columns move the temperatures (gas engine 89 → 84 ms a tick).
+* Tried and dropped: chord Newton (Jacobian reuse within a step: slower on circuits that converge in two or three
+  quadratic iterations, and it failed the boost converter at an edge); PI step control (Gustafsson/Söderlind gains
+  0.7/0.4: halved the gas engine's rejected steps, 9 % faster, but regrew the step more slowly after every switching
+  edge — the circuits 20–40 % slower); stamping exact zeros to keep the gas engine's matrix pattern fixed (no change).
 
 ## Known bottlenecks and plan
 1. **Large linear networks** take ~4× more steps than the 1 ms cap requires (LTE rejections on 2000+ RC

@@ -213,7 +213,8 @@ public final class MixtureBranch implements Element {
         // choking: the passage feels at most the critical pressure drop (smoothly: soft max of the downstream
         // pressure and the critical fraction of the upstream one), γ from the upstream mixture
         double cpUp = 0;
-        for (int i = 0; i < m; i++) cpUp += (w * sa[3 + i] + (1 - w) * sb[3 + i]) * sp[i].cp(tUp);
+        double[] cps = heatCapacities(tUp);
+        for (int i = 0; i < m; i++) cpUp += (w * sa[3 + i] + (1 - w) * sb[3 + i]) * cps[i];
         double gamma = cpUp / (cpUp - R), crit = Math.pow(2 / (gamma + 1), gamma / (gamma - 1));
         double pHi = Math.max(sa[0], sb[0]), pLo = Math.min(sa[0], sb[0]), pc = crit * pHi;
         // C¹ max(pLo, pc): exact unless pLo is within 1 % of the critical pressure
@@ -244,12 +245,41 @@ public final class MixtureBranch implements Element {
      */
     private double carried(double q, double q0, double[] sa, double[] sb, double[] nf) {
         double qf = 0.5 * (q + Math.sqrt(q * q + q0 * q0)), qb = qf - q, hf = 0;
+        double[] ha = enthalpies(0, sa[1]), hb = enthalpies(1, sb[1]);
         for (int i = 0; i < m(); i++) {
             double na = qf * sa[3 + i], nb = qb * sb[3 + i];
             nf[i] = na - nb;
-            hf += na * sp[i].enthalpy(sa[1]) - nb * sp[i].enthalpy(sb[1]);
+            hf += na * ha[i] - nb * hb[i];
         }
         return hf;
+    }
+
+    /*
+     * The species' molar enthalpies at each end's temperature and heat capacities at the upwind one, remembered for the
+     * last temperature asked: the finite-difference Jacobian evaluates the residual some twenty times a load, and only
+     * the temperature columns move the temperatures (the same numbers, not recomputed).
+     */
+    private final double[][] hMemo = new double[2][];
+    private final double[] hMemoT = {Double.NaN, Double.NaN};
+    private double[] cpMemo;
+    private double cpMemoT = Double.NaN;
+
+    private double[] enthalpies(int side, double t) {
+        if (hMemo[side] == null) hMemo[side] = new double[m()];
+        if (t != hMemoT[side]) {
+            for (int i = 0; i < m(); i++) hMemo[side][i] = sp[i].enthalpy(t);
+            hMemoT[side] = t;
+        }
+        return hMemo[side];
+    }
+
+    private double[] heatCapacities(double t) {
+        if (cpMemo == null) cpMemo = new double[m()];
+        if (t != cpMemoT) {
+            for (int i = 0; i < m(); i++) cpMemo[i] = sp[i].cp(t);
+            cpMemoT = t;
+        }
+        return cpMemo;
     }
 
     /** The width [mol/s] of the split into the flow's two ways, for the passage's open area now. */

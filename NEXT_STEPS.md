@@ -72,8 +72,10 @@
       reused while each update at least halved the last — slower on the inverter, 8.5 → 10.4 ms a tick, since these
       solves converge in two or three quadratic iterations, and it failed the boost converter at a switching edge:
       reverted);
-   3. the gas engine: ignition and valve timing as events, factorisation reuse (⅕–⅓ of real time once firing);
-   4. the steam engines: profile their ~80 steps a revolution (valve events, two-phase flow reversal);
+   3. the gas engine: 1.6–1.7× real time running (81 steps a tick, 6 Newton iterations a step, half its time in the
+      gas passages' finite-difference Jacobians): an analytic Jacobian for MixtureBranch (species columns enter only
+      through mole fractions and molar mass), ignition as an event;
+   4. (done: the steam engines run at 0.38× and 0.46× real time);
    5. general: async island compilation, factorisation reuse for linear islands, cheaper conductor loads.
    Expected: 1 and 2 reach real time; a fast combustion engine may stay costly (real time alone near a player, the
    slow-motion fallback when several are).

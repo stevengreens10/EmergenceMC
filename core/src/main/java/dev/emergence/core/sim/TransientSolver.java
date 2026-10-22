@@ -874,10 +874,12 @@ public final class TransientSolver implements StateView {
         }
         if (!converged) return 1;
 
-        // Re-evaluate stored quantities at the converged point so the history is exact.
+        // Re-evaluate stored quantities at the converged point so the history is exact (residuals only: nothing uses
+        // a Jacobian assembled here — the next solve clears it — and assembling one was a quarter of a circuit's loads)
         Arrays.fill(f, 0.0);
-        jac.clear();
+        ctx.residualOnly = true;
         loadAll();
+        ctx.residualOnly = false;
 
         // ---- local truncation error control
         double err = 0.0;

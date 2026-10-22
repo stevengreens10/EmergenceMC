@@ -29,6 +29,8 @@ public final class LoadContext implements StateView {
      * {@link #frozenDiag} (the coupling's stiffness).
      */
     boolean[] frozen;
+    /** Residuals wanted, not a Jacobian (the held rows' coupling is still recorded): stamps go nowhere. */
+    boolean residualOnly;
     double[] frozenDiag;
 
     @Override
@@ -70,6 +72,7 @@ public final class LoadContext implements StateView {
             if (row == col && frozenDiag != null) frozenDiag[row] += v;
             return;
         }
+        if (residualOnly) return;
         jac.add(row, col, v);
     }
 

@@ -22,11 +22,14 @@ import dev.emergence.core.sim.StateView;
  *   <li><b>Memory</b>: the D flip-flop is master–slave: the master follows D while the clock is low, the
  *       slave copies the master while it is high — rising-edge triggered from the same relaxation law.</li>
  *   <li><b>Hysteresis</b>: the Schmitt inverter's threshold moves between 0.4 and 0.6 V_DD with its own
- *       output, the positive feedback that makes RC oscillators possible.</li>
+ *       output, the positive feedback that makes RC oscillators possible. The threshold is a discrete state, flipped
+ *       as a solver event where the input crosses it (located by secant from the accepted steps): the trigger's
+ *       internal regeneration is far faster than its output stage, and a continuous threshold that folded with the
+ *       output cost Newton dozens of failures an edge.</li>
  * </ul>
  * Fuzzy (continuous) forms of the Boolean functions keep everything differentiable.
  */
-public final class LogicGate implements Element {
+public final class LogicGate implements dev.emergence.core.sim.EventSource {
     // (Fidelity note: real gate thresholds depend on internal device sizing — a transistor-level NAND with
     // equal devices switches near 0.65 V_DD — whereas this model uses the V_DD/2 of ratioed 74HC parts.)
     public enum Function { BUFFER, NOT, NAND, NOR, AND, OR, XOR, SCHMITT_NOT, DFF }
@@ -35,6 +38,13 @@ public final class LogicGate implements Element {
     private final Node a, b, out, outBar, vdd, gnd, thermal;
     private final double tpd, gOn;
     private int sIdx, mIdx, sSlot, mSlot;
+    /**
+     * Schmitt trigger: which threshold is in force (true: the output is high, so the input must rise to 0.6 V_DD to
+     * switch it), once {@link #thresholdKnown}; the input (a fraction of the supply) at the last accepted step, and when;
+     * where the input is predicted to reach the threshold.
+     */
+    private boolean outHigh, thresholdKnown;
+    private double lastT = Double.NEGATIVE_INFINITY, lastU = Double.NaN, crossing = Double.POSITIVE_INFINITY;
 
     /**
      * @param a      first input (D for a flip-flop)
@@ -97,8 +107,9 @@ public final class LogicGate implements Element {
         double va = ctx.x(a.index()) - vg, vb = b != null ? ctx.x(b.index()) - vg : 0;
         // Schmitt: the threshold is 0.6 V_DD while the output is high and 0.4 V_DD while it is low, switching
         // sharply with the output state (a soft dependence would fold the hysteresis loop shut)
-        double hs = sig(Math.max(-40, Math.min(40, (s - 0.5) / 0.05)));
-        double dhs = hs * (1 - hs) / 0.05;
+        // (until the first event has read the state, the threshold follows the output state continuously)
+        double hs = thresholdKnown ? (outHigh ? 1 : 0) : sig(Math.max(-40, Math.min(40, (s - 0.5) / 0.05)));
+        double dhs = thresholdKnown ? 0 : hs * (1 - hs) / 0.05;
         // a Schmitt trigger's input stage has high gain (a 0.5 %-of-supply transition) so that, with the hysteresis
         // feedback, its output edge is fast however slowly the input moves — the purpose of the part
         double[] la = fn == Function.SCHMITT_NOT ? level(va, span, 0.4 + 0.2 * hs, 0.005) : level(va, span, 0.5);
@@ -115,6 +126,13 @@ public final class LogicGate implements Element {
             case NOR -> { t = (1 - x) * (1 - y); tx = -(1 - y); ty = -(1 - x); }
             case XOR -> { t = x + y - 2 * x * y; tx = 1 - 2 * y; ty = 1 - 2 * x; }
             default -> { t = 0; tx = 0; ty = 0; }
+        }
+        if (fn == Function.SCHMITT_NOT && thresholdKnown) {
+            // its regeneration has decided: the output heads for the state the last crossing set, whatever the input
+            // does short of the next threshold (an input stage still free to follow the input stalled the timing
+            // capacitor just short of the threshold, the gate an amplifier creeping there)
+            t = outHigh ? 1 : 0;
+            tx = 0;
         }
         if (fn == Function.DFF) {
             // master follows D while the clock is low; slave (the output) copies the master while it is high.
@@ -161,6 +179,42 @@ public final class LogicGate implements Element {
         double inside = s > 0 && s < 1 ? 1 : 0;
         stage(ctx, out, Math.max(0, Math.min(1, s)), sIdx, inside);
         if (outBar != null) stage(ctx, outBar, Math.max(0, Math.min(1, 1 - s)), sIdx, -inside);
+    }
+
+    // ---- the Schmitt trigger's threshold as an event
+
+    @Override
+    public double nextEvent(double time) {
+        if (fn != Function.SCHMITT_NOT) return Double.POSITIVE_INFINITY;
+        // due at every accepted step not yet read (the solver asks just before stepping on); otherwise the predicted
+        // crossing, which the solver steps onto
+        if (lastT < time) return time;
+        return crossing > time ? crossing : Double.POSITIVE_INFINITY;
+    }
+
+    @Override
+    public boolean fireEvent(StateView st, double time) {
+        if (fn != Function.SCHMITT_NOT) return false;
+        double vg = st.x(gnd), span = Math.max(st.x(vdd) - vg, 1.0), u = (st.x(a) - vg) / span;
+        boolean flipped = false;
+        if (!thresholdKnown) {
+            outHigh = st.x(sIdx) > 0.5;
+            thresholdKnown = true;
+            flipped = true; // the threshold law changes from continuous to discrete: restart the history
+        } else if (outHigh ? u >= 0.6 - 1e-4 : u <= 0.4 + 1e-4) {
+            outHigh = !outHigh;
+            flipped = true;
+        }
+        // where the input will reach the threshold now in force, by secant through the last two readings
+        double target = outHigh ? 0.6 : 0.4;
+        crossing = Double.POSITIVE_INFINITY;
+        if (!flipped && Double.isFinite(lastU) && time > lastT) {
+            double rate = (u - lastU) / (time - lastT);
+            if (outHigh ? rate > 0 : rate < 0) crossing = time + (target - u) / rate;
+        }
+        lastT = time;
+        lastU = u;
+        return flipped;
     }
 
     /** Regeneration target of a holding latch: a steep sigmoid of its own state, and its slope. */

@@ -257,6 +257,18 @@ hysteresis feedback the output edge stays fast however slowly the input moves. (
 plain gates, an RC oscillator's output sagged for seconds before switching, giving the clocked logic
 seconds-long edges in which supply offsets between chips decided what was latched.)
 
+The threshold in force is a discrete state, not a function of the output. After every accepted step the trigger reads
+its input (as a fraction of its supply) and predicts by secant where it will reach the threshold; the solver steps onto
+that time, and when the input is within 10⁻⁴ of it the threshold flips (0.6 ↔ 0.4) as an event and the integration
+restarts. Between flips the output heads for the state the last crossing set, whatever the input does, and slews
+there through the output stage with the propagation delay. That is an ideal Schmitt trigger: its internal
+regeneration is taken as instant against the output stage. The continuous form, a threshold that folded with the
+output through a 5 %-wide sigmoid, cost Newton dozens of failures an edge. On the inverter it cost 59.5 s of CPU for
+10 s simulated, with 26 700 Newton failures; it now costs 3.0 s with none. Its 470 kΩ / 1 µF oscillator ran at 2.77 Hz
+and now runs at 2.70 Hz, against 2.62 Hz for the ideal 2RC·ln 1.5. The gate's input stage is not used once the
+threshold is known. Kept in the first form, it began switching the output as the input neared the threshold, the
+timing capacitor stalled just short of it, and the gate sat as an amplifier creeping there: 1.2 Hz and 450 s of CPU.
+
 ## Rotary viscous damper (bearing `type` 2)
 A rotor in a silicone-filled housing: Couette shear across a 0.5 mm gap, torque c·Δω with
 c = μ·2π·r³·L/gap (r = 40 % of the cell, L = 80 % of its length, μ the fluid's viscosity, default 10 Pa·s);

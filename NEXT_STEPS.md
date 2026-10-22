@@ -85,6 +85,14 @@
    Expected: 1 and 2 reach real time; a fast combustion engine may stay costly (real time alone near a player, the
    slow-motion fallback when several are).
 
+0c. **World blocks as thermal masses** (KNOWN_LIMITATIONS: they are not): a part touching a solid block exchanges
+   heat with it — a node per touched block (ρ·c_p of a mapped material — stone as granite, dirt as soil, iron blocks
+   as iron… — over the block's real volume at the island's scale), its half-conduction plus a contact resistance to
+   the part, and a shape-factor conduction (≈ 4·k·s for a cube at the surface) into the deep ground at ambient; its
+   temperature carried across recompiles like a part's. To decide with the user first: every exhibit stands on the
+   stone floor, and its fires (≈ 1100 K) would leak hundreds of watts into it — several exhibits would need insulating
+   feet, and the core tests (no floor) would no longer match the world thermally unless they model it too.
+
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →
 regenerate the demo world → screenshot tour → docs → commit.
 

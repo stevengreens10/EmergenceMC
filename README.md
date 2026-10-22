@@ -17,9 +17,9 @@ parts, and what it does is computed from their physics.
 | ![Governed steam engine](docs/gifs/governed.gif) | ![Flyball governor](docs/gifs/flyball.gif) |
 | **Governed steam engine.** A boiler, cam-worked valves and a piston, with Watt's flyball governor driven through bevel gears. Its weights fly out and close the throttle through a plug valve, so the engine holds its own speed. | **Flyball governor.** The same governor on a DC motor. As the motor speeds up the weights slide out against their springs, and through link bars they turn a rheostat that reins it in. |
 | ![Wind turbine](docs/gifs/windturbine.gif) | ![Propeller cart](docs/gifs/propcart.gif) |
-| **Wind turbine.** The world's wind on twisted blades (lift and drag by blade element) turns a generator built from magnets and coils. | **Propeller cart.** A hand-cranked propeller's thrust drives a light cart along its rail. |
+| **Wind turbine.** The world's wind on four angled blades (lift and drag, element by element) turns two magnets past two coils, and the load's current brakes the rotor (Lenz). | **Propeller cart.** A spinning propeller throws air back (blade-element lift and drag, momentum theory through its disc), and the cart on its rail is pushed forward. |
 | ![Four-bar linkage](docs/gifs/fourbar.gif) | ![Unbalanced rotor](docs/gifs/unbalance.gif) |
-| **Four-bar linkage.** Rigid link bars pinned between turning bodies: the crank's rotation becomes the rocker's swing. | **Unbalanced rotor.** An off-centre mass on a spinning shaft shakes its sprung platform, hardest near resonance. |
+| **Four-bar linkage.** Rigid link bars pinned between turning bodies: the crank's rotation becomes the rocker's swing. | **Unbalanced rotor.** A lead weight bolted to one side of a spinning wheel shakes its sprung platform (force m·e·ω²), hardest at resonance as the wheel slows. |
 
 * **Play the demo:** `./gradlew generateDemoWorld` then `./gradlew runDemoClient`
   (or open *Singleplayer → Emergence Demo*). In any world, `/emergence demo` builds the exhibit gallery.

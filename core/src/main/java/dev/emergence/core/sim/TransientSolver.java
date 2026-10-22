@@ -715,6 +715,7 @@ public final class TransientSolver implements StateView {
     private static final boolean NEWTON_LAGGARDS = Boolean.getBoolean("diag.newtonLaggards");
     /** Diagnostics ({@code diag.lagTrace=<name part>}): each iteration that unknown holds Newton back, its value, update, residual and diagonal (400 lines). */
     private static final String LAG_TRACE = System.getProperty("diag.lagTrace");
+    /** Diagnostics ({@code diag.stepTraceFrom=<t>}): every step attempt over 4 ms from t, its size, error and the slot limiting it. */
     private static final double STEP_TRACE_FROM = Double.parseDouble(System.getProperty("diag.stepTraceFrom", "-1"));
     private int lagLines;
     private final java.util.Map<String, Integer> newtonLaggards = new java.util.HashMap<>();

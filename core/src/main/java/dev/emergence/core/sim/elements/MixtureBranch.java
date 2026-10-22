@@ -211,7 +211,7 @@ public final class MixtureBranch implements Element {
         double tUp = w * sa[1] + (1 - w) * sb[1], pUp = w * sa[0] + (1 - w) * sb[0], mUp = w * sa[2] + (1 - w) * sb[2];
         double rho = Math.max(pUp, 1) * mUp / (R * tUp);
         double open = cam == null ? opening : opening * camLift(v[v.length - 1]);
-        double aEff = Math.max(open, 1e-6) * area, mdot = mUp * q;
+        double aEff = Math.max(open, 1e-6) * area;
         double mu = 1.8e-5 * Math.pow(tUp / 300, 0.7);
         // choking: the passage feels at most the critical pressure drop (smoothly: soft max of the downstream
         // pressure and the critical fraction of the upstream one), γ from the upstream mixture
@@ -228,7 +228,24 @@ public final class MixtureBranch implements Element {
         // down it is heavy, flowing up light, and Newton chatters between them)
         double rhoA = Math.max(sa[0], 1) * sa[2] / (R * sa[1]), rhoB = Math.max(sb[0], 1) * sb[2] / (R * sb[1]);
         double dp = Math.signum(sa[0] - sb[0]) * (pHi - Math.min(pLoEff, pHi)) - 0.5 * (rhoA + rhoB) * 9.80665 * dz;
-        f[0] = dp - k * mdot * Math.abs(mdot) / (2 * rho * aEff * aEff) - 32 * mu * length * mdot / (rho * aEff * diameter * diameter);
+        // dp = A·ṅ|ṅ| + B·ṅ. Newton on that pressure balance linearises the convex A·ṅ|ṅ| at the iterate: from a flow
+        // much smaller than the one dp drives its slope 2A|ṅ| + B is too shallow and it overshoots, and from far above
+        // it only halves its way down — a valve shutting on the flow a step began with, its turbulent term dominant,
+        // took six to eighteen iterations (the gas engine's exhaust valve and vents, most of its iterations). There
+        // the same equation solved for the flow (the root's stable form) and scaled by the slope at the root is
+        // linear in ṅ: same root, and near it the same row. Only while dp is a fair part of the pressure, though:
+        // that form's slope in the pressures, 1/√(B² + 4A|dp|), is steep at small dp, and where the ends' pressures
+        // follow the flow more closely within the step than the passage's own resistance does (two 200 bar bottles
+        // joined face to face) Newton cycled between the forms; there the pressure balance is nearly linear anyway.
+        // The form is chosen from the unperturbed iterate and kept while the load differences the row.
+        double aq = k * mUp * mUp / (2 * rho * aEff * aEff), bq = 32 * mu * length * mUp / (rho * aEff * diameter * diameter);
+        double root = Math.sqrt(bq * bq + 4 * aq * Math.abs(dp)), driven = 2 * dp / (bq + root);
+        boolean farOff = !(q * driven > 0 && Math.abs(q) >= 0.5 * Math.abs(driven) && Math.abs(q) <= 2 * Math.abs(driven));
+        boolean inverted = Double.isNaN(frozenRowScale) ? farOff && pressureFollow < root : frozenInverted;
+        if (inverted) f[0] = (Double.isNaN(frozenRowScale) ? root : frozenRowScale) * (driven - q);
+        else f[0] = dp - aq * q * Math.abs(q) - bq * q;
+        lastRowScale = root;
+        lastInverted = inverted;
         double[] nf = new double[m];
         double hf = carried(q, split(v), sa, sb, nf);
         for (int side = 0; side < 2; side++) {
@@ -296,7 +313,19 @@ public final class MixtureBranch implements Element {
         int[] col = columns();
         double[] v = new double[col.length];
         for (int j = 0; j < col.length; j++) if (col[j] >= 0) v[j] = ctx.x(col[j]);
+        frozenRowScale = Double.NaN;
+        // how far the ends' pressures move within the step per mol/s of flow, ∑ RT/(V·α) [Pa per mol/s]
+        pressureFollow = 0;
+        for (int side = 0; side < 2; side++) {
+            End e = side == 0 ? a : b;
+            if (e.gas == null) continue;
+            double vol = e.gas.volume(ctx);
+            pressureFollow += ctx.alpha() > 0 && vol > 0 ? R * Math.max(ctx.x(e.gas.temperatureNode().index()), 50) / (vol * ctx.alpha())
+                    : Double.POSITIVE_INFINITY;
+        }
         double[] f0 = residual(v);
+        frozenRowScale = lastRowScale; // one form and scale for the differenced rows
+        frozenInverted = lastInverted;
         for (int r = 0; r < col.length; r++) if (col[r] >= 0 && f0[r] != 0) ctx.addF(rowOf(col, r), f0[r]);
         // Jacobian by finite differences over the few unknowns this passage touches. The flow column is central, with a
         // relative step of 10⁻⁴: the residual is smooth (quadratic) in the flow, and at high pressure a step of 10⁻⁷
@@ -338,7 +367,14 @@ public final class MixtureBranch implements Element {
             }
         }
         if (freshSpecies) speciesJacTime = ctx.time();
+        frozenRowScale = Double.NaN;
     }
+
+    /** The flow row's form and scale (its slope at the root) while a load differences it; NaN otherwise (then its own). */
+    private double frozenRowScale = Double.NaN, lastRowScale;
+    private boolean frozenInverted, lastInverted;
+    /** ∑ RT/(V·α) over the gas ends this load [Pa per mol/s]: how closely their pressures follow the flow in a step. */
+    private double pressureFollow = Double.POSITIVE_INFINITY;
 
     /** The species columns' slopes at the last step attempt's first load, and its time. */
     private double[][] speciesJac;

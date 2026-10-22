@@ -703,6 +703,9 @@ public final class TransientSolver implements StateView {
     }
 
     private static final boolean NEWTON_LAGGARDS = Boolean.getBoolean("diag.newtonLaggards");
+    /** Diagnostics ({@code diag.lagTrace=<name part>}): each iteration that unknown holds Newton back, its value, update, residual and diagonal (400 lines). */
+    private static final String LAG_TRACE = System.getProperty("diag.lagTrace");
+    private int lagLines;
     private final java.util.Map<String, Integer> newtonLaggards = new java.util.HashMap<>();
 
     /** The unknown that last failed to converge in a Newton iteration, with its value and update (diagnostics). */
@@ -782,7 +785,7 @@ public final class TransientSolver implements StateView {
         }
         ctx.x = xTrial;
 
-        boolean converged = false, damped = false;
+        boolean converged = false, damped;
         for (int it = 0; it < maxNewton; it++) {
             newtonIterations++;
             Arrays.fill(f, 0.0);
@@ -821,12 +824,15 @@ public final class TransientSolver implements StateView {
             }
             if (frozen != null) for (int i = 0; i < n; i++) if (frozen[i]) dx[i] = 0;
             boolean small = true;
-            // damping: limit enormous Newton updates on nonlinear elements; and halve the updates for the rest of the
-            // solve once two in succession point nearly opposite ways — the iteration bouncing between two states
-            // across a steep edge (a comparator switching under an inductive load, its battery current ±1 A an iteration)
-            // (only far from converging: near the solution, rounding noise alternates too, and halving it there costs
-            // conservation and iterations)
-            if (it >= 3 && !damped) {
+            // damping: limit enormous Newton updates on nonlinear elements; and halve an update that points nearly
+            // opposite to the one before — the iteration bouncing between two states across a steep edge (a comparator
+            // switching under an inductive load, its battery current ±1 A an iteration) (only far from converging: near
+            // the solution, rounding noise alternates too, and halving it there costs conservation and iterations).
+            // Only while it bounces: halving every update for the rest of the solve once it had made one Newton
+            // converge at a rate of ½ — a gas passage's flow reversing once at an exhaust valve's opening, then ten
+            // more iterations to settle
+            damped = false;
+            if (it >= 3) {
                 double dot = 0, n1 = 0, n2 = 0, far = 0;
                 for (int i = 0; i < n; i++) {
                     dot += dx[i] * dxPrev[i];
@@ -883,6 +889,11 @@ public final class TransientSolver implements StateView {
                 break;
             }
             if (NEWTON_LAGGARDS && it >= 2 && lastBadIndex >= 0) newtonLaggards.merge(net.unknownName(lastBadIndex), 1, Integer::sum);
+            if (LAG_TRACE != null && lagLines < 400 && lastBadIndex >= 0 && net.unknownName(lastBadIndex).contains(LAG_TRACE)) {
+                lagLines++;
+                int i = lastBadIndex;
+                System.out.printf("LAG t=%.6f h=%.2e it=%d %s x=%.6g dx=%.3g f=%.3g J=%.3g%n", t, h, it, net.unknownName(i), xTrial[i], dx[i], f[i], jac.diagonal(i));
+            }
         }
         if (!converged) return 1;
 

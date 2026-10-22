@@ -895,3 +895,12 @@ Nothing in it is a memory element. START pulls the armature in, the contacts clo
 itself; let START go and it holds. STOP breaks the hold, and once broken it stays broken. In the core it works as
 built: in at 1.52 mm with the LED at 9.6 mA, held, dropped, and out again. The tour flips START on and off and STOP
 off and on, and checks the armature at each turn.
+
+**The engine at real time.** The gas engine's laggards, traced iteration by iteration, were its exhaust valve and air
+vent shutting on the flow each step began with. With the turbulent term dominant, Newton on Δp = A·ṅ|ṅ| + B·ṅ either
+overshoots or halves its way down, six to eighteen iterations. A passage far off the flow its Δp drives now writes the
+same equation solved for the flow, which is linear in ṅ: the same root, and near it the same row. That only works where
+the ends' pressures barely follow the flow within the step; two bottles joined face to face cycled between the two
+forms until the choice weighed that. Separately, Newton's halving of bouncing updates had stayed on to the end of a
+solve once triggered, a convergence rate of ½. It now lasts only while the updates bounce. The engine runs at real time
+(1.33× before), and the inverter, boost and PWM gained 15–30 %.

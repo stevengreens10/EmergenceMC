@@ -77,9 +77,10 @@
       device level across ~300 fast unknowns — the microphone's idle amplifier among them. Structural: solve weakly
       coupled sub-circuits apart (the acoustic path is the only link between driver and microphone), or the averaged
       switch fidelity level for the whole driver;
-   3. the gas engine: 1.32× real time running (species slopes reused within a step, flows resolved to 10⁻⁸ mol/s);
-      the exhaust valve and a vent to the air still keep Newton iterating (`diag.newtonLaggards`) — the choked-flow
-      soft maximum at blowdown?; ~1100 rejected steps per 2 s; ignition as an event;
+   3. the gas engine: 1.00× real time running (species slopes reused within a step, flows resolved to 10⁻⁸ mol/s, a
+      passage's flow equation in the form Newton converges on, damping only while updates bounce); what remains: ~1100
+      rejected steps per 2 s (the cylinders' gas the step limiter — combustion), ignition as an event; the steam
+      engines' liquid/steam branches (`mdot[...]` laggards) may take the same two-form flow equation;
    4. (done: the steam engines run at 0.38× and 0.46× real time);
    5. general: async island compilation, factorisation reuse for linear islands, cheaper conductor loads.
    Expected: 1 and 2 reach real time; a fast combustion engine may stay costly (real time alone near a player, the

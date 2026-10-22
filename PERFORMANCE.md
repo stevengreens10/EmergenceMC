@@ -20,13 +20,13 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 ### Running exhibits (`coreTest --tests *RunningExhibitsBenchTest*`, switched on; 2026-10-22)
 | Exhibit | Unknowns | ms/tick | × real time |
 |---|---|---|---|
-| Inverter | 245 | 7.8 | 0.16 (59.5 s of CPU per 10 s before the Schmitt event: ≈ 6×) |
-| Boost converter | 171 | 13–22 | 0.26–0.44 (0.49 before the ambient was slow) |
-| PWM motor | 398 | 25 | 0.50 (0.92 at the start of the day) |
+| Inverter | 245 | 7.0 | 0.14 (59.5 s of CPU per 10 s before the Schmitt event: ≈ 6×) |
+| Boost converter | 171 | 13 | 0.25 (0.49 before the ambient was slow) |
+| PWM motor | 398 | 21 | 0.41 (0.92 at the start of the day) |
 | H-bridge (forward) | 276 | 2.2 | 0.04 |
 | Loudspeaker, idle (its oscillator runs) | 505 | 255 | 5.1 (12.4 at the start of the day) |
 | Loudspeaker, switched on | 505 | 500 | 10.0 (22.4) |
-| Gas engine, running (141 rad/s) | 207 | 66 | 1.32 (80 steps a tick, 5.7 Newton iterations a step; 1.8 this morning) |
+| Gas engine, running (141 rad/s) | 207 | 50 | 1.00 (80 steps a tick, 4.1 Newton iterations a step; 1.8 this morning) |
 | Steam engine / condensing engine | 140 / 150 | 19 / 23 | 0.38 / 0.46 |
 
 Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
@@ -145,6 +145,14 @@ compile or island step over 1 s ("Slow simulation: …"), naming the island's bl
   resolved to 10⁻⁸ mol/s, not 10⁻⁹ (near zero flow the turbulent ṅ|ṅ| term makes Newton halve the error an iteration;
   6.1 → 5.7 iterations, 70 → 66 ms). `diag.newtonLaggards=true` counts which unknowns keep Newton iterating: the
   engine's exhaust valve and a vent to the air, still.
+* Those two were a valve shutting on the flow the step began with: its turbulent term dominant, Newton on the pressure
+  balance Δp = A·ṅ|ṅ| + B·ṅ overshoots from a small flow and halves its way down from a large one (`diag.lagTrace=<name>`
+  traces one unknown's iterations: six to eighteen of them). From an iterate far off the flow Δp drives, a passage now
+  writes the same equation solved for the flow (the root's stable form, scaled by its slope there), linear in ṅ — when
+  its own resistance dominates how far its ends' pressures follow the flow within the step (∑RT/(Vα)); otherwise (two
+  bottles joined face to face) the forms cycled. And Newton's halving of anti-parallel updates now lasts only while they
+  bounce: once triggered it had halved every later update, a rate of ½ to the end. Gas engine 5.7 → 4.1 iterations a
+  step, 1.33× → 1.00× real time; inverter 0.20 → 0.14×, boost 0.35 → 0.25×, PWM 0.50 → 0.41× (fewer failed solves).
 * Tried and dropped: chord Newton (Jacobian reuse within a step: slower on circuits that converge in two or three
   quadratic iterations, and it failed the boost converter at an edge); PI step control (Gustafsson/Söderlind gains
   0.7/0.4: halved the gas engine's rejected steps, 9 % faster, but regrew the step more slowly after every switching

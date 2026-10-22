@@ -773,3 +773,26 @@ below a 6 mm bore's: a shut valve passes a millionth of what an open one does (`
 The leak had also been propping the engine up. Without it, on the 5 cm handle it caught only now and then: at 60 rad/s
 the needle's fixed flow is rich, and a slowing engine gets richer. On a 4 cm handle a hand reaches 75 rad/s; it fires
 while still being cranked and runs away to 225–273 rad/s, after standing a minute, ten or thirty.
+
+**Flying, not jumping.** The tour's player used to teleport from viewpoint to viewpoint and to each spot where its
+hand had a job. It now flies, as a player would: up clear of the tallest thing between, across at a creative
+player's sprinting pace (capped at six seconds for the long gaps between halls), and down, easing in and out and
+turning towards the new view on the way. It flies in spectator mode so it can pass through a crowded gallery, and
+lands in creative for the hand's work. Steps start their timers on landing. Flying showed up one assumption: the
+capacitor discharge was judged a moment after the click, which had been instant. With half a second's flight back
+from the switch, the nichrome had already cooled to 530 K, so it is now judged on its sampled peak.
+
+**Wöhler's rig by hand.** The fatigue rig was the last test machine that opened spinning, at 150 rad/s. A hand turns a
+crank some 37 rad/s at the most, so each test shaft now carries an 8-tooth pinion driven by a 40-tooth gear on a
+countershaft with a crank: five turns of the shaft for one of the hand, 176 rad/s in fifteen seconds. The first
+layout locked: a gear or crank set directly against a bearing's cell is fixed to the bearing's housing,
+which held both shafts to the frame. That was the compiler's error, not the design's: a wheel beside a bearing on
+the shaft the bearing carries turns with the shaft, and now it does (the gas engine's handle had hit the same trap).
+The aluminium shaft still cracks at exactly its Basquin life (2099 turns, 80 s), the hand's spin-up included.
+
+**What the full tour found.** With flying, 137 of 139 checks passed over the 72 exhibits in 35 minutes. The
+inverter's chip-level island ran at a tenth of real time while the server was busy, so a fixed 6 s wait saw less than
+one of its 2.6 Hz cycles; it now waits until both LEDs have lit. The flyball governor, braked, did not take more
+current: in the world it governs lower (27.4 rad/s at 0.23 A against 29.8 at 0.20 in the core, as if under more
+drag), near where its springs hold the weights on their stops. Two islands failed and restarted at rest (the EM-4
+after the tour left it, the hydraulic jack mid-stroke), neither reproducible in the core with the world's timings.

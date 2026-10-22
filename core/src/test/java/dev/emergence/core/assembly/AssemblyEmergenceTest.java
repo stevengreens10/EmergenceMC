@@ -88,6 +88,29 @@ class AssemblyEmergenceTest {
         assertEquals(2, c.magnetics().coils().size());
     }
 
+    /**
+     * A wheel or crank set right against a bearing turns with the shaft the bearing carries: it is fixed to the shaft,
+     * not to the bearing's housing (which would lock the shaft to the frame).
+     */
+    @Test
+    void aGearAndCrankAgainstTheBearingsTurnWithTheShaft() {
+        frame(1, 0, 0, 1, 2, 0);
+        frame(3, 0, 0, 3, 2, 0);
+        add(PartKind.SHAFT, STEEL, 1, 3, 0, 4, 3, 0, Dir.EAST, Map.of("diameter", 0.015));
+        add(PartKind.BEARING, STEEL, 1, 3, 0, Dir.EAST);
+        add(PartKind.BEARING, STEEL, 3, 3, 0, Dir.EAST);
+        Part gear = add(PartKind.GEAR, STEEL, 4, 3, 0, 4, 3, 0, Dir.EAST, Map.of("teeth", 24.0, "pitch_radius", 1.5 / 16, "thickness", 0.012));
+        Part crank = add(PartKind.CRANK, STEEL, 0, 3, 0, Dir.EAST); // on the shaft's end, beside the first bearing
+        asm.anchoredWhen(p -> anchors.contains(p.id()));
+        CompiledAssembly c = AssemblyCompiler.compile(asm);
+        assertTrue(c.warnings().isEmpty(), "warnings: " + c.warnings());
+        assertSame(c.bodyOf(crank.id()), c.bodyOf(gear.id()), "the gear turns with the shaft");
+        assertFalse(c.bodyOf(gear.id()).isStatic(), "the shaft is free to turn");
+        c.setCrankTorque(crank.id(), 1.0);
+        for (int i = 0; i < 20; i++) c.step(0.05);
+        assertTrue(Math.abs(c.probe(gear.id()).angularVelocity()) > 1, "the crank turns the gear: ω=" + c.probe(gear.id()).angularVelocity());
+    }
+
     @Test
     void handCrankedGeneratorLightsUpTheLoad() {
         Part[] pr = buildGenerator(20);

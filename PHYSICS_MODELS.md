@@ -605,6 +605,9 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
   coefficients differ by under 20 µV/K, share one electrical node (otherwise 10⁷ S conductances left a circuit's
   floating potential known only to its roundoff, where a nearly open element held it). Components mount on one
   structure (a coil touching both its bracket and an armature does not weld them together).
+  A part fixed to the shaft a bearing carries and sitting against the bearing along its axis (a gear, crank, hub or
+  flywheel beside it) turns with the shaft: it is not also fixed to the bearing's housing, which would lock the shaft
+  to the frame (`AssemblyEmergenceTest.aGearAndCrankAgainstTheBearingsTurnWithTheShaft`).
 
 ## Acoustics (`core.acoustics`: `DipoleRadiator`, `SoundField`, `AcousticCoupling`)
 * **Air**: ρ = pM/(RT), c = √(γRT/M) (dry air, γ = 1.4) at the ambient temperature and 101.325 kPa: 1.204 kg/m³ and

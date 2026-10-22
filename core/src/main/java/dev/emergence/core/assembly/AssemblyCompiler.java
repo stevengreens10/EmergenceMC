@@ -169,6 +169,7 @@ public final class AssemblyCompiler {
                         continue;
                     }
                     if (isBearingShaftNoJoint(p, q)) continue;
+                    if (turnsInBearing(p, q) || turnsInBearing(q, p)) continue;
                     if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
                     if (p.kind() == PartKind.GEAR && q.kind() == PartKind.GEAR) continue; // mesh, not weld
                     if ((p.kind() == PartKind.GEAR && q.kind() == PartKind.RACK) || (p.kind() == PartKind.RACK && q.kind() == PartKind.GEAR)) continue;
@@ -263,6 +264,34 @@ public final class AssemblyCompiler {
                             if (!s.containsCell(nx, ny, nz) && q.containsCell(nx, ny, nz)) return true;
                         }
             }
+            return false;
+        }
+
+        /**
+         * True if {@code w} turns with the shaft that bearing {@code b} carries: it sits against the bearing along its
+         * axis and is fixed to that shaft (a gear, crank, hub or flywheel beside the bearing), so it is not also fixed to
+         * the bearing's housing — which would lock the shaft to the frame.
+         */
+        boolean turnsInBearing(Part b, Part w) {
+            if (!isJournal(b) || isJournal(w) || w.kind() == PartKind.SHAFT || !w.kind().structural) return false;
+            if (!besideAlongAxis(b, w)) return false;
+            for (Part s : a.neighbors(b)) {
+                if (!isBearingJoint(b, s)) continue;
+                if ((s.overlaps(w) || a.neighbors(s).contains(w)) && shaftReaches(s, w) && shaftReaches(w, s)) return true;
+            }
+            return false;
+        }
+
+        /** True if {@code w} occupies a cell next to {@code b} along {@code b}'s axis. */
+        static boolean besideAlongAxis(Part b, Part w) {
+            Dir ax = b.axis();
+            for (Dir d : new Dir[]{ax, ax.opposite()})
+                for (int x = b.minX(); x <= b.maxX(); x++)
+                    for (int y = b.minY(); y <= b.maxY(); y++)
+                        for (int z = b.minZ(); z <= b.maxZ(); z++) {
+                            int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
+                            if (!b.containsCell(nx, ny, nz) && w.containsCell(nx, ny, nz)) return true;
+                        }
             return false;
         }
 

@@ -25,6 +25,15 @@
      time-step underflow at 71.5 s with a chip output Newton-stepped to 563 V, recovered by a restart at rest; the
      core runs it with the switch flipped at 30–60 s, steps of 45 and 50 ms, to 130 s without failing (the same
      world-only pattern as the loudspeaker's below — look for what the world adds: sunlight, a partial step);
+   - the hydraulic jack's island (70 parts) failed once mid-stroke in the world (time-step underflow, the reservoir's
+     energy unknown not converging at 69.8 s); the core pumps it with the tour's timing after 1–70 s at rest cleanly;
+   - the flyball governs lower in the world than in the core (27.4 rad/s at 0.23 A against 29.8 at 0.20, as if under
+     more drag — sun-warmed parts?), so braked it nears its stops and took no more current (twice: the brake taking
+     0.76 W, the supply current fell 0.217 → 0.205 A, speed −2.6 %) — find the drag, and where the brake's power
+     comes from if not the supply (the flywheel's speed? the rheostat at its stop?);
+   - (confirmed in the world: the fatigue rig cranked to 187 rad/s through its gears, the aluminium shaft cracked; the
+     inverter, waiting for its first full cycle, lit both LEDs and gave 44 V);
+   - the gas engine ran at 82 rad/s in the full tour against 173–273 alone (it passed): its rich low-speed regime;
    - the loudspeaker's island (527 parts, audio-rate) failed once in the world, idle for minutes with its switch off:
      time-step underflow at a resistor's node at 6.3 s, recovered by a restart at rest; the core runs it idle and on
      to 10 s without trouble — find the world condition (sun on its parts?). It also costs ~30× real time even idle:

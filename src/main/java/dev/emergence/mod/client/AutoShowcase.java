@@ -681,7 +681,10 @@ public final class AutoShowcase {
                 // the logger on the secondary: a square wave five times the supply, reversing each half-cycle
                 logOn(key, part.apply("secondary", PartKind.COIL), "voltage", 1, server, logger);
                 Sampler g = new Sampler(), r = new Sampler();
-                STEPS.add(new Step(120, view, shot.apply("alternating")).show().sample(g, () -> light(server, at.apply("green")))
+                // watched until each LED has lit (2.6 Hz in its own time, but its chip-level island can run at a tenth of
+                // real time while the server is busy: a fixed wait may not see a whole cycle)
+                STEPS.add(new Step(800, view, shot.apply("alternating"), () -> g.max() > 1e-5 && r.max() > 1e-5)
+                        .show().sample(g, () -> light(server, at.apply("green")))
                         .sample(r, () -> light(server, at.apply("red")))
                         .check(key + " the alternating output lights both LEDs, each its half-cycle", () -> that(g.max() > 1e-5 && r.max() > 1e-5,
                                 String.format("peak light green %.3g mW, red %.3g mW, expected both lit", 1e3 * g.max(), 1e3 * r.max())))
@@ -933,7 +936,8 @@ public final class AutoShowcase {
                             was, now, 100 * (now - was) / was, 100 * droop));
                 }).check(key + " by taking more current from its supply", () -> {
                     double was = a0.mean(), now = a1.mean();
-                    return that(now > 1.03 * was + 0.005, String.format("mean supply current %.3f → %.3f A, expected to rise", was, now));
+                    return that(now > 1.03 * was + 0.005, String.format("mean supply current %.3f → %.3f A (the brake taking %.2f W), expected to rise",
+                            was, now, brakePower(server, brake.block())));
                 }));
     }
 

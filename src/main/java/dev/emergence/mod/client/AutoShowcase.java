@@ -1588,6 +1588,23 @@ public final class AutoShowcase {
                 || be.parts().stream().noneMatch(p -> p.kind == kind);
     }
 
+    /**
+     * Frames for animated GIFs (the README's): {@code emergence.gifs=a,b,...} — while the tour plays those exhibits
+     * (as it always does: their hands, their checks), a frame every {@code emergence.gifEvery} ticks (2: 10 a second),
+     * at most {@code emergence.gifMax} each, into screenshots/gif/&lt;id&gt;/; tools/make_gifs.py makes the GIFs. Not
+     * while the camera flies between viewpoints.
+     */
+    private static final java.util.Set<String> GIFS = new java.util.HashSet<>(java.util.Arrays.asList(System.getProperty("emergence.gifs", "").split(",")));
+    private static final int GIF_EVERY = Integer.getInteger("emergence.gifEvery", 2), GIF_MAX = Integer.getInteger("emergence.gifMax", 600);
+    private static String gifExhibit;
+    private static int gifFrame;
+
+    private static void gifFrame(Minecraft mc) {
+        if (gifExhibit == null || !GIFS.contains(gifExhibit) || Flight.busy() || gifFrame >= GIF_MAX || joinedTicks % GIF_EVERY != 0) return;
+        new java.io.File(mc.gameDirectory, "screenshots/gif/" + gifExhibit).mkdirs();
+        Screenshot.grab(mc.gameDirectory, String.format("gif/%s/f%04d.png", gifExhibit, gifFrame++), mc.getMainRenderTarget(), msg -> {});
+    }
+
     private static void tick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null || mc.getSingleplayerServer() == null) return;
@@ -1606,6 +1623,7 @@ public final class AutoShowcase {
             return;
         }
         Step s = STEPS.get(index);
+        gifFrame(mc);
         if (wait >= 0 && ran) live(mc, s); // what the step's checks measure now, for the caption
         if (wait >= 0 && ran && actDone && !s.samplers.isEmpty() && joinedTicks % 2 == 0) {
             List<Sampler> ss = s.samplers;
@@ -1634,6 +1652,8 @@ public final class AutoShowcase {
             if (actDone && s.show) LoggerHud.showcase = true;
             if (s.title != null) {
                 lap(s.exhibit);
+                gifExhibit = s.exhibit;
+                gifFrame = 0;
                 ShowcaseHud.exhibit(s.number, s.total, s.title, s.description);
             }
             // (an exhibit's opening step only lets go of what the last one held: it stays "looking at the exhibit")

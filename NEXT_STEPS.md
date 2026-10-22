@@ -69,12 +69,10 @@
        -Demergence.compileWaitMs=-1`); not the noon sun (the core test with `-Ddiag.sun=true`), nor the biome (plains
        are 20 °C, as the core); the island runs at real time. Next: dump the world island's state and run it in the
        core;
-     - the optocoupler's LED stays dark when the tour comes to it after other exhibits (after the gas engine, and in
-       the full tour), lit when it is visited alone or after the light barrier;
+     - (fixed: the optocoupler's phototransistor burnt out in the noon sun before the tour came — a small receiver took
+       its cell's whole face of sunlight as heat, 2.3 W; the gas engine missed its starting hand when it came mid-compile
+       — a hand on a machine still compiling now waits for it);
      - the PWM motor's hands found no spot within reach in the full tour (fine in a short one);
-     - the gas engine runs up and carries its brake when the tour visits it alone (333 rad/s, 149 W), but twice
-       failed to run up past ~35–39 rad/s when visited after other exhibits — like the optocoupler, something an
-       earlier visit leaves behind;
      - the governed engine rose 5.9 % with its brake off in the world (0.7 % in the core);
      - one of the 17 in-world tests failed once in five demo builds (not captured);
    - the full tour, then every exhibit's checks green.

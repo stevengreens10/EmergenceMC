@@ -504,7 +504,14 @@ public final class AutoShowcase {
                 // close the input's switch: the invisible infrared crosses to the phototransistor; the green LED lights
                 BlockPos led = at.apply("green");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the input's switch", part.apply("switch", PartKind.SWITCH))));
-                STEPS.add(new Step(200, view, shot.apply("on"), () -> ledLit(led)).check(key + " the signal crosses as light", () -> lit(server, led)));
+                BlockPos sw = at.apply("switch");
+                STEPS.add(new Step(200, view, shot.apply("on"), () -> ledLit(led)).check(key + " the signal crosses as light", () -> {
+                    Verdict v = lit(server, led);
+                    PlacedPart p = any(server, sw, PartKind.SWITCH);
+                    if (v.pass()) return v;
+                    return new Verdict(false, v.measured() + (p == null ? "; no switch found" : p.closed ? "; its switch is closed" : "; its switch is still open")
+                            + String.format("; IR LED %.3g mW, phototransistor %.3g mA", 1e3 * light(server, at.apply("ir")), 1e3 * Math.abs(current(server, at.apply("photo"), null))));
+                }));
             }
             if (id.equals("windturbine")) {
                 // the wind (from the west, by the weather) turns the rotor up to speed

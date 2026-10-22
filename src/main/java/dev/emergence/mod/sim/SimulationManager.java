@@ -1098,9 +1098,24 @@ public final class SimulationManager {
 
     // ------------------------------------------------------------------ interaction
 
+    /**
+     * The island at {@code pos}, compiled: one still compiling off the server thread is waited for here. A hand on a
+     * machine mid-compile was otherwise lost — a crank turned for nothing, or a switch flipped on its block while the
+     * compile, begun from the state before the click, built it open (the optocoupler stayed dark, the gas engine
+     * never got going when the tour came to them straight from a costlier machine).
+     */
     private Island islandAt(BlockPos pos) {
         if (dirty.contains(pos)) rebuild();
-        return islandOf.get(pos);
+        Island isl = islandOf.get(pos);
+        if (isl != null && isl.pending != null) {
+            try {
+                isl.pending.get();
+            } catch (Exception ignored) {
+                // reported as it is installed
+            }
+            installCompiled();
+        }
+        return isl;
     }
 
     /** A player holds the crank: effort follows the human model inside the solver while held. */

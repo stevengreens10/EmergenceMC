@@ -957,3 +957,13 @@ steam engine with the flyball governor from next door on a spindle geared off it
 sleeve works a rod whose plug sits in a throttle wide enough to race the engine. It worked first time: 14.2 rad/s
 braked, 14.3 unloaded, the throttle 6–8 % open. In passing, one of the 17 in-world tests failed once during a demo
 world build and passed on the rerun; which one was not captured.
+
+**A phototransistor cooked by the sun.** The optocoupler passed when the tour went to it first and failed after a long
+visit elsewhere; the user, watching, saw that its phototransistor was gone. In the core, five minutes of noon sun burnt
+it out at 448 K, its current never above microamps. The optics give a photodiode or phototransistor its cells' whole
+face, so its window gathers light as it should, and it took all the sunlight on that face as heat: 2.3 W for a chip in a
+small can. It now takes its body's share (a cube of its volume, never smaller than its window, so a solar cell keeps all
+of its face): 53 mW, 6 K above the air. In the same hunt: the gas engine failed to start after other exhibits because the
+tour's hand reached it while it was still compiling off the server thread, and a crank turned on nothing. Any hand on a
+machine mid-compile now waits for it. And the light barrier's beam cuts last 20 ms, which samples taken every tenth of a
+second could miss altogether; the tour now reads the beam at every solver step.

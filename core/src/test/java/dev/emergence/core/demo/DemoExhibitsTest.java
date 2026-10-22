@@ -2587,7 +2587,20 @@ class DemoExhibitsTest {
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = compile(e, b);
         long ir = b.id(e, "ir"), green = b.id(e, "green"), photo = b.id(e, "photo");
-        run(c, 0.5);
+        if (Boolean.getBoolean("diag.sun")) {
+            c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
+            System.out.printf("optocoupler: sunlight absorbed: phototransistor %.3g W, IR LED %.3g W, green LED %.3g W; on the window as light %.3g W%n",
+                    c.sunlightAbsorbed(photo), c.sunlightAbsorbed(ir), c.sunlightAbsorbed(green), c.lightInput(photo));
+        }
+        double wait = Double.parseDouble(System.getProperty("diag.optoWait", "0.5")); // (diag: as long as the world leaves it first)
+        for (int i = 0; i < Math.round(wait / 0.05); i++) {
+            var failed = c.step(0.05);
+            if (System.getProperty("diag.optoWait") != null && (i % 200 == 0 || !failed.isEmpty()))
+                System.out.printf("optocoupler: at %.1f s, phototransistor %.1f K, %.3g mA, IR LED %.1f K, green %.1f K%s%n", i * 0.05, c.temperature(photo),
+                        1e3 * c.probe(photo).current(), c.temperature(ir), c.temperature(green),
+                        failed.isEmpty() ? "" : ", failed: " + failed.stream().map(id -> c.assembly().get(id).kind() + "#" + id).toList());
+            if (!failed.isEmpty()) break;
+        }
         assertTrue(c.lightOutput(green) < 1e-6, "dark with the switch open");
         c.toggleSwitch(b.id(e, "switch"));
         run(c, 0.5);
@@ -2601,6 +2614,30 @@ class DemoExhibitsTest {
         c.toggleSwitch(b.id(e, "switch"));
         run(c, 0.5);
         assertTrue(c.lightOutput(green) < 1e-6, "and goes out with the switch");
+    }
+
+    /**
+     * Left five minutes in the noon sun with its switch open, as the world leaves it until someone comes: its small
+     * phototransistor warms only a few kelvin (its chip takes its own body's share of the sunlight, not its cell's whole
+     * face — which cooked it in two minutes) and still carries the signal when the switch closes.
+     */
+    @Test
+    void optocouplerSurvivesTheNoonSun() {
+        Exhibit e = OpticsExhibits.optocoupler();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        long photo = b.id(e, "photo"), green = b.id(e, "green");
+        c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), 1000, id -> true);
+        double hottest = 0;
+        for (int i = 0; i < 6000; i++) {
+            assertTrue(c.step(0.05).isEmpty(), "nothing fails in the sun");
+            hottest = Math.max(hottest, c.temperature(photo));
+        }
+        c.toggleSwitch(b.id(e, "switch"));
+        run(c, 0.5);
+        System.out.printf("optocoupler in the sun: phototransistor at most %.1f K over 300 s; then the green LED %.3g W%n", hottest, c.lightOutput(green));
+        assertTrue(hottest < AMBIENT + 30, "the phototransistor warms a little: " + hottest);
+        assertTrue(c.lightOutput(green) > 1e-4, "and the signal still crosses");
     }
 
     /**

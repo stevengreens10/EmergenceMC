@@ -621,6 +621,13 @@ public final class CompiledAssembly {
 
     /** Part id → index in {@link #absorbedLight}. */
     final Map<Long, Integer> lightIndex = new HashMap<>();
+    /**
+     * The share of the sunlight a part's cells catch that its body takes as heat, where less than all: a photodiode's
+     * or phototransistor's chip, its cells' whole face in the optical scene (so that its window gathers light as it
+     * should) but a small body in fact. Without it a phototransistor in the noon sun took a block face's 2.3 W and
+     * cooked in two minutes.
+     */
+    final Map<Long, Double> sunHeatShare = new HashMap<>();
     dev.emergence.core.sim.elements.AbsorbedLight absorbedLight;
     private dev.emergence.core.optics.OpticalScene sunScene;
     private final Map<Body, Integer> sunFrames = new HashMap<>();
@@ -645,7 +652,8 @@ public final class CompiledAssembly {
         }
         var r = sunlight(sunDirection.normalize());
         if (absorbedLight != null) {
-            for (var e : lightIndex.entrySet()) absorbedLight.set(e.getValue(), exposed.test(e.getKey()) ? irradiance * r.heat(e.getKey()) : 0);
+            for (var e : lightIndex.entrySet())
+                absorbedLight.set(e.getValue(), exposed.test(e.getKey()) ? irradiance * r.heat(e.getKey()) * sunHeatShare.getOrDefault(e.getKey(), 1.0) : 0);
         }
         for (var e : deviceOfPart.entrySet()) {
             if (!(e.getValue() instanceof dev.emergence.core.sim.elements.Photodiode ph)) continue;

@@ -892,6 +892,17 @@ public final class AssemblyCompiler {
             }
         }
 
+        /**
+         * The share of its cells' face that a small light-sensitive part's body presents: a cube of its volume, never
+         * smaller than its window (a solar cell is all window). The optics catch light over the whole face (its window
+         * gathers from it); its body takes only this share of the sunlight as heat.
+         */
+        static double bodyShare(Part p, double window) {
+            double side = Math.max(Math.cbrt(Math.max(PartGeometry.volume(p), 1e-12)), Math.sqrt(window));
+            double face = p.boxSize(0) * p.boxSize(1) * p.boxSize(2) / Math.max(p.boxSize(0), Math.max(p.boxSize(1), p.boxSize(2)));
+            return Math.min(1, side * side / face);
+        }
+
         /** Of two bodies joined by a bearing, the one that moves relative to the other. */
         static CompiledAssembly.Body jointChild(CompiledAssembly.Body bb, CompiledAssembly.Body sb) {
             if (bb.isStatic) return sb;
@@ -1698,6 +1709,7 @@ public final class AssemblyCompiler {
                         Node[] l = leads(p);
                         var pd = c.network.add(new Photodiode(l[0], l[1], p.param("area", 7.5e-6), th));
                         c.deviceOfPart.put(p.id(), pd);
+                        c.sunHeatShare.put(p.id(), bodyShare(p, p.param("area", 7.5e-6)));
                         // junction capacitance ≈ 70 pF per 7.5 mm² at zero bias
                         c.network.add(Capacitor.parasitic(l[0], l[1], Math.max(5e-12, 70e-12 * p.param("area", 7.5e-6) / 7.5e-6)));
                     }
@@ -1735,6 +1747,7 @@ public final class AssemblyCompiler {
                                 double area = p.param("photo", 0);
                                 Node anode = type == 1 ? l[1] : gate, cathode = type == 1 ? gate : l[1];
                                 c.photoJunction.put(p.id(), c.network.add(new Photodiode(anode, cathode, area, th)));
+                                c.sunHeatShare.put(p.id(), bodyShare(p, area));
                                 c.network.add(Capacitor.parasitic(gate, l[1], Math.max(5e-12, 70e-12 * area / 7.5e-6)));
                             }
                         } else {

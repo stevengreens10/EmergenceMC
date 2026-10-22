@@ -157,6 +157,15 @@ public final class AssemblyBlock extends BaseEntityBlock {
     }
 
     @Override
+    protected BlockState updateShape(BlockState state, net.minecraft.core.Direction direction, BlockState neighborState,
+                                     net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+        if (level instanceof net.minecraft.server.level.ServerLevel sl) {
+            dev.emergence.mod.sim.SimulationManager.get(sl).neighbourChanged(pos, neighborPos, direction.getOpposite());
+        }
+        return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
+    }
+
+    @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
         if (!state.is(newState.getBlock())) {
             if (level.getBlockEntity(pos) instanceof AssemblyBlockEntity be && !level.isClientSide) {

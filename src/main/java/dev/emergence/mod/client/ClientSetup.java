@@ -19,6 +19,7 @@ public final class ClientSetup {
         modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) -> e.registerAboveAll(
                 net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.emergence.mod.EmergenceMod.MODID, "showcase"), ShowcaseHud::render));
         AutoShowcase.init();
+        WatchBuild.init();
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {

@@ -482,4 +482,45 @@ public final class EmergenceGameTests {
         h.assertTrue(copy.parts().get(1).spec.material().equals("ferrite_c8"), "spec persisted");
         h.succeed();
     }
+
+    /**
+     * A world block holds what touches it: a wheel on a shaft in bearings, a stone set against the wheel, cannot be
+     * cranked round; knock the stone away and the machine is rebuilt free, and the crank turns it.
+     */
+    @GameTest(template = "arena", timeoutTicks = 200, batch = "anchor")
+    public static void knockingAwayAWorldBlockFreesTheWheelItHeld(GameTestHelper h) {
+        BlockPos plot = h.absolutePos(new BlockPos(0, 2, 0));
+        dev.emergence.core.demo.Exhibit ex = new dev.emergence.core.demo.Exhibit("anchor", "Held by a stone", java.util.List.of(), "");
+        String st = "steel_1045";
+        ex.fill(PartKind.BLOCK, st, 2, 0, 2, 2, 2, 2, Dir.UP);
+        ex.fill(PartKind.BLOCK, st, 4, 0, 2, 4, 2, 2, Dir.UP);
+        ex.add(PartKind.BEARING, st, 2, 3, 2, Dir.EAST);
+        ex.add(PartKind.BEARING, st, 4, 3, 2, Dir.EAST);
+        ex.name("shaft", ex.fill(PartKind.SHAFT, st, 1, 3, 2, 6, 3, 2, Dir.EAST, "diameter", 0.01));
+        ex.name("crank", ex.add(PartKind.CRANK, st, 1, 3, 2, Dir.EAST, "radius", 0.08));
+        ex.add(PartKind.BLOCK, st, 6, 3, 2, Dir.EAST);
+        placeExhibit(h, plot, ex);
+        BlockPos stone = plot.offset(7, 3, 2);
+        h.getLevel().setBlock(stone, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 3);
+        SimulationManager sim = SimulationManager.get(h.getLevel());
+        BlockPos crankAt = dev.emergence.mod.demo.DemoBuilder.partBlock(plot, ex, "crank");
+        PlacedPart crank = only(h, crankAt, PartKind.CRANK);
+        h.runAtTickTime(20, () -> {
+            CompiledAssembly c = sim.compiledAt(crankAt);
+            h.assertTrue(c != null, "the machine compiled");
+            var b = c.bodyOf(crank.id);
+            h.assertTrue(b == null || b.isStatic(), "held by the stone, the crank is on the frame");
+            h.getLevel().setBlock(stone, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+        });
+        h.onEachTick(() -> {
+            if (h.getTick() <= 20) return;
+            var c = sim.compiledAt(crankAt);
+            if (c != null) c.setCrankEffort(crank.id, 1, true);
+        });
+        h.runAtTickTime(100, () -> {
+            Probe p = sim.probe(crankAt, crank.id);
+            h.assertTrue(p != null && Math.abs(p.angularVelocity()) > 1, "freed, the crank turns it: " + (p == null ? "no probe" : p.angularVelocity()));
+            h.succeed();
+        });
+    }
 }

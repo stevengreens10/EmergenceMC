@@ -796,3 +796,35 @@ one of its 2.6 Hz cycles; it now waits until both LEDs have lit. The flyball gov
 current: in the world it governs lower (27.4 rad/s at 0.23 A against 29.8 at 0.20 in the core, as if under more
 drag), near where its springs hold the weights on their stops. Two islands failed and restarted at rest (the EM-4
 after the tour left it, the hydraulic jack mid-stroke), neither reproducible in the core with the world's timings.
+
+**Watching the gallery go up.** The demo world was only ever built headless: a game-test server placed all 72
+exhibits in one tick and saved. `./gradlew runWatchDemoBuild` builds it where it can be watched. A client makes a fresh
+flat creative world from the title screen, and the server builds the gallery there plot by plot, as the headless build
+does: each part set up in the part editor and placed with a click. The camera flies to each exhibit's viewpoint,
+and the caption names the part going in ("Placing part 46 of 95: insulated wire (copper)"). Each plot's floor goes
+down, its parts a few a tick (about ten seconds an exhibit, `-Demergence.buildSeconds`), then its sign, and the exhibit
+is compared with its definition. To make that possible the player builder became a job taken a click at a time; the
+headless build runs the same job to the end in one go (still 0 problems, 0 differences, 16/16 GameTests). The
+simulation is held still during the build, so the world comes out as the headless one does, and is let go at the end,
+with the player set down in creative before the first exhibit.
+
+**The flyball's two equilibria.** Its lower speed in the world is not the sun (noon sunlight on every part changes
+nothing in the core) but its warm start. Started at rest, as the core test starts it, it governs at 29.6 rad/s on
+0.20 A with the weights 12.8 mm out; pre-started at 28 rad/s, as the gallery opens it, at 27.6 rad/s on 0.30 A with
+them 9.0 mm out, all slides at rest after 60 s in both. Neither is settled: run on for four minutes, the first creeps
+down to 28.4 rad/s on 0.26 A and the second up to 27.8, both towards about 28 — a time constant of minutes that the
+tour's settling check (and the core test's 60 s) cannot see. Braked, both take more current in the core (0.20 → 0.30 A,
+0.30 → 0.44 A), yet the tour read 0.217 → 0.205 A: at 27.6 rad/s the core says 0.30 A. The tour averaged tick-by-tick
+samples of a current that ripples at the commutation rate (two segments, ~9 Hz) while it sampled at 10 Hz of real
+time and less of the island's. It now reads the mean current as an integrating ammeter does, from the charge the
+battery gave up over the window (its charge unknown is the integral of its current) divided by the island's own time.
+
+**A stone knocked away.** The watched build showed what the headless one could not: the flywheels, the unbalanced
+rotor, the propeller cart, the fatigue rig and the eddy brake all compiled with their moving parts fixed. Each is built
+partly over scaffolding — a dirt pillar to click against, knocked down once the part is in — and a part touching a
+world block is fixed to it. Built in one tick, the machine compiled after the dirt was gone; built over many, it compiled
+while the dirt stood, and nothing rebuilt it when the dirt went: a machine was rebuilt only when its own blocks changed.
+A player would meet the same thing: knock away the block a wheel was resting against and the wheel stays held. Each
+island now remembers which world blocks beside it were solid when it compiled; when one of them stops being so, or a
+block that was not becomes so, the island is rebuilt (`knockingAwayAWorldBlockFreesTheWheelItHeld`). Other changes —
+a furnace lit, a fire burning on — leave it alone.

@@ -92,6 +92,17 @@ neoForge {
             systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
             systemProperty 'emergence.debugIslands', System.getProperty('emergence.debugIslands', 'false')
         }
+        // Watch the demo gallery being built: a fresh flat world, the exhibits going up part by part as the camera
+        // flies from plot to plot (-Demergence.buildSeconds=N: about N seconds an exhibit, 10 by default).
+        watchDemoBuild {
+            client()
+            programArguments.addAll('--width', '1280', '--height', '720')
+            systemProperty 'emergence.watchBuild', 'true'
+            systemProperty 'emergence.buildSeconds', System.getProperty('emergence.buildSeconds', '10')
+            // a check run: screenshots of each exhibit half built and built, and closing once done
+            systemProperty 'emergence.watchShots', System.getProperty('emergence.watchShots', 'false')
+            systemProperty 'emergence.watchQuit', System.getProperty('emergence.watchQuit', 'false')
+        }
         server {
             server()
             programArgument '--nogui'
@@ -161,6 +172,11 @@ tasks.register('generateDemoWorld', Copy) {
     from 'run-demo/world'
     into 'run/saves/Emergence Demo'
     doFirst { delete 'run/saves/Emergence Demo' }
+}
+
+// A fresh world each time: the watched build makes it itself, from the title screen.
+tasks.named('runWatchDemoBuild') {
+    doFirst { delete 'run/saves/Emergence Build' }
 }
 
 // The tour flips switches and cranks machines; it plays a throwaway copy so the installed demo world stays pristine.

@@ -81,6 +81,8 @@ public final class SimulationManager {
         final Map<Long, Integer> turnTicks = new HashMap<>();
         final Map<Long, Integer> pushTicks = new HashMap<>();
         final Map<BlockPos, Integer> light = new HashMap<>();
+        /** The world blocks beside it that were solid when it was compiled (what it may be anchored to, or capped by). */
+        final Set<BlockPos> solidAround = new HashSet<>();
         double ambient;
         /** Height of the island's middle above the ground under it [m, world blocks]; −1 until found. */
         double windHeight = -1;
@@ -167,6 +169,24 @@ public final class SimulationManager {
 
     public void markDirty(BlockPos pos) {
         dirty.add(pos.immutable());
+    }
+
+    /**
+     * A world block beside the assembly block at {@code at} changed: if it became solid or stopped being so, the machine
+     * is rebuilt — knock away the block it stood on and it is free; set one against a rotor and it is held. (Other
+     * changes — a furnace lit, a fire burning on — leave it be.)
+     */
+    public void neighbourChanged(BlockPos at, BlockPos n, Direction towards) {
+        Island isl = islandOf.get(at);
+        if (isl == null || isl.blocks.contains(n) || dirty.contains(at)) return;
+        if (level.getBlockState(n).getBlock() instanceof AssemblyBlock) return; // registered with the simulation itself
+        if (worldSolid(n, towards) != isl.solidAround.contains(n)) markDirty(at);
+    }
+
+    /** A world block that can hold a part (anchor it, cap a pipe's end): solid, or sturdy on the face {@code face}. */
+    private boolean worldSolid(BlockPos n, Direction face) {
+        BlockState s = level.getBlockState(n);
+        return !s.isAir() && !(s.getBlock() instanceof AssemblyBlock) && (s.isSolid() || s.isFaceSturdy(level, n, face));
     }
 
     // ------------------------------------------------------------------ ticking
@@ -841,6 +861,13 @@ public final class SimulationManager {
                 asm.add(pp.toCore(b, be.resolution()));
                 isl.partPos.put(pp.id, b);
                 if (touchesWorld(b, pp, be.resolution())) anchored.put(pp.id, null);
+            }
+        }
+        isl.solidAround.clear();
+        for (BlockPos b : isl.blocks) {
+            for (Direction d : Direction.values()) {
+                BlockPos n = b.relative(d);
+                if (!isl.blocks.contains(n) && level.isLoaded(n) && worldSolid(n, d.getOpposite())) isl.solidAround.add(n);
             }
         }
         BlockPos first = isl.blocks.iterator().next();

@@ -47,16 +47,82 @@ public final class PlayerBuilder {
 
     /** Builds exhibit e at plot; returns the problems met (empty: built exactly as defined). */
     public static List<String> build(ServerLevel level, BlockPos plot, Exhibit e) {
-        FakePlayer p = FakePlayerFactory.get(level, BUILDER);
-        p.setGameMode(GameType.CREATIVE);
-        List<String> problems = new ArrayList<>();
-        List<Exhibit.PartDef> pending = new ArrayList<>(e.parts);
-        Map<Integer, Long> placedId = new java.util.HashMap<>();
-        Set<BlockPos> scaffold = new LinkedHashSet<>();
-        while (!pending.isEmpty()) {
-            boolean progress = false;
-            for (var it = pending.iterator(); it.hasNext(); ) {
-                Exhibit.PartDef d = it.next();
+        Job j = new Job(level, plot, e);
+        while (j.step()) {}
+        return j.problems();
+    }
+
+    /**
+     * One exhibit's build a click at a time ({@link #step}), so that it can be watched: each step places one part,
+     * puts up one scaffold, or clicks one switch.
+     */
+    public static final class Job {
+        private final ServerLevel level;
+        private final BlockPos plot;
+        private final Exhibit e;
+        private final FakePlayer p;
+        private final List<String> problems = new ArrayList<>();
+        private final List<Exhibit.PartDef> pending;
+        private final Map<Integer, Long> placedId = new java.util.HashMap<>();
+        private final Set<BlockPos> scaffold = new LinkedHashSet<>();
+        /** The pass over the parts still to place (null: between passes), and whether it has placed any. */
+        private java.util.Iterator<Exhibit.PartDef> pass;
+        private boolean progress;
+        private java.util.Iterator<Integer> latching;
+        private boolean done;
+        private Exhibit.PartDef last;
+
+        public Job(ServerLevel level, BlockPos plot, Exhibit e) {
+            this.level = level;
+            this.plot = plot;
+            this.e = e;
+            p = FakePlayerFactory.get(level, BUILDER);
+            p.setGameMode(GameType.CREATIVE);
+            pending = new ArrayList<>(e.parts);
+        }
+
+        public List<String> problems() {
+            return problems;
+        }
+
+        /** Parts placed so far (or given up on). */
+        public int placed() {
+            return e.parts.size() - pending.size();
+        }
+
+        /** The part placed last (null: none yet). */
+        public Exhibit.PartDef last() {
+            return last;
+        }
+
+        /** Takes the next step; false once the exhibit is finished. */
+        public boolean step() {
+            if (done) return false;
+            if (latching == null) {
+                if (placeNext()) return true;
+                for (BlockPos s : scaffold) level.setBlock(s, Blocks.AIR.defaultBlockState(), 3);
+                scaffold.clear();
+                latching = e.latched.iterator();
+            }
+            // switches and valves that start closed: a click with an empty hand
+            if (latching.hasNext()) {
+                latch(latching.next());
+                return true;
+            }
+            p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            done = true;
+            return false;
+        }
+
+        /** One part placed or one scaffold put up; false once there is nothing more to place. */
+        private boolean placeNext() {
+            if (pending.isEmpty()) return false;
+            if (pass == null) {
+                pass = pending.iterator();
+                progress = false;
+            }
+            while (pass.hasNext()) {
+                Exhibit.PartDef d = pass.next();
                 BlockPos at = plot.offset(d.x0(), d.y0(), d.z0());
                 // a shaft goes in before what is mounted on it (whose orientation it would otherwise follow)
                 if (d.kind() != PartKind.SHAFT && mountable(d.kind()) && pending.stream().anyMatch(q -> q != d && q.kind() == PartKind.SHAFT
@@ -71,19 +137,23 @@ public final class PlayerBuilder {
                     double temp = Double.isNaN(in.temperature()) ? dev.emergence.core.units.PhysicalConstants.T_REF : in.temperature();
                     ibe.savedState().put(id, new double[]{temp, in.omega(), in.angle(), 0, in.capacitorVoltage()});
                 }
-                it.remove();
+                pass.remove();
                 progress = true;
+                last = d;
+                return true;
             }
+            // the pass is over: its scaffolding comes down
+            pass = null;
             for (BlockPos s : scaffold) level.setBlock(s, Blocks.AIR.defaultBlockState(), 3);
             scaffold.clear();
-            if (progress || pending.isEmpty()) continue;
+            if (pending.isEmpty()) return false;
+            if (progress) return true;
             // nothing to click against: a dirt pillar from the ground up beside the lowest stranded part (scaffolding,
             // knocked down once the part is in), in a column that no part still to come needs
             Exhibit.PartDef low = pending.stream().min(java.util.Comparator.comparingInt(Exhibit.PartDef::y0)).get();
             BlockPos lowAt = plot.offset(low.x0(), low.y0(), low.z0());
             Set<BlockPos> wanted = new HashSet<>();
             for (var d : pending) wanted.add(plot.offset(d.x0(), d.y0(), d.z0()));
-            boolean grew = false;
             for (Direction f : Direction.Plane.HORIZONTAL) {
                 BlockPos top = lowAt.relative(f);
                 List<BlockPos> column = new ArrayList<>();
@@ -96,20 +166,17 @@ public final class PlayerBuilder {
                     level.setBlock(s, Blocks.DIRT.defaultBlockState(), 3);
                     scaffold.add(s);
                 }
-                grew = true;
-                break;
+                return true;
             }
-            if (!grew) {
-                for (var d : pending) problems.add(e.id + ": could not place the " + d.kind() + " at " + cell(d) + " (nothing to click against)");
-                break;
-            }
+            for (var d : pending) problems.add(e.id + ": could not place the " + d.kind() + " at " + cell(d) + " (nothing to click against)");
+            pending.clear();
+            return false;
         }
-        for (BlockPos s : scaffold) level.setBlock(s, Blocks.AIR.defaultBlockState(), 3);
-        // switches and valves that start closed: a click with an empty hand
-        for (int idx : e.latched) {
+
+        private void latch(int idx) {
             Long id = placedId.get(idx);
             Exhibit.PartDef d = e.parts.get(idx);
-            if (id == null) continue;
+            if (id == null) return;
             BlockPos at = plot.offset(d.x0(), d.y0(), d.z0());
             boolean was = level.getBlockEntity(at) instanceof AssemblyBlockEntity b0 && b0.byId(id) != null && b0.byId(id).closed;
             String clicked = click(level, p, at, id);
@@ -118,8 +185,6 @@ public final class PlayerBuilder {
                         + ", closed before " + was + ")");
             }
         }
-        p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-        return problems;
     }
 
     private static String cell(Exhibit.PartDef d) {

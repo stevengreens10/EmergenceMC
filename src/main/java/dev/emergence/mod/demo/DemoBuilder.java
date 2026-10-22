@@ -52,10 +52,21 @@ public final class DemoBuilder {
     public static List<String> verifyAgainstDefinitions(ServerLevel level, BlockPos origin) {
         List<Exhibit> exhibits = Exhibits.all();
         List<String> problems = new java.util.ArrayList<>();
+        for (int i = 0; i < exhibits.size(); i++) problems.addAll(verifyExhibit(level, origin, i));
+        for (String pr : problems) EmergenceMod.LOG.error("Demo build: {}", pr);
+        EmergenceMod.LOG.info("Demo build: {} exhibits compiled in the world as from their definitions ({} differences)",
+                exhibits.size(), problems.size());
+        return problems;
+    }
+
+    /** {@link #verifyAgainstDefinitions} for exhibit i alone (its chunks loaded); the differences found. */
+    public static List<String> verifyExhibit(ServerLevel level, BlockPos origin, int i) {
+        List<Exhibit> exhibits = Exhibits.all();
+        List<String> problems = new java.util.ArrayList<>();
         var sim = dev.emergence.mod.sim.SimulationManager.get(level);
-        for (int i = 0; i < exhibits.size(); i++) {
+        {
             Exhibit e = exhibits.get(i);
-            if (e.miniature) continue;
+            if (e.miniature) return problems;
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
             // every island the exhibit's blocks belong to (one exhibit may be several machines)
             java.util.Map<dev.emergence.core.assembly.CompiledAssembly, BlockPos> islands = new java.util.IdentityHashMap<>();
@@ -112,9 +123,6 @@ public final class DemoBuilder {
             java.util.Collections.sort(cw);
             if (!ww.equals(cw)) problems.add(e.id + ": in the world it warns " + ww + ", its definition " + cw);
         }
-        for (String pr : problems) EmergenceMod.LOG.error("Demo build: {}", pr);
-        EmergenceMod.LOG.info("Demo build: {} exhibits compiled in the world as from their definitions ({} differences)",
-                exhibits.size(), problems.size());
         return problems;
     }
 
@@ -130,39 +138,64 @@ public final class DemoBuilder {
     /** Builds all exhibits with the first plot at {@code origin} (the block above the gallery floor). */
     public static BlockPos build(ServerLevel level, BlockPos origin) {
         List<Exhibit> exhibits = Exhibits.all();
-        int width = plotOffset(exhibits, exhibits.size());
-        // gallery floor (a polished border between plots) and clear air above it
-        for (int x = -3; x <= width + 1; x++) {
-            for (int z = -3; z <= SIGN_Z + 6; z++) {
-                BlockPos f = origin.offset(x, -1, z);
-                boolean between = false;
-                for (int i = 1; i <= exhibits.size(); i++) between |= x == plotOffset(exhibits, i) - 1;
-                boolean edge = x == -3 || x == width + 1 || z == -3 || z == SIGN_Z + 6 || between || z == SIGN_Z - 1;
-                level.setBlock(f, (edge ? Blocks.POLISHED_DEEPSLATE : Blocks.SMOOTH_STONE).defaultBlockState(), 2);
-                for (int y = 0; y < 18; y++) level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
-            }
-        }
-        sign(level, origin.offset(-2, 0, SIGN_Z + 1), List.of("EMERGENCE", "Engineering from", "first principles", "exhibits ->"));
+        for (int x = floorFrom(exhibits, 0); x <= floorTo(exhibits, exhibits.size() - 1); x++) floorColumn(level, origin, exhibits, x);
+        welcomeSign(level, origin);
         List<String> problems = new java.util.ArrayList<>();
         for (int i = 0; i < exhibits.size(); i++) {
             Exhibit e = exhibits.get(i);
             BlockPos plot = origin.offset(plotOffset(exhibits, i), 0, 0);
-            for (Exhibit.Scenery s : e.scenery) {
-                var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.withDefaultNamespace(s.block()));
-                for (int x = s.x0(); x <= s.x1(); x++)
-                    for (int y = s.y0(); y <= s.y1(); y++)
-                        for (int z = s.z0(); z <= s.z1(); z++) level.setBlock(plot.offset(x, y, z), block.defaultBlockState(), 2);
-            }
+            scenery(level, plot, e);
             // as a player builds it: each part made in the part editor and placed with a click
             if (e.miniature) place(level, plot, e);
             else problems.addAll(PlayerBuilder.build(level, plot, e));
-            sign(level, plot.offset(8, 0, SIGN_Z), e.sign);
+            sign(level, plot, e);
         }
         for (String pr : problems) EmergenceMod.LOG.error("Demo build: {}", pr);
         EmergenceMod.LOG.info("Built {} demo exhibits at {} by player placement ({} problems)", exhibits.size(), origin, problems.size());
         LAST_PROBLEMS.clear();
         LAST_PROBLEMS.addAll(problems);
         return origin.offset(8, 0, SIGN_Z + 3);
+    }
+
+    /** The gallery floor's columns (x from the origin) that go with exhibit i: its plots, and the ends' borders. */
+    public static int floorFrom(List<Exhibit> exhibits, int i) {
+        return i == 0 ? -3 : plotOffset(exhibits, i);
+    }
+
+    public static int floorTo(List<Exhibit> exhibits, int i) {
+        return i == exhibits.size() - 1 ? plotOffset(exhibits, exhibits.size()) + 1 : plotOffset(exhibits, i + 1) - 1;
+    }
+
+    /** One column (x from the origin) of the gallery floor (a polished border between plots), with clear air above it. */
+    public static void floorColumn(ServerLevel level, BlockPos origin, List<Exhibit> exhibits, int x) {
+        int width = plotOffset(exhibits, exhibits.size());
+        boolean between = false;
+        for (int i = 1; i <= exhibits.size(); i++) between |= x == plotOffset(exhibits, i) - 1;
+        for (int z = -3; z <= SIGN_Z + 6; z++) {
+            BlockPos f = origin.offset(x, -1, z);
+            boolean edge = x == -3 || x == width + 1 || z == -3 || z == SIGN_Z + 6 || between || z == SIGN_Z - 1;
+            level.setBlock(f, (edge ? Blocks.POLISHED_DEEPSLATE : Blocks.SMOOTH_STONE).defaultBlockState(), 2);
+            for (int y = 0; y < 18; y++) level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
+        }
+    }
+
+    public static void welcomeSign(ServerLevel level, BlockPos origin) {
+        sign(level, origin.offset(-2, 0, SIGN_Z + 1), List.of("EMERGENCE", "Engineering from", "first principles", "exhibits ->"));
+    }
+
+    /** An exhibit's scenery: the ordinary blocks it stands among. */
+    public static void scenery(ServerLevel level, BlockPos plot, Exhibit e) {
+        for (Exhibit.Scenery s : e.scenery) {
+            var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(net.minecraft.resources.ResourceLocation.withDefaultNamespace(s.block()));
+            for (int x = s.x0(); x <= s.x1(); x++)
+                for (int y = s.y0(); y <= s.y1(); y++)
+                    for (int z = s.z0(); z <= s.z1(); z++) level.setBlock(plot.offset(x, y, z), block.defaultBlockState(), 2);
+        }
+    }
+
+    /** The sign in front of an exhibit. */
+    public static void sign(ServerLevel level, BlockPos plot, Exhibit e) {
+        sign(level, plot.offset(8, 0, SIGN_Z), e.sign);
     }
 
     /**
@@ -249,6 +282,16 @@ public final class DemoBuilder {
         }
     }
 
+    /** The demo world's standing conditions: noon held, clear weather, no mobs. */
+    public static void galleryRules(MinecraftServer server) {
+        ServerLevel level = server.overworld();
+        level.setDayTime(6000);
+        level.setWeatherParameters(6000, 0, false, false);
+        level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, server);
+        level.getGameRules().getRule(GameRules.RULE_WEATHER_CYCLE).set(false, server);
+        level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
+    }
+
     /**
      * Automated demo-world generation (system property {@code emergence.buildDemo=true}): builds the
      * gallery at the world spawn, moves the spawn in front of it, freezes daylight at noon and names
@@ -279,10 +322,7 @@ public final class DemoBuilder {
             sim.setPaused(false);
         });
         level.setDefaultSpawnPos(spawn, 180f);
-        level.setDayTime(6000);
-        level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, server);
-        level.getGameRules().getRule(GameRules.RULE_WEATHER_CYCLE).set(false, server);
-        level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
+        galleryRules(server);
         if (server.getWorldData() instanceof PrimaryLevelData data) {
             try {
                 Field f = PrimaryLevelData.class.getDeclaredField("settings");

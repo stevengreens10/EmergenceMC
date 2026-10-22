@@ -9,6 +9,7 @@ coils.
 
 * **Play the demo:** `./gradlew generateDemoWorld` then `./gradlew runDemoClient`
   (or open *Singleplayer → Emergence Demo*). In any world, `/emergence demo` builds the exhibit gallery.
+  To watch it being built, part by part: `./gradlew runWatchDemoBuild`.
 * **Tests:** `./gradlew coreTest` (physics, no Minecraft) · `./gradlew runGameTestServer` (in-world).
 * **Docs:** ARCHITECTURE · PHYSICS_MODELS · MATERIAL_DATABASE · VALIDATION · PERFORMANCE ·
   KNOWN_LIMITATIONS · ROADMAP · DEVELOPMENT_LOG · NEXT_STEPS.

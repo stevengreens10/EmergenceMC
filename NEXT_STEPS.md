@@ -30,7 +30,9 @@
    - the flyball governs lower in the world than in the core (27.4 rad/s at 0.23 A against 29.8 at 0.20, as if under
      more drag — sun-warmed parts?), so braked it nears its stops and took no more current (twice: the brake taking
      0.76 W, the supply current fell 0.217 → 0.205 A, speed −2.6 %) — find the drag, and where the brake's power
-     comes from if not the supply (the flywheel's speed? the rheostat at its stop?);
+     comes from if not the supply (the flywheel's speed? the rheostat at its stop?) — found: the tour averaged aliased
+     samples of a rippling current (now the charge drawn over the window); and the governor creeps for minutes towards
+     ~28 rad/s from either start (a time constant to find: the springs? the rheostat warming?) — confirm in a tour;
    - (confirmed in the world: the fatigue rig cranked to 187 rad/s through its gears, the aluminium shaft cracked; the
      inverter, waiting for its first full cycle, lit both LEDs and gave 44 V);
    - the gas engine ran at 82 rad/s in the full tour against 173–273 alone (it passed): its rich low-speed regime;
@@ -41,6 +43,9 @@
    - the miniature exhibit is still placed directly (tweezers placement);
    - the gas engine's island runs at a fifth to a third of real time once it fires (combustion steps at 200+ rad/s);
    - the wind turbine's load check now asks only that power arrives (a lull at 30 rad/s gave 0.12 W against 0.2);
+   - (done: `runWatchDemoBuild` builds the gallery where it can be watched; it found five machines held by scaffolding
+     that had gone, now rebuilt when a world block beside them changes) confirm a full watched build matches its
+     definitions, 72 of 72;
    - the full tour, then every exhibit's checks green.
 
 Every new mechanic: core tests → in-world GameTest where it matters → demo exhibit (and showcase step) →

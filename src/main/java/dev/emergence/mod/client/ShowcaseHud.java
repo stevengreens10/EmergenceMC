@@ -64,7 +64,7 @@ public final class ShowcaseHud {
     }
 
     public static void render(GuiGraphics g, DeltaTracker dt) {
-        if (!Boolean.getBoolean("emergence.autoShowcase") || exhibit.isEmpty()) return;
+        if (!(Boolean.getBoolean("emergence.autoShowcase") || WatchBuild.enabled()) || exhibit.isEmpty()) return;
         Minecraft mc = Minecraft.getInstance();
         Font f = mc.font;
         // small whatever the GUI scale (as at GUI scale 2): a caption, not a screenful

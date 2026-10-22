@@ -43,6 +43,10 @@ class SolverBenchmarkTest {
                 (s.acceptedSteps() - st0) / (double) ticks, (s.newtonIterations() - n0) / (double) Math.max(1, s.acceptedSteps() - st0),
                 s.rejectedSteps() - r0, s.newtonFailures() - f0, s.lastStepSize());
         System.out.println("BENCH   limiters " + s.stepLimiters());
+        if (!s.newtonLaggards().isEmpty()) {
+            var top = s.newtonLaggards().entrySet().stream().sorted((x, y) -> y.getValue() - x.getValue()).limit(8).toList();
+            System.out.println("BENCH   newton laggards " + top);
+        }
         return ms;
     }
 

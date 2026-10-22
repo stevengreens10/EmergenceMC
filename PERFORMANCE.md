@@ -26,7 +26,7 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 | H-bridge (forward) | 276 | 2.2 | 0.04 |
 | Loudspeaker, idle (its oscillator runs) | 505 | 255 | 5.1 (12.4 at the start of the day) |
 | Loudspeaker, switched on | 505 | 500 | 10.0 (22.4) |
-| Gas engine, running (141 rad/s) | 207 | 79–84 | 1.6–1.7 (81 steps a tick, 6 Newton iterations a step) |
+| Gas engine, running (141 rad/s) | 207 | 66 | 1.32 (80 steps a tick, 5.7 Newton iterations a step; 1.8 this morning) |
 | Steam engine / condensing engine | 140 / 150 | 19 / 23 | 0.38 / 0.46 |
 
 Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
@@ -140,6 +140,11 @@ compile or island step over 1 s ("Slow simulation: …"), naming the island's bl
   assembled a Jacobian nothing used. Gas passages remember their species' enthalpies and heat capacities at the last
   temperature: their finite-difference Jacobian evaluates the residual ~20 times a load, and only the temperature
   columns move the temperatures (gas engine 89 → 84 ms a tick).
+* Gas passages: the species columns of their finite-difference Jacobian (16 of ~21) differenced once per step attempt,
+  their slopes reused by its later Newton iterations (84 → 70 ms a tick, the iterations unchanged); molar flows
+  resolved to 10⁻⁸ mol/s, not 10⁻⁹ (near zero flow the turbulent ṅ|ṅ| term makes Newton halve the error an iteration;
+  6.1 → 5.7 iterations, 70 → 66 ms). `diag.newtonLaggards=true` counts which unknowns keep Newton iterating: the
+  engine's exhaust valve and a vent to the air, still.
 * Tried and dropped: chord Newton (Jacobian reuse within a step: slower on circuits that converge in two or three
   quadratic iterations, and it failed the boost converter at an edge); PI step control (Gustafsson/Söderlind gains
   0.7/0.4: halved the gas engine's rejected steps, 9 % faster, but regrew the step more slowly after every switching

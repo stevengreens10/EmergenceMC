@@ -694,6 +694,17 @@ public final class TransientSolver implements StateView {
         return limiterCounts;
     }
 
+    /**
+     * Diagnostics ({@code diag.newtonLaggards=true}): for each Newton iteration from the third on, the unknown that
+     * still moved by more than its tolerance — which unknowns make a step take many iterations.
+     */
+    public java.util.Map<String, Integer> newtonLaggards() {
+        return newtonLaggards;
+    }
+
+    private static final boolean NEWTON_LAGGARDS = Boolean.getBoolean("diag.newtonLaggards");
+    private final java.util.Map<String, Integer> newtonLaggards = new java.util.HashMap<>();
+
     /** The unknown that last failed to converge in a Newton iteration, with its value and update (diagnostics). */
     public String lastNewtonFailure() {
         return worstNewtonDiagnostic();
@@ -871,6 +882,7 @@ public final class TransientSolver implements StateView {
                 converged = true;
                 break;
             }
+            if (NEWTON_LAGGARDS && it >= 2 && lastBadIndex >= 0) newtonLaggards.merge(net.unknownName(lastBadIndex), 1, Integer::sum);
         }
         if (!converged) return 1;
 

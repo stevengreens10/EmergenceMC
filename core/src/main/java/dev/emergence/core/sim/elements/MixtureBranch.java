@@ -148,7 +148,10 @@ public final class MixtureBranch implements Element {
 
     @Override
     public void setup(SetupContext ctx) {
-        qIdx = ctx.allocUnknown("ndot:" + tag, 1e-9);
+        // resolved to 10⁻⁸ mol/s, a hundredth of the diffusion-scale exchange the passage's split stands for (Q_SPLIT):
+        // near zero flow its turbulent term ṅ|ṅ| dominates and Newton only halves the error an iteration, so 10⁻⁹ cost
+        // the gas engine's cam-worked valves and vents several more iterations a step for 3·10⁻¹¹ kg/s
+        qIdx = ctx.allocUnknown("ndot:" + tag, 1e-8);
     }
 
     // ---- local state vector: [ṅ, p_a, T_a, n_a…, p_b, T_b, n_b…] (reservoir ends contribute no unknowns)
@@ -298,8 +301,18 @@ public final class MixtureBranch implements Element {
         // Jacobian by finite differences over the few unknowns this passage touches. The flow column is central, with a
         // relative step of 10⁻⁴: the residual is smooth (quadratic) in the flow, and at high pressure a step of 10⁻⁷
         // changes it by no more than the rounding of its ~10⁷ Pa terms (a noisy column made Newton cycle).
+        // The species columns (most of them: they enter only through the ends' mole fractions, which move little
+        // within a step) are differenced once per step attempt and their slopes reused by its further Newton
+        // iterations; the flow, pressure and temperature columns every iteration. The residual is exact every time,
+        // so what Newton converges to is the same.
+        boolean freshSpecies = ctx.time() != speciesJacTime;
+        if (speciesJac == null || speciesJac.length != col.length) speciesJac = new double[col.length][col.length];
         for (int j = 0; j < col.length; j++) {
             if (col[j] < 0) continue;
+            if (!freshSpecies && isSpeciesColumn(j)) {
+                for (int r = 0; r < col.length; r++) if (col[r] >= 0 && speciesJac[j][r] != 0) ctx.addJ(rowOf(col, r), col[j], speciesJac[j][r]);
+                continue;
+            }
             double x0 = v[j];
             boolean central = j == 0;
             double hj = (central ? 1e-4 : 1e-7) * Math.max(Math.abs(x0), scale(j));
@@ -314,6 +327,7 @@ public final class MixtureBranch implements Element {
             for (int r = 0; r < col.length; r++) {
                 if (col[r] < 0) continue;
                 double d = central ? (f1[r] - fm[r]) / (2 * hj) : (f1[r] - f0[r]) / hj;
+                if (isSpeciesColumn(j)) speciesJac[j][r] = d;
                 if (d != 0) ctx.addJ(rowOf(col, r), col[j], d);
                 // the flow equation is a pressure balance of terms as large as the pressures themselves: their
                 // rounding (a few ulps) moves the flow by that over the equation's slope — a floor on its resolution
@@ -323,6 +337,17 @@ public final class MixtureBranch implements Element {
                 }
             }
         }
+        if (freshSpecies) speciesJacTime = ctx.time();
+    }
+
+    /** The species columns' slopes at the last step attempt's first load, and its time. */
+    private double[][] speciesJac;
+    private double speciesJacTime = Double.NaN;
+
+    /** True for a local column holding one end's moles of a species. */
+    private boolean isSpeciesColumn(int j) {
+        int m = m();
+        return j >= 1 && j < 1 + 2 * (2 + m) && (j - 1) % (2 + m) >= 2;
     }
 
     /** The row a local entry belongs to: the branch row, or the end's temperature/species rows (pressure rows untouched). */

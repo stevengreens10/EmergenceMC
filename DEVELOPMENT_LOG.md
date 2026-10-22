@@ -924,3 +924,8 @@ assemblies concurrently. They now step side by side on worker threads, with the 
 on the server thread, and the budgets weighing each island's share of the wall clock. The step listeners an
 instrument hangs on a solver from another thread now sit in a copy-on-write list (an indexed loop over a plain list
 could have thrown while the tour added one).
+
+**Six-second hitches.** A compile-time benchmark found the colour-filter bench taking 6.2 s to compile and the
+spectrometer 2.7 s. Each was a server freeze whenever either was built, changed or loaded. All of it was tracing light
+from hot filaments through the optics, band by band, as ray tubes. The 18 bands are independent, each with its own
+scene, so they are now traced side by side: 1.6 s and 0.76 s.

@@ -2331,19 +2331,25 @@ public final class AssemblyCompiler {
                 double emit = PartGeometry.emissivity(src) * PartGeometry.surfaceArea(src);
                 Map<Long, double[]> g = new HashMap<>();
                 for (int b = 0; b < nb; b++) {
-                    double nm = Photodiode.bandCentre(b);
-                    if (scenes[b] == null) scenes[b] = AssemblyOptics.scene(a, c, nm, bd -> {
+                    if (scenes[b] == null) scenes[b] = AssemblyOptics.scene(a, c, Photodiode.bandCentre(b), bd -> {
                         double[] m = bd.parts.isEmpty() ? null : prev.bodyMotion().get(bd.parts.get(0));
                         return m == null ? 0 : m[1];
                     });
-                    for (Vec3 dir : new Vec3[]{ax, ax.mul(-1)}) {
-                        var res = dev.emergence.core.optics.TubeTracer.point(scenes[b], src.center(), dir, 0, nm, src.id(), 16, 7);
-                        for (Part rx : pds) {
-                            double f = res.light(rx.id());
-                            if (f > 0) g.computeIfAbsent(rx.id(), k -> new double[nb])[b] += 0.5 * emit * f;
-                        }
-                    }
                 }
+                // the bands traced side by side (each its own scene, which a trace marks as it goes: one thread a scene)
+                // — a colour-filter bench's three lamps were 108 traces, six seconds on one core
+                final Vec3 axis = ax;
+                double[][] got = new double[nb][pds.size()];
+                java.util.stream.IntStream.range(0, nb).parallel().forEach(b -> {
+                    double nm = Photodiode.bandCentre(b);
+                    for (Vec3 dir : new Vec3[]{axis, axis.mul(-1)}) {
+                        var res = dev.emergence.core.optics.TubeTracer.point(scenes[b], src.center(), dir, 0, nm, src.id(), 16, 7);
+                        for (int k = 0; k < pds.size(); k++) got[b][k] += res.light(pds.get(k).id());
+                    }
+                });
+                for (int b = 0; b < nb; b++)
+                    for (int k = 0; k < pds.size(); k++)
+                        if (got[b][k] > 0) g.computeIfAbsent(pds.get(k).id(), id -> new double[nb])[b] += 0.5 * emit * got[b][k];
                 for (var en : g.entrySet()) {
                     Photodiode pd = c.receiver(en.getKey());
                     if (pd == null) continue;

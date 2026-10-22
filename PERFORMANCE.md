@@ -32,6 +32,13 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
 and the steam engine (23).
 
+## Compilation (`coreTest --tests *CompileTimeBenchTest*`, 2026-10-22)
+A machine is compiled when it is built, changed or loaded: on the server thread, a hitch for everyone. 73 exhibits
+take 14 s in all; the slowest were the optics: the colour-filter bench 6.2 s and the spectrometer 2.7 s. Light from
+hot filaments is traced as ray tubes band by band (18 bands, both hemispheres: 108 traces for the filters' three
+lamps). The bands are now traced side by side (each band's scene on one thread), so 1.6 s and 0.76 s. Magnet field
+tables were already sampled in parallel. Next: compile off the server thread altogether (NEXT_STEPS 0b.5).
+
 ## Time dilation
 Each island has a wall-clock budget of 12 ms per server tick. An island whose smoothed cost exceeds it
 simulates less time per tick (down to 5 %) and recovers when cheap: the physics stays exact and the

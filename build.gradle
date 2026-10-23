@@ -141,7 +141,8 @@ neoForge {
         stationWorld {
             type = 'gameTestServer'
             gameDirectory = project.file('run-station')
-            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            // (the in-world tests run with the gallery's build; beside the station's big island they were starved)
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'emergence_station'
             systemProperty 'emergence.globalBudgetMs', '1e9'
             systemProperty 'emergence.islandBudgetMs', '1e9'
             systemProperty 'emergence.buildDemo', 'true'

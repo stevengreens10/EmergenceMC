@@ -133,6 +133,9 @@ public final class DemoBuilder {
                 : String.format("rotor of %d parts, %.4g kg·m²", b.parts().size(), b.inertia()));
     }
 
+    /** Where the last generated world's first plot is (the station world's check finds the station by it). */
+    public static volatile BlockPos LAST_ORIGIN;
+
     /** What the last build could not do as a player would (see {@link PlayerBuilder}). */
     public static final List<String> LAST_PROBLEMS = new java.util.ArrayList<>();
 
@@ -301,6 +304,7 @@ public final class DemoBuilder {
     public static void generateWorld(MinecraftServer server) {
         ServerLevel level = server.overworld();
         BlockPos top = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING, new BlockPos(0, 0, 0));
+        LAST_ORIGIN = top;
         BlockPos spawn = build(level, top);
         // the whole gallery loaded (forced) while each exhibit is compared with its definition, once its blocks have
         // registered with the simulation

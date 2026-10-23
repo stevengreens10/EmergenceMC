@@ -83,6 +83,26 @@
      - one of the 17 in-world tests failed once in five demo builds (not captured);
    - the full tour, then every exhibit's checks green.
 
+0a. **The power station** (asked for 2026-10-22: one interconnected machine, every part doing a job, built as a player
+   builds, in its own world — `StationExhibit`, `./gradlew generateStationWorld`, `runStationClient`, tour
+   `runStationShowcase`). In: a methane firebox (natural draft, igniter to light it) under a steel crown; boiler, safety
+   valve, constant-level overflow; the governed engine; a closed water circuit (exhaust and safety valve into a finned
+   condenser at ~0.2 bar, flooded suction from its well to a crankshaft feed pump, check valves into the boiler); a
+   2 : 1 generator into a 5 V battery through a bridge; a charge regulator (op-amp against a diode reference, MOSFET into
+   a lamp and dump load); a revolution counter (vane, IR beam, Schmitt trigger, three-stage ripple counter). In the core it
+   runs stably for 300 s with the fire alight, the water balanced and the engine governed; built in its world with 0
+   differences, its own in-world check passing. Open:
+   - it runs ~4x slower than real time: the generator's current pulses set ~1000 steps/s for the whole plant, whose
+     two-phase and gas network is most of the cost — multirate stepping of the fluid network is the fix;
+   - the generator's net charge is small (~0.04 A after the electronics' own ~35 mA): more turns or a lower-current
+     beam LED;
+   - once in two world generations the island failed ~2.5 min in (not yet captured: dump with
+     `-Demergence.dumpFailures=true`); a saved world that had run long would not restart while a pipe of pure methane
+     sat between the choked needle and the firebox (fixed by removing the pipe);
+   - the boiler pressure sags slowly once the igniter is off (the firebox walls settle near 650 K); the cylinder runs
+     wet against the condenser's vacuum;
+   - the station tour from its saved world: verify end to end.
+
 0b. **Every exhibit at real time** (asked for 2026-10-22; measure first: `SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`
    prints ms per 50 ms tick and the unknowns that limit the step):
    1. power electronics — fidelity switching: fast, decided states (a logic output's 10 ns slew, a gate's charge)

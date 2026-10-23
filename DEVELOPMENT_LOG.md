@@ -983,3 +983,18 @@ magnets, so with resistance in series the current falls just as the EMF peaks. I
 short), a viscous damper on the spindle as the steady work a governor's engine always has, and a 12 V bank with a 50 Ω
 rheostat. It now settles in a minute and sags 4 % braked, the current doubling. The core test and the tour judge it once
 settled.
+
+**The power station, and what building it found.** The user asked for one large machine of many mechanics, every part
+doing a job, built as a player builds it. It is a steam power station in its own world: methane burning in a firebox
+under the boiler, the governed engine, a closed water circuit (condenser, hot well, crankshaft feed pump, check valves,
+a constant-level overflow), a generator charging a battery, a charge regulator and a revolution counter. Building it
+was mostly a hunt for things the gallery had never asked of the solver. Profiled at a tenth of real time, it led to
+four general speed-ups: plain pipe runs lumped into one volume each, the pivoting factorisation on arrays instead of
+maps of boxed integers, cached steam tables, and an assembly replay that resynchronises when an element skips an
+entry (a record alternating between two patterns had missed every time). Its physics taught the rest. A pilot flame
+could not keep a firebox lit; a fire of 1.2 kW would not light at all; a pump that sucked near-boiling water up to it
+cavitated (a real feed pump stands below its hot well); with no level control the pump emptied the well into the
+boiler (an overflow at the water line keeps the level); condensate pooled in every low point of the steam pipes; and a
+pipe of pure methane between a choked needle and the fire would not restart from a saved world. The part editor turned
+out stricter than the core: no pipe can be filled by hand, so the station primes its own lines. It still runs some
+four times slower than real time, its steps set by the generator's pulses.

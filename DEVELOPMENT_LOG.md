@@ -998,3 +998,20 @@ boiler (an overflow at the water line keeps the level); condensate pooled in eve
 pipe of pure methane between a choked needle and the fire would not restart from a saved world. The part editor turned
 out stricter than the core: no pipe can be filled by hand, so the station primes its own lines. It still runs some
 four times slower than real time, its steps set by the generator's pulses.
+
+**The station run for its whole life, and water that would not find its level.** The station's in-world check now
+runs it for 190 s, long past the 2.5 minutes at which its island had once failed, and makes the tour's checks without
+a display, the brake included. It did not fail, but the governor lost a fifth of its speed under the brake: the boiler
+was short of heat. An audit of every heat path told why. The one-cell firebox, 6 cm across and burning 2 kW, gave its
+walls only ~500 W (h ≈ 10 W/m²K and the hot gas's radiation, ε ≈ 0.05, near Hottel's value for a 4 cm beam), and the
+boiler had been running on the heat its crown stored at the start. A player's answer was a longer firebox under a
+longer boiler, with a copper crown, as a locomotive's inner firebox. Built so, the flame stood in the middle cell, the
+inlet cell a cold mixing chamber, as each cell is stirred through. It brought ~750 W, but one boiler tank ran full while
+the two over the fire boiled down. Neither turning the firebox round nor splitting the face between the tanks
+helped, and a test of two vessels side by side showed why: not a gram of water crossed between them. A branch had
+seen each volume's pressure and the height between their middles, never the water standing over its port; and one
+passage at mid-height passes one phase at a time, so steam could not cross over while water came back underneath.
+Both are fixed in the model: a port now feels its liquid head, the column is taken between the ports' own heights,
+and vessels side by side join through the upper and lower halves of their face. The station now holds its speed
+within 3 % braked, the three tanks sharing one level. Still open: condensate fills the low points of the steam path,
+so the hot well falls for its first minutes, and the condenser holds about half an atmosphere.

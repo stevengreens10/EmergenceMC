@@ -205,6 +205,9 @@ public final class SimulationManager {
      */
     private boolean paused;
 
+    /** How many times an island has failed (and been restarted) in this level since the server started. */
+    public int failures;
+
     public void setPaused(boolean paused) {
         this.paused = paused;
     }
@@ -282,6 +285,7 @@ public final class SimulationManager {
             RuntimeException err = isl.stepError;
             isl.stepError = null;
             if (err != null) {
+                failures++;
                 // restart from the last good state at rest (charges, heat, positions kept); if even that will not
                 // run, from nothing
                 EmergenceMod.LOG.error("Simulation of island at {} ({} parts) failed; restarting it at rest{}; {}", isl.blocks.iterator().next(),

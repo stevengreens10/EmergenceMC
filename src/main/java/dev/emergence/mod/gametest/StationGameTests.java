@@ -1,5 +1,7 @@
 package dev.emergence.mod.gametest;
 
+import dev.emergence.core.assembly.CompiledAssembly;
+import dev.emergence.core.assembly.PartKind;
 import dev.emergence.core.demo.Exhibit;
 import dev.emergence.core.demo.StationExhibit;
 import dev.emergence.mod.demo.DemoBuilder;
@@ -10,49 +12,97 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * The power station's world's own check (run when that world is generated: {@code ./gradlew generateStationWorld}),
- * on the station as the world built it, part by part as a player would: its fire burns, its boiler holds steam and its
- * engine turns. (The gallery's in-world tests run with the gallery's build.)
+ * on the station as the world built it, part by part as a player would, over three minutes: its fire burns, its boiler
+ * holds steam, its engine turns, it exhausts into a vacuum, its generator charges its battery, its counter counts; then
+ * the brake goes on and the governor holds the engine's speed. The island must run the whole time without failing (a
+ * failure restarts it). The same checks as the station's tour, which needs a display; the
+ * gallery's in-world tests run with the gallery's build.
  */
 @GameTestHolder("emergence_station")
 @PrefixGameTestTemplate(false)
 public final class StationGameTests {
     private StationGameTests() {}
 
-    @GameTest(template = "arena", timeoutTicks = 1200)
+    /** Ticks (at 20 a second, the island kept up with by the test server's unlimited budget). */
+    private static final int FIRST = 1000, BEFORE = 2400, BRAKE = 3000, SETTLED = 3400, END = 3800;
+
+    @GameTest(template = "arena", timeoutTicks = END + 400)
     public static void stationRunsInItsWorld(GameTestHelper h) {
         BlockPos origin = DemoBuilder.LAST_ORIGIN;
         h.assertTrue(origin != null, "the station has been built");
         Exhibit e = StationExhibit.station();
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos shaft = DemoBuilder.partBlock(origin, e, "shaft"), boiler = DemoBuilder.partBlock(origin, e, "boiler"),
-                box = DemoBuilder.partBlock(origin, e, "firebox");
-        h.runAtTickTime(1000, () -> {
-            var c = sim.compiledAt(shaft);
-            h.assertTrue(c != null, "the station is simulated");
-            var at = c.assembly();
-            long shaftId = -1, boilerId = -1, boxId = -1;
-            for (var p : at.parts()) {
-                if (shaftId < 0 && p.kind() == dev.emergence.core.assembly.PartKind.SHAFT && contains(origin, p, shaft)) shaftId = p.id();
-                if (boilerId < 0 && p.kind() == dev.emergence.core.assembly.PartKind.TANK && contains(origin, p, boiler)) boilerId = p.id();
-                if (boxId < 0 && p.kind() == dev.emergence.core.assembly.PartKind.TANK && contains(origin, p, box)) boxId = p.id();
-            }
-            h.assertTrue(shaftId >= 0 && boilerId >= 0 && boxId >= 0, "the crankshaft, boiler and firebox are in its island");
-            double w = Math.abs(c.probe(shaftId).angularVelocity()), p = c.pressure(boilerId);
-            var g = c.gas(boxId);
-            var ch = dev.emergence.core.chem.Chemistry.standard();
-            double co2 = g.moleFraction(c.solverView(), g.indexOf(ch.species("CO2")));
-            h.assertTrue(co2 > 0.03, String.format("the firebox burns (%.1f %% CO2)", 100 * co2));
-            h.assertTrue(p > 1.5e5, String.format("the boiler holds steam (%.2f bar)", p / 1e5));
-            h.assertTrue(w > 8, String.format("the engine turns (%.1f rad/s)", w));
-            h.succeed();
-        });
+                box = DemoBuilder.partBlock(origin, e, "firebox"), cnd = DemoBuilder.partBlock(origin, e, "condenser"),
+                bat = DemoBuilder.partBlock(origin, e, "battery"), brake = DemoBuilder.partBlock(origin, e, "brake");
+        BlockPos[] bitLed = new BlockPos[3];
+        for (int k = 0; k < 3; k++) bitLed[k] = DemoBuilder.partBlock(origin, e, "bitLed" + k);
+        int failures0 = sim.failures;
+        double[] w0 = {0, 0}, w1 = {0, 0}, q = {Double.NaN, Double.NaN}, t = {Double.NaN, Double.NaN};
+        Set<String> counts = new HashSet<>();
+        for (int tick = 20; tick <= END; tick += 20) {
+            int at = tick;
+            h.runAtTickTime(at, () -> {
+                CompiledAssembly c = sim.compiledAt(shaft);
+                h.assertTrue(c != null, "the station is simulated (tick " + at + ")");
+                h.assertTrue(sim.failures == failures0, String.format("the station's island ran without failing (it failed and restarted by tick %d)", at));
+                double w = Math.abs(c.probe(id(c, shaft, PartKind.SHAFT)).angularVelocity());
+                if (at > BEFORE && at <= BRAKE) {
+                    w0[0] += w;
+                    w0[1]++;
+                }
+                if (at > SETTLED) {
+                    w1[0] += w;
+                    w1[1]++;
+                }
+                StringBuilder sb = new StringBuilder();
+                for (int k = 2; k >= 0; k--) sb.append(c.lightOutput(id(c, bitLed[k], PartKind.LED)) > 1e-4 ? '1' : '0');
+                counts.add(sb.toString());
+                if (at == FIRST) {
+                    long boilerId = id(c, boiler, PartKind.TANK), boxId = id(c, box, PartKind.TANK);
+                    var g = c.gas(boxId);
+                    double co2 = g.moleFraction(c.solverView(), g.indexOf(dev.emergence.core.chem.Chemistry.standard().species("CO2")));
+                    h.assertTrue(co2 > 0.03, String.format("the firebox burns (%.1f %% CO2)", 100 * co2));
+                    h.assertTrue(c.pressure(boilerId) > 1.5e5, String.format("the boiler holds steam (%.2f bar)", c.pressure(boilerId) / 1e5));
+                    h.assertTrue(w > 8, String.format("the engine turns (%.1f rad/s)", w));
+                    double pc = c.pressure(id(c, cnd, PartKind.TANK));
+                    h.assertTrue(pc < 80e3, String.format("it exhausts into a partial vacuum (condenser %.1f kPa)", pc / 1e3));
+                    q[0] = c.batteryChargeDelivered(id(c, bat, PartKind.BATTERY));
+                    t[0] = c.solverView().time();
+                }
+                if (at == BRAKE) {
+                    q[1] = c.batteryChargeDelivered(id(c, bat, PartKind.BATTERY));
+                    t[1] = c.solverView().time();
+                    double mAh = -(q[1] - q[0]) / 3.6;
+                    h.assertTrue(mAh > 0.001, String.format("its generator charges its battery (%.3f mA·h taken in over %.0f s)", mAh, t[1] - t[0]));
+                    h.assertTrue(counts.size() >= 2, "its counter counts the engine's turns (states seen: " + counts + ")");
+                    sim.toggleSwitch(brake, id(c, brake, PartKind.BRAKE)); // a load put on it by hand
+                }
+                if (at == END) {
+                    double before = w0[0] / w0[1], after = w1[0] / w1[1];
+                    sim.toggleSwitch(brake, id(c, brake, PartKind.BRAKE));
+                    h.assertTrue(Math.abs(after / before - 1) <= 0.10, String.format(
+                            "braked, the governor holds its speed (mean %.2f → %.2f rad/s, %+.1f %%; expected within ±10 %%)", before, after,
+                            100 * (after / before - 1)));
+                    dev.emergence.mod.EmergenceMod.LOG.info("Station check: {} s simulated; engine {} → {} rad/s braked; {} mA·h charged; counter states {}",
+                            String.format("%.0f", c.solverView().time()), String.format("%.2f", before), String.format("%.2f", after),
+                            String.format("%.3f", -(q[1] - q[0]) / 3.6), counts);
+                    h.succeed();
+                }
+            });
+        }
     }
 
-    /** Whether part p (world-island coordinates are the world's block coordinates) lies in the block {@code at}. */
-    private static boolean contains(BlockPos origin, dev.emergence.core.assembly.Part p, BlockPos at) {
-        return p.minX() <= at.getX() && at.getX() <= p.maxX() && p.minY() <= at.getY() && at.getY() <= p.maxY()
-                && p.minZ() <= at.getZ() && at.getZ() <= p.maxZ();
+    /** The id of the island's first part of that kind in the block {@code at} (world-island coordinates are block coordinates). */
+    private static long id(CompiledAssembly c, BlockPos at, PartKind kind) {
+        for (var p : c.assembly().parts())
+            if (p.kind() == kind && p.minX() <= at.getX() && at.getX() <= p.maxX() && p.minY() <= at.getY() && at.getY() <= p.maxY()
+                    && p.minZ() <= at.getZ() && at.getZ() <= p.maxZ()) return p.id();
+        throw new net.minecraft.gametest.framework.GameTestAssertException("no " + kind + " in the station's island at " + at.toShortString());
     }
 }

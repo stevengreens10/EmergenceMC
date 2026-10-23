@@ -85,23 +85,30 @@
 
 0a. **The power station** (asked for 2026-10-22: one interconnected machine, every part doing a job, built as a player
    builds, in its own world — `StationExhibit`, `./gradlew generateStationWorld`, `runStationClient`, tour
-   `runStationShowcase`). In: a methane firebox (natural draft, igniter to light it) under a steel crown; boiler, safety
+   `runStationShowcase`). In: a methane firebox (natural draft, igniter to light it) under a copper crown; boiler, safety
    valve, constant-level overflow; the governed engine; a closed water circuit (exhaust and safety valve into a finned
-   condenser at ~0.2 bar, flooded suction from its well to a crankshaft feed pump, check valves into the boiler); a
+   condenser at ~0.45 bar, flooded suction from its well to a crankshaft feed pump, check valves into the boiler); a
    2 : 1 generator into a 5 V battery through a bridge; a charge regulator (op-amp against a diode reference, MOSFET into
-   a lamp and dump load); a revolution counter (vane, IR beam, Schmitt trigger, three-stage ripple counter). In the core it
-   runs stably for 300 s with the fire alight, the water balanced and the engine governed; built in its world with 0
-   differences, its own in-world check passing. Open:
+   a lamp and dump load); a revolution counter (vane, IR beam, Schmitt trigger, three-stage ripple counter). Built in its world with 0
+   differences. Its in-world check (`StationGameTests`, on `./gradlew generateStationWorld`) now runs it 190 s,
+   the island's whole life without a failure, and checks the tour's claims headless (fire, steam, engine, vacuum,
+   charge, counter, the governor under the brake). Run that long it found the boiler short of heat: a one-cell
+   firebox gave its walls ~500 W of a 2 kW fire, and the boiler ran down on its crown's stored heat in three minutes
+   (braked, −21 %). Now a three-cell firebox under three boiler tanks and a copper crown (~750 W: the flame stands in
+   the middle cell, the inlet cell a mixing chamber), and the braked engine holds within 3 %. That needed a fix to
+   the water model itself: no water moved between vessels side by side (a port did not feel the liquid over it, and
+   one mid-height passage passed one phase at a time). Open:
    - it runs ~4x slower than real time: the generator's current pulses set ~1000 steps/s for the whole plant, whose
      two-phase and gas network is most of the cost — multirate stepping of the fluid network is the fix;
-   - the generator's net charge is small (~0.04 A after the electronics' own ~35 mA): more turns or a lower-current
-     beam LED;
-   - once in two world generations the island failed ~2.5 min in (not yet captured: dump with
-     `-Demergence.dumpFailures=true`); a saved world that had run long would not restart while a pipe of pure methane
-     sat between the choked needle and the firebox (fixed by removing the pipe);
-   - the boiler pressure sags slowly once the igniter is off (the firebox walls settle near 650 K); the cylinder runs
-     wet against the condenser's vacuum;
-   - the station tour from its saved world: verify end to end.
+   - the hot well still falls ~0.3 g/s over the first four minutes as condensate fills the steam path's low points
+     (the throttle's body half full, the safety and overflow lines, the condenser's upper cells: one passage up a
+     stacked column passes one phase at a time, as the side faces did). Watch a ten-minute soak: if it does not level
+     out, split vertical faces between vessels for counter-current flow too, or give the well more reserve;
+   - the condenser holds ~0.45 bar now that the boiler sends it more steam (checked against 80 kPa): more fin area,
+     or a fan, would deepen it;
+   - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):
+     a dimmer beam with a larger photodiode load;
+   - the station tour from its saved world needs a display to verify end to end (`runStationShowcase`).
 
 0b. **Every exhibit at real time** (asked for 2026-10-22; measure first: `SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`
    prints ms per 50 ms tick and the unknowns that limit the step):

@@ -35,6 +35,15 @@ public final class Radiation implements Element {
         ctx.addJ(surroundings.index(), surroundings.index(), -da);
     }
 
+    /** The radiating surface (heat flow positive from it to the surroundings). */
+    public Node surface() {
+        return surface;
+    }
+
+    public Node surroundings() {
+        return surroundings;
+    }
+
     public double heatFlow(StateView s) {
         double ts = s.x(surface.index()), ta = s.x(surroundings.index());
         return PhysicalConstants.STEFAN_BOLTZMANN * epsA * (ts * ts * ts * ts - ta * ta * ta * ta);

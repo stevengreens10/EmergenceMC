@@ -34,15 +34,18 @@ public final class StationExhibit {
         Exhibit e = new Exhibit("station", "Power station",
                 List.of("POWER STATION", "Fire, steam, a", "governed engine and", "its own electricity"),
                 "A steam power station that runs itself, every part of it a part a player could place. Methane from "
-                        + "six 200 bar bottles burns in a firebox under the boiler, drawing its air by the chimney's draft; "
-                        + "an alumina tile between the flame and the water passes the boiler some 500 W, and the rest of "
-                        + "the fire's heat goes up the chimney. The steam drives a single-cylinder engine with cam-worked "
-                        + "valves, its speed held by a flyball governor geared off the crankshaft, working the throttle's "
-                        + "plug. The water goes round and round: the engine exhausts, and the safety valve blows, into a "
-                        + "finned copper condenser, whose vacuum (water's vapour pressure at 50 °C, a tenth of the air's) "
-                        + "the engine exhausts against; the condensate falls into the hot well, and a feed pump on the "
-                        + "crankshaft — a piston between two check valves, below the well so the near-boiling water "
-                        + "does not flash in it — pumps it back into the boiler.");
+                        + "six 200 bar bottles burns in a three-cell firebox under a three-tank boiler, drawing its air by "
+                        + "the chimney's draft; through a copper crown the flame gives the water some 750 W, and the rest "
+                        + "of the fire's heat goes up the chimney. The steam drives a single-cylinder engine with "
+                        + "cam-worked valves, its speed held by a flyball governor geared off the crankshaft, working the "
+                        + "throttle's plug: put the brake on and the throttle opens. The water goes round and round: the "
+                        + "engine exhausts, and the safety valve blows, into a finned copper condenser at about half an "
+                        + "atmosphere (water's vapour pressure there, near 80 °C); the condensate falls into the hot well, "
+                        + "and a feed pump on the crankshaft (a piston between two check valves, below the well so the "
+                        + "near-boiling water does not flash in it) pumps it back into the boiler, an overflow at the "
+                        + "water line keeping its level. A generator geared off the crankshaft charges a 5 V battery "
+                        + "through a diode bridge; an op-amp regulator dumps what a full battery cannot take into a lamp; "
+                        + "and an infrared beam cut by a vane on the crankshaft counts its turns in binary on three LEDs.");
         e.plots = 4;
         e.origin(PLANT[0], PLANT[1], PLANT[2]);
         plant(e, electrics);
@@ -51,10 +54,10 @@ public final class StationExhibit {
     }
 
     /**
-     * The plant, in its own coordinates (the governed steam engine's: crankshaft along x at y = 3, z = 8; boiler at
-     * (5, 4, 13)). The fire is a methane firebox under the boiler, behind a steel crown sheet: six bottles at x = 2 feed
-     * the main valve (its plug on the solenoid's rod) and a pilot needle beside it; air comes in from the north, the flue
-     * leaves east and rises in a chimney at (7, ·, 13). The cylinder's jacket is a small steam vessel fed from the main.
+     * The plant, in its own coordinates (the governed steam engine's: crankshaft along x at y = 3, z = 8; boiler tanks at
+     * (5, 4, 13…15)). The fire is a methane firebox of three cells under the boiler, behind a copper crown: six bottles at
+     * x = 3 feed a needle valve into its south cell, where the air comes in; the flue leaves its north cell east and rises
+     * in a chimney at (7, ·, 13).
      */
     static void plant(Exhibit e, boolean electrics) {
         String st = "steel_1045";
@@ -91,35 +94,44 @@ public final class StationExhibit {
         int riser = e.add(PIPE, "copper", 5, y + 2, 13, Dir.UP, with(steam, "bore", 0.012));
         int safety = e.add(VALVE, "brass", 5, y + 3, 13, Dir.UP, with(steam, "bore", 0.006, "relief", 4.5e5));
         e.name("safety", safety);
-        int boiler = e.add(TANK, st, 5, y + 1, 13, Dir.UP, with(steam, "fill", 0.6, "wall", 0.003, "gauge_range", 6));
+        // the boiler: three tanks in a row (south from under the steam riser), over a firebox and crown as long
+        int boiler = e.fill(TANK, st, 5, y + 1, 13, 5, y + 1, 15, Dir.UP, with(steam, "fill", 0.6, "wall", 0.003, "gauge_range", 6));
         e.name("boiler", boiler);
         // (no steam jacket: one fed from the main, against a block clasping the cylinder, kept it no warmer — what chills
         // its wall is the condenser's vacuum, the water left on it boiling off at 50 °C each exhaust stroke — and its fine
         // pipe held every step of the plant's solution short)
         // everything that holds steam starts at its temperature
         for (int i : new int[]{cyl, exhaust, inlet, elbow, l1}) e.init(i, new Exhibit.Initial(412, 0, 0));
-        for (int i : new int[]{reg, l2, l3, riser, safety, boiler}) e.init(i, new Exhibit.Initial(418, 0, 0));
+        for (int i : new int[]{reg, l2, l3, riser, safety, boiler, boiler + 1, boiler + 2}) e.init(i, new Exhibit.Initial(418, 0, 0));
         // ---- load: a Prony brake under the flywheel, off (the generator is the station's load; the brake is there to try it)
         e.name("brake", e.add(BRAKE, "oak", 7, y - 2, 8, Dir.UP, "force", 8));
         e.add(BLOCK, st, 7, 0, 8, Dir.UP);
-        // ---- the firebox under the boiler: a steel crown sheet, the chamber, the igniter on a mica block
-        // the crown: a steel sheet (k·A/L ≈ 3 W/K). With the igniter off the firebox's walls settle far cooler than the
-        // flame (some 700 K), and an alumina tile then passed too little to keep the steam up; what the steel passes beyond
-        // the engine's needs blows off at the safety valve into the condenser and comes back as water. (Firebrick passes a
-        // twentieth.) Most of the fire's heat still leaves up the chimney: a crude boiler's efficiency.
-        e.name("crown", e.add(BLOCK, st, 5, y, 13, Dir.UP));
-        int box = e.add(TANK, st, 5, y - 1, 13, Dir.UP, "wall", 0.0005);
+        // ---- the firebox under the boiler: a copper crown, the chamber, the igniter on a mica block
+        // What reaches the water is what the flame gives the firebox's walls — convection and the hot gas's radiation,
+        // some 500 W from a one-cell chamber of a 2 kW fire, the rest gone up the chimney at ~1500 K: on that the boiler
+        // ran down in three minutes, on the heat its crown had stored. Three cells long, the chamber has 2.3 times the
+        // wall; the crown is copper (as a locomotive's inner firebox: steel's seventh of copper's conductivity held the
+        // walls hot, an alumina tile or firebrick far less). Most of the fire's heat still leaves up the chimney: a crude
+        // boiler's efficiency.
+        // The fuel and air come in at the south end; the flame stands in the middle cell (each cell is stirred through:
+        // the cold mixture coming in at the end is no flame's, as a burner's mixing tube), its gas passing north under
+        // the steam riser's end of the boiler and out to the chimney. (The other way round, the boiler's end over the
+        // cold mixture took the others' steam back as water, filled, and sent it up the riser into the engine.)
+        e.name("crown", e.fill(BLOCK, "copper", 5, y, 13, 5, y, 15, Dir.UP));
+        int box = e.fill(TANK, st, 5, y - 1, 13, 5, y - 1, 15, Dir.UP, "wall", 0.0005);
         e.name("firebox", box);
-        e.name("igniter", e.add(RESISTOR, "alumina", 5, y - 2, 13, Dir.EAST, "resistance", 2.0, "contact_area", 0.002,
+        e.name("fireboxMid", box + 1);
+        e.name("fireboxInlet", box + 2);
+        e.name("igniter", e.add(RESISTOR, "alumina", 5, y - 2, 15, Dir.EAST, "resistance", 2.0, "contact_area", 0.002,
                 "surface_area", 0.002, "mass", 0.1, "max_temperature", 1800));
-        e.add(BLOCK, "mica", 5, 0, 13, Dir.UP);
-        e.init(box, new Exhibit.Initial(1500, 0, 0)); // alight: the igniter has done its work
-        e.init(e.named.get("crown"), new Exhibit.Initial(700, 0, 0));
-        // air inlet, open at its north end: the gallery burner's, whose draft draws nearly the air its 40 µm needle's
+        e.add(BLOCK, "mica", 5, 0, 15, Dir.UP);
+        for (int k = 0; k < 3; k++) e.init(box + k, new Exhibit.Initial(1500, 0, 0)); // alight: the igniter has done its work
+        for (int k = 0; k < 3; k++) e.init(e.named.get("crown") + k, new Exhibit.Initial(480, 0, 0));
+        // air inlet, open at its south end: the gallery burner's, whose draft draws nearly the air its 40 µm needle's
         // methane needs (narrower, a cooling firebox starved itself rich; with less fuel, too lean to burn: below 5 %)
-        e.add(PIPE, st, 5, y - 1, 12, Dir.NORTH, "bore", 0.024);
-        // the flue: east out of the chamber, up the chimney (open at the top; a longer flue's cold gas weakened the draft
-        // as the fuel first came, and the firebox went out too rich)
+        e.add(PIPE, st, 5, y - 1, 16, Dir.SOUTH, "bore", 0.024);
+        // the flue: east out of the chamber's north end, up the chimney (open at the top; a longer flue's cold gas
+        // weakened the draft as the fuel first came, and the firebox went out too rich)
         e.add(PIPE, st, 6, y - 1, 13, Dir.EAST, "bore", 0.04);
         int chimney = e.fill(PIPE, st, 7, y - 1, 13, 7, y + 7, 13, Dir.UP, "bore", 0.04, "wall", 0.001);
         e.name("chimney", chimney + 8);
@@ -127,12 +139,12 @@ public final class StationExhibit {
         // ---- fuel: six bottles in two columns at x = 3, a needle valve straight into the firebox (opened to start the
         // station, shut to stop it; a pipe between them, a cubic centimetre of pure methane squeezed between the choked
         // needle and the firebox, would not restart from a saved world)
-        int fuel = e.add(TANK, st, 3, y - 1, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        int fuel = e.add(TANK, st, 3, y - 1, 15, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
         e.name("fuel", fuel);
-        e.add(TANK, st, 3, y - 2, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
-        e.add(TANK, st, 3, 0, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        e.add(TANK, st, 3, y - 2, 15, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        e.add(TANK, st, 3, 0, 15, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
         e.fill(TANK, st, 3, 0, 14, 3, y - 1, 14, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
-        int needle = e.add(VALVE, "brass", 4, y - 1, 13, Dir.EAST, "bore", 4e-5); // choked: some 40 mg/s, 2 kW of fire
+        int needle = e.add(VALVE, "brass", 4, y - 1, 15, Dir.EAST, "bore", 4e-5); // choked: some 40 mg/s, 2 kW of fire
         e.name("needle", needle);
         e.latch(needle); // burning, as the station is found
         // ---- the water circuit is closed: the engine exhausts, and the safety valve blows, into an air-cooled condenser
@@ -148,15 +160,15 @@ public final class StationExhibit {
         e.fill(PIPE, "copper", 5, y + 4, 13, 5, y + 8, 13, Dir.UP, with(steam, "bore", 0.008));
         e.fill(PIPE, "copper", -2, y + 9, 13, 5, y + 9, 13, Dir.EAST, with(steam, "bore", 0.008));
         e.add(BLOCK, st, 6, y + 9, 13, Dir.UP, "fill", 0.2);
-        // the overflow: a 0.3 mm orifice in the boiler's south face, at its water line, up beside the steam riser and the
-        // safety valve into the safety line — the boiler keeps its own level: above the line the pump's surplus water
-        // spills back to the condenser (it flashes there), below it a little steam goes the same way (some 0.05 g/s)
-        e.name("overflow", e.add(VALVE, "brass", 5, y + 1, 14, Dir.UP, with(steam, "bore", 0.0003)));
+        // the overflow: a 0.3 mm orifice in the boiler's south face, at its water line, up into the safety line — the
+        // boiler keeps its own level: above the line the pump's surplus water spills back to the condenser (it flashes
+        // there), below it a little steam goes the same way (some 0.05 g/s)
+        e.name("overflow", e.add(VALVE, "brass", 5, y + 1, 16, Dir.UP, with(steam, "bore", 0.0003)));
         e.latch(e.named.get("overflow"));
-        e.add(BLOCK, st, 5, y, 14, Dir.UP, "fill", 0.2); // its blind foot
-        e.fill(PIPE, "copper", 5, y + 2, 14, 5, y + 8, 14, Dir.UP, with(steam, "bore", 0.006));
-        e.add(PIPE, "copper", 5, y + 9, 14, Dir.SOUTH, with(steam, "bore", 0.006));
-        e.add(BLOCK, st, 5, y + 9, 15, Dir.UP, "fill", 0.2);
+        e.add(BLOCK, "mica", 5, y, 16, Dir.UP, "fill", 0.2); // its blind foot (mica: beside the crown, steel drew its heat)
+        e.fill(PIPE, "copper", 5, y + 2, 16, 5, y + 8, 16, Dir.UP, with(steam, "bore", 0.006));
+        e.fill(PIPE, "copper", 5, y + 9, 14, 5, y + 9, 16, Dir.SOUTH, with(steam, "bore", 0.006));
+        e.add(BLOCK, st, 5, y + 9, 17, Dir.UP, "fill", 0.2);
         e.fill(PIPE, "copper", -3, y + 9, 9, -3, y + 9, 13, Dir.SOUTH, with(steam, "bore", 0.008));
         e.add(BLOCK, st, -3, y + 9, 14, Dir.UP, "fill", 0.2);
         feedPump(e, y, steam);
@@ -168,8 +180,8 @@ public final class StationExhibit {
         e.plots = Math.max(e.plots, 2);
         Exhibits.governor(e, y);
         Router r = new Router(e, 0, 0, 11, 19, 2, 15);
-        r.pin("ig+", 11, 0, 14).pin("ig+", 6, y - 2, 13);   // bank + → igniter's east lead
-        r.pin("ig-", 4, y - 2, 13).pin("ig-", 12, 0, 14);   // igniter's west lead → switch
+        r.pin("ig+", 11, 0, 14).pin("ig+", 6, y - 2, 15);   // bank + → igniter's east lead
+        r.pin("ig-", 4, y - 2, 15).pin("ig-", 12, 0, 14);   // igniter's west lead → switch
         r.pin("igr", 14, 0, 14).pin("igr", 9, 0, 14);       // switch → bank −
         r.insulation("ig+", 800).insulation("ig-", 800);    // glass-fibre: the element's leads run hot
         r.route();
@@ -237,7 +249,9 @@ public final class StationExhibit {
         e.name("condenser", top);
         // its legs: a steel post under the well's west fins
         e.fill(BLOCK, "steel_1045", -4, 0, 8, -4, y + 3, 8, Dir.UP);
-        // fins: thin copper plates on the west, north and south faces, two deep, beside all but the top cell
+        // fins: thin copper plates on the west, north and south faces, two deep, beside all but the top cell (with the
+        // three-cell firebox's steam it holds some 0.45 bar, half an atmosphere's vacuum; a third row out added
+        // little: what it rejects is set by the air on its fins)
         for (int k = y + 4; k <= y + 8; k++) {
             for (int[] f : new int[][]{{-4, k, 8}, {-5, k, 8}, {-3, k, 7}, {-3, k, 6}, {-3, k, 9}, {-3, k, 10}}) {
                 e.init(e.add(BLOCK, cu, f[0], f[1], f[2], Dir.UP, "fill", 0.2), new Exhibit.Initial(320, 0, 0));

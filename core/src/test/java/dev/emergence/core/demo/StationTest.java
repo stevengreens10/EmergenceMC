@@ -83,6 +83,8 @@ class StationTest {
         int per = (int) Math.round(every / 0.05);
         java.util.Map<String, Double> masses = new java.util.HashMap<>();
         for (double t = 0; t < len - 1e-9; t += every) {
+            // -Ddiag.brakeAt=<s>: the brake put on then, as the tour's hand puts it on
+            if (t == Double.parseDouble(System.getProperty("diag.brakeAt", "-1"))) c.toggleSwitch(b.id(e, "brake"));
             if (lit && t >= light) {
                 c.toggleSwitch(b.id(e, "lightUp"));
                 lit = false;
@@ -153,6 +155,54 @@ class StationTest {
                     100 * g.moleFraction(c.solverView(), g.indexOf(ch.species("CH4"))), 100 * g.moleFraction(c.solverView(), g.indexOf(ch.species("O2"))),
                     100 * g.moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))), c.temperature(b.id(e, "crown")), c.temperature(b.id(e, "igniter")), c.temperature(cyl),
                     1e-5 * c.pressure(fuel));
+            // -Ddiag.heat=<part name>[:gas],…: every conduction, convection and radiation path at those parts' thermal nodes
+            // (the part's own, or with ":gas" the gas it holds), heat out of them positive [W]
+            for (String nm : System.getProperty("diag.heat", "").split(",")) {
+                if (nm.isBlank()) continue;
+                boolean ofGas = nm.trim().endsWith(":gas");
+                long id = b.id(e, nm.trim().replace(":gas", ""));
+                java.util.Set<String> mine = java.util.Set.of((ofGas ? "Tg" : "T") + id);
+                StringBuilder sb = new StringBuilder("   heat out of " + nm + ":");
+                double sum = 0;
+                for (var el : c.network().elements()) {
+                    dev.emergence.core.sim.Node x, y;
+                    double q;
+                    if (el instanceof dev.emergence.core.sim.elements.ThermalConductance tc) {
+                        x = tc.a();
+                        y = tc.b();
+                        q = tc.heatFlow(c.solverView());
+                    } else if (el instanceof dev.emergence.core.sim.elements.Radiation rd) {
+                        x = rd.surface();
+                        y = rd.surroundings();
+                        q = rd.heatFlow(c.solverView());
+                    } else if (el instanceof dev.emergence.core.sim.elements.NaturalConvection nc) {
+                        x = nc.surface();
+                        y = null;
+                        q = nc.heatFlow(c.solverView());
+                    } else continue;
+                    boolean fromX = mine.contains(x.name()), fromY = y != null && mine.contains(y.name());
+                    if (fromX == fromY) continue; // (not its own)
+                    double out = fromX ? q : -q;
+                    String other = fromX ? (y == null ? "ambient (convection)" : y.name()) : x.name();
+                    String what = other;
+                    try {
+                        var op = b.assembly().get(Long.parseLong(other.replaceAll("^Tg?", "")));
+                        if (op != null) what = op.kind() + "@" + op.minX() + "," + op.minY() + "," + op.minZ() + (other.startsWith("Tg") ? " gas" : "");
+                    } catch (NumberFormatException ignored) {
+                    }
+                    if (Math.abs(out) > 0.5) sb.append(String.format(" %s %s %.0f;", what, el.getClass().getSimpleName().replace("ThermalConductance", "G"), out));
+                    sum += out;
+                }
+                if (ofGas) {
+                    var gg = c.gas(id);
+                    sb.append(String.format(" (gas %.0f K, CH4 %.2f %%, O2 %.1f %%)", gg.temperature(c.solverView()),
+                            100 * gg.moleFraction(c.solverView(), gg.indexOf(ch.species("CH4"))), 100 * gg.moleFraction(c.solverView(), gg.indexOf(ch.species("O2")))));
+                }
+                System.out.println(sb.append(String.format(" (total %.0f W)", sum)));
+            }
+            var seat = c.branchesOf(b.id(e, "throttle")).stream().filter(dev.emergence.core.sim.elements.FluidBranch::hasCam).findFirst();
+            if (seat.isPresent()) System.out.printf("   throttle %.3f open, rod %.2f mm%n", seat.get().opening(c.solverView()),
+                    1e3 * c.probe(b.id(e, "throttleRod")).angle());
             long well = b.id(e, "hotwell"), cnd = b.id(e, "condenser"), pump = b.id(e, "feedPump");
             if (e.named.containsKey("battery")) {
                 var bat = c.probe(b.id(e, "battery"));

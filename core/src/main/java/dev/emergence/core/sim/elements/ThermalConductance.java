@@ -29,4 +29,13 @@ public final class ThermalConductance implements Element {
     public double heatFlow(StateView s) {
         return g * s.across(a, b);
     }
+
+    /** The node the heat flow is counted from (positive a → b). */
+    public Node a() {
+        return a;
+    }
+
+    public Node b() {
+        return b;
+    }
 }

@@ -108,6 +108,11 @@ public final class NaturalConvection implements Element {
         ctx.addJ(ambient.index(), ambient.index(), -dqa);
     }
 
+    /** The surface losing heat to the ambient (heat flow positive out of it). */
+    public Node surface() {
+        return surface;
+    }
+
     public double heatFlow(StateView s) {
         return q(s.x(surface.index()), s.x(ambient.index()));
     }

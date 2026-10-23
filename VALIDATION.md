@@ -69,7 +69,8 @@ balance; a free rotor in a flow settles at zero incidence (2 %); an orifice chok
 critical flow (1e-3), independent of downstream pressure, and matches subcritical nozzle flow.
 From parts: a valve holds and releases a compressed tank (vented mass = tank loss, 3 %); a hot block
 heats a sealed tank at constant p/T; compressed air drives a turbine whose sense follows blade pitch;
-a cranked fan moves air through a duct (intake = discharge). Exhibits: the air turbine spins up as
+a cranked fan moves air through a duct (intake = discharge); water under its vapour finds its level between two
+vessels side by side, both less than half full (at least 60 % of the way in 30 s, mass to 1e-6). Exhibits: the air turbine spins up as
 its receiver empties; the geared fan turns a downstream windmill through the air; the heated vessel's
 pressure rises at constant p/T while the cold one stays at ambient.
 

@@ -8,6 +8,7 @@ import dev.emergence.core.sim.LoadContext;
 import dev.emergence.core.sim.Node;
 import dev.emergence.core.sim.SetupContext;
 import dev.emergence.core.sim.StateView;
+import dev.emergence.core.units.PhysicalConstants;
 
 /**
  * A fixed control volume V filled with one fluid, described by its pressure (fluid node) and its
@@ -92,16 +93,31 @@ public final class FluidVolume implements Element {
      * 1/μ = x/μ_v + (1−x)/μ_l). Null for single-phase fluids.
      */
     public Port port(double z) {
-        return steam == null ? null : new Port(z);
+        return port(z, 0);
+    }
+
+    /**
+     * A port at relative height z of a volume whose liquid can stand {@code height} metres deep (a vessel's inner
+     * height, an upright tube's length, a lying tube's bore): the volume's pressure is that over its liquid, so a port
+     * below the level also feels the liquid standing over it, ρ_l·g·height·(level − z).
+     */
+    public Port port(double z, double height) {
+        return steam == null ? null : new Port(z, height);
     }
 
     /** A flow connection to a water/steam volume at a given height. */
     public final class Port {
-        private final double z;
+        private final double z, height;
         private final double[] st = new double[9];
 
-        Port(double z) {
+        Port(double z, double height) {
             this.z = Math.max(0, Math.min(1, z));
+            this.height = Math.max(0, height);
+        }
+
+        /** The port's height above the middle of the volume's liquid space [m]. */
+        public double offset() {
+            return (z - 0.5) * height;
         }
 
         /** The unknown the outflow depends on besides p and T (the phase coordinate). */
@@ -109,11 +125,14 @@ public final class FluidVolume implements Element {
             return sIdx;
         }
 
-        /** Fills out = [h, ρ, μ, x (vapour mass fraction), 1/ρ] of the outflow for temperature t and phase s. */
+        /**
+         * Fills out = [h, ρ, μ, x (vapour mass fraction), 1/ρ, liquid head over the port (Pa)] of the outflow for
+         * temperature t and phase s.
+         */
         public void outflow(double t, double s, double[] out) {
             // finite-difference Jacobians perturb p and ṁ far more often than (T, s): reuse the last result
             if (t == lastT && s == lastS) {
-                System.arraycopy(last, 0, out, 0, 5);
+                System.arraycopy(last, 0, out, 0, 6);
                 return;
             }
             WaterSteam.state(t, s, st, join);
@@ -129,14 +148,17 @@ public final class FluidVolume implements Element {
             out[1] = 1 / out[4];
             out[2] = 1 / (x / steam.vapourViscosity(tt) + (1 - x) / steam.liquidViscosity(tt));
             out[3] = x;
+            // the liquid standing over the port (its positive part, rounded over a hundredth of the height)
+            double u = level - z, e = 0.01;
+            out[5] = s > 1 ? 0 : st[WaterSteam.RHO_L] * PhysicalConstants.STANDARD_GRAVITY * height * 0.5 * (u + Math.sqrt(u * u + e * e) - e);
             lastT = t;
             lastS = s;
-            System.arraycopy(out, 0, last, 0, 5);
+            System.arraycopy(out, 0, last, 0, 6);
         }
 
         private double lastT = Double.NaN, lastS = Double.NaN;
         private final WaterSteam.JoinCache join = new WaterSteam.JoinCache();
-        private final double[] last = new double[5];
+        private final double[] last = new double[6];
     }
 
     private static double smooth(double u) {

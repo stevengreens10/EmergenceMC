@@ -330,7 +330,7 @@ public final class FluidBranch implements Element {
         return this;
     }
 
-    private final double[] endA = new double[5], endB = new double[5];
+    private final double[] endA = new double[6], endB = new double[6];
     /** The specific enthalpies of the two ends at the last evaluation [J/kg]. */
     private double lastHA, lastHB;
     private double camOpening = 1;
@@ -347,6 +347,9 @@ public final class FluidBranch implements Element {
         if (ported) {
             end(portA, pA, tA, sA, endA);
             end(portB, pB, tB, sB, endB);
+            // a volume's pressure is that over its liquid: at a port under the level, the liquid's weight adds
+            pA += endA[5];
+            pB += endB[5];
             rho = Math.max(1 / (up * endA[4] + (1 - up) * endB[4]), 1e-9);
             mu = up * endA[2] + (1 - up) * endB[2];
             hA = endA[0];
@@ -368,7 +371,8 @@ public final class FluidBranch implements Element {
             double vo = m / (rho * av), vso = 10 * mu / (rho * diameter);
             dp += rho * vo * Math.sqrt(vo * vo + vso * vso) / 2;
         }
-        dp += rho * PhysicalConstants.STANDARD_GRAVITY * dz;
+        // the column between the two ports (from the volumes' middles, moved to the ports' own heights)
+        dp += rho * PhysicalConstants.STANDARD_GRAVITY * (dz + (portB != null ? portB.offset() : 0) - (portA != null ? portA.offset() : 0));
         double power = 0, torque = 0;
         if (rotor != null) {
             // rotor frame: x along the rotor axis, θ along its positive rotation
@@ -416,6 +420,7 @@ public final class FluidBranch implements Element {
         out[2] = fluid.viscosity(t);
         out[3] = fluid.isGas() ? 1 : 0;
         out[4] = 1 / rho;
+        out[5] = 0;
     }
 
     private double frictionLoss(double v, double rho, double mu) {

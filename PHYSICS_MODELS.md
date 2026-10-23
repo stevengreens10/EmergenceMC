@@ -226,7 +226,15 @@ self-heating error appears naturally. A RESISTOR part with an `ntc_beta` paramet
   ~50 000 times in five seconds. Straddling the edge, the secant slope is about half the steep one, inside the
   cubic's monotone range (α² + β² ≤ 9), and u rises monotonically into the superheated region.
 * **Ports** (`FluidVolume.Port`): gravity-separated phases; a connection below the liquid level draws
-  liquid, above it vapour, mixed within ±5 % of the height (homogeneous flow, McAdams viscosity).
+  liquid, above it vapour, mixed within ±5 % of the height (homogeneous flow, McAdams viscosity). A volume's
+  pressure is that over its liquid: a port under the level also feels the liquid standing over it,
+  ρ_l·g·H·(level − z) (H the depth liquid can stand: a vessel between its walls, an upright tube's length, a lying
+  tube's bore; the positive part rounded over 1 % of H), and the column between two ports is taken between their
+  own heights, z_b − z_a. Two vessels side by side join through the upper and lower halves of their common face,
+  each drawing at its own height: steam crosses over the top while water returns underneath (stratified,
+  counter-current flow; one passage at mid-height passes one phase at a time). Before both, water did not find its
+  level between vessels side by side at all, and a boiler of three tanks over a fire starved its two heated cells
+  while the third, its steam riser's, ran full and sent water into the engine.
 * **Wall heat transfer**: Rohsenow nucleate boiling (C_sf = 0.013) capped smoothly at Zuber's critical heat
   flux; Nusselt laminar film condensation on vapour-covered walls, and film evaporation from wetted walls
   above saturation (continuous through ΔT = 0).

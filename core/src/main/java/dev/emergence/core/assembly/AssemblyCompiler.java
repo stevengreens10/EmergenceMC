@@ -3034,27 +3034,39 @@ public final class AssemblyCompiler {
                                     k += rq.internalK / 2;
                                 }
                                 double dz = (rq != null ? rq.yRef : q.center().y()) - (rp != null ? rp.yRef : p.center().y());
-                                FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(),
-                                        vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin),
-                                        Math.max(roughness(p), roughness(q)), k, dz)
-                                        .withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id());
-                                if (va.twoPhase()) b.withPorts(va.port(rp != null ? rp.portHeight(y, d) : portHeight(p, y, d)),
-                                        vb.port(rq != null ? rq.portHeight(ny, d.opposite()) : portHeight(q, ny, d.opposite())));
-                                double dhMin = Math.min(PartGeometry.hydraulicDiameter(p), PartGeometry.hydraulicDiameter(q));
-                                if (p.kind() != PartKind.TANK && q.kind() != PartKind.TANK) b.withHydraulicDiameter(dhMin);
-                                Part rotor = rotorFor(p, d, q);
-                                if (rotor != null) attachRotor(b, rotor, rotor == p ? d : d.opposite(), rotor == p);
-                                for (Part valve : new Part[]{p, q}) {
-                                    if (valve.kind() != PartKind.VALVE) continue;
-                                    // the valve seat is an orifice of the valve's bore (globe valve C_d ≈ 0.6)
-                                    b.withOrifice(PartGeometry.passageArea(valve), 0.6);
-                                    b.setOpening(valve.switchClosed() ? 1 : 0);
-                                    if (valveAction(valve, b, valve == p ? d : d.opposite(), valve == p))
-                                        c.valveBranches.computeIfAbsent(valve.id(), kk -> new ArrayList<>()).add(b);
+                                // two vessels side by side holding water and steam: the face between them passes both at
+                                // once, steam over the top and water under it the other way (stratified, counter-current);
+                                // one passage drawing at mid-height passes only one phase at a time — a boiler's cell
+                                // making the steam could not take water back from the one its riser drew from. Its upper
+                                // and lower halves, each drawing at its own height:
+                                int halves = va.twoPhase() && p.kind() == PartKind.TANK && q.kind() == PartKind.TANK
+                                        && d != Dir.UP && d != Dir.DOWN ? 2 : 1;
+                                for (int half = 0; half < halves; half++) {
+                                    double shift = halves == 1 ? 0 : half == 0 ? -0.25 : 0.25;
+                                    FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(),
+                                            vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin / halves),
+                                            Math.max(roughness(p), roughness(q)), k, dz)
+                                            .withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id() + (halves == 1 ? "" : half == 0 ? " (lower)" : " (upper)"));
+                                    if (va.twoPhase()) b.withPorts(va.port(rp != null ? rp.portHeight(y, d) : portHeight(p, y, d) + shift / (p.maxY() - p.minY() + 1),
+                                                    liquidHeight(p, rp)),
+                                            vb.port(rq != null ? rq.portHeight(ny, d.opposite()) : portHeight(q, ny, d.opposite()) + shift / (q.maxY() - q.minY() + 1),
+                                                    liquidHeight(q, rq)));
+                                    double dhMin = Math.min(PartGeometry.hydraulicDiameter(p), PartGeometry.hydraulicDiameter(q));
+                                    if (p.kind() != PartKind.TANK && q.kind() != PartKind.TANK) b.withHydraulicDiameter(dhMin);
+                                    Part rotor = rotorFor(p, d, q);
+                                    if (rotor != null) attachRotor(b, rotor, rotor == p ? d : d.opposite(), rotor == p);
+                                    for (Part valve : new Part[]{p, q}) {
+                                        if (valve.kind() != PartKind.VALVE) continue;
+                                        // the valve seat is an orifice of the valve's bore (globe valve C_d ≈ 0.6)
+                                        b.withOrifice(PartGeometry.passageArea(valve), 0.6);
+                                        b.setOpening(valve.switchClosed() ? 1 : 0);
+                                        if (valveAction(valve, b, valve == p ? d : d.opposite(), valve == p))
+                                            c.valveBranches.computeIfAbsent(valve.id(), kk -> new ArrayList<>()).add(b);
+                                    }
+                                    c.network.add(b);
+                                    through.computeIfAbsent((rp != null ? rp.rep : p).id(), kk -> new ArrayList<>()).add(b);
+                                    through.computeIfAbsent((rq != null ? rq.rep : q).id(), kk -> new ArrayList<>()).add(b);
                                 }
-                                c.network.add(b);
-                                through.computeIfAbsent((rp != null ? rp.rep : p).id(), kk -> new ArrayList<>()).add(b);
-                                through.computeIfAbsent((rq != null ? rq.rep : q).id(), kk -> new ArrayList<>()).add(b);
                             }
             }
             // heat exchange between each fluid volume and its own wall (boiling and condensation for water)
@@ -3178,6 +3190,17 @@ public final class AssemblyCompiler {
                 for (Part m : run.members) out.put(m.id(), run);
             }
             return out;
+        }
+
+        /**
+         * How deep liquid can stand in a fluid part (or the run it is lumped into) [m]: a vessel between its walls, an
+         * upright tube or run its length, a lying tube its bore.
+         */
+        static double liquidHeight(Part p, Run r) {
+            if (r != null && r.yMaxCell > r.yMinCell) return r.height();
+            if (p.kind() == PartKind.TANK) return Math.max(p.boxSize(1) - 2 * PartGeometry.wallThickness(p), 1e-3);
+            if (p.axis().axis() == 1) return p.boxSize(1);
+            return 2 * Math.sqrt(PartGeometry.passageArea(p) / Math.PI);
         }
 
         /** Relative height (0 bottom ... 1 top) of the port through face d of cell row y of a fluid part. */
@@ -3358,7 +3381,7 @@ public final class AssemblyCompiler {
             // draw a draft through it forever (the column inside weighs on its lower end, the outside would not)
             double rhoAir = pAtm * 0.028965 / (dev.emergence.core.units.PhysicalConstants.GAS_CONSTANT * ambientT);
             b.withEndPressureOffset(-rhoAir * PartGeometry.gravity() * (p.center().y() + d.dy * half - ventRef));
-            if (v.twoPhase()) b.withPorts(v.port(portHeight(p, cell[1], d)), null);
+            if (v.twoPhase()) b.withPorts(v.port(portHeight(p, cell[1], d), liquidHeight(p, null)), null);
             if (p.kind() == PartKind.VALVE) {
                 b.withOrifice(PartGeometry.passageArea(p), 0.6);
                 b.setOpening(p.switchClosed() ? 1 : 0);

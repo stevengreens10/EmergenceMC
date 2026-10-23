@@ -70,6 +70,25 @@ class FluidAssemblyTest {
         assertEquals(P0 * f[1] / t0, f[0], 0.002 * f[0], "sealed ideal gas: p/T constant");
     }
 
+    /**
+     * Two vessels side by side holding water under its vapour, both less than half full, one nearly empty: the water
+     * finds its level through the face between them. (The face passes water low and vapour high at once; drawn at
+     * mid-height alone, above both water lines, it passed only vapour and the levels stayed apart.)
+     */
+    @Test
+    void waterFindsItsLevelBetweenVesselsSideBySide() {
+        Part a = add(PartKind.TANK, "steel_1045", 0, 0, 0, Dir.UP, "fluid", 7, "fill", 0.45);
+        Part b = add(PartKind.TANK, "steel_1045", 1, 0, 0, Dir.UP, "fluid", 7, "fill", 0.05);
+        CompiledAssembly c = AssemblyCompiler.compile(asm);
+        java.util.function.ToDoubleFunction<Part> water = t -> c.fluid(t.id())[2] * (1 - c.fluid(t.id())[4]);
+        double wa = water.applyAsDouble(a), wb = water.applyAsDouble(b), m0 = c.fluid(a.id())[2] + c.fluid(b.id())[2];
+        run(c, 30);
+        double wa1 = water.applyAsDouble(a), wb1 = water.applyAsDouble(b);
+        assertTrue(wb1 > wb + 0.6 * (wa - wb) / 2, String.format("the water runs across: %.1f g, %.1f g → %.1f g, %.1f g", 1e3 * wa,
+                1e3 * wb, 1e3 * wa1, 1e3 * wb1));
+        assertEquals(m0, c.fluid(a.id())[2] + c.fluid(b.id())[2], 1e-6 * m0, "mass conserved");
+    }
+
     static AssemblyState stateWithTemperature(long id, double t) {
         AssemblyState s = AssemblyState.empty();
         s.temperatures().put(id, t);

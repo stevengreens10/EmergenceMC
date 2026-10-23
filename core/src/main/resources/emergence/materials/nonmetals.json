@@ -250,6 +250,18 @@
       "sources": ["IC Table A.3", "CRC"]
     },
     {
+      "id": "firebrick", "name": "Fireclay firebrick (medium duty)", "category": "ceramic", "color": "#C9A27E",
+      "properties": {
+        "density": "2.10 g/cm^3", "youngs_modulus": "15 GPa", "poisson_ratio": 0.2,
+        "ultimate_tensile_strength": "4 MPa",
+        "thermal_conductivity": "1.1 W/(m*K)", "specific_heat": "960 J/(kg*K)", "thermal_expansion": "5.5e-6 1/K",
+        "melting_point": "1900 K",
+        "electrical_resistivity": "1e8 ohm*m", "relative_permittivity": 5.0,
+        "relative_permeability": 1.0, "emissivity": 0.8, "friction_coefficient": 0.6
+      },
+      "sources": ["ASTM C27 (medium-duty fireclay)", "Harbison-Walker Handbook of Refractory Practice"]
+    },
+    {
       "id": "cfrp", "name": "Carbon fibre reinforced polymer (quasi-isotropic laminate)", "category": "composite", "color": "#1C1C1E",
       "properties": {
         "density": "1.60 g/cm^3", "youngs_modulus": "70 GPa", "poisson_ratio": 0.3,

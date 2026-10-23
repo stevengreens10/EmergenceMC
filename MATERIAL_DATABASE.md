@@ -15,7 +15,7 @@ loading with a message naming the material and file.
   acrylic (PMMA) — with refractive index n_d and Abbe number (Schott data sheets, Malitson 1965); coloured filter glasses after Schott RG630 (red long-pass) and BG39 (blue-green, IR
   blocking), their absorption edges fitted by a logistic absorption coefficient (see `absorption_*` below).
 * **Non-metals**: alumina 99.5 %, PTFE, nylon 6/6, PVC, natural rubber, muscovite mica,
-  electrographite, silicon, germanium, oak, granite, quasi-isotropic CFRP.
+  electrographite, silicon, germanium, oak, granite, fireclay firebrick, quasi-isotropic CFRP.
 
 ## Properties
 density, Young's/shear modulus, Poisson ratio, yield/ultimate/fatigue strength, hardness, fracture toughness

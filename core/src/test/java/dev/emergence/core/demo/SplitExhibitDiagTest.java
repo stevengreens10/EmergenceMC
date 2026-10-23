@@ -141,8 +141,15 @@ class SplitExhibitDiagTest {
                     c.step(0.05);
                     w += Math.abs(c.probe(shaft).angularVelocity()) / 200;
                 }
-                System.out.printf("governed %s t=%.0f s: mean %.2f rad/s over 10 s, weight out %.1f mm, rod %.2f mm%n", m == 0 ? "braked" : "free",
-                        c.time(), w, 1e3 * c.probe(weight).angle(), 1e3 * c.probe(rod).angle());
+                System.out.printf("governed %s t=%.0f s: mean %.2f rad/s over 10 s, weight out %.1f mm, rod %.2f mm, brake %.2f W, boiler %.2f bar%n",
+                        m == 0 ? "braked" : "free", c.time(), w, 1e3 * c.probe(weight).angle(), 1e3 * c.probe(rod).angle(),
+                        c.brake(b.id(e, "brake"))[1], 1e-5 * c.pressure(b.id(e, "boiler")));
+                var sv = c.branchesOf(b.id(e, "safety"));
+                double vent = 0;
+                for (var br : sv) vent = Math.max(vent, Math.abs(br.massFlow(c.solverView())));
+                double[] inl = c.fluid(b.id(e, "inlet"));
+                System.out.printf("   boiler water %.2f g, safety valve %.4f g/s, inlet valve flow %.4f g/s%n", 1e3 * c.fluid(b.id(e, "boiler"))[2],
+                        1e3 * vent, 1e3 * inl[3]);
             }
         }
     }

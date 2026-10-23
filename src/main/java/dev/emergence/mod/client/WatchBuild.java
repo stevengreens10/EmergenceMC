@@ -76,7 +76,7 @@ final class WatchBuild {
         Flight.tick(mc);
         BlockPos origin = WatchedBuild.origin();
         if (origin == null) return;
-        if (exhibits == null) exhibits = Exhibits.all();
+        if (exhibits == null) exhibits = Exhibits.forWorld();
         List<Exhibit> ex = exhibits;
         int i = WatchedBuild.exhibit();
         if (i != shown && i >= 0 && i < ex.size() && !WatchedBuild.finished()) {

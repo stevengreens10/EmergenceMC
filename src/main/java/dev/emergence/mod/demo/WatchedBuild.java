@@ -74,7 +74,7 @@ public final class WatchedBuild {
     public static void start(MinecraftServer server) {
         if (level != null) return;
         level = server.overworld();
-        exhibits = Exhibits.all();
+        exhibits = Exhibits.forWorld();
         origin = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING, new BlockPos(0, 0, 0));
         DemoBuilder.galleryRules(server);
         dev.emergence.mod.sim.SimulationManager.get(level).setPaused(true);

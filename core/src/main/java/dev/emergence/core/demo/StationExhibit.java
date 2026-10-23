@@ -26,6 +26,11 @@ public final class StationExhibit {
     static final int[] PLANT = {10, 0, 0};
 
     public static Exhibit station() {
+        return station(true);
+    }
+
+    /** @param electrics the generator and the electronics too (without: the plant alone, for testing it) */
+    public static Exhibit station(boolean electrics) {
         Exhibit e = new Exhibit("station", "Power station",
                 List.of("POWER STATION", "Fire, steam, a", "governed engine and", "its own electricity"),
                 "A steam power station that runs itself, every part of it a part a player could place. Methane from "
@@ -40,7 +45,7 @@ public final class StationExhibit {
                         + "does not flash in it — pumps it back into the boiler.");
         e.plots = 4;
         e.origin(PLANT[0], PLANT[1], PLANT[2]);
-        plant(e);
+        plant(e, electrics);
         e.origin(0, 0, 0);
         return e.view(30, 16, 34, 28);
     }
@@ -51,7 +56,7 @@ public final class StationExhibit {
      * the main valve (its plug on the solenoid's rod) and a pilot needle beside it; air comes in from the north, the flue
      * leaves east and rises in a chimney at (7, ·, 13). The cylinder's jacket is a small steam vessel fed from the main.
      */
-    static void plant(Exhibit e) {
+    static void plant(Exhibit e, boolean electrics) {
         String st = "steel_1045";
         int y = 3;
         Object[] steam = {"fluid", 7};
@@ -98,10 +103,11 @@ public final class StationExhibit {
         e.name("brake", e.add(BRAKE, "oak", 7, y - 2, 8, Dir.UP, "force", 8));
         e.add(BLOCK, st, 7, 0, 8, Dir.UP);
         // ---- the firebox under the boiler: a steel crown sheet, the chamber, the igniter on a mica block
-        // the crown: an alumina tile (k·A/L ≈ 1.9 W/K: some 500 W at the firebox's heat, what the engine uses; a steel
-        // sheet passes nearly twice that, which only blows off at the safety valve, and firebrick a twentieth — the rest of
-        // the fire leaves up the chimney, a crude boiler's efficiency)
-        e.name("crown", e.add(BLOCK, "alumina", 5, y, 13, Dir.UP));
+        // the crown: a steel sheet (k·A/L ≈ 3 W/K). With the igniter off the firebox's walls settle far cooler than the
+        // flame (some 700 K), and an alumina tile then passed too little to keep the steam up; what the steel passes beyond
+        // the engine's needs blows off at the safety valve into the condenser and comes back as water. (Firebrick passes a
+        // twentieth.) Most of the fire's heat still leaves up the chimney: a crude boiler's efficiency.
+        e.name("crown", e.add(BLOCK, st, 5, y, 13, Dir.UP));
         int box = e.add(TANK, st, 5, y - 1, 13, Dir.UP, "wall", 0.0005);
         e.name("firebox", box);
         e.name("igniter", e.add(RESISTOR, "alumina", 5, y - 2, 13, Dir.EAST, "resistance", 2.0, "contact_area", 0.002,
@@ -112,7 +118,8 @@ public final class StationExhibit {
         // air inlet, open at its north end: the gallery burner's, whose draft draws nearly the air its 40 µm needle's
         // methane needs (narrower, a cooling firebox starved itself rich; with less fuel, too lean to burn: below 5 %)
         e.add(PIPE, st, 5, y - 1, 12, Dir.NORTH, "bore", 0.024);
-        // the flue: east out of the chamber, up the chimney (open at the top)
+        // the flue: east out of the chamber, up the chimney (open at the top; a longer flue's cold gas weakened the draft
+        // as the fuel first came, and the firebox went out too rich)
         e.add(PIPE, st, 6, y - 1, 13, Dir.EAST, "bore", 0.04);
         int chimney = e.fill(PIPE, st, 7, y - 1, 13, 7, y + 7, 13, Dir.UP, "bore", 0.04, "wall", 0.001);
         e.name("chimney", chimney + 8);
@@ -140,6 +147,15 @@ public final class StationExhibit {
         e.fill(PIPE, "copper", 5, y + 4, 13, 5, y + 8, 13, Dir.UP, with(steam, "bore", 0.008));
         e.fill(PIPE, "copper", -2, y + 9, 13, 5, y + 9, 13, Dir.EAST, with(steam, "bore", 0.008));
         e.add(BLOCK, st, 6, y + 9, 13, Dir.UP, "fill", 0.2);
+        // the overflow: a 0.3 mm orifice in the boiler's south face, at its water line, up beside the steam riser and the
+        // safety valve into the safety line — the boiler keeps its own level: above the line the pump's surplus water
+        // spills back to the condenser (it flashes there), below it a little steam goes the same way (some 0.05 g/s)
+        e.name("overflow", e.add(VALVE, "brass", 5, y + 1, 14, Dir.UP, with(steam, "bore", 0.0003)));
+        e.latch(e.named.get("overflow"));
+        e.add(BLOCK, st, 5, y, 14, Dir.UP, "fill", 0.2); // its blind foot
+        e.fill(PIPE, "copper", 5, y + 2, 14, 5, y + 8, 14, Dir.UP, with(steam, "bore", 0.006));
+        e.add(PIPE, "copper", 5, y + 9, 14, Dir.SOUTH, with(steam, "bore", 0.006));
+        e.add(BLOCK, st, 5, y + 9, 15, Dir.UP, "fill", 0.2);
         e.fill(PIPE, "copper", -3, y + 9, 9, -3, y + 9, 13, Dir.SOUTH, with(steam, "bore", 0.008));
         e.add(BLOCK, st, -3, y + 9, 14, Dir.UP, "fill", 0.2);
         feedPump(e, y, steam);
@@ -156,6 +172,44 @@ public final class StationExhibit {
         r.pin("igr", 14, 0, 14).pin("igr", 9, 0, 14);       // switch → bank −
         r.insulation("ig+", 800).insulation("ig-", 800);    // glass-fibre: the element's leads run hot
         r.route();
+        if (electrics) {
+            generator(e, y);
+            electrical(e, y);
+        }
+    }
+
+    /**
+     * The generator (plant coordinates): a 32-tooth gear on the crankshaft at x = 10 drives a 16-tooth pinion three cells
+     * north (2 : 1, the governor's tooth size; geared faster, each magnet's pass a sharp pulse of charging current, it
+     * set the whole plant's solution a thousand steps a second), on a shaft along x at (·, y, 5) in two bearings; coils of
+     * 600 turns give the slower rotor EMF enough to charge. On it an aluminium disc
+     * at x = 13 carries two magnets (x = 14, two cells above and below the axis, opposite ways) past two coils fixed at
+     * x = 15 — the hand generator on its side, turned by the engine. Its alternating EMF goes through a bridge of four
+     * diodes into the station's battery (four nickel–metal hydride cells, 5 V).
+     */
+    static void generator(Exhibit e, int y) {
+        String st = "steel_1045", al = "aluminium_6061";
+        e.add(GEAR, st, 10, y, 8, Dir.EAST, "teeth", 32, "pitch_radius", 2.0 / 16, "thickness", 0.01);
+        int gs = e.fill(SHAFT, st, 10, y, 5, 16, y, 5, Dir.EAST, "diameter", 0.012);
+        e.name("genShaft", gs);
+        e.add(GEAR, st, 10, y, 5, Dir.EAST, "teeth", 16, "pitch_radius", 1.0 / 16, "thickness", 0.01);
+        e.add(BEARING, st, 11, y, 5, Dir.EAST);
+        e.fill(BLOCK, st, 11, 0, 5, 11, y - 1, 5, Dir.UP);
+        e.add(BEARING, st, 16, y, 5, Dir.EAST);
+        e.fill(BLOCK, st, 16, 0, 5, 16, y - 1, 5, Dir.UP);
+        e.init(gs, new Exhibit.Initial(Double.NaN, -28, 0, 0)); // turning with the engine (the other way: a spur pair)
+        // the rotor: a thin disc in the y–z plane, the magnets on its east face
+        e.fill(BLOCK, al, 13, y - 2, 3, 13, y + 2, 7, Dir.EAST, "fill", 0.08);
+        e.add(MAGNET, "ndfeb_n42", 14, y + 2, 5, Dir.EAST);
+        e.add(MAGNET, "ndfeb_n42", 14, y - 2, 5, Dir.WEST);
+        // the coils, facing the magnets' path (wound alike: the magnets are opposite, so with the series link joining the
+        // lower ends their EMFs add — wound opposite ways, they cancelled)
+        e.name("coilA", e.add(COIL, "copper", 15, y + 2, 5, Dir.EAST, "turns", 600, "wire_diameter", 0.6e-3, "lead_axis", 2));
+        e.name("coilB", e.add(COIL, "copper", 15, y - 2, 5, Dir.EAST, "turns", 600, "wire_diameter", 0.6e-3, "lead_axis", 2));
+        // the bridge (current west → east through each diode) and the battery
+        for (int k = 0; k < 4; k++) e.name("d" + (k + 1), e.add(DIODE, "silicon", 17, 1, 9 + 2 * k, Dir.EAST));
+        e.name("battery", e.add(BATTERY, "pvc", 19, 1, 6, Dir.SOUTH, "chemistry", 1, "cells", 4, "capacity", 5));
+        // (wired with the electronics: see electrical)
     }
 
     /**
@@ -167,12 +221,15 @@ public final class StationExhibit {
      */
     static void condenser(Exhibit e, int y, Object[] steam) {
         String cu = "copper";
-        int well = e.add(TANK, cu, -3, y + 4, 8, Dir.UP, with(steam, "fill", 0.8, "wall", 0.002));
+        // (the circuit's water beyond the boiler's: what stands in the overflow's riser and the pipes, and some to spare)
+        int well = e.add(TANK, cu, -3, y + 4, 8, Dir.UP, with(steam, "fill", 0.7, "wall", 0.002));
         e.name("hotwell", well);
         e.init(well, new Exhibit.Initial(330, 0, 0));
         int top = 0;
+        // its two lowest cells hold water too: the circuit's reserve (condensate stands in the steam pipes' low points, behind
+        // the safety valve and in the overflow's riser before each spills on — some 100 g)
         for (int k = y + 5; k <= y + 9; k++) {
-            int t = e.add(TANK, cu, -3, k, 8, Dir.UP, with(steam, "wall", 0.002));
+            int t = e.add(TANK, cu, -3, k, 8, Dir.UP, with(steam, "wall", 0.002, "fill", k <= y + 6 ? 0.7 : 0));
             e.init(t, new Exhibit.Initial(330, 0, 0));
             top = t;
         }
@@ -197,24 +254,24 @@ public final class StationExhibit {
     static void feedPump(Exhibit e, int y, Object[] steam) {
         String st = "steel_1045";
         Object[] water = with(steam, "bore", 0.010, "fill", 1);
-        e.name("feedCrank", e.add(ECCENTRIC, st, -1, y, 8, Dir.EAST, "throw", 0.005));
+        // (a short throw: some 0.4 g of water a second, a little more than the boiler boils away; the overflow returns the
+        // rest — with more, the boiler spent its heat warming water only to spill it)
+        e.name("feedCrank", e.add(ECCENTRIC, st, -1, y, 8, Dir.EAST, "throw", 0.0008));
         // (a deep clearance over the piston, 3 cm: water barely yields, and a chamber of 2 cm³ at the top of the stroke held
         // the whole plant's solution to fine steps; it changes nothing the pump delivers)
-        int pump = e.add(CYLINDER, st, -1, y + 2, 8, Dir.DOWN, with(steam, "bore", 0.012, "ring_friction", 0.5, "fill", 1, "clearance", 0.03));
+        int pump = e.add(CYLINDER, st, -1, y + 2, 8, Dir.DOWN, with(steam, "bore", 0.012, "ring_friction", 0.5, "fill", 1));
         e.name("feedPump", pump);
         e.add(BLOCK, st, -1, y + 3, 8, Dir.UP, "fill", 0.3); // its head
-        // suction: from under the well (from its side it drew steam once the water fell below the face's middle), round to
-        // a small tank over the pump's south side and down into the south check valve — a light one (500 Pa: the well
-        // stands only a block or two above the pump)
-        e.add(PIPE, st, -3, y + 3, 8, Dir.SOUTH, water);
-        e.add(BLOCK, st, -3, y + 3, 7, Dir.UP, "fill", 0.2);
-        e.fill(PIPE, st, -3, y + 3, 9, -3, y + 3, 10, Dir.SOUTH, water);
-        e.add(BLOCK, st, -3, y + 3, 11, Dir.UP, "fill", 0.2);
-        e.add(PIPE, st, -2, y + 3, 10, Dir.EAST, water);
-        e.init(e.add(TANK, st, -1, y + 3, 10, Dir.UP, with(steam, "fill", 1, "wall", 0.002)), new Exhibit.Initial(330, 0, 0));
-        e.add(PIPE, st, -1, y + 2, 10, Dir.NORTH, water);
-        e.add(BLOCK, st, -1, y + 2, 11, Dir.UP, "fill", 0.2);
-        e.name("suction", e.add(VALVE, "brass", -1, y + 2, 9, Dir.NORTH, with(steam, "bore", 0.010, "relief", 500, "fill", 1)));
+        // suction: straight down from under the well and east into a check valve on the pump's west side — two pipe cells,
+        // the well's water standing over the valve (round through a small tank, the water there flashed and refilled at
+        // every change of the well's level, a jolt the solution could not take); the pipe's west end is closed by the
+        // condenser's leg
+        // (at the well's temperature, so at its pressure: started cold, the full pipes stood at water's vapour pressure at
+        // 20 °C, a fifth of the well's, and the well's water rushed into them)
+        e.init(e.add(PIPE, st, -3, y + 3, 8, Dir.UP, water), new Exhibit.Initial(330, 0, 0));
+        e.init(e.add(PIPE, st, -3, y + 2, 8, Dir.EAST, water), new Exhibit.Initial(330, 0, 0));
+        e.name("suction", e.add(VALVE, "brass", -2, y + 2, 8, Dir.EAST, with(steam, "bore", 0.010, "relief", 500, "fill", 1)));
+        e.init(e.named.get("suction"), new Exhibit.Initial(330, 0, 0));
         // delivery: the north check valve → down, east under the engine, south, east and up into the boiler
         e.name("delivery", e.add(VALVE, "brass", -1, y + 2, 7, Dir.NORTH, with(steam, "bore", 0.010, "relief", 3000, "fill", 1)));
         e.add(PIPE, st, -1, y + 2, 6, Dir.NORTH, water);
@@ -234,5 +291,87 @@ public final class StationExhibit {
         // flashed and refilled between strokes)
         e.name("feedCheck", e.add(VALVE, "brass", 4, y + 1, 13, Dir.EAST, with(steam, "bore", 0.010, "relief", 3000, "fill", 1)));
         e.add(BLOCK, st, 3, y + 1, 13, Dir.UP, "fill", 0.2);
+    }
+
+    /**
+     * The station's electronics (plant coordinates, on the floor east of the generator, all on its battery): a charge
+     * regulator and a revolution counter.
+     * <p>
+     * The regulator: an op-amp compares a third of the battery's voltage (22 kΩ over 10 kΩ) with three silicon diodes'
+     * forward drop (through 1 kΩ: some 1.8 V, nearly whatever the battery does); past about 5.7 V, a full battery, its
+     * output switches on a MOSFET that puts the station's lamp and a 10 Ω dump load across the battery, taking what the
+     * generator brings beyond what the battery can store (1 MΩ from the output back to its input holds it on until the
+     * battery has fallen a tenth of a volt: no chatter).
+     * <p>
+     * The counter: a steel vane on the crankshaft cuts an infrared beam once a turn; the photodiode's current through
+     * 2.2 MΩ holds a Schmitt trigger's input up while the beam is clear, and each cut clocks the first of three
+     * toggling flip-flops, each of which clocks the next: their green LEDs count the engine's turns in binary.
+     */
+    static void electrical(Exhibit e, int y) {
+        String st = "steel_1045";
+        // ---- the regulator
+        e.name("regulator", e.add(OPAMP, "silicon", 23, 1, 8, Dir.EAST));
+        e.add(RESISTOR, "alumina", 21, 1, 10, Dir.EAST, "resistance", 22_000);   // battery + → sense
+        e.add(RESISTOR, "alumina", 21, 1, 12, Dir.EAST, "resistance", 10_000);   // sense → ground
+        e.add(RESISTOR, "alumina", 25, 1, 6, Dir.EAST, "resistance", 1e6);       // output → sense (hysteresis)
+        e.add(RESISTOR, "alumina", 21, 1, 14, Dir.EAST, "resistance", 1_000);    // battery + → reference
+        e.add(DIODE, "silicon", 28, 1, 12, Dir.EAST);                            // the reference: three diodes down
+        e.add(DIODE, "silicon", 28, 1, 14, Dir.EAST);
+        e.add(DIODE, "silicon", 31, 1, 14, Dir.EAST);
+        e.name("shunt", e.add(TRANSISTOR, "silicon", 27, 1, 9, Dir.WEST, "type", 2, "transconductance", 2.0));
+        e.name("lamp", e.add(LED, "silicon", 24, 1, 4, Dir.EAST, "wavelength", 590, "face", 3, "beam", 20));
+        e.add(RESISTOR, "alumina", 27, 1, 4, Dir.EAST, "resistance", 100);       // the lamp's resistor
+        e.name("dump", e.add(RESISTOR, "alumina", 27, 1, 2, Dir.EAST, "resistance", 10, "surface_area", 0.002, "mass", 0.05));
+        // ---- the counter: the vane on the crankshaft (between the flywheel and the bearing), the beam across its path
+        e.fill(BLOCK, st, 8, y + 1, 8, 8, y + 2, 8, Dir.UP, "fill", 0.3);
+        e.name("irled", e.add(LED, "silicon", 8, 1, 10, Dir.EAST, "wavelength", 850, "efficiency", 0.3, "beam", 20));
+        e.name("pd", e.add(PHOTODIODE, "silicon", 8, 5, 10, Dir.EAST, "face", 0));
+        e.add(RESISTOR, "alumina", 21, 1, 1, Dir.EAST, "resistance", 150);       // the IR LED's current
+        e.add(RESISTOR, "alumina", 24, 1, 0, Dir.EAST, "resistance", 2.2e6);     // the photodiode's load
+        e.name("schmitt", e.add(LOGIC, "silicon", 34, 1, 2, Dir.EAST, "function", 7));
+        for (int k = 0; k < 3; k++) {
+            e.name("bit" + k, e.add(LOGIC, "silicon", 38 + 4 * k, 1, 2, Dir.EAST, "function", 8));
+            e.name("bitLed" + k, e.add(LED, "silicon", 38 + 4 * k, 1, 6, Dir.EAST, "wavelength", 565, "face", 3, "beam", 20));
+            e.add(RESISTOR, "alumina", 38 + 4 * k, 1, 8, Dir.EAST, "resistance", 470);
+        }
+        Router r = new Router(e, 6, 0, 0, 50, y + 3, 15);
+        // what turns: the flywheel and vane, the 40-tooth gear and the crankshaft's bevel, the generator's rotor
+        r.keepClear(7, 2, 7, 7, 4, 9);   // the flywheel (its corners reach 1.4 cells from the axis)
+        r.keepClear(8, 1, 7, 8, 5, 9);   // the vane (its tip 2 cells out)
+        r.keepClear(8, 2, 6, 8, 4, 10);
+        r.keepClear(10, 0, 5, 11, y + 3, 11);
+        r.keepClear(12, 0, 2, 14, y + 3, 8);
+        // the generator: its coils in series, their ends to the bridge, the bridge to the battery (+ at 19, 1, 7)
+        r.pin("mid", 15, y + 2, 6).pin("mid", 15, y - 2, 6);
+        r.pin("ac1", 15, y + 2, 4).pin("ac1", 16, 1, 9).pin("ac1", 18, 1, 13);       // → D1 anode, D3 cathode
+        r.pin("ac2", 15, y - 2, 4).pin("ac2", 16, 1, 11).pin("ac2", 18, 1, 15);      // → D2 anode, D4 cathode
+        r.pin("vdd", 18, 1, 9).pin("vdd", 18, 1, 11).pin("vdd", 19, 1, 7);           // D1, D2 cathodes → battery +
+        r.pin("gnd", 16, 1, 13).pin("gnd", 16, 1, 15).pin("gnd", 19, 1, 5);          // D3, D4 anodes ← battery −
+        r.pin("vdd", 20, 1, 10).pin("vdd", 20, 1, 14).pin("vdd", 23, 1, 9).pin("vdd", 23, 1, 4).pin("vdd", 26, 1, 2)
+                .pin("vdd", 20, 1, 1).pin("vdd", 9, 5, 10).pin("vdd", 34, 1, 3);
+        r.pin("gnd", 22, 1, 12).pin("gnd", 23, 1, 7).pin("gnd", 28, 1, 9).pin("gnd", 32, 1, 14)
+                .pin("gnd", 9, 1, 10).pin("gnd", 25, 1, 0).pin("gnd", 34, 1, 1);
+        r.pin("sense", 22, 1, 10).pin("sense", 20, 1, 12).pin("sense", 22, 1, 8).pin("sense", 24, 1, 6);
+        r.pin("ref", 22, 1, 14).pin("ref", 27, 1, 12).pin("ref", 23, 0, 8);
+        r.pin("r12", 29, 1, 12).pin("r12", 27, 1, 14);
+        r.pin("r23", 29, 1, 14).pin("r23", 30, 1, 14);
+        r.pin("regOut", 24, 1, 8).pin("regOut", 26, 1, 6).pin("regOut", 27, 1, 8);
+        r.pin("lampK", 25, 1, 4).pin("lampK", 26, 1, 4);
+        r.pin("drain", 28, 1, 4).pin("drain", 28, 1, 2).pin("drain", 26, 1, 9);
+        r.pin("irA", 22, 1, 1).pin("irA", 7, 1, 10);
+        r.pin("beam", 7, 5, 10).pin("beam", 23, 1, 0).pin("beam", 33, 1, 2);
+        // the Schmitt's output clocks the first stage; each stage's Q̄ goes back to its own D (it toggles) and on to
+        // the next stage's clock (a ripple counter)
+        r.pin("clk0", 35, 1, 2).pin("clk0", 38, 0, 2);
+        for (int k = 0; k < 3; k++) {
+            int x = 38 + 4 * k;
+            r.pin("vdd", x, 1, 3).pin("gnd", x, 1, 1);
+            r.pin("qb" + k, x, 2, 2).pin("qb" + k, x - 1, 1, 2);
+            if (k < 2) r.pin("qb" + k, x + 4, 0, 2);
+            r.pin("q" + k, x + 1, 1, 2).pin("q" + k, x - 1, 1, 6);
+            r.pin("ledK" + k, x + 1, 1, 6).pin("ledK" + k, x - 1, 1, 8);
+            r.pin("gnd", x + 1, 1, 8);
+        }
+        r.route();
     }
 }

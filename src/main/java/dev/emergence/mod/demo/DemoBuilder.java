@@ -50,7 +50,7 @@ public final class DemoBuilder {
      * have registered with the simulation, a tick or so after they are placed.)
      */
     public static List<String> verifyAgainstDefinitions(ServerLevel level, BlockPos origin) {
-        List<Exhibit> exhibits = Exhibits.all();
+        List<Exhibit> exhibits = Exhibits.forWorld();
         List<String> problems = new java.util.ArrayList<>();
         for (int i = 0; i < exhibits.size(); i++) problems.addAll(verifyExhibit(level, origin, i));
         for (String pr : problems) EmergenceMod.LOG.error("Demo build: {}", pr);
@@ -61,7 +61,7 @@ public final class DemoBuilder {
 
     /** {@link #verifyAgainstDefinitions} for exhibit i alone (its chunks loaded); the differences found. */
     public static List<String> verifyExhibit(ServerLevel level, BlockPos origin, int i) {
-        List<Exhibit> exhibits = Exhibits.all();
+        List<Exhibit> exhibits = Exhibits.forWorld();
         List<String> problems = new java.util.ArrayList<>();
         var sim = dev.emergence.mod.sim.SimulationManager.get(level);
         sim.awaitCompiles(); // (a slow machine may still be compiling off the server thread)
@@ -138,7 +138,7 @@ public final class DemoBuilder {
 
     /** Builds all exhibits with the first plot at {@code origin} (the block above the gallery floor). */
     public static BlockPos build(ServerLevel level, BlockPos origin) {
-        List<Exhibit> exhibits = Exhibits.all();
+        List<Exhibit> exhibits = Exhibits.forWorld();
         for (int x = floorFrom(exhibits, 0); x <= floorTo(exhibits, exhibits.size() - 1); x++) floorColumn(level, origin, exhibits, x);
         welcomeSign(level, origin);
         List<String> problems = new java.util.ArrayList<>();
@@ -309,7 +309,7 @@ public final class DemoBuilder {
         var sim = dev.emergence.mod.sim.SimulationManager.get(level);
         sim.setPaused(true);
         List<int[]> forced = new java.util.ArrayList<>();
-        int width = plotOffset(Exhibits.all(), Exhibits.all().size());
+        int width = plotOffset(Exhibits.forWorld(), Exhibits.forWorld().size());
         for (int cx = Math.floorDiv(top.getX() - 4, 16); cx <= Math.floorDiv(top.getX() + width + 4, 16); cx++)
             for (int cz = Math.floorDiv(top.getZ() - 4, 16); cz <= Math.floorDiv(top.getZ() + SIGN_Z + 8, 16); cz++) {
                 level.setChunkForced(cx, cz, true);
@@ -329,7 +329,7 @@ public final class DemoBuilder {
                 Field f = PrimaryLevelData.class.getDeclaredField("settings");
                 f.setAccessible(true);
                 LevelSettings old = (LevelSettings) f.get(data);
-                f.set(data, new LevelSettings("Emergence Demo", old.gameType(), old.hardcore(), old.difficulty(),
+                f.set(data, new LevelSettings(Exhibits.worldName(), old.gameType(), old.hardcore(), old.difficulty(),
                         old.allowCommands(), old.gameRules(), old.getDataConfiguration()));
             } catch (ReflectiveOperationException e) {
                 EmergenceMod.LOG.warn("Could not rename demo world", e);

@@ -131,7 +131,7 @@ public final class AutoShowcase {
         var server = mc.getSingleplayerServer();
         ServerLevel level = server.overworld();
         BlockPos spawn = level.getSharedSpawnPos();
-        var ex = Exhibits.all();
+        var ex = Exhibits.forWorld();
         int n = ex.size();
         BlockPos origin = spawn.offset(-8, 0, -(DemoBuilder.SIGN_Z + 3));
         STEPS.add(new Step(80, () -> look(server, origin.getX() + 26, origin.getY() + 16, origin.getZ() + 38, 160, 28), "showcase-0-overview"));

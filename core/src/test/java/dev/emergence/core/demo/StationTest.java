@@ -13,7 +13,8 @@ class StationTest {
     @Test
     @EnabledIfSystemProperty(named = "diag.station", matches = ".+")
     void plantRunsOnItsFire() {
-        Exhibit e = StationExhibit.station();
+        // -Ddiag.plantOnly=true: without the generator and electronics
+        Exhibit e = StationExhibit.station(!Boolean.getBoolean("diag.plantOnly"));
         Exhibits.Built b = Exhibits.build(e, AMBIENT);
         CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
         c.warnings().forEach(w -> System.out.println("warning: " + w));
@@ -59,6 +60,7 @@ class StationTest {
         // -Ddiag.every=<s>: how often it reports (10 s by default)
         double every = Double.parseDouble(System.getProperty("diag.every", "10"));
         int per = (int) Math.round(every / 0.05);
+        java.util.Map<String, Double> masses = new java.util.HashMap<>();
         for (double t = 0; t < len - 1e-9; t += every) {
             if (lit && t >= light) {
                 c.toggleSwitch(b.id(e, "lightUp"));
@@ -107,6 +109,22 @@ class StationTest {
                         (System.nanoTime() - wall0) / 1e9, c.solver().acceptedSteps() - acc0, c.solver().rejectedSteps() - rej0,
                         c.solver().newtonIterations() - it0, c.solver().unknowns(), top);
             }
+            // -Ddiag.masses=true: every water volume whose mass moved by more than a gram since the last report
+            if (Boolean.getBoolean("diag.masses")) {
+                StringBuilder sb = new StringBuilder("   water moved:");
+                for (var el : c.network().elements()) {
+                    if (!(el instanceof dev.emergence.core.sim.elements.FluidVolume fv) || !fv.twoPhase()) continue;
+                    double m = fv.mass(c.solverView());
+                    String nm = fv.pressureNode().name();
+                    Double was = masses.put(nm, m);
+                    if (was != null && Math.abs(m - was) > 1e-3) {
+                        var p = b.assembly().get(Long.parseLong(nm.substring(1)));
+                        sb.append(String.format(" %s@%d,%d,%d %+.1f g (now %.1f, vapour %.2f);", p.kind(), p.minX(), p.minY(), p.minZ(),
+                                1e3 * (m - was), 1e3 * m, fv.vapourFraction(c.solverView())));
+                    }
+                }
+                System.out.println(sb);
+            }
             var g = c.gas(box);
             System.out.printf("t=%.0f s: engine %.2f rad/s, boiler %.2f bar %.1f K, firebox %.0f K wall %.0f K (CH4 %.2f %%, O2 %.1f %%, CO2 %.1f %%), "
                             + "crown %.0f K, igniter %.0f K, cylinder wall %.1f K, fuel %.1f bar%n",
@@ -115,6 +133,22 @@ class StationTest {
                     100 * g.moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))), c.temperature(b.id(e, "crown")), c.temperature(b.id(e, "igniter")), c.temperature(cyl),
                     1e-5 * c.pressure(fuel));
             long well = b.id(e, "hotwell"), cnd = b.id(e, "condenser"), pump = b.id(e, "feedPump");
+            if (e.named.containsKey("battery")) {
+                var bat = c.probe(b.id(e, "battery"));
+                System.out.printf("   battery: %.4f A·h taken in since the start (%.3f A on average)%n",
+                        -c.batteryChargeDelivered(b.id(e, "battery")) / 3600, -c.batteryChargeDelivered(b.id(e, "battery")) / c.time());
+                System.out.printf("   generator %.1f rad/s, battery %.3f V, charging %.3f A, coil A %.3f A%n", Math.abs(c.probe(b.id(e, "genShaft")).angularVelocity()),
+                        bat.voltage(), bat.current(), c.probe(b.id(e, "coilA")).current());
+                System.out.printf("   coil A %.3f V, coil B %.3f V; diodes %.3f %.3f %.3f %.3f A%n", c.probe(b.id(e, "coilA")).voltage(),
+                        c.probe(b.id(e, "coilB")).voltage(), c.probe(b.id(e, "d1")).current(), c.probe(b.id(e, "d2")).current(),
+                        c.probe(b.id(e, "d3")).current(), c.probe(b.id(e, "d4")).current());
+            }
+            if (e.named.containsKey("lamp")) {
+                StringBuilder bits = new StringBuilder();
+                for (int k = 2; k >= 0; k--) bits.append(c.lightOutput(b.id(e, "bitLed" + k)) > 1e-4 ? '1' : '0');
+                System.out.printf("   lamp %.2f mW, counter %s, IR LED %.1f mW, photodiode %.3g W in%n", 1e3 * c.lightOutput(b.id(e, "lamp")),
+                        bits, 1e3 * c.lightOutput(b.id(e, "irled")), c.lightInput(b.id(e, "pd")));
+            }
             System.out.printf("   condenser %.3f bar %.1f K, hot well %.1f g of water, feed pump flow %.3f g/s, delivery %.3f g/s%n",
                     1e-5 * c.pressure(cnd), c.fluid(cnd)[1], 1e3 * c.fluid(well)[2] * (1 - c.fluid(well)[4]), 1e3 * c.fluid(pump)[3],
                     1e3 * Math.abs(c.branchesOf(b.id(e, "delivery")).get(0).massFlow(c.solverView())));

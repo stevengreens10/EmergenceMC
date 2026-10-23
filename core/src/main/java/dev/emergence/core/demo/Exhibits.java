@@ -21,6 +21,19 @@ import static dev.emergence.core.assembly.PartKind.*;
 public final class Exhibits {
     private Exhibits() {}
 
+    /**
+     * The exhibits a world is built from: the gallery ({@link #all}), or with {@code -Demergence.demoSet=station} the
+     * power station alone (its own world).
+     */
+    public static List<Exhibit> forWorld() {
+        return "station".equals(System.getProperty("emergence.demoSet")) ? List.of(StationExhibit.station()) : all();
+    }
+
+    /** The name of the world {@link #forWorld} builds. */
+    public static String worldName() {
+        return "station".equals(System.getProperty("emergence.demoSet")) ? "Emergence Station" : "Emergence Demo";
+    }
+
     public static List<Exhibit> all() {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(), governedEngine(),

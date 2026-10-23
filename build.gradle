@@ -137,6 +137,22 @@ neoForge {
             systemProperty 'emergence.islandBudgetMs', '1e9'
             systemProperty 'emergence.buildDemo', 'true'
         }
+        // The power station's own world (./gradlew generateStationWorld): the same build, the station alone.
+        stationWorld {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-station')
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            systemProperty 'emergence.globalBudgetMs', '1e9'
+            systemProperty 'emergence.islandBudgetMs', '1e9'
+            systemProperty 'emergence.buildDemo', 'true'
+            systemProperty 'emergence.demoSet', 'station'
+        }
+        // Boots straight into the power station's world (run ./gradlew generateStationWorld first).
+        stationClient {
+            client()
+            programArguments.addAll('--quickPlaySingleplayer', 'Emergence Station', '--width', '1280', '--height', '720')
+            systemProperty 'emergence.demoSet', 'station'
+        }
     }
 
     mods {
@@ -172,6 +188,20 @@ processResources {
 
 tasks.named('runDemoWorld') {
     doFirst { delete 'run-demo/world' }
+}
+
+tasks.named('runStationWorld') {
+    doFirst { delete 'run-station/world' }
+}
+
+// ./gradlew generateStationWorld  ->  run/saves/Emergence Station (open it from Singleplayer, or ./gradlew runStationClient)
+tasks.register('generateStationWorld', Copy) {
+    group = 'emergence'
+    description = 'Builds the power station world and installs it into run/saves.'
+    dependsOn 'runStationWorld'
+    from 'run-station/world'
+    into 'run/saves/Emergence Station'
+    doFirst { delete 'run/saves/Emergence Station' }
 }
 
 // ./gradlew generateDemoWorld  ->  run/saves/Emergence Demo (open it from Singleplayer)

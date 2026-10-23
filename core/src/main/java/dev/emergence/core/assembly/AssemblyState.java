@@ -47,6 +47,19 @@ public record AssemblyState(Map<Long, Double> temperatures, Map<Long, double[]> 
         return "S" + electrolyte + ":" + species;
     }
 
+    private static final java.util.regex.Pattern PART_ID = java.util.regex.Pattern.compile("#(-?\\d+)");
+
+    /**
+     * Key of a passage's flow (a fluid branch's mass flow "mdot…", a gas passage's molar flow "ndot:…") in
+     * {@link #chemistry}, kept with the first part the passage names: "Q{partId}:{unknown name}"; null for other
+     * unknowns.
+     */
+    public static String flowKey(String unknownName) {
+        if (unknownName == null || !(unknownName.startsWith("mdot") || unknownName.startsWith("ndot:"))) return null;
+        var m = PART_ID.matcher(unknownName);
+        return m.find() ? "Q" + m.group(1) + ":" + unknownName.replace(' ', '_') : null;
+    }
+
     /** Key of a chip's stored bit (a counter's, a register's, a memory cell's) in {@link #chemistry}. */
     public static String registerKey(long chipPart, int bit) {
         return "R" + chipPart + ":" + bit;

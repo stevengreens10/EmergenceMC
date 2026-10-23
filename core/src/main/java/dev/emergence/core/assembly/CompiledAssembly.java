@@ -1070,6 +1070,11 @@ public final class CompiledAssembly {
                 s.chemistry().put(AssemblyState.registerKey(e.getKey(), i), bit);
             }
         }
+        // the flows in the passages (a restart that has to find every flow at once, from none, can fail to)
+        for (int i = 0; i < solver.unknowns(); i++) {
+            String key = AssemblyState.flowKey(network.unknownName(i));
+            if (key != null && Double.isFinite(solver.x(i))) s.chemistry().put(key, solver.x(i));
+        }
         return s;
     }
 

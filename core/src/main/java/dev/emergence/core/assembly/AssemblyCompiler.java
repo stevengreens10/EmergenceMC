@@ -160,6 +160,15 @@ public final class AssemblyCompiler {
             }
             String m = System.getProperty("emergence.method");
             if (m != null) c.solver.method(dev.emergence.core.sim.IntegrationMethod.valueOf(m));
+            // the passages' flows as they were (from a saved state): the first step starts from them, not from none
+            boolean flows = false;
+            for (int i = 0; i < c.solver.unknowns(); i++) {
+                Double q = prev.chemistry().get(AssemblyState.flowKey(c.network.unknownName(i)));
+                if (q == null) continue;
+                c.solver.setState(i, q);
+                flows = true;
+            }
+            if (flows) c.solver.resyncHistory();
         }
 
         /** Every part with a thermal node can absorb light (sunlight set by {@link CompiledAssembly#setDaylight}). */

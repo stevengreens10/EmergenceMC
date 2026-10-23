@@ -18,6 +18,25 @@ class StationTest {
         CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
         c.warnings().forEach(w -> System.out.println("warning: " + w));
         System.out.printf("station: %d parts, %d bodies%n", b.assembly().parts().size(), c.bodies().size());
+        // -Ddiag.volume=<m³>: the parts holding about that volume (a step limiter names only its volume)
+        if (System.getProperty("diag.volume") != null) {
+            double want = Double.parseDouble(System.getProperty("diag.volume"));
+            for (var p : b.assembly().parts())
+                if (p.kind().holdsFluid() && Math.abs(dev.emergence.core.assembly.PartGeometry.fluidVolume(p) - want) < 0.01 * want)
+                    System.out.printf("volume %.4g: %s at %d,%d,%d %s%n", want, p.kind(), p.minX(), p.minY(), p.minZ(), p.params());
+        }
+        // -Ddiag.element=<m³>: the fluid volumes of about that volume (a step limiter names one by its volume), and their parts
+        if (System.getProperty("diag.element") != null) {
+            double want = Double.parseDouble(System.getProperty("diag.element"));
+            for (var el : c.network().elements()) {
+                if (!(el instanceof dev.emergence.core.sim.elements.FluidVolume fv)) continue;
+                double vol = fv.volume(c.solverView());
+                if (Math.abs(vol - want) > 0.02 * want) continue;
+                String nm = fv.pressureNode().name();
+                var p = b.assembly().get(Long.parseLong(nm.substring(1)));
+                System.out.printf("element: %.4g m³, node %s: %s at %d,%d,%d %s%n", vol, nm, p.kind(), p.minX(), p.minY(), p.minZ(), p.params());
+            }
+        }
         // -Ddiag.parts=<id>,…: where those parts are (a failure names them by id)
         for (String id : System.getProperty("diag.parts", "").split(",")) {
             if (id.isBlank()) continue;

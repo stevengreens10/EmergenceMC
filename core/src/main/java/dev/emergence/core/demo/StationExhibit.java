@@ -198,7 +198,9 @@ public final class StationExhibit {
         String st = "steel_1045";
         Object[] water = with(steam, "bore", 0.010, "fill", 1);
         e.name("feedCrank", e.add(ECCENTRIC, st, -1, y, 8, Dir.EAST, "throw", 0.005));
-        int pump = e.add(CYLINDER, st, -1, y + 2, 8, Dir.DOWN, with(steam, "bore", 0.012, "ring_friction", 0.5, "fill", 1));
+        // (a deep clearance over the piston, 3 cm: water barely yields, and a chamber of 2 cm³ at the top of the stroke held
+        // the whole plant's solution to fine steps; it changes nothing the pump delivers)
+        int pump = e.add(CYLINDER, st, -1, y + 2, 8, Dir.DOWN, with(steam, "bore", 0.012, "ring_friction", 0.5, "fill", 1, "clearance", 0.03));
         e.name("feedPump", pump);
         e.add(BLOCK, st, -1, y + 3, 8, Dir.UP, "fill", 0.3); // its head
         // suction: from under the well (from its side it drew steam once the water fell below the face's middle), round to
@@ -212,9 +214,9 @@ public final class StationExhibit {
         e.init(e.add(TANK, st, -1, y + 3, 10, Dir.UP, with(steam, "fill", 1, "wall", 0.002)), new Exhibit.Initial(330, 0, 0));
         e.add(PIPE, st, -1, y + 2, 10, Dir.NORTH, water);
         e.add(BLOCK, st, -1, y + 2, 11, Dir.UP, "fill", 0.2);
-        e.name("suction", e.add(VALVE, "brass", -1, y + 2, 9, Dir.NORTH, with(steam, "bore", 0.006, "relief", 500, "fill", 1)));
+        e.name("suction", e.add(VALVE, "brass", -1, y + 2, 9, Dir.NORTH, with(steam, "bore", 0.010, "relief", 500, "fill", 1)));
         // delivery: the north check valve → down, east under the engine, south, east and up into the boiler
-        e.name("delivery", e.add(VALVE, "brass", -1, y + 2, 7, Dir.NORTH, with(steam, "bore", 0.006, "relief", 3000, "fill", 1)));
+        e.name("delivery", e.add(VALVE, "brass", -1, y + 2, 7, Dir.NORTH, with(steam, "bore", 0.010, "relief", 3000, "fill", 1)));
         e.add(PIPE, st, -1, y + 2, 6, Dir.NORTH, water);
         e.fill(PIPE, st, -1, 1, 5, -1, y + 2, 5, Dir.UP, water);
         e.add(BLOCK, st, -1, y + 3, 5, Dir.UP, "fill", 0.2);
@@ -230,7 +232,7 @@ public final class StationExhibit {
         e.add(BLOCK, st, 4, y + 1, 10, Dir.UP, "fill", 0.2);
         // the boiler's own check valve, right at its face (a water-filled pipe there, its far end warmed by the boiler,
         // flashed and refilled between strokes)
-        e.name("feedCheck", e.add(VALVE, "brass", 4, y + 1, 13, Dir.EAST, with(steam, "bore", 0.006, "relief", 3000, "fill", 1)));
+        e.name("feedCheck", e.add(VALVE, "brass", 4, y + 1, 13, Dir.EAST, with(steam, "bore", 0.010, "relief", 3000, "fill", 1)));
         e.add(BLOCK, st, 3, y + 1, 13, Dir.UP, "fill", 0.2);
     }
 }

@@ -273,9 +273,10 @@ public final class FluidBranch implements Element {
         double u = (dp - crack) / fullOpen;
         // the disc lifts in proportion past its cracking pressure and stops at its full lift; both corners are rounded
         // over 2 % of the lift (ε·ln(1 + e^{u/ε}), less the same past full lift): a corner's jump in slope cost a feed
-        // pump's check valves Newton iterations at every stroke. Seated, the lift dies away as e^{u/ε} (a millionth of
-        // the bore 0.3 of the lift below cracking), and a vanishing leak keeps it smooth.
-        return softplus(u, CHECK_ROUND) - softplus(u - 1, CHECK_ROUND) + 1e-6 * Math.exp(Math.max(u, -50));
+        // pump's check valves Newton iterations at every stroke. Seated, it leaks a millionth of its bore — no less: a
+        // leak dying away to nothing left the valve's own small volume all but floating, and its pivot collapsed at
+        // every stroke (a fresh factorisation each time); a millionth is a few mg a minute at a boiler's pressure.
+        return softplus(u, CHECK_ROUND) - softplus(u - 1, CHECK_ROUND) + 1e-6;
     }
 
     private static final double CHECK_ROUND = 0.02;

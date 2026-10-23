@@ -23,8 +23,14 @@ class IslandDumpReplayTest {
         var mats = MaterialDatabase.standard();
         Assembly a = new Assembly();
         AssemblyState st = AssemblyState.empty();
+        // -Ddiag.dropState=<id>,…: those parts' saved state left out (they start as built)
+        java.util.Set<String> drop = new java.util.HashSet<>(java.util.Arrays.asList(System.getProperty("diag.dropState", "").split(",")));
         for (String line : Files.readAllLines(Path.of(System.getProperty("diag.dump")))) {
             String[] f = line.trim().split(" ");
+            if (f.length > 1 && !f[0].equals("P") && !f[0].equals("S")) {
+                String id = f[0].equals("C") ? f[1].substring(1, f[1].indexOf(':') > 0 ? f[1].indexOf(':') : 1) : f[1];
+                if (drop.contains(id)) continue;
+            }
             switch (f[0]) {
                 case "ambient" -> a.ambientTemperature(Double.parseDouble(f[1])).ambientPressure(Double.parseDouble(f[2]));
                 case "P" -> {
@@ -42,7 +48,15 @@ class IslandDumpReplayTest {
                 case "V" -> st.capacitorVoltages().put(Long.parseLong(f[1]), Double.parseDouble(f[2]));
                 case "M" -> st.bodyMotion().put(Long.parseLong(f[1]), new double[]{Double.parseDouble(f[2]), Double.parseDouble(f[3])});
                 case "F" -> st.fluids().put(Long.parseLong(f[1]), new double[]{Double.parseDouble(f[2]), Double.parseDouble(f[3])});
-                case "C" -> st.chemistry().put(f[1], Double.parseDouble(f[2]));
+                case "C" -> {
+                    double v = Double.parseDouble(f[2]);
+                    // -Ddiag.scaleSpecies=<key>:<factor>,…: a saved amount scaled (e.g. G<id>:N2:1e5, air into a pure gas)
+                    for (String sc : System.getProperty("diag.scaleSpecies", "").split(",")) {
+                        int k = sc.lastIndexOf(':');
+                        if (k > 0 && sc.substring(0, k).equals(f[1])) v *= Double.parseDouble(sc.substring(k + 1));
+                    }
+                    st.chemistry().put(f[1], v);
+                }
                 default -> {
                 }
             }
@@ -68,6 +82,17 @@ class IslandDumpReplayTest {
         // -Ddiag.dumpCrank=<crank part id>:<s>: a hand on that crank for the first s seconds (as the tour's hand)
         String[] crank = System.getProperty("diag.dumpCrank", "").isBlank() ? null : System.getProperty("diag.dumpCrank").split(":");
         for (int i = 0; i < Math.round(seconds / 0.05); i++) {
+            if (Boolean.getBoolean("diag.newtonLaggards") && i == 0) {
+                try {
+                    c.step(0.05);
+                } catch (RuntimeException ex) {
+                    var lag = new java.util.ArrayList<>(c.solver().newtonLaggards().entrySet());
+                    lag.sort((p1, p2) -> p2.getValue() - p1.getValue());
+                    System.out.println("laggards: " + lag.subList(0, Math.min(15, lag.size())));
+                    throw ex;
+                }
+                continue;
+            }
             if (crank != null) c.setCrankEffort(Long.parseLong(crank[0]), (i + 1) * 0.05 <= Double.parseDouble(crank[1]) ? 1 : 0, false);
             c.step(0.05);
             if (probes.length == 0) System.out.printf("t=%.2f%n", c.time());

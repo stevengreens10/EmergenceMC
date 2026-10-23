@@ -20,7 +20,9 @@ class IslandDumpDiffTest {
     @Test
     @EnabledIfSystemProperty(named = "diag.dumpExhibit", matches = ".+")
     void diff() throws Exception {
-        Exhibit e = Exhibits.all().stream().filter(x -> x.id.equals(System.getProperty("diag.dumpExhibit"))).findFirst().orElseThrow();
+        java.util.List<Exhibit> known = new java.util.ArrayList<>(Exhibits.all());
+        known.add(dev.emergence.core.demo.StationExhibit.station());
+        Exhibit e = known.stream().filter(x -> x.id.equals(System.getProperty("diag.dumpExhibit"))).findFirst().orElseThrow();
         Map<String, String> core = new TreeMap<>(), world = new TreeMap<>();
         int[] cmin = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE};
         for (Exhibit.PartDef d : e.parts) {

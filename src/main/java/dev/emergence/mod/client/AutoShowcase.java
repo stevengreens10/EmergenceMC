@@ -172,6 +172,40 @@ public final class AutoShowcase {
             }, shot.apply(""), () -> server.overworld().getGameTime() - since[0] >= 50 && shown(server, firstBlock))
                     .act(PlayerHand.release()).caption(no, n, id, e.title, e.description));
             String key = id + ":";
+            if (id.equals("station")) {
+                // the power station, found running: its fire, its steam, its engine, its vacuum, its electricity
+                BlockPos shaft = at.apply("shaft"), boiler = at.apply("boiler"), cnd = at.apply("condenser"), bat = at.apply("battery"),
+                        box = at.apply("firebox");
+                Sampler w0 = shaftSpeed(server, shaft), w1 = shaftSpeed(server, shaft), q = new Sampler(), t = new Sampler();
+                java.util.Set<String> counts = java.util.concurrent.ConcurrentHashMap.newKeySet();
+                java.util.function.Supplier<String> bits = () -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (int k = 2; k >= 0; k--) sb.append(light(server, at.apply("bitLed" + k)) > 1e-4 ? '1' : '0');
+                    return sb.toString();
+                };
+                STEPS.add(new Step(300, NOTHING, shot.apply("running")).sample(w0, () -> motion(server, shaft, PartKind.SHAFT))
+                        .sample(q, () -> chargeDelivered(server, bat)).sample(t, () -> simTime(server, bat))
+                        .sample(new Sampler(), () -> {
+                            counts.add(bits.get()); // (samples are taken on the server thread)
+                            return 0;
+                        })
+                        .check(key + " its firebox burns", () -> atLeast("firebox CO2 [%]", 100 * co2(server, box), 3))
+                        .check(key + " its boiler holds steam", () -> atLeast("boiler pressure [bar]", 1e-5 * pressure(server, boiler, PartKind.TANK), 1.5))
+                        .check(key + " the engine runs on it", () -> atLeast("mean crankshaft speed [rad/s]", w0.mean(), 8))
+                        .check(key + " it exhausts into a vacuum", () -> atMost("condenser pressure [kPa]", 1e-3 * pressure(server, cnd, PartKind.TANK), 60))
+                        .check(key + " its generator charges its battery", () -> atLeast("charge taken in [mA·h]", -q.change() / 3.6, 0.001))
+                        .check(key + " its counter counts the engine's turns", () -> atLeast("counter states seen", counts.size(), 2)));
+                // a load put on it by hand: the governor holds its speed
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake on", part.apply("brake", PartKind.BRAKE))));
+                double[] on = {Double.NaN};
+                STEPS.add(new Step(2400, () -> on[0] = simTime(server, shaft), null,
+                        () -> onServer(server, key + "t", () -> simTime(server, shaft)) - on[0] > 20));
+                STEPS.add(new Step(200, view, shot.apply("braked")).sample(w1, () -> motion(server, shaft, PartKind.SHAFT))
+                        .check(key + " braked, the governor holds its speed", () -> that(Math.abs(w1.mean() / w0.mean() - 1) <= 0.10,
+                                String.format("mean speed %.2f → %.2f rad/s (%+.1f %%), expected within ±10 %%", w0.mean(), w1.mean(),
+                                        100 * (w1.mean() / w0.mean() - 1)))));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " take the brake off", part.apply("brake", PartKind.BRAKE))));
+            }
             if (id.equals("glow") || id.equals("fuse")) {
                 BlockPos wire = at.apply("wire");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " close the switch", part.apply("switch", PartKind.SWITCH))));
@@ -1324,6 +1358,16 @@ public final class AutoShowcase {
     private static void dumpIf(net.minecraft.server.MinecraftServer server, String key, BlockPos at) {
         if (java.util.Arrays.asList(System.getProperty("emergence.dumpIslands", "").split(",")).contains(key.replaceAll(":.*", "").trim()))
             server.execute(() -> dev.emergence.mod.sim.SimulationManager.get(server.overworld()).dumpIsland(at));
+    }
+
+    /** The CO₂ mole fraction in the gas vessel at {@code at} (NaN if none). */
+    private static double co2(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        PlacedPart p = partIn(s, at, PartKind.TANK);
+        CompiledAssembly c = compiled(s, at);
+        var g = p == null || c == null ? null : c.gas(p.id);
+        if (g == null) return Double.NaN;
+        int k = g.indexOf(dev.emergence.core.chem.Chemistry.standard().species("CO2"));
+        return k < 0 ? 0 : g.moleFraction(c.solverView(), k);
     }
 
     /** A shaft's |ω| averaged over its island's own time (see {@link TimeAverage}). */

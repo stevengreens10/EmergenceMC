@@ -147,6 +147,17 @@ neoForge {
             systemProperty 'emergence.islandBudgetMs', '1e9'
             systemProperty 'emergence.buildDemo', 'true'
             systemProperty 'emergence.demoSet', 'station'
+            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
+        }
+        // The station's tour: plays a copy of its world, checks it as a player finds it, quits.
+        stationShowcase {
+            client()
+            programArguments.addAll('--quickPlaySingleplayer', 'Emergence Station Tour', '--width', '1280', '--height', '720')
+            systemProperty 'emergence.autoShowcase', 'true'
+            systemProperty 'emergence.demoSet', 'station'
+            systemProperty 'emergence.showcaseOnly', ''
+            systemProperty 'emergence.gifs', System.getProperty('emergence.gifs', '')
+            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
         }
         // Boots straight into the power station's world (run ./gradlew generateStationWorld first).
         stationClient {
@@ -189,6 +200,16 @@ processResources {
 
 tasks.named('runDemoWorld') {
     doFirst { delete 'run-demo/world' }
+}
+
+tasks.named('runStationShowcase') {
+    doFirst {
+        delete 'run/saves/Emergence Station Tour'
+        copy {
+            from 'run-station/world'
+            into 'run/saves/Emergence Station Tour'
+        }
+    }
 }
 
 tasks.named('runStationWorld') {

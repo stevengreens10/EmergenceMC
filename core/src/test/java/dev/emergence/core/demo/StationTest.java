@@ -9,6 +9,27 @@ import static dev.emergence.core.demo.DemoExhibitsTest.AMBIENT;
 
 /** The power station ({@link StationExhibit}), section by section. */
 class StationTest {
+    /**
+     * Saved and reloaded, as a world does: run {@code -Ddiag.reload=<s>}, export the state, compile the station afresh
+     * from it and run on (a restart from a running station's state).
+     */
+    @Test
+    @EnabledIfSystemProperty(named = "diag.reload", matches = ".+")
+    void stationRestartsFromItsSavedState() {
+        Exhibit e = StationExhibit.station(!Boolean.getBoolean("diag.plantOnly"));
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+        c.toggleSwitch(b.id(e, "lightUp"));
+        DemoExhibitsTest.run(c, Double.parseDouble(System.getProperty("diag.reload")));
+        var saved = c.exportState();
+        System.out.printf("before: t=%.1f s, engine %.2f rad/s%n", c.time(), Math.abs(c.probe(b.id(e, "shaft")).angularVelocity()));
+        CompiledAssembly r = AssemblyCompiler.compile(b.assembly(), saved);
+        for (int i = 0; i < 20; i++) {
+            r.step(0.05);
+            if (i % 5 == 4) System.out.printf("after reload: t=%.2f s, engine %.2f rad/s%n", r.time(), Math.abs(r.probe(b.id(e, "shaft")).angularVelocity()));
+        }
+    }
+
     /** The plant with the main fuel held open by hand: does the firebox keep the boiler pressed and the engine running? */
     @Test
     @EnabledIfSystemProperty(named = "diag.station", matches = ".+")

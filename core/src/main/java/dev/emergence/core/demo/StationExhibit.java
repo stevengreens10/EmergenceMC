@@ -124,16 +124,17 @@ public final class StationExhibit {
         int chimney = e.fill(PIPE, st, 7, y - 1, 13, 7, y + 7, 13, Dir.UP, "bore", 0.04, "wall", 0.001);
         e.name("chimney", chimney + 8);
         e.fill(BLOCK, st, 7, 0, 13, 7, y - 2, 13, Dir.UP); // its foot: capped below (open, it would draw air in there)
-        // ---- fuel: six bottles in two columns at x = 2, a needle valve (opened to start the station, shut to stop it)
-        int fuel = e.add(TANK, st, 2, y - 1, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        // ---- fuel: six bottles in two columns at x = 3, a needle valve straight into the firebox (opened to start the
+        // station, shut to stop it; a pipe between them, a cubic centimetre of pure methane squeezed between the choked
+        // needle and the firebox, would not restart from a saved world)
+        int fuel = e.add(TANK, st, 3, y - 1, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
         e.name("fuel", fuel);
-        e.add(TANK, st, 2, y - 2, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
-        e.add(TANK, st, 2, 0, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
-        e.fill(TANK, st, 2, 0, 14, 2, y - 1, 14, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
-        int needle = e.add(VALVE, "brass", 3, y - 1, 13, Dir.EAST, "bore", 4e-5); // choked: some 40 mg/s, 2 kW of fire
+        e.add(TANK, st, 3, y - 2, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        e.add(TANK, st, 3, 0, 13, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        e.fill(TANK, st, 3, 0, 14, 3, y - 1, 14, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
+        int needle = e.add(VALVE, "brass", 4, y - 1, 13, Dir.EAST, "bore", 4e-5); // choked: some 40 mg/s, 2 kW of fire
         e.name("needle", needle);
         e.latch(needle); // burning, as the station is found
-        e.add(PIPE, st, 4, y - 1, 13, Dir.EAST, "bore", 0.004);
         // ---- the water circuit is closed: the engine exhausts, and the safety valve blows, into an air-cooled condenser
         // west of the engine; its well feeds a pump on the crankshaft's west end, which returns the water to the boiler
         condenser(e, y, steam);

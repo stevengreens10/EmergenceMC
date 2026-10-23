@@ -373,8 +373,10 @@ final class PlayerHand {
                 return true;
             }
             // the client's copy of the place first: deep in a long tour its chunks come late, and until they do there is
-            // no part to see and every space round it counts as solid (up to 30 s)
-            if (ticks == 0 && !around(mc, t.block) && waitedForChunks++ < 600) return false;
+            // no part to see and every space round it counts as solid; a chunk can come before its assemblies' parts do
+            // (up to 30 s)
+            if (ticks == 0 && (!around(mc, t.block) || !(mc.level.getBlockEntity(t.block) instanceof AssemblyBlockEntity))
+                    && waitedForChunks++ < 600) return false;
             if (ticks++ == 0) {
                 releaseAll(mc);
                 if (!plan(mc)) {

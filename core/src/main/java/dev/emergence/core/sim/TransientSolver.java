@@ -1214,6 +1214,11 @@ public final class TransientSolver implements StateView {
         return newtonIterations;
     }
 
+    /** Number of unknowns (the size of each Newton step's linear system). */
+    public int unknowns() {
+        return n;
+    }
+
     public long newtonFailures() {
         return newtonFailures;
     }

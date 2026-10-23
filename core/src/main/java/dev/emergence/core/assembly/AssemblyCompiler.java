@@ -2949,7 +2949,10 @@ public final class AssemblyCompiler {
             for (Part p : fluids) ventRef = Math.min(ventRef, p.center().y());
             Map<Long, Object[]> pistons = new HashMap<>();
             for (Part p : fluids) if (p.kind() == PartKind.CYLINDER) linkPiston(p, pistons);
+            Map<Long, Run> runOf = findRuns(fluids, pistons);
             for (Part p : fluids) {
+                Run run = runOf.get(p.id());
+                if (run != null && run.rep != p) continue; // a run is one volume: made with its first part
                 var f = db.byCode(PartGeometry.fluidCode(p));
                 double[] st = prev.fluids().get(p.id());
                 double p0 = st != null ? st[0] : p.param("pressure", pAtm);
@@ -2977,10 +2980,12 @@ public final class AssemblyCompiler {
                     c.pistons.put(p.id(), pc);
                     c.pistonLateral.put(p.id(), (Vec3) link[2]);
                 } else {
-                    v = c.network.add(new FluidVolume(pn, tn, f, Math.max(PartGeometry.fluidVolume(p), 1e-9)));
+                    double vol = run != null ? run.volume : PartGeometry.fluidVolume(p);
+                    v = c.network.add(new FluidVolume(pn, tn, f, Math.max(vol, 1e-9)));
                 }
                 if (wet) v.withPhase(s0);
                 c.fluidOfPart.put(p.id(), v);
+                if (run != null) for (Part m : run.members) c.fluidOfPart.put(m.id(), v);
             }
             Map<Long, List<FluidBranch>> through = new HashMap<>();
             Set<Long> seen = new HashSet<>();
@@ -3005,6 +3010,8 @@ public final class AssemblyCompiler {
                                 }
                                 if (!ports(p, d, q) || !ports(q, d.opposite(), p)) continue;
                                 if (!seen.add(pairKey(p.id(), q.id()))) continue;
+                                Run rp = runOf.get(p.id()), rq = runOf.get(q.id());
+                                if (rp != null && rp == rq) continue; // inside a run: one volume
                                 FluidVolume va = c.fluidOfPart.get(p.id()), vb = c.fluidOfPart.get(q.id());
                                 if (va.fluid() != vb.fluid()) {
                                     c.warnings.add("Parts #" + p.id() + " and #" + q.id() + " hold different fluids and are not connected");
@@ -3018,12 +3025,21 @@ public final class AssemblyCompiler {
                                 if (!axial && p.kind() != PartKind.TANK) k += 0.9;
                                 if (d.axis() != q.axis().axis() && q.kind() != PartKind.TANK) k += 0.9;
                                 double len = halfExtent(p, d) + halfExtent(q, d.opposite());
-                                double dz = q.center().y() - p.center().y();
+                                if (rp != null) {
+                                    len += rp.internalLength / 2;
+                                    k += rp.internalK / 2;
+                                }
+                                if (rq != null) {
+                                    len += rq.internalLength / 2;
+                                    k += rq.internalK / 2;
+                                }
+                                double dz = (rq != null ? rq.yRef : q.center().y()) - (rp != null ? rp.yRef : p.center().y());
                                 FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(),
                                         vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin),
                                         Math.max(roughness(p), roughness(q)), k, dz)
                                         .withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id());
-                                if (va.twoPhase()) b.withPorts(va.port(portHeight(p, y, d)), vb.port(portHeight(q, ny, d.opposite())));
+                                if (va.twoPhase()) b.withPorts(va.port(rp != null ? rp.portHeight(y, d) : portHeight(p, y, d)),
+                                        vb.port(rq != null ? rq.portHeight(ny, d.opposite()) : portHeight(q, ny, d.opposite())));
                                 double dhMin = Math.min(PartGeometry.hydraulicDiameter(p), PartGeometry.hydraulicDiameter(q));
                                 if (p.kind() != PartKind.TANK && q.kind() != PartKind.TANK) b.withHydraulicDiameter(dhMin);
                                 Part rotor = rotorFor(p, d, q);
@@ -3037,17 +3053,131 @@ public final class AssemblyCompiler {
                                         c.valveBranches.computeIfAbsent(valve.id(), kk -> new ArrayList<>()).add(b);
                                 }
                                 c.network.add(b);
-                                through.computeIfAbsent(p.id(), kk -> new ArrayList<>()).add(b);
-                                through.computeIfAbsent(q.id(), kk -> new ArrayList<>()).add(b);
+                                through.computeIfAbsent((rp != null ? rp.rep : p).id(), kk -> new ArrayList<>()).add(b);
+                                through.computeIfAbsent((rq != null ? rq.rep : q).id(), kk -> new ArrayList<>()).add(b);
                             }
             }
             // heat exchange between each fluid volume and its own wall (boiling and condensation for water)
             for (Part p : fluids) {
                 FluidVolume v = c.fluidOfPart.get(p.id());
+                Run run = runOf.get(p.id());
                 c.network.add(new FluidWallConvection(v.temperatureNode(), c.thermalOfPart.get(p.id()), v.fluid(),
                         PartGeometry.wettedArea(p), PartGeometry.hydraulicDiameter(p), PartGeometry.passageArea(p),
-                        through.getOrDefault(p.id(), List.of())).withTwoPhase(v, p.boxSize(1)));
+                        through.getOrDefault((run != null ? run.rep : p).id(), List.of()))
+                        .withTwoPhase(v, run != null ? run.height() : p.boxSize(1)));
             }
+        }
+
+        /**
+         * A run of plain pipe: single-cell pipes of one bore and one fluid, each joined to exactly two others along the
+         * run (or to whatever the run ends at), with no open end, rotor or piston. It is one volume — the cells' fluid
+         * moves together, its pressure and temperature one — where each cell was one, with its own pressure and
+         * temperature and a flow between each pair: a lumped pressure–flow model of ordinary piping. What it keeps: the
+         * cells' total volume (what the run holds), their walls (each exchanges heat with the run's fluid), the friction
+         * of the run's whole length and the loss at each turn within it (half each to its two ends' branches), and its
+         * rise (its ends' branches measure height to the run's mean height, so the head from end to end is exact). What
+         * it loses: a pressure or temperature gradient along the run, and two phases stratified along a tall run (its
+         * liquid level is taken over the run's height). Long pipelines were most of a steam plant's unknowns, and their
+         * smallest cells held its steps short. {@code -Ddiag.noLump=true} builds every cell its own volume.
+         */
+        static final class Run {
+            final List<Part> members = new ArrayList<>();
+            Part rep;
+            double volume, internalLength, internalK, yRef;
+            int yMinCell = Integer.MAX_VALUE, yMaxCell = Integer.MIN_VALUE;
+
+            /** Relative height (0 bottom ... 1 top) of a port through face d of cell row y, over the run's height. */
+            double portHeight(int y, Dir d) {
+                double top = yMaxCell - yMinCell + 1;
+                double at = d == Dir.UP ? y - yMinCell + 1 : d == Dir.DOWN ? y - yMinCell : y - yMinCell + 0.5;
+                return Math.max(0, Math.min(1, at / top));
+            }
+
+            double height() {
+                return (yMaxCell - yMinCell + 1) * CELL;
+            }
+        }
+
+        /** The runs of plain pipe among the fluid parts (see {@link Run}), by member part id. */
+        Map<Long, Run> findRuns(List<Part> fluids, Map<Long, Object[]> pistons) {
+            Map<Long, Run> out = new HashMap<>();
+            if (Boolean.getBoolean("diag.noLump")) return out;
+            // each part's fluid connections, by the rules the branches are made by
+            Map<Long, List<Part>> nbr = new HashMap<>();
+            Map<Long, List<Dir>> nbrDir = new HashMap<>();
+            Set<Long> special = new HashSet<>();
+            for (Part p : fluids) {
+                for (int x = p.minX(); x <= p.maxX(); x++)
+                    for (int y = p.minY(); y <= p.maxY(); y++)
+                        for (int z = p.minZ(); z <= p.maxZ(); z++)
+                            for (Dir d : Dir.values()) {
+                                int nx = x + d.dx, ny = y + d.dy, nz = z + d.dz;
+                                if (p.containsCell(nx, ny, nz)) continue;
+                                boolean axial = d.axis() == p.axis().axis();
+                                Part q = null;
+                                for (Part o : a.at(nx, ny, nz)) if (o.kind().holdsFluid() && o != p) q = o;
+                                if (q == null) {
+                                    if (axial && p.kind() != PartKind.TANK && a.at(nx, ny, nz).isEmpty() && !a.isSolidCell(nx, ny, nz))
+                                        special.add(p.id()); // an open end
+                                    continue;
+                                }
+                                if (!ports(p, d, q) || !ports(q, d.opposite(), p)) continue;
+                                if (PartGeometry.fluidCode(p) != PartGeometry.fluidCode(q)) continue;
+                                if (rotorFor(p, d, q) != null) {
+                                    special.add(p.id());
+                                    special.add(q.id());
+                                }
+                                nbr.computeIfAbsent(p.id(), kk -> new ArrayList<>()).add(q);
+                                nbrDir.computeIfAbsent(p.id(), kk -> new ArrayList<>()).add(d);
+                            }
+            }
+            java.util.function.Predicate<Part> plain = p -> p.kind() == PartKind.PIPE && !pistons.containsKey(p.id())
+                    && !special.contains(p.id()) && nbr.getOrDefault(p.id(), List.of()).size() == 2
+                    && p.minX() == p.maxX() && p.minY() == p.maxY() && p.minZ() == p.maxZ();
+            Set<Long> done = new HashSet<>();
+            for (Part start : fluids) {
+                if (done.contains(start.id()) || !plain.test(start)) continue;
+                double area = PartGeometry.passageArea(start);
+                int code = PartGeometry.fluidCode(start);
+                Run run = new Run();
+                java.util.ArrayDeque<Part> todo = new java.util.ArrayDeque<>(List.of(start));
+                done.add(start.id());
+                while (!todo.isEmpty()) {
+                    Part m = todo.poll();
+                    run.members.add(m);
+                    for (Part q : nbr.get(m.id())) {
+                        if (done.contains(q.id()) || !plain.test(q) || PartGeometry.fluidCode(q) != code
+                                || Math.abs(PartGeometry.passageArea(q) - area) > 1e-9 * area) continue;
+                        done.add(q.id());
+                        todo.add(q);
+                    }
+                }
+                if (run.members.size() < 2) continue;
+                run.members.sort(java.util.Comparator.comparingLong(Part::id));
+                run.rep = run.members.get(0);
+                Set<Long> in = new HashSet<>();
+                for (Part m : run.members) in.add(m.id());
+                double ySum = 0;
+                for (Part m : run.members) {
+                    run.volume += PartGeometry.fluidVolume(m);
+                    ySum += m.center().y();
+                    run.yMinCell = Math.min(run.yMinCell, m.minY());
+                    run.yMaxCell = Math.max(run.yMaxCell, m.maxY());
+                    List<Part> ns = nbr.get(m.id());
+                    List<Dir> ds = nbrDir.get(m.id());
+                    for (int i = 0; i < ns.size(); i++) {
+                        Part q = ns.get(i);
+                        if (!in.contains(q.id()) || q.id() < m.id()) continue; // each joint inside the run once
+                        Dir d = ds.get(i);
+                        run.internalLength += halfExtent(m, d) + halfExtent(q, d.opposite());
+                        if (d.axis() != m.axis().axis()) run.internalK += 0.9; // a turn into a tube's side
+                        if (d.axis() != q.axis().axis()) run.internalK += 0.9;
+                    }
+                }
+                run.yRef = ySum / run.members.size();
+                for (Part m : run.members) out.put(m.id(), run);
+            }
+            return out;
         }
 
         /** Relative height (0 bottom ... 1 top) of the port through face d of cell row y of a fluid part. */

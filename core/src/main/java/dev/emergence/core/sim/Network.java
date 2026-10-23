@@ -148,7 +148,7 @@ public final class Network {
         return slotAbsTol.size();
     }
 
-    String unknownName(int i) {
+    public String unknownName(int i) {
         return unknownNames.get(i);
     }
 

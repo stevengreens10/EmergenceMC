@@ -271,8 +271,19 @@ public final class FluidBranch implements Element {
     /** Lift fraction of a check valve for the pressure difference p_a − p_b. */
     double checkLift(double dp) {
         double u = (dp - crack) / fullOpen;
-        if (u <= 0) return 1e-6 * Math.exp(Math.max(u, -50)); // a seated disc: a vanishing leak keeps Newton smooth
-        return Math.min(1, u) + 1e-6;
+        // the disc lifts in proportion past its cracking pressure and stops at its full lift; both corners are rounded
+        // over 2 % of the lift (ε·ln(1 + e^{u/ε}), less the same past full lift): a corner's jump in slope cost a feed
+        // pump's check valves Newton iterations at every stroke. Seated, the lift dies away as e^{u/ε} (a millionth of
+        // the bore 0.3 of the lift below cracking), and a vanishing leak keeps it smooth.
+        return softplus(u, CHECK_ROUND) - softplus(u - 1, CHECK_ROUND) + 1e-6 * Math.exp(Math.max(u, -50));
+    }
+
+    private static final double CHECK_ROUND = 0.02;
+
+    /** ε·ln(1 + e^{u/ε}), without overflow. */
+    private static double softplus(double u, double eps) {
+        double z = u / eps;
+        return z > 30 ? u : eps * Math.log1p(Math.exp(z));
     }
 
     /** Diagnostic tag (e.g. the parts this branch joins), shown in solver messages. */

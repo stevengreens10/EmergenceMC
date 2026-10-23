@@ -46,8 +46,26 @@ public final class WaterSteam implements Fluid {
      * All saturation properties at T in one pass: [p_s, dp_s/dT (analytic), ρ', ρ'', u', u'', h', h''], with the
      * fractional powers of the IAPWS correlations built from integer powers of τ^{1/6} and θ^{1/2}.
      */
+    /**
+     * Saturation properties at t, from a small per-thread cache: a plant asks for the same few temperatures many times
+     * in each Newton iteration (every port of a vessel, every wall it warms), and each answer costs several exp, cbrt
+     * and sqrt. A miss stores a new array (never one a caller may still hold); the arrays are read-only.
+     */
     private static double[] saturation(double t) {
         t = clampT(t);
+        double[][] cache = SAT_CACHED.get();
+        long bits = Double.doubleToRawLongBits(t);
+        int slot = (int) ((bits * 0x9E3779B97F4A7C15L) >>> 58);
+        double[] hit = cache[slot];
+        if (hit != null && Double.doubleToRawLongBits(hit[0]) == bits) return hit;
+        double[] c = computeSaturation(t);
+        cache[slot] = c;
+        return c;
+    }
+
+    private static final ThreadLocal<double[][]> SAT_CACHED = ThreadLocal.withInitial(() -> new double[64][]);
+
+    private static double[] computeSaturation(double t) {
         double[] c = new double[9];
         double tau = 1 - t / TC, st = Math.sqrt(tau), t2 = tau * tau, t3 = t2 * tau;
         double sum = -7.85951783 * tau + 1.84408259 * tau * st - 11.7866497 * t3 + 22.6807411 * t3 * st
@@ -101,6 +119,21 @@ public final class WaterSteam implements Fluid {
     /** Saturation temperature T_s(p) [K] (Newton on ln p_s, quadratically convergent). */
     public static double tSat(double p) {
         p = Math.max(Math.min(p, 0.99 * PC), 612);
+        // (cached per thread as saturation is: a Newton solve, asked for the same pressures many times an iteration)
+        double[] cache = TSAT_CACHED.get();
+        long bits = Double.doubleToRawLongBits(p);
+        int slot = 2 * (int) ((bits * 0x9E3779B97F4A7C15L) >>> 58);
+        if (Double.doubleToRawLongBits(cache[slot]) == bits) return cache[slot + 1];
+        double t = solveTSat(p);
+        cache[slot] = p;
+        cache[slot + 1] = t;
+        return t;
+    }
+
+    /** {p, T_sat(p)} pairs, direct-mapped (p = 0 is never asked: the pressure is clamped above 612 Pa). */
+    private static final ThreadLocal<double[]> TSAT_CACHED = ThreadLocal.withInitial(() -> new double[128]);
+
+    private static double solveTSat(double p) {
         double lp = Math.log(p / PC);
         // start: Clausius–Clapeyron through the normal boiling point, 1/T = 1/373.12 − (R/h_fg)·ln(p/p0)
         double t = clampT(1 / (1 / 373.124 - 461.5 / 2.26e6 * Math.log(p / 101_325)));

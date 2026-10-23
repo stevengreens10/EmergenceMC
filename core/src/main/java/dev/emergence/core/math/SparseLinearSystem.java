@@ -1,10 +1,6 @@
 package dev.emergence.core.math;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Sparse LU solver designed for repeated Newton iterations on a fixed network topology.
@@ -149,6 +145,15 @@ public final class SparseLinearSystem implements LinearSystem {
             val[seqIdx[c]] += v;
             return;
         }
+        // an element that leaves out an entry this time (a zero it does not stamp, a branch of its code not taken): pick
+        // up its recorded sequence a few entries on, rather than rewriting the record — rewritten, a record that
+        // alternated between two patterns missed every time, and each miss cost a hash lookup for the rest of the element
+        for (int ahead = 1; ahead <= 4 && c + ahead < segLen[seg]; ahead++) {
+            if (seqKey[c + ahead] != key) continue;
+            cursor = c + ahead + 1;
+            val[seqIdx[c + ahead]] += v;
+            return;
+        }
         int idx = entry(key, row, col);
         if (c >= seqKey.length) {
             seqKey = Arrays.copyOf(seqKey, seqKey.length * 2);
@@ -197,14 +202,26 @@ public final class SparseLinearSystem implements LinearSystem {
         return c;
     }
 
+    /** Diagnostics ({@code diag.collapses=true}): how often each unknown's pivot collapsed (by column). */
+    public static final java.util.Map<Integer, Integer> COLLAPSES = Boolean.getBoolean("diag.collapses")
+            ? new java.util.concurrent.ConcurrentHashMap<>() : null;
+
+    /** Diagnostics: factorisations with a fresh pivot order (pattern changed / pivot unstable), and reused ones. */
+    public static final java.util.concurrent.atomic.LongAdder FULL_PATTERN = new java.util.concurrent.atomic.LongAdder(),
+            FULL_UNSTABLE = new java.util.concurrent.atomic.LongAdder(), REFACTORS = new java.util.concurrent.atomic.LongAdder();
+
     @Override
     public void solve(double[] b) {
         if (patternChanged || !factored) {
+            FULL_PATTERN.increment();
             buildRowIndex();
             fullFactor();
             patternChanged = false;
         } else if (!refactor()) {
+            FULL_UNSTABLE.increment();
             fullFactor();
+        } else {
+            REFACTORS.increment();
         }
         // Forward substitution (L has unit diagonal)
         double[] y = work;
@@ -236,26 +253,49 @@ public final class SparseLinearSystem implements LinearSystem {
         for (int e = 0; e < nnz; e++) aRowIdx[fill[rowOf[e]]++] = e;
     }
 
-    /** Right-looking Markowitz elimination; records pivot order and fill pattern. */
+    /**
+     * Right-looking Markowitz elimination; records pivot order and fill pattern. The active submatrix is held as plain
+     * arrays: each row its column indices and values, each column its rows in ascending order (the order the pivot
+     * search meets them, so ties break as they always have), and each elimination scatters the target row through a
+     * dense position map. No boxed keys or hash tables: with them, a two-phase plant spent half its solves here.
+     */
     private void fullFactor() {
-        List<Map<Integer, Double>> rows = new ArrayList<>(n);
-        List<java.util.Set<Integer>> cols = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            rows.add(new HashMap<>());
-            cols.add(new java.util.HashSet<>());
+        int[][] rc = new int[n][];
+        double[][] rv = new double[n][];
+        int[] rl = new int[n];
+        int[][] cr = new int[n][];
+        int[] cl = new int[n];
+        {
+            int[] rcount = new int[n], ccount = new int[n];
+            for (int e = 0; e < nnz; e++) {
+                rcount[rowOf[e]]++;
+                ccount[colOf[e]]++;
+            }
+            for (int i = 0; i < n; i++) {
+                rc[i] = new int[Math.max(4, 2 * rcount[i])];
+                rv[i] = new double[rc[i].length];
+                cr[i] = new int[Math.max(4, 2 * ccount[i])];
+            }
+            for (int e = 0; e < nnz; e++) {
+                int r = rowOf[e], c = colOf[e];
+                int k = rl[r]++;
+                rc[r][k] = c;
+                rv[r][k] = val[e];
+                cr[c][cl[c]++] = r;
+            }
+            for (int c = 0; c < n; c++) Arrays.sort(cr[c], 0, cl[c]);
         }
-        for (int e = 0; e < nnz; e++) {
-            rows.get(rowOf[e]).merge(colOf[e], val[e], Double::sum);
-            cols.get(colOf[e]).add(rowOf[e]);
-        }
-        boolean[] rowDone = new boolean[n], colDone = new boolean[n];
+        int[] posOf = new int[n];
+        Arrays.fill(posOf, -1);
+        boolean[] colDone = new boolean[n];
         rowPerm = new int[n];
         colPerm = new int[n];
         int[] rowStep = new int[n];
         colStep = new int[n];
-        // L entries recorded as (original row i, step s, value); U rows recorded per step.
-        List<int[]> lEntriesRow = new ArrayList<>();
-        List<Double> lEntriesVal = new ArrayList<>();
+        // L entries recorded as (original row, step, value); U rows recorded per step.
+        int lCountAll = 0;
+        int[] lRow = new int[Math.max(16, nnz)], lStep = new int[lRow.length];
+        double[] lV = new double[lRow.length];
         int[][] uColsOrig = new int[n][];
         double[][] uValsOrig = new double[n][];
         uDiag = new double[n];
@@ -265,17 +305,18 @@ public final class SparseLinearSystem implements LinearSystem {
             int bestR = -1, bestC = -1;
             long bestCost = Long.MAX_VALUE;
             double bestMag = 0;
-            int[] order = smallestColumns(cols, colDone, 4);
+            int[] order = smallestColumns(cl, colDone, 4);
             for (int c : order) {
                 if (c < 0) continue;
                 double colMax = 0;
-                for (int r : cols.get(c)) colMax = Math.max(colMax, Math.abs(rows.get(r).get(c)));
+                for (int q = 0; q < cl[c]; q++) colMax = Math.max(colMax, Math.abs(valueAt(rc, rv, rl, cr[c][q], c)));
                 if (colMax == 0) continue;
-                int cc = cols.get(c).size();
-                for (int r : cols.get(c)) {
-                    double v = Math.abs(rows.get(r).get(c));
+                int cc = cl[c];
+                for (int q = 0; q < cl[c]; q++) {
+                    int r = cr[c][q];
+                    double v = Math.abs(valueAt(rc, rv, rl, r, c));
                     if (v < PIVOT_THRESHOLD * colMax) continue;
-                    long cost = (long) (rows.get(r).size() - 1) * (cc - 1);
+                    long cost = (long) (rl[r] - 1) * (cc - 1);
                     if (cost < bestCost || (cost == bestCost && v > bestMag)) {
                         bestCost = cost;
                         bestR = r;
@@ -289,8 +330,9 @@ public final class SparseLinearSystem implements LinearSystem {
                 double max = 0;
                 for (int c = 0; c < n; c++) {
                     if (colDone[c]) continue;
-                    for (int r : cols.get(c)) {
-                        double v = Math.abs(rows.get(r).get(c));
+                    for (int q = 0; q < cl[c]; q++) {
+                        int r = cr[c][q];
+                        double v = Math.abs(valueAt(rc, rv, rl, r, c));
                         if (v > max) {
                             max = v;
                             bestR = r;
@@ -310,49 +352,80 @@ public final class SparseLinearSystem implements LinearSystem {
             colPerm[s] = c;
             rowStep[r] = s;
             colStep[c] = s;
-            Map<Integer, Double> prow = rows.get(r);
-            double piv = prow.get(c);
+            int[] prc = rc[r];
+            double[] prv = rv[r];
+            int plen = rl[r];
+            double piv = valueAt(rc, rv, rl, r, c);
             uDiag[s] = piv;
             // record U row (excluding pivot column)
-            int m = prow.size() - 1;
-            int[] uc = new int[m];
-            double[] uv = new double[m];
+            int[] uc = new int[plen - 1];
+            double[] uv = new double[plen - 1];
             int k = 0;
-            for (var en : prow.entrySet()) {
-                if (en.getKey() == c) continue;
-                uc[k] = en.getKey();
-                uv[k++] = en.getValue();
+            for (int q = 0; q < plen; q++) {
+                if (prc[q] == c) continue;
+                uc[k] = prc[q];
+                uv[k++] = prv[q];
             }
             uColsOrig[s] = uc;
             uValsOrig[s] = uv;
-            // remove pivot row from column sets
-            for (int j : prow.keySet()) cols.get(j).remove(r);
-            rowDone[r] = true;
+            // remove pivot row from column lists
+            for (int q = 0; q < plen; q++) removeSorted(cr, cl, prc[q], r);
             colDone[c] = true;
-            // eliminate column c from other rows
-            List<Integer> targets = new ArrayList<>(cols.get(c));
-            for (int i : targets) {
-                Map<Integer, Double> irow = rows.get(i);
-                double f = irow.remove(c) / piv;
-                cols.get(c).remove(i);
-                lEntriesRow.add(new int[]{i, s});
-                lEntriesVal.add(f);
+            // eliminate column c from the other rows that have it
+            int nt = cl[c];
+            int[] targets = Arrays.copyOf(cr[c], nt);
+            cl[c] = 0;
+            for (int ti = 0; ti < nt; ti++) {
+                int i = targets[ti];
+                int[] irc = rc[i];
+                double[] irv = rv[i];
+                int ilen = rl[i];
+                // take column c out of row i (the order within a row does not matter)
+                double f = 0;
+                for (int q = 0; q < ilen; q++) {
+                    if (irc[q] != c) continue;
+                    f = irv[q] / piv;
+                    irc[q] = irc[ilen - 1];
+                    irv[q] = irv[ilen - 1];
+                    ilen--;
+                    break;
+                }
+                if (lCountAll == lRow.length) {
+                    lRow = Arrays.copyOf(lRow, 2 * lRow.length);
+                    lStep = Arrays.copyOf(lStep, lRow.length);
+                    lV = Arrays.copyOf(lV, lRow.length);
+                }
+                lRow[lCountAll] = i;
+                lStep[lCountAll] = s;
+                lV[lCountAll++] = f;
+                for (int q = 0; q < ilen; q++) posOf[irc[q]] = q;
                 for (int t = 0; t < uc.length; t++) {
                     int j = uc[t];
-                    Double old = irow.get(j);
-                    if (old == null) {
-                        irow.put(j, -f * uv[t]);
-                        cols.get(j).add(i);
+                    int pq = posOf[j];
+                    if (pq >= 0) {
+                        irv[pq] -= f * uv[t];
                     } else {
-                        irow.put(j, old - f * uv[t]);
+                        if (ilen == irc.length) {
+                            irc = Arrays.copyOf(irc, 2 * irc.length);
+                            irv = Arrays.copyOf(irv, irc.length);
+                        }
+                        irc[ilen] = j;
+                        irv[ilen] = -f * uv[t];
+                        posOf[j] = ilen++;
+                        insertSorted(cr, cl, j, i);
                     }
                 }
+                for (int q = 0; q < ilen; q++) posOf[irc[q]] = -1;
+                rc[i] = irc;
+                rv[i] = irv;
+                rl[i] = ilen;
             }
-            rows.set(r, null);
+            rc[r] = null;
+            rv[r] = null;
         }
         // --- convert to permuted compressed form
         int[] lCount = new int[n];
-        for (int[] e : lEntriesRow) lCount[rowStep[e[0]]]++;
+        for (int e = 0; e < lCountAll; e++) lCount[rowStep[lRow[e]]]++;
         lPat = new int[n][];
         lVal = new double[n][];
         for (int s = 0; s < n; s++) {
@@ -360,11 +433,11 @@ public final class SparseLinearSystem implements LinearSystem {
             lVal[s] = new double[lCount[s]];
         }
         int[] fillCount = new int[n];
-        for (int e = 0; e < lEntriesRow.size(); e++) {
-            int ps = rowStep[lEntriesRow.get(e)[0]];
+        for (int e = 0; e < lCountAll; e++) {
+            int ps = rowStep[lRow[e]];
             int f = fillCount[ps]++;
-            lPat[ps][f] = lEntriesRow.get(e)[1];
-            lVal[ps][f] = lEntriesVal.get(e);
+            lPat[ps][f] = lStep[e];
+            lVal[ps][f] = lV[e];
         }
         for (int s = 0; s < n; s++) sortPaired(lPat[s], lVal[s]);
         uPat = new int[n][];
@@ -386,6 +459,36 @@ public final class SparseLinearSystem implements LinearSystem {
             pivotShareAtFactor[s] = Math.abs(uDiag[s]) / m;
         }
         factored = true;
+    }
+
+    /** The active value at (r, c) (rows are short: a scan). */
+    private static double valueAt(int[][] rc, double[][] rv, int[] rl, int r, int c) {
+        int[] cols = rc[r];
+        for (int q = 0, len = rl[r]; q < len; q++) if (cols[q] == c) return rv[r][q];
+        return 0;
+    }
+
+    /** Removes row r from column c's ascending list. */
+    private static void removeSorted(int[][] cr, int[] cl, int c, int r) {
+        int[] a = cr[c];
+        int len = cl[c];
+        int q = Arrays.binarySearch(a, 0, len, r);
+        if (q < 0) return;
+        System.arraycopy(a, q + 1, a, q, len - q - 1);
+        cl[c] = len - 1;
+    }
+
+    /** Inserts row r into column c's ascending list. */
+    private static void insertSorted(int[][] cr, int[] cl, int c, int r) {
+        int[] a = cr[c];
+        int len = cl[c];
+        int q = Arrays.binarySearch(a, 0, len, r);
+        if (q >= 0) return;
+        q = -q - 1;
+        if (len == a.length) a = cr[c] = Arrays.copyOf(a, 2 * a.length);
+        System.arraycopy(a, q, a, q + 1, len - q);
+        a[q] = r;
+        cl[c] = len + 1;
     }
 
     /** Numeric refactorisation reusing the pivot order and fill pattern. Returns false if a pivot is unstable. */
@@ -427,6 +530,7 @@ public final class SparseLinearSystem implements LinearSystem {
             double share = Math.abs(d) / Math.max(rowMax, Math.abs(d));
             if (!Double.isFinite(d) || d == 0 || Math.abs(d) < PIVOT_COLLAPSE * Math.abs(pivotAtFactor[s])
                     || !(share >= PIVOT_COLLAPSE * pivotShareAtFactor[s])) {
+                if (COLLAPSES != null) COLLAPSES.merge(colPerm[s], 1, Integer::sum);
                 Arrays.fill(w, 0.0);
                 return false;
             }
@@ -435,14 +539,14 @@ public final class SparseLinearSystem implements LinearSystem {
         return true;
     }
 
-    private int[] smallestColumns(List<java.util.Set<Integer>> cols, boolean[] colDone, int k) {
+    private int[] smallestColumns(int[] colCount, boolean[] colDone, int k) {
         int[] best = new int[k];
         int[] bestCount = new int[k];
         Arrays.fill(best, -1);
         Arrays.fill(bestCount, Integer.MAX_VALUE);
         for (int c = 0; c < n; c++) {
             if (colDone[c]) continue;
-            int cnt = cols.get(c).size();
+            int cnt = colCount[c];
             if (cnt == 0) continue;
             for (int i = 0; i < k; i++) {
                 if (cnt < bestCount[i]) {

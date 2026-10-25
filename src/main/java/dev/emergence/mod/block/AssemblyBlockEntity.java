@@ -242,6 +242,9 @@ public final class AssemblyBlockEntity extends BlockEntity {
             if (v.length > 6 && v[5] > 0) {
                 t.putDouble("p", v[5]);
                 t.putDouble("Tf", v[6]);
+                // a water/steam volume's phase (how much of it is water): without it, a reload kept pressures and
+                // temperatures and lost every level
+                if (v.length > 8 && Double.isFinite(v[8])) t.putDouble("s", v[8]);
             }
             if (v.length > 7 && v[7] > 0) t.putDouble("D", v[7]);
             st.add(t);
@@ -260,7 +263,7 @@ public final class AssemblyBlockEntity extends BlockEntity {
         for (Tag x : tag.getList("state", Tag.TAG_COMPOUND)) {
             CompoundTag t = (CompoundTag) x;
             savedState.put(t.getLong("id"), new double[]{t.getDouble("T"), t.getDouble("w"), t.getDouble("a"), t.getDouble("i"),
-                    t.getDouble("v"), t.getDouble("p"), t.getDouble("Tf"), t.getDouble("D")});
+                    t.getDouble("v"), t.getDouble("p"), t.getDouble("Tf"), t.getDouble("D"), t.contains("s") ? t.getDouble("s") : Double.NaN});
         }
         savedChemistry.clear();
         CompoundTag chem = tag.getCompound("chem");

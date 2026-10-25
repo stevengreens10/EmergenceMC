@@ -42,6 +42,14 @@ public final class EmergenceMod {
         NeoForge.EVENT_BUS.addListener(EmergenceMod::onRegisterCommands);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) -> {
             if (Boolean.getBoolean("emergence.buildDemo")) dev.emergence.mod.demo.DemoBuilder.generateWorld(e.getServer());
+            // -Demergence.forceLoad=cx0,cz0,cx1,cz1: those chunks kept loaded with no player near (a headless server loading a
+            // saved machine to see it restart: ./gradlew runStationServer)
+            String fl = System.getProperty("emergence.forceLoad", "");
+            if (!fl.isBlank()) {
+                String[] c = fl.split(",");
+                for (int x = Integer.parseInt(c[0].trim()); x <= Integer.parseInt(c[2].trim()); x++)
+                    for (int z = Integer.parseInt(c[1].trim()); z <= Integer.parseInt(c[3].trim()); z++) e.getServer().overworld().setChunkForced(x, z, true);
+            }
         });
     }
 

@@ -47,7 +47,10 @@ class IslandDumpReplayTest {
                 case "I" -> st.coilCurrents().put(Long.parseLong(f[1]), Double.parseDouble(f[2]));
                 case "V" -> st.capacitorVoltages().put(Long.parseLong(f[1]), Double.parseDouble(f[2]));
                 case "M" -> st.bodyMotion().put(Long.parseLong(f[1]), new double[]{Double.parseDouble(f[2]), Double.parseDouble(f[3])});
-                case "F" -> st.fluids().put(Long.parseLong(f[1]), new double[]{Double.parseDouble(f[2]), Double.parseDouble(f[3])});
+                // (a water/steam volume's phase third, where the dump has it)
+                case "F" -> st.fluids().put(Long.parseLong(f[1]), f.length > 4
+                        ? new double[]{Double.parseDouble(f[2]), Double.parseDouble(f[3]), Double.parseDouble(f[4])}
+                        : new double[]{Double.parseDouble(f[2]), Double.parseDouble(f[3])});
                 case "C" -> {
                     double v = Double.parseDouble(f[2]);
                     // -Ddiag.scaleSpecies=<key>:<factor>,…: a saved amount scaled (e.g. G<id>:N2:1e5, air into a pure gas)

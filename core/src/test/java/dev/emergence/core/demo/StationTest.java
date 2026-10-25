@@ -22,6 +22,9 @@ class StationTest {
         c.toggleSwitch(b.id(e, "lightUp"));
         DemoExhibitsTest.run(c, Double.parseDouble(System.getProperty("diag.reload")));
         var saved = c.exportState();
+        // -Ddiag.dropPhase=true: the water/steam volumes' phases left out, as a world's save once did (pressures and
+        // temperatures kept, every level lost)
+        if (Boolean.getBoolean("diag.dropPhase")) saved.fluids().replaceAll((k, v) -> v.length > 2 ? new double[]{v[0], v[1]} : v);
         System.out.printf("before: t=%.1f s, engine %.2f rad/s%n", c.time(), Math.abs(c.probe(b.id(e, "shaft")).angularVelocity()));
         CompiledAssembly r = AssemblyCompiler.compile(b.assembly(), saved);
         for (int i = 0; i < 20; i++) {
@@ -92,9 +95,21 @@ class StationTest {
             double w = 0;
             long wall0 = System.nanoTime(), acc0 = c.solver().acceptedSteps(), rej0 = c.solver().rejectedSteps(), it0 = c.solver().newtonIterations();
             var lim0 = new java.util.HashMap<>(c.solver().stepLimiters());
+            // -Ddiag.flows=<part name>,…: the mean mass flow through each of those parts' passages over the report [g/s]
+            String[] flowNames = System.getProperty("diag.flows", "").isBlank() ? new String[0] : System.getProperty("diag.flows").split(",");
+            double[] flowSum = new double[flowNames.length];
             for (int i = 0; i < per; i++) {
                 c.step(0.05);
                 w += Math.abs(c.probe(shaft).angularVelocity()) / per;
+                for (int k = 0; k < flowNames.length; k++) {
+                    var br = c.branchesOf(b.id(e, flowNames[k].trim()));
+                    if (!br.isEmpty()) flowSum[k] += br.get(0).massFlow(c.solverView()) / per;
+                }
+            }
+            if (flowNames.length > 0) {
+                StringBuilder sb = new StringBuilder("   mean flows:");
+                for (int k = 0; k < flowNames.length; k++) sb.append(String.format(" %s %.3f g/s;", flowNames[k].trim(), 1e3 * flowSum[k]));
+                System.out.println(sb);
             }
             // -Ddiag.profile=true: what the last 10 s cost, and what held its steps short
             if (Boolean.getBoolean("diag.profile")) {

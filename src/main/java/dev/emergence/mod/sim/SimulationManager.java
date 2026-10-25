@@ -843,7 +843,8 @@ public final class SimulationManager {
                 st.bodyMotion().put(e.getKey(), new double[]{v[1], v[2]});
                 st.coilCurrents().put(e.getKey(), v[3]);
                 st.capacitorVoltages().put(e.getKey(), v[4]);
-                if (v.length > 6 && v[5] > 0) st.fluids().put(e.getKey(), new double[]{v[5], v[6]});
+                if (v.length > 6 && v[5] > 0) st.fluids().put(e.getKey(), v.length > 8 && Double.isFinite(v[8])
+                        ? new double[]{v[5], v[6], v[8]} : new double[]{v[5], v[6]});
                 if (v.length > 7 && v[7] > 0) st.damage().put(e.getKey(), v[7]);
             }
             st.chemistry().putAll(be.savedChemistry());
@@ -886,7 +887,11 @@ public final class SimulationManager {
             st.coilCurrents().forEach((k, v) -> b.append("I ").append(k).append(' ').append(v).append('\n'));
             st.capacitorVoltages().forEach((k, v) -> b.append("V ").append(k).append(' ').append(v).append('\n'));
             st.bodyMotion().forEach((k, v) -> b.append("M ").append(k).append(' ').append(v[0]).append(' ').append(v[1]).append('\n'));
-            st.fluids().forEach((k, v) -> b.append("F ").append(k).append(' ').append(v[0]).append(' ').append(v[1]).append('\n'));
+            st.fluids().forEach((k, v) -> {
+                b.append("F ").append(k);
+                for (double x : v) b.append(' ').append(x);
+                b.append('\n');
+            });
             st.chemistry().forEach((k, v) -> b.append("C ").append(k).append(' ').append(v).append('\n'));
         }
         try {
@@ -1453,7 +1458,7 @@ public final class SimulationManager {
                 double[] fl = s.fluids().getOrDefault(p.id, new double[]{0, 0});
                 be.savedState().put(p.id, new double[]{s.temperatures().getOrDefault(p.id, isl.ambient), m[0], m[1],
                         s.coilCurrents().getOrDefault(p.id, 0.0), s.capacitorVoltages().getOrDefault(p.id, 0.0), fl[0], fl[1],
-                        s.damage().getOrDefault(p.id, 0.0)});
+                        s.damage().getOrDefault(p.id, 0.0), fl.length > 2 ? fl[2] : Double.NaN});
             }
             if (markChanged) markUnsaved(b);
         }

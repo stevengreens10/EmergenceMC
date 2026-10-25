@@ -164,6 +164,17 @@ neoForge {
             client()
             programArguments.addAll('--quickPlaySingleplayer', 'Emergence Station', '--width', '1280', '--height', '720')
             systemProperty 'emergence.demoSet', 'station'
+            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
+        }
+        // A headless server on a copy of the station's world (./gradlew runStationServer): it loads the station as saved,
+        // its chunks kept loaded, and writes a dump if the island will not restart (stop it when done).
+        stationServer {
+            server()
+            gameDirectory = project.file('run-station-load')
+            programArgument '--nogui'
+            systemProperty 'emergence.demoSet', 'station'
+            systemProperty 'emergence.dumpFailures', 'true'
+            systemProperty 'emergence.forceLoad', '-2,-2,5,3'
         }
     }
 
@@ -214,6 +225,16 @@ tasks.named('runStationShowcase') {
 
 tasks.named('runStationWorld') {
     doFirst { delete 'run-station/world' }
+}
+
+tasks.named('runStationServer') {
+    doFirst {
+        delete 'run-station-load/world'
+        copy { from 'run-station/world'; into 'run-station-load/world' }
+        file('run-station-load').mkdirs()
+        file('run-station-load/eula.txt').text = 'eula=true\n'
+        file('run-station-load/server.properties').text = 'online-mode=false\nlevel-name=world\nspawn-protection=0\n'
+    }
 }
 
 // ./gradlew generateStationWorld  ->  run/saves/Emergence Station (open it from Singleplayer, or ./gradlew runStationClient)

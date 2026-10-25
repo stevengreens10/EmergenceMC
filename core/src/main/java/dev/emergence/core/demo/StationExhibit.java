@@ -118,6 +118,8 @@ public final class StationExhibit {
         // the steam riser's end of the boiler and out to the chimney. (The other way round, the boiler's end over the
         // cold mixture took the others' steam back as water, filled, and sent it up the riser into the engine.)
         e.name("crown", e.fill(BLOCK, "copper", 5, y, 13, 5, y, 15, Dir.UP));
+        e.name("crownMid", e.named.get("crown") + 1);
+        e.name("crownEnd", e.named.get("crown") + 2);
         int box = e.fill(TANK, st, 5, y - 1, 13, 5, y - 1, 15, Dir.UP, "wall", 0.0005);
         e.name("firebox", box);
         e.name("fireboxMid", box + 1);
@@ -129,7 +131,7 @@ public final class StationExhibit {
         for (int k = 0; k < 3; k++) e.init(e.named.get("crown") + k, new Exhibit.Initial(480, 0, 0));
         // air inlet, open at its south end: the gallery burner's, whose draft draws nearly the air its 40 µm needle's
         // methane needs (narrower, a cooling firebox starved itself rich; with less fuel, too lean to burn: below 5 %)
-        e.add(PIPE, st, 5, y - 1, 16, Dir.SOUTH, "bore", 0.024);
+        e.add(PIPE, st, 5, y - 1, 16, Dir.SOUTH, "bore", Double.parseDouble(System.getProperty("diag.airBore", "0.024")));
         // the flue: east out of the chamber's north end, up the chimney (open at the top; a longer flue's cold gas
         // weakened the draft as the fuel first came, and the firebox went out too rich)
         e.add(PIPE, st, 6, y - 1, 13, Dir.EAST, "bore", 0.04);
@@ -144,7 +146,7 @@ public final class StationExhibit {
         e.add(TANK, st, 3, y - 2, 15, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
         e.add(TANK, st, 3, 0, 15, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
         e.fill(TANK, st, 3, 0, 14, 3, y - 1, 14, Dir.UP, "x_CH4", 1, "pressure", 200e5, "wall", 0.006);
-        int needle = e.add(VALVE, "brass", 4, y - 1, 15, Dir.EAST, "bore", 4e-5); // choked: some 40 mg/s, 2 kW of fire
+        int needle = e.add(VALVE, "brass", 4, y - 1, 15, Dir.EAST, "bore", Double.parseDouble(System.getProperty("diag.needleBore", "4e-5"))); // choked: some 40 mg/s, 2 kW of fire
         e.name("needle", needle);
         e.latch(needle); // burning, as the station is found
         // ---- the water circuit is closed: the engine exhausts, and the safety valve blows, into an air-cooled condenser
@@ -163,7 +165,7 @@ public final class StationExhibit {
         // the overflow: a 0.3 mm orifice in the boiler's south face, at its water line, up into the safety line — the
         // boiler keeps its own level: above the line the pump's surplus water spills back to the condenser (it flashes
         // there), below it a little steam goes the same way (some 0.05 g/s)
-        e.name("overflow", e.add(VALVE, "brass", 5, y + 1, 16, Dir.UP, with(steam, "bore", 0.0003)));
+        e.name("overflow", e.add(VALVE, "brass", 5, y + 1, 16, Dir.UP, with(steam, "bore", Double.parseDouble(System.getProperty("diag.overflowBore", "0.0003")))));
         e.latch(e.named.get("overflow"));
         e.add(BLOCK, "mica", 5, y, 16, Dir.UP, "fill", 0.2); // its blind foot (mica: beside the crown, steel drew its heat)
         e.fill(PIPE, "copper", 5, y + 2, 16, 5, y + 8, 16, Dir.UP, with(steam, "bore", 0.006));

@@ -67,7 +67,10 @@ public final class LoadContext implements StateView {
     /** Adds ∂F_row/∂x_col. Entries touching reference nodes are ignored. */
     public void addJ(int row, int col, double v) {
         if (touched != null && row >= 0) touched[row] = true;
-        if (row < 0 || col < 0 || v == 0.0) return;
+        // (a zero still goes to the matrix: an element whose derivative is zero this time — a passage's downstream side
+        // — keeps its place in the matrix's assembly replay, which a skipped entry made it lose for a hash lookup at
+        // every following entry; the matrix creates no entry for a zero)
+        if (row < 0 || col < 0) return;
         if (frozen != null && (frozen[row] || frozen[col])) {
             if (row == col && frozenDiag != null) frozenDiag[row] += v;
             return;

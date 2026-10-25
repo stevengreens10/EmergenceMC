@@ -105,7 +105,7 @@ class StationTest {
                 lit = false;
             }
             double w = 0;
-            long wall0 = System.nanoTime(), acc0 = c.solver().acceptedSteps(), rej0 = c.solver().rejectedSteps(), it0 = c.solver().newtonIterations();
+            long wall0 = System.nanoTime(), acc0 = c.solver().acceptedSteps(), rej0 = c.solver().rejectedSteps(), it0 = c.solver().newtonIterations(), nf0 = c.solver().newtonFailures();
             var lim0 = new java.util.HashMap<>(c.solver().stepLimiters());
             // -Ddiag.flows=<part name>,…: the mean mass flow through each of those parts' passages over the report [g/s]
             String[] flowNames = System.getProperty("diag.flows", "").isBlank() ? new String[0] : System.getProperty("diag.flows").split(",");
@@ -142,6 +142,17 @@ class StationTest {
                     System.out.println("   laggards: " + lag.subList(0, Math.min(10, lag.size())));
                     c.solver().newtonLaggards().clear();
                 }
+                if (dev.emergence.core.math.SparseLinearSystem.REPLAY_MISSES != null) {
+                    var mm = new java.util.ArrayList<>(dev.emergence.core.math.SparseLinearSystem.REPLAY_MISSES.entrySet());
+                    mm.sort((p1, p2) -> p2.getValue() - p1.getValue());
+                    long total = 0;
+                    for (var en : mm) total += en.getValue();
+                    StringBuilder sb = new StringBuilder(String.format("   replay misses (%d):", total));
+                    for (var en : mm.subList(0, Math.min(8, mm.size())))
+                        sb.append(' ').append(c.network().elements().get(en.getKey()).getClass().getSimpleName()).append('#').append(en.getKey()).append('=').append(en.getValue());
+                    System.out.println(sb);
+                    dev.emergence.core.math.SparseLinearSystem.REPLAY_MISSES.clear();
+                }
                 if (dev.emergence.core.math.SparseLinearSystem.COLLAPSES != null) {
                     var col = new java.util.ArrayList<>(dev.emergence.core.math.SparseLinearSystem.COLLAPSES.entrySet());
                     col.sort((p1, p2) -> p2.getValue() - p1.getValue());
@@ -158,7 +169,8 @@ class StationTest {
                 System.out.printf("   profile: %.1f s of wall time for 10 s, %d steps accepted, %d rejected, %d Newton iterations, %d unknowns; limiters: %s%n",
                         (System.nanoTime() - wall0) / 1e9, c.solver().acceptedSteps() - acc0, c.solver().rejectedSteps() - rej0,
                         c.solver().newtonIterations() - it0, c.solver().unknowns(), top);
-                System.out.printf("   matrix: %d entries, LU fill %d%n", c.solver().jacobianFill()[0], c.solver().jacobianFill()[1]);
+                System.out.printf("   matrix: %d entries, LU fill %d; rejected steps from Newton failing: %d (the rest by the error estimate)%n",
+                        c.solver().jacobianFill()[0], c.solver().jacobianFill()[1], c.solver().newtonFailures() - nf0);
             }
             // -Ddiag.masses=true: every water volume whose mass moved by more than a gram since the last report
             if (Boolean.getBoolean("diag.masses")) {

@@ -354,7 +354,8 @@ public final class MixtureBranch implements Element {
         for (int j = 0; j < col.length; j++) {
             if (col[j] < 0) continue;
             if (!freshSpecies && isSpeciesColumn(j)) {
-                for (int r = 0; r < col.length; r++) if (col[r] >= 0 && speciesJac[j][r] != 0) ctx.addJ(rowOf(col, r), col[j], speciesJac[j][r]);
+                // (zeros too: the matrix keeps its assembly replay in step through them, and creates no entry for one)
+                for (int r = 0; r < col.length; r++) if (col[r] >= 0) ctx.addJ(rowOf(col, r), col[j], speciesJac[j][r]);
                 continue;
             }
             double x0 = v[j];
@@ -372,7 +373,7 @@ public final class MixtureBranch implements Element {
                 if (col[r] < 0) continue;
                 double d = central ? (f1[r] - fm[r]) / (2 * hj) : (f1[r] - f0[r]) / hj;
                 if (isSpeciesColumn(j)) speciesJac[j][r] = d;
-                if (d != 0) ctx.addJ(rowOf(col, r), col[j], d);
+                ctx.addJ(rowOf(col, r), col[j], d);
                 // the flow equation is a pressure balance of terms as large as the pressures themselves: their
                 // rounding (a few ulps) moves the flow by that over the equation's slope — a floor on its resolution
                 if (central && r == 0 && d != 0) {

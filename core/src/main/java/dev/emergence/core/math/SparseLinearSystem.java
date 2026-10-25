@@ -136,6 +136,7 @@ public final class SparseLinearSystem implements LinearSystem {
     public void add(int row, int col, double v) {
         long key = (((long) row + 1) << 32) | (col & 0xffffffffL); // +1 so no key is 0 (empty marker)
         if (seg < 0) {
+            if (v == 0.0) return;
             int idx = entry(key, row, col); // first: it may grow val
             val[idx] += v;
             return;
@@ -154,6 +155,25 @@ public final class SparseLinearSystem implements LinearSystem {
             val[seqIdx[c + ahead]] += v;
             return;
         }
+        if (v == 0.0) {
+            // a zero creates no entry: kept in the record if the entry is there, else as if not stamped
+            int known = lookup(key);
+            if (known < 0) {
+                cursor = c;
+                return;
+            }
+            if (c >= seqKey.length) {
+                seqKey = Arrays.copyOf(seqKey, seqKey.length * 2);
+                seqIdx = Arrays.copyOf(seqIdx, seqIdx.length * 2);
+            }
+            seqKey[c] = key;
+            seqIdx[c] = known;
+            return;
+        }
+        if (REPLAY_MISSES != null) REPLAY_MISSES.merge(seg, 1, Integer::sum);
+        if (seg == MISS_TRACE_SEG && segLen[seg] > 0 && missTraces++ < 40)
+            System.out.printf("replay miss seg %d at %d of %d: (%d,%d) where the record has %s%n", seg, c, segLen[seg], row, col,
+                    c < segLen[seg] ? "(" + ((seqKey[c] >>> 32) - 1) + "," + (int) seqKey[c] + ")" : "nothing");
         int idx = entry(key, row, col);
         if (c >= seqKey.length) {
             seqKey = Arrays.copyOf(seqKey, seqKey.length * 2);
@@ -201,6 +221,14 @@ public final class SparseLinearSystem implements LinearSystem {
         for (int s = 0; s < n; s++) c += lPat[s].length + uPat[s].length;
         return c;
     }
+
+    /** Diagnostics ({@code diag.replayMisses=true}): assembly adds the replay missed (a hash lookup), by segment (element). */
+    public static final java.util.Map<Integer, Integer> REPLAY_MISSES = Boolean.getBoolean("diag.replayMisses")
+            ? new java.util.concurrent.ConcurrentHashMap<>() : null;
+
+    /** Diagnostics ({@code diag.missTrace=<segment>}): that segment's first replay misses printed. */
+    static final int MISS_TRACE_SEG = Integer.getInteger("diag.missTrace", -2);
+    private static int missTraces;
 
     /** Diagnostics ({@code diag.collapses=true}): how often each unknown's pivot collapsed (by column). */
     public static final java.util.Map<Integer, Integer> COLLAPSES = Boolean.getBoolean("diag.collapses")

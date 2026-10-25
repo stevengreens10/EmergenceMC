@@ -1015,3 +1015,13 @@ Both are fixed in the model: a port now feels its liquid head, the column is tak
 and vessels side by side join through the upper and lower halves of their face. The station now holds its speed
 within 3 % braked, the three tanks sharing one level. Still open: condensate fills the low points of the steam path,
 so the hot well falls for its first minutes, and the condenser holds about half an atmosphere.
+
+**A saved station that would not restart.** Opened from its saved world, the power station failed in its first
+microsecond, and its restart at rest failed too, leaving it cold. The core restarted the same machine from its own
+export without trouble, so the fault lay in the world's round trip. A headless server loading a copy of the world
+(`./gradlew runStationServer`, its chunks force-loaded) reproduced it and wrote a dump, and the dump showed the gap: a
+water/steam volume is exported as pressure, temperature and phase, but a block entity saved only the first two. A
+volume at exactly its boiling point (the safety line, holding the condensate of three minutes) cannot tell from those
+how much of it is water, and the reload guessed. The save now keeps the phase, failure dumps write every value, and
+a restart also starts from the passages' saved flows instead of finding every flow at once from none. The rebuilt
+world loads and runs on.

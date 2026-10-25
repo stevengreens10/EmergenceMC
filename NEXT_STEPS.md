@@ -108,7 +108,13 @@
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):
      a dimmer beam with a larger photodiode load;
-   - the station tour from its saved world needs a display to verify end to end (`runStationShowcase`).
+   - the station tour from its saved world: rerun it (`runStationShowcase`) now that a saved world restarts. Until
+     2026-10-25 it could not: a world's save dropped each water/steam volume's phase, so a reload guessed every level
+     (fixed; `./gradlew runStationServer` loads a copy of the saved world headless to check a restart, and the station
+     runs on from it). Restarts also now start from the passages' saved flows;
+   - an intermittent island failure in the world, ~1 run in 3 of `runStationWorld` (once at 153.6 s, 3.6 s after the
+     brake went on: the hot well's flow into the feed pump's suction pipe); the core does not reproduce it. Dumps now
+     also write the last good state (`island-failure-last-*.txt`): replay the next one from there.
 
 0b. **Every exhibit at real time** (asked for 2026-10-22; measure first: `SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`
    prints ms per 50 ms tick and the unknowns that limit the step):

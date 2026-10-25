@@ -290,7 +290,12 @@ public final class SimulationManager {
                 // run, from nothing
                 EmergenceMod.LOG.error("Simulation of island at {} ({} parts) failed; restarting it at rest{}; {}", isl.blocks.iterator().next(),
                         isl.compiled.assembly().parts().size(), partHint(isl, err.getMessage()), stateSummary(isl), err);
-                if (Boolean.getBoolean("emergence.dumpFailures")) dumpFailure(isl, isl.startState, "island-failure-");
+                // (the state it was compiled from, for a failure on loading; and the last good one, to replay a failure
+                // after minutes from where it happened)
+                if (Boolean.getBoolean("emergence.dumpFailures")) {
+                    dumpFailure(isl, isl.startState, "island-failure-");
+                    dumpFailure(isl, isl.compiled.exportState(), "island-failure-last-");
+                }
                 AssemblyState keep = isl.compiled.exportState().recovery();
                 isl.compiled = compile(isl, keep);
                 try {

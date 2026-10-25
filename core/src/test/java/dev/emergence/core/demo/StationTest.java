@@ -158,6 +158,7 @@ class StationTest {
                 System.out.printf("   profile: %.1f s of wall time for 10 s, %d steps accepted, %d rejected, %d Newton iterations, %d unknowns; limiters: %s%n",
                         (System.nanoTime() - wall0) / 1e9, c.solver().acceptedSteps() - acc0, c.solver().rejectedSteps() - rej0,
                         c.solver().newtonIterations() - it0, c.solver().unknowns(), top);
+                System.out.printf("   matrix: %d entries, LU fill %d%n", c.solver().jacobianFill()[0], c.solver().jacobianFill()[1]);
             }
             // -Ddiag.masses=true: every water volume whose mass moved by more than a gram since the last report
             if (Boolean.getBoolean("diag.masses")) {

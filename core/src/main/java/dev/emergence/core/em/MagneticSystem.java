@@ -756,6 +756,7 @@ public final class MagneticSystem implements Element {
     @Override
     public void setup(SetupContext ctx) {
         build();
+        double[] fluxTol = new double[coils.size()];
         for (Coil c : coils) {
             int j = coils.indexOf(c);
             c.iIdx = ctx.allocUnknown("I(" + c.name + ")", 1e-9);
@@ -765,7 +766,8 @@ public final class MagneticSystem implements Element {
             // tolerance far below the signal forces needlessly tiny steps whenever λ crosses zero.)
             double swing = 0;
             for (Term t : terms) if (t.kind == Kind.FLUX && t.j == j) swing = Math.max(swing, t.spline.range());
-            c.slot = ctx.allocState(Math.max(Math.max(l * 1e-6, 1e-4 * swing), 1e-12));
+            fluxTol[j] = Math.max(Math.max(l * 1e-6, 1e-4 * swing), 1e-12);
+            c.slot = ctx.allocState(fluxTol[j]);
         }
         hIdx = new int[modes.size()];
         hSlot = new int[modes.size()];
@@ -776,7 +778,17 @@ public final class MagneticSystem implements Element {
                 continue;
             }
             hIdx[k] = ctx.allocUnknown("magnetisation" + k, 1e-6 * md.w + 1e-9);
-            hSlot[k] = ctx.allocState(1e-4 * md.w + 1e-9);
+            // The magnetisation counts only through the flux it gives its coils (ψ = ψ_s tanh(μ p/ψ_s)): its error is
+            // held to what theirs is, the coils' flux tolerance over μ — not to 1e-4 of the play's width alone, which
+            // (a generator's steel beside its coils) held it to a fortieth of their flux tolerance, and its every
+            // reversal as a magnet passed to steps that size.
+            double tol = 1e-4 * md.w + 1e-9;
+            if (md.mu > 0) {
+                double flux = Double.POSITIVE_INFINITY;
+                for (int j : md.idx) flux = Math.min(flux, fluxTol[j]);
+                if (Double.isFinite(flux)) tol = Math.max(tol, flux / md.mu);
+            }
+            hSlot[k] = ctx.allocState(tol);
         }
     }
 

@@ -1219,6 +1219,11 @@ public final class TransientSolver implements StateView {
         return n;
     }
 
+    /** The stepping Jacobian's stored entries and its LU factors' off-diagonal entries (fill diagnostics; 0 if dense). */
+    public int[] jacobianFill() {
+        return active.jac instanceof dev.emergence.core.math.SparseLinearSystem s ? new int[]{s.nonZeros(), s.factorNonZeros()} : new int[]{0, 0};
+    }
+
     public long newtonFailures() {
         return newtonFailures;
     }

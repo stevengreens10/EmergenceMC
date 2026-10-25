@@ -183,7 +183,11 @@ public final class AutoShowcase {
                     for (int k = 2; k >= 0; k--) sb.append(light(server, at.apply("bitLed" + k)) > 1e-4 ? '1' : '0');
                     return sb.toString();
                 };
-                STEPS.add(new Step(300, NOTHING, shot.apply("running")).sample(w0, () -> motion(server, shaft, PartKind.SHAFT))
+                // (judged over simulated time: the station runs far slower than real time in the game, and a few hundred
+                // ticks were a third of a second of it, less than one turn of the crankshaft)
+                double[] from = {Double.NaN}, braked = {Double.NaN};
+                STEPS.add(new Step(6000, () -> from[0] = simTime(server, shaft), shot.apply("running"),
+                        () -> onServer(server, key + "t", () -> simTime(server, shaft)) - from[0] > 5).sample(w0, () -> motion(server, shaft, PartKind.SHAFT))
                         .sample(q, () -> chargeDelivered(server, bat)).sample(t, () -> simTime(server, bat))
                         .sample(new Sampler(), () -> {
                             counts.add(bits.get()); // (samples are taken on the server thread)
@@ -198,9 +202,13 @@ public final class AutoShowcase {
                 // a load put on it by hand: the governor holds its speed
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake on", part.apply("brake", PartKind.BRAKE))));
                 double[] on = {Double.NaN};
-                STEPS.add(new Step(2400, () -> on[0] = simTime(server, shaft), null,
+                STEPS.add(new Step(12000, () -> on[0] = simTime(server, shaft), null,
                         () -> onServer(server, key + "t", () -> simTime(server, shaft)) - on[0] > 20));
-                STEPS.add(new Step(200, view, shot.apply("braked")).sample(w1, () -> motion(server, shaft, PartKind.SHAFT))
+                STEPS.add(new Step(6000, () -> {
+                    view.run();
+                    braked[0] = simTime(server, shaft);
+                }, shot.apply("braked"), () -> onServer(server, key + "t", () -> simTime(server, shaft)) - braked[0] > 5)
+                        .sample(w1, () -> motion(server, shaft, PartKind.SHAFT))
                         .check(key + " braked, the governor holds its speed", () -> that(Math.abs(w1.mean() / w0.mean() - 1) <= 0.10,
                                 String.format("mean speed %.2f → %.2f rad/s (%+.1f %%), expected within ±10 %%", w0.mean(), w1.mean(),
                                         100 * (w1.mean() / w0.mean() - 1)))));

@@ -158,6 +158,8 @@ neoForge {
             systemProperty 'emergence.showcaseOnly', ''
             systemProperty 'emergence.gifs', System.getProperty('emergence.gifs', '')
             systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
+            // the station is its world's only island: the whole tick budget is its own (not one island's share of many)
+            systemProperty 'emergence.islandBudgetMs', '35'
         }
         // Boots straight into the power station's world (run ./gradlew generateStationWorld first).
         stationClient {
@@ -165,6 +167,7 @@ neoForge {
             programArguments.addAll('--quickPlaySingleplayer', 'Emergence Station', '--width', '1280', '--height', '720')
             systemProperty 'emergence.demoSet', 'station'
             systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
+            systemProperty 'emergence.islandBudgetMs', '35'
         }
         // A headless server on a copy of the station's world (./gradlew runStationServer): it loads the station as saved,
         // its chunks kept loaded, and writes a dump if the island will not restart (stop it when done).

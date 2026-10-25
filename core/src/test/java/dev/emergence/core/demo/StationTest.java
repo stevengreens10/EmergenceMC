@@ -27,9 +27,21 @@ class StationTest {
         if (Boolean.getBoolean("diag.dropPhase")) saved.fluids().replaceAll((k, v) -> v.length > 2 ? new double[]{v[0], v[1]} : v);
         System.out.printf("before: t=%.1f s, engine %.2f rad/s%n", c.time(), Math.abs(c.probe(b.id(e, "shaft")).angularVelocity()));
         CompiledAssembly r = AssemblyCompiler.compile(b.assembly(), saved);
-        for (int i = 0; i < 20; i++) {
+        // -Ddiag.reloadRun=<s>: how long it runs on after the reload (1 s by default), reporting each quarter of it with
+        // the counter's state (it should go on counting)
+        int steps = (int) Math.round(Double.parseDouble(System.getProperty("diag.reloadRun", "1")) / 0.05);
+        // -Ddiag.sun=<W/m²>: the sun high in the sky, every part in it (as a world by day)
+        double sun = Double.parseDouble(System.getProperty("diag.sun", "0"));
+        if (sun > 0) r.setDaylight(new dev.emergence.core.math.Vec3(0.3, -1, 0.2), sun, id -> true);
+        java.util.Set<String> seen = new java.util.TreeSet<>();
+        for (int i = 0; i < steps; i++) {
             r.step(0.05);
-            if (i % 5 == 4) System.out.printf("after reload: t=%.2f s, engine %.2f rad/s%n", r.time(), Math.abs(r.probe(b.id(e, "shaft")).angularVelocity()));
+            StringBuilder bits = new StringBuilder();
+            if (e.named.containsKey("bitLed0")) for (int k = 2; k >= 0; k--) bits.append(r.lightOutput(b.id(e, "bitLed" + k)) > 1e-4 ? '1' : '0');
+            seen.add(bits.toString());
+            if ((i + 1) % Math.max(1, steps / 4) == 0)
+                System.out.printf("after reload: t=%.2f s, engine %.2f rad/s, counter %s (states seen %s)%n", r.time(),
+                        Math.abs(r.probe(b.id(e, "shaft")).angularVelocity()), bits, seen);
         }
     }
 

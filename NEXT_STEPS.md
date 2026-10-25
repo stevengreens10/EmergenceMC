@@ -108,10 +108,11 @@
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):
      a dimmer beam with a larger photodiode load;
-   - the station tour from its saved world: rerun it (`runStationShowcase`) now that a saved world restarts. Until
-     2026-10-25 it could not: a world's save dropped each water/steam volume's phase, so a reload guessed every level
-     (fixed; `./gradlew runStationServer` loads a copy of the saved world headless to check a restart, and the station
-     runs on from it). Restarts also now start from the passages' saved flows;
+   - the station tour from its saved world passes (7 of 7, 2026-10-25: fire, steam, engine, vacuum, charge, counter, the
+     governor within 3 % braked), judged over simulated time; it takes 18 minutes, the station running ~6 % of real
+     time in the game even with the world's whole tick budget (`islandBudgetMs` 35 in its runs) — see the first item.
+     A saved world restarts since the save keeps each water/steam volume's phase (`./gradlew runStationServer`
+     reloads a copy headless to check);
    - an intermittent island failure in the world, ~1 run in 3 of `runStationWorld` (once at 153.6 s, 3.6 s after the
      brake went on: the hot well's flow into the feed pump's suction pipe); the core does not reproduce it. Dumps now
      also write the last good state (`island-failure-last-*.txt`): replay the next one from there.

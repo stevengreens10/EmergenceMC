@@ -1057,3 +1057,13 @@ piston closes the plug until it balances the spring. In the new `regulator` exhi
 10 bar in two minutes while the outlet holds 2.01 to 1.99 bar gauge. That is k·(preload − x)/A from the spring's
 coil formula and the piston's area, within 2 %. The first build taught one lesson: a block beside a shaft does not
 ride it, so the collar starts from a hub in the rod's own cell, as a pulley's or an arm's does.
+
+**The regulator in the station, and a start that failed.** Fitted between the station's bottles and its needle, the
+regulator held the needle's inlet at 3.04 bar and the fire as before, but the station ran about 40 % slower. Every gas
+volume on the fuel side carries all the species of the firebox's mixture, so six small volumes added 204 unknowns,
+3000 matrix entries and nearly doubled the LU's fill. The fire fades only over a quarter of an hour of plant time, a
+few hours in the world, so the station keeps its plain needle for now. One of the layouts tried failed at t = 0, as
+splitting the engine cylinder's faces had earlier, and this time the cause came out. A Newton iterate had taken a
+steam volume to 238 K, below the triple point. There the wall's liquid c_p came out as 0, so the boiling law
+returned 0/0 and the whole solve failed instead of rejecting the step. The wall now takes its properties at no less
+than 273.16 K, as the ports already did.

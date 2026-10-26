@@ -169,6 +169,108 @@ public final class TransientSolver implements StateView {
         initializeHistory();
     }
 
+    // ------------------------------------------------------------------ parallel loading
+
+    /**
+     * {@code emergence.parallelLoad} (on by default): a large machine's elements are loaded side by side on the common
+     * pool, each worker into its own residual and its own copy of the matrix's values (see SparseLinearSystem.Sink),
+     * summed in a fixed order afterwards — the same result whatever the scheduling. Below {@link #PARALLEL_MIN}
+     * elements the hand-off costs more than it saves.
+     */
+    static final boolean PARALLEL_LOAD = !"false".equals(System.getProperty("emergence.parallelLoad"));
+    static final int PARALLEL_MIN = Integer.getInteger("emergence.parallelMin", 600);
+    static final int PARALLEL_WAYS = Math.max(1, Math.min(8, Integer.getInteger("emergence.parallelWays",
+            java.util.concurrent.ForkJoinPool.getCommonPoolParallelism() + 1)));
+    private final java.util.Map<LinearSystem, dev.emergence.core.math.SparseLinearSystem.Sink[]> sinks = new java.util.IdentityHashMap<>();
+    private LoadContext[] workers;
+    /** Passes loaded in parallel, and those that fell back to a serial pass (diagnostics). */
+    private long parallelPasses, parallelFallbacks;
+
+    public long parallelPasses() {
+        return parallelPasses;
+    }
+
+    public long parallelFallbacks() {
+        return parallelFallbacks;
+    }
+
+    /** Loads the phase's elements in parallel if it is worth it; false if the caller should load them serially. */
+    private boolean loadParallel(LinearSystem jac, int[] el) {
+        int count = el == null ? elements.size() : el.length;
+        if (!PARALLEL_LOAD || PARALLEL_WAYS < 2 || count < PARALLEL_MIN || ctx.initializing || ctx.touched != null
+                || !(jac instanceof dev.emergence.core.math.SparseLinearSystem sp)) return false;
+        int ways = PARALLEL_WAYS;
+        var sk = sinks.computeIfAbsent(jac, j -> {
+            var a = new dev.emergence.core.math.SparseLinearSystem.Sink[ways];
+            for (int i = 0; i < ways; i++) a[i] = sp.newSink();
+            return a;
+        });
+        if (workers == null) {
+            workers = new LoadContext[ways];
+            for (int i = 0; i < ways; i++) workers[i] = new LoadContext();
+        }
+        java.util.concurrent.ForkJoinTask<?>[] tasks = new java.util.concurrent.ForkJoinTask<?>[ways];
+        for (int w = 0; w < ways; w++) {
+            LoadContext c = workers[w];
+            c.x = ctx.x;
+            c.time = ctx.time;
+            c.h = ctx.h;
+            c.hPrev = ctx.hPrev;
+            c.method = ctx.method;
+            c.initializing = false;
+            c.alpha = ctx.alpha;
+            c.q0 = ctx.q0;
+            c.q1 = ctx.q1;
+            c.qd0 = ctx.qd0;
+            c.qNew = ctx.qNew;
+            c.qdNew = ctx.qdNew;
+            c.frozen = ctx.frozen;
+            c.residualOnly = ctx.residualOnly;
+            if (c.f == null || c.f.length != n) c.f = new double[n];
+            else Arrays.fill(c.f, 0.0);
+            if (c.floor == null || c.floor.length != n) c.floor = new double[n];
+            else Arrays.fill(c.floor, 0.0);
+            if (ctx.frozen != null) {
+                if (c.frozenDiag == null || c.frozenDiag.length != n) c.frozenDiag = new double[n];
+                else Arrays.fill(c.frozenDiag, 0.0);
+            } else c.frozenDiag = null;
+            sk[w].clear();
+            c.jac = sk[w];
+            final int first = w;
+            tasks[w] = java.util.concurrent.ForkJoinTask.adapt(() -> {
+                // the elements w, w + ways, w + 2·ways, …: interleaved, so each worker gets a share of every kind
+                for (int i = first; i < count; i += ways) {
+                    int k = el == null ? i : el[i];
+                    c.jac.beginSegment(k);
+                    elements.get(k).load(c);
+                }
+                c.jac.beginSegment(-1);
+            });
+        }
+        for (int w = 1; w < ways; w++) tasks[w].fork();
+        tasks[0].invoke();
+        for (int w = 1; w < ways; w++) tasks[w].join();
+        for (var s : sk) {
+            if (s.missed()) {
+                // an element stamped off its record (a new entry, a changed pattern): this pass again, serially, which
+                // records it
+                parallelFallbacks++;
+                return false;
+            }
+        }
+        for (int w = 0; w < ways; w++) {
+            LoadContext c = workers[w];
+            for (int i = 0; i < n; i++) {
+                ctx.f[i] += c.f[i];
+                if (c.floor[i] > ctx.floor[i]) ctx.floor[i] = c.floor[i];
+            }
+            if (c.frozenDiag != null && ctx.frozenDiag != null) for (int i = 0; i < n; i++) ctx.frozenDiag[i] += c.frozenDiag[i];
+        }
+        sp.merge(sk);
+        parallelPasses++;
+        return true;
+    }
+
     // ------------------------------------------------------------------ configuration
 
     /** Every element stamps the Jacobian and residual, each in a segment of its own (see SparseLinearSystem). */
@@ -183,6 +285,7 @@ public final class TransientSolver implements StateView {
             else Arrays.fill(ctx.frozenDiag, 0.0);
         }
         int[] el = active.elems;
+        if (loadParallel(jac, el)) return;
         if (el == null) {
             for (int k = 0; k < elements.size(); k++) {
                 jac.beginSegment(k);

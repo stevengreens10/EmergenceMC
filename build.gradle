@@ -51,6 +51,9 @@ tasks.register('coreTest', Test) {
     systemProperty 'emergence.debugSolver', System.getProperty('emergence.debugSolver', 'false')
     systemProperty 'emergence.multirate', System.getProperty('emergence.multirate', 'true')
     if (System.getProperty('emergence.method')) systemProperty 'emergence.method', System.getProperty('emergence.method')
+    ['emergence.parallelLoad', 'emergence.parallelMin', 'emergence.parallelWays'].each { k ->
+        if (System.getProperty(k)) systemProperty k, System.getProperty(k)
+    }
     // diagnostic knobs for exploratory tests: -Ddiag.<name>=<value> reaches the test JVM
     System.properties.each { k, v -> if (k.toString().startsWith('diag.')) systemProperty k.toString(), v }
     // profiling: -Demergence.jfr=<file.jfr> records a Java Flight Recording of the test run

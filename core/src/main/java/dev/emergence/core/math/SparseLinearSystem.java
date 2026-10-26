@@ -184,6 +184,106 @@ public final class SparseLinearSystem implements LinearSystem {
         val[idx] += v;
     }
 
+    /**
+     * A thread's private accumulator for assembling in parallel: each element's adds land where its recorded sequence
+     * says, in the sink's own copy of the values, read-only against this system's records and table. An add that
+     * would change them — a new entry, an element stamping off its record with a nonzero — marks the sink missed, and
+     * the pass is done again serially. Sinks' values are summed into this system by {@link #merge}, in a fixed order.
+     */
+    public final class Sink implements LinearSystem {
+        private double[] local = new double[Math.max(nnz, 1)];
+        private long[] sKey;
+        private int[] sIdx;
+        private int sSeg = -1, sCursor, sLen;
+        private boolean missed;
+
+        @Override
+        public int size() {
+            return n;
+        }
+
+        @Override
+        public void clear() {
+            if (local.length < nnz) local = new double[nnz];
+            else Arrays.fill(local, 0, nnz, 0.0);
+            missed = false;
+            sSeg = -1;
+        }
+
+        public boolean missed() {
+            return missed;
+        }
+
+        @Override
+        public void beginSegment(int s) {
+            sSeg = s;
+            sCursor = 0;
+            if (s < 0 || s >= segKey.length || segKey[s] == null) {
+                sKey = null;
+                sLen = 0;
+                return;
+            }
+            sKey = segKey[s];
+            sIdx = segIdx[s];
+            sLen = segLen[s];
+        }
+
+        @Override
+        public void add(int row, int col, double v) {
+            long key = (((long) row + 1) << 32) | (col & 0xffffffffL);
+            if (sSeg < 0 || sKey == null) {
+                if (v != 0.0) missed = true;
+                return;
+            }
+            int c = sCursor++;
+            if (c < sLen && sKey[c] == key) {
+                local[sIdx[c]] += v;
+                return;
+            }
+            for (int ahead = 1; ahead <= 4 && c + ahead < sLen; ahead++) {
+                if (sKey[c + ahead] != key) continue;
+                sCursor = c + ahead + 1;
+                local[sIdx[c + ahead]] += v;
+                return;
+            }
+            if (v == 0.0) {
+                // a zero adds nothing: only keep the cursor where the system's own pass would leave it
+                if (lookup(key) < 0) sCursor = c;
+                return;
+            }
+            missed = true;
+        }
+
+        @Override
+        public int visitPattern(int from, EntryVisitor v) {
+            throw new UnsupportedOperationException("a sink only accumulates");
+        }
+
+        @Override
+        public double diagonal(int i) {
+            throw new UnsupportedOperationException("a sink only accumulates");
+        }
+
+        @Override
+        public void solve(double[] rhs) {
+            throw new UnsupportedOperationException("a sink only accumulates");
+        }
+    }
+
+    /** A new private accumulator over this system's current entries (see {@link Sink}). */
+    public Sink newSink() {
+        return new Sink();
+    }
+
+    /** Adds the sinks' accumulated values into this system's entries, sink by sink in order. */
+    public void merge(Sink[] sinks) {
+        for (Sink s : sinks) {
+            double[] l = s.local;
+            int m = Math.min(nnz, l.length);
+            for (int i = 0; i < m; i++) val[i] += l[i];
+        }
+    }
+
     /** The entry index of (row, col), created if new. */
     private int entry(long key, int row, int col) {
         int idx = lookup(key);
@@ -251,6 +351,10 @@ public final class SparseLinearSystem implements LinearSystem {
         } else {
             REFACTORS.increment();
         }
+        substitute(b);
+    }
+
+    private void substitute(double[] b) {
         // Forward substitution (L has unit diagonal)
         double[] y = work;
         for (int s = 0; s < n; s++) {

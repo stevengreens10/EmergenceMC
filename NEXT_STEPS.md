@@ -112,7 +112,8 @@
      gathered the water the exhaust brings out of the cylinder (~0.07 g/s; 197 g to 28 g in 14 minutes). The condenser
      now stands low, its well under the exhaust valve, the exhaust led level into its side and the feed pump hung under
      the crank: over three minutes the well stays full (197 g), only the valve bodies and the overflow riser taking
-     their fill. The plant also steps ~2.5× faster without the riser's standing water. A long soak should confirm it;
+     their fill. In the core test the plant now takes ~5.5 s of wall time a simulated second (from ~14); in the world its pace is
+     barely changed (~7 % of real time). A long soak should confirm the water balance;
    - the fire fades as the bottles empty: the needle is choked, so the methane it passes goes as the bottles' pressure
      (200 bar falling ~3 % in two minutes), and over a 14-minute soak (2026-10-26) the boiler fell from 5.1 to 3.0 bar
      with the engine still governed at 14 rad/s. A real plant puts a pressure regulator ahead of the needle: the
@@ -121,8 +122,8 @@
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):
      a dimmer beam with a larger photodiode load;
-   - the station tour from its saved world passes (7 of 7, 2026-10-25: fire, steam, engine, vacuum, charge, counter, the
-     governor within 3 % braked), judged over simulated time; it takes 18 minutes, the station running ~6 % of real
+   - the station tour from its saved world passes (7 of 7, 2026-10-26 on the new layout: fire, steam, engine, vacuum, charge, counter,
+     the governor within 3.2 % braked), judged over simulated time; it takes 8 minutes, the station running ~7 % of real
      time in the game even with the world's whole tick budget (`islandBudgetMs` 35 in its runs) — see the first item.
      A saved world restarts since the save keeps each water/steam volume's phase (`./gradlew runStationServer`
      reloads a copy headless to check);

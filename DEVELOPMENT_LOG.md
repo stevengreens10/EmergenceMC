@@ -1033,7 +1033,8 @@ the well, its only outlet at its top, and nothing could lift the water out of it
 suction would have had to work against the well's own head. A real condensing engine keeps its condenser below the
 cylinder, so the station now does the same. The condenser column stands five cells lower, its well under the
 exhaust valve. The exhaust runs level into the condenser's side, above the water. The feed pump hangs head-down under
-its crank, so that the well still floods its suction. Over three minutes the well stays full, and the plant steps
-about 2.5 times faster without the water that used to stand in the riser. The same soak showed the fire fading as the
+its crank, so that the well still floods its suction. Over three minutes the well stays full. In the core test the plant
+also steps about 2.5 times faster without the water that used to stand in the riser, but in the world its pace is
+almost unchanged (about 7 % of real time). The station's GameTest and its tour pass on the new layout. The same soak showed the fire fading as the
 bottles empty, because the needle's choked flow follows their pressure. The boiler fell from 5.1 to 3.0 bar in
 fourteen minutes, and holding it will need a pressure regulator ahead of the needle.

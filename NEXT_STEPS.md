@@ -14,7 +14,8 @@
      measures; the tour turns its crank) and the flyball (minutes to spin up);
      keep only boilers, fires and furnaces pre-started;
    - the periscope's photodiode looks up into the noon sky once its mirror is gone (a design to make sunlight-proof);
-   - the condensing engine is found stalled in the world (fine in a fresh GameTest): find what differs;
+   - (fixed 2026-10-25: a world's save dropped each water/steam volume's phase, so a reloaded steam plant lost its
+     levels; the full tour finds it running, 110 rad/s, its condenser at 8 kPa) the condensing engine stalled in the world;
    - (the governors' checks now average over 5 s: the core holds the electronic one at −3 % braked) confirm in the tour;
    - (much eased: a Schmitt trigger's threshold is now a discrete state flipped as a solver event, the inverter 20×
      cheaper — 3 s of CPU for 10 s, no Newton failures) the switching edges themselves (~100 steps each through the

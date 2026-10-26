@@ -141,7 +141,11 @@
 0a2. **Tour triage, 2026-10-26** (full tour: 152 passed, 2 failed — both the PWM exhibit's hand, its checks passing):
    - the PWM hand again, 33rd of 75: the client had no block entity at the transistor's block for the whole 30 s the
      hand waits (it passes alone, 3 of 3). The hand's failure now says what the client holds there (block state,
-     block entity, chunk) — read it from the next full tour;
+     block entity, chunk) — read it from the next full tour. The second full tour (2026-10-26 07:19, 152 passed,
+     2 failed, both again this hand) answered: the client's block there is air, with no block entity, its chunk
+     loaded, while the tour's own screenshot shows the exhibit whole and its checks pass on the server. The message
+     now also says what the server holds at that block and where the nearest part of the wanted kind is on the client,
+     to tell a part the server re-hosted from a client that missed an update. Read it from the next full tour;
    - a burner island failure in a gas-only tour (2026-10-25 20:01, 37.3 s in, as the fuel valve opened: the valve's
      molar flow did not converge; the restart at rest failed too, then it lit). The core does not reproduce it
      (`DemoExhibitsTest.gasBurnerLitAfterStanding`, -Ddiag.burnerIdle=…, every timing tried runs on). Tour runs now

@@ -448,12 +448,40 @@ final class PlayerHand {
         /** Why the last plan found nothing (for the failure's message). */
         private String planFailure = "";
 
+        /** For a failure's message: what the integrated server holds at the target block. */
+        private String serverView(Minecraft mc) {
+            var server = mc.getSingleplayerServer();
+            if (server == null) return "no integrated server";
+            try {
+                return server.submit(() -> {
+                    var lvl = server.getLevel(mc.level.dimension());
+                    if (lvl == null) return "the server has no such level";
+                    var be = lvl.getBlockEntity(t.block);
+                    return "the server's block is " + lvl.getBlockState(t.block)
+                            + (be instanceof AssemblyBlockEntity a ? " holding " + a.parts().size() + " parts" : be == null ? ", no block entity" : ", " + be.getClass().getSimpleName());
+                }).get(2, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception ex) {
+                return "the server did not answer (" + ex + ")";
+            }
+        }
+
+        /** For a failure's message: the nearest block the client knows holding a part of the wanted kind. */
+        private String nearestOnClient(Minecraft mc) {
+            BlockPos best = null;
+            for (BlockPos p : BlockPos.betweenClosed(t.block.offset(-4, -4, -4), t.block.offset(4, 4, 4)))
+                if (mc.level.getBlockEntity(p) instanceof AssemblyBlockEntity a && a.parts().stream().anyMatch(q -> q.kind == t.kind)
+                        && (best == null || p.distSqr(t.block) < best.distSqr(t.block))) best = p.immutable();
+            return best == null ? "no " + t.kind.name().toLowerCase() + " within 4 blocks on the client"
+                    : "the nearest " + t.kind.name().toLowerCase() + " on the client is at " + best.toShortString();
+        }
+
         private boolean plan(Minecraft mc) {
             if (!(mc.level.getBlockEntity(t.block) instanceof AssemblyBlockEntity be)) {
                 var be0 = mc.level.getBlockEntity(t.block);
                 planFailure = "the client has no assembly there: its block is " + mc.level.getBlockState(t.block)
                         + (be0 == null ? ", no block entity" : ", " + be0.getClass().getSimpleName())
-                        + (mc.level.hasChunk(t.block.getX() >> 4, t.block.getZ() >> 4) ? "" : ", its chunk not loaded");
+                        + (mc.level.hasChunk(t.block.getX() >> 4, t.block.getZ() >> 4) ? "" : ", its chunk not loaded")
+                        + "; " + serverView(mc) + "; " + nearestOnClient(mc);
                 return false;
             }
             PlacedPart part = null;

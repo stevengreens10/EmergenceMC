@@ -108,11 +108,15 @@
      assembly replay kept in step (hash lookups gone, ~3 %; kept). What is left is structural: step the fluid and gas
      network apart from the fast electromechanics (multirate), with the stiff liquid volumes at the pistons and pumps
      on the fast side and the pistons' work exchanged conservatively, as the thermal network's heat already is;
-   - the hot well falls (197 g to 45 g over a ten-minute soak, the rate slowing) as condensate gathers in the steam
-     path: the valve bodies fill to their ports and stop (~15 g each), but the exhaust chest under the engine's
-     exhaust riser goes on filling (its outlet is at its top; the wet exhaust's water falls back down the riser), and
-     it stands below the hot well, so it cannot drain to it. Fix: a drain from the chest into the feed pump's
-     suction (both near the condenser's pressure), or the exhaust led down to the condenser instead of up;
+   - (fixed 2026-10-26) the hot well ran dry: the exhaust chest under the engine's exhaust riser, below the well,
+     gathered the water the exhaust brings out of the cylinder (~0.07 g/s; 197 g to 28 g in 14 minutes). The condenser
+     now stands low, its well under the exhaust valve, the exhaust led level into its side and the feed pump hung under
+     the crank: over three minutes the well stays full (197 g), only the valve bodies and the overflow riser taking
+     their fill. The plant also steps ~2.5× faster without the riser's standing water. A long soak should confirm it;
+   - the fire fades as the bottles empty: the needle is choked, so the methane it passes goes as the bottles' pressure
+     (200 bar falling ~3 % in two minutes), and over a 14-minute soak (2026-10-26) the boiler fell from 5.1 to 3.0 bar
+     with the engine still governed at 14 rad/s. A real plant puts a pressure regulator ahead of the needle: the
+     fluid's force on a plug against a spring (item 1, Control), which would hold the fire;
    - the condenser holds ~0.45 bar now that the boiler sends it more steam (checked against 80 kPa): more fin area,
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):

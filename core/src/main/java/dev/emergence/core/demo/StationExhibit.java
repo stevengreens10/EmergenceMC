@@ -152,12 +152,10 @@ public final class StationExhibit {
         // ---- the water circuit is closed: the engine exhausts, and the safety valve blows, into an air-cooled condenser
         // west of the engine; its well feeds a pump on the crankshaft's west end, which returns the water to the boiler
         condenser(e, y, steam);
-        // exhaust: into a small chest on the exhaust valve's outlet (a tank: a pipe's foot there would breathe the air, and
-        // a cap under it would sit on the crankshaft), up and west into the condenser
-        e.init(e.add(TANK, "copper", 1, y + 2, 8, Dir.UP, with(steam, "wall", 0.002)), new Exhibit.Initial(373, 0, 0));
-        e.fill(PIPE, "copper", 1, y + 3, 8, 1, y + 7, 8, Dir.UP, with(steam, "bore", 0.012));
-        e.add(BLOCK, st, 1, y + 8, 8, Dir.UP, "fill", 0.2); // blind end
-        e.fill(PIPE, "copper", -2, y + 7, 8, 0, y + 7, 8, Dir.EAST, with(steam, "bore", 0.012));
+        // exhaust: level, straight west from the exhaust valve into the condenser's side, above its water (it was led up
+        // and over, from a chest on the valve: the water the exhaust brings out of the cylinder fell back into the chest,
+        // below the well — some 0.07 g/s, the well's whole reserve in twenty minutes — and nothing could lift it out)
+        e.fill(PIPE, "copper", -2, y + 2, 8, 1, y + 2, 8, Dir.EAST, with(steam, "bore", 0.012));
         // the safety valve's outlet: up, west along y + 9 and north into the condenser's top
         e.fill(PIPE, "copper", 5, y + 4, 13, 5, y + 8, 13, Dir.UP, with(steam, "bore", 0.008));
         e.fill(PIPE, "copper", -2, y + 9, 13, 5, y + 9, 13, Dir.EAST, with(steam, "bore", 0.008));
@@ -173,6 +171,9 @@ public final class StationExhibit {
         e.add(BLOCK, st, 5, y + 9, 17, Dir.UP, "fill", 0.2);
         e.fill(PIPE, "copper", -3, y + 9, 9, -3, y + 9, 13, Dir.SOUTH, with(steam, "bore", 0.008));
         e.add(BLOCK, st, -3, y + 9, 14, Dir.UP, "fill", 0.2);
+        // and down into the condenser's top (y + 4)
+        e.fill(PIPE, "copper", -3, y + 5, 8, -3, y + 9, 8, Dir.UP, with(steam, "bore", 0.008));
+        e.add(BLOCK, st, -3, y + 10, 8, Dir.UP, "fill", 0.2);
         feedPump(e, y, steam);
         // ---- lighting up: the igniter on its own bank (45 lead–acid cells, 96 V: 4.6 kW through 2 Ω, the walls glowing
         // in under a minute) through a switch; once the fire burns it keeps itself hot, and the igniter is switched off
@@ -228,33 +229,35 @@ public final class StationExhibit {
     }
 
     /**
-     * The condenser (plant coordinates): a column of copper tanks at (−3, y + 4…y + 9, 8) with copper fins on three
-     * sides, two deep; its foot is the hot well, above the feed pump (sucking the well's water up to it, water at its
-     * boiling point flashed to steam in the pump — cavitation: a feed pump sits below its well, its suction flooded).
-     * The exhaust enters at y + 7, the safety valve's steam at the top; the condensate runs down into the well. It starts
-     * cool and nearly empty, so its pressure is water's vapour pressure there: the engine exhausts into a partial vacuum.
+     * The condenser (plant coordinates): a column of copper tanks at (−3, y − 1…y + 4, 8) with copper fins on three
+     * sides, two deep; its foot is the hot well, above the feed pump (a feed pump sits below its well, its suction
+     * flooded: sucking the well's water up to it, water at its boiling point flashed to steam in the pump — cavitation).
+     * The column stands low, its well under the engine's exhaust valve, so that everything that comes out of the
+     * cylinder runs down into it: the exhaust enters level at y + 2, just above the water; the safety valve's steam and
+     * the overflow come down into the top. It starts cool, so its pressure is water's vapour pressure there: the engine
+     * exhausts into a partial vacuum.
      */
     static void condenser(Exhibit e, int y, Object[] steam) {
         String cu = "copper";
         // (the circuit's water beyond the boiler's: what stands in the overflow's riser and the pipes, and some to spare)
-        int well = e.add(TANK, cu, -3, y + 4, 8, Dir.UP, with(steam, "fill", 0.7, "wall", 0.002));
+        int well = e.add(TANK, cu, -3, y - 1, 8, Dir.UP, with(steam, "fill", 0.7, "wall", 0.002));
         e.name("hotwell", well);
         e.init(well, new Exhibit.Initial(330, 0, 0));
         int top = 0;
-        // its two lowest cells hold water too: the circuit's reserve (condensate stands in the steam pipes' low points, behind
-        // the safety valve and in the overflow's riser before each spills on — some 100 g)
-        for (int k = y + 5; k <= y + 9; k++) {
-            int t = e.add(TANK, cu, -3, k, 8, Dir.UP, with(steam, "wall", 0.002, "fill", k <= y + 6 ? 0.7 : 0));
+        // the cells over it hold water too: the circuit's reserve (condensate stands in the steam pipes' low points, behind
+        // the safety valve and in the overflow's riser before each spills on — some 100 g), its level below the exhaust's
+        for (int k = y; k <= y + 4; k++) {
+            int t = e.add(TANK, cu, -3, k, 8, Dir.UP, with(steam, "wall", 0.002, "fill", k <= y + 1 ? 0.7 : 0));
             e.init(t, new Exhibit.Initial(330, 0, 0));
             top = t;
         }
         e.name("condenser", top);
         // its legs: a steel post under the well's west fins
-        e.fill(BLOCK, "steel_1045", -4, 0, 8, -4, y + 3, 8, Dir.UP);
+        e.fill(BLOCK, "steel_1045", -4, 0, 8, -4, y - 2, 8, Dir.UP);
         // fins: thin copper plates on the west, north and south faces, two deep, beside all but the top cell (with the
         // three-cell firebox's steam it holds some 0.45 bar, half an atmosphere's vacuum; a third row out added
         // little: what it rejects is set by the air on its fins)
-        for (int k = y + 4; k <= y + 8; k++) {
+        for (int k = y - 1; k <= y + 3; k++) {
             for (int[] f : new int[][]{{-4, k, 8}, {-5, k, 8}, {-3, k, 7}, {-3, k, 6}, {-3, k, 9}, {-3, k, 10}}) {
                 e.init(e.add(BLOCK, cu, f[0], f[1], f[2], Dir.UP, "fill", 0.2), new Exhibit.Initial(320, 0, 0));
             }
@@ -262,8 +265,8 @@ public final class StationExhibit {
     }
 
     /**
-     * The feed pump (plant coordinates): a 12 mm cylinder over an eccentric on the crankshaft's west end, between two
-     * check valves — water in from the hot well through the south one as the piston rises, out through the north one
+     * The feed pump (plant coordinates): a 12 mm cylinder hung under an eccentric on the crankshaft's west end, between
+     * two check valves — water in from the hot well through the west one as the piston rises, out through the north one
      * as it falls, round under the engine and into the boiler's west face. It moves some 2.5 cm³ a second, several
      * times what the boiler boils away, so the boiler fills while the well has water: the water divides itself
      * between them, and the circuit keeps its own level.
@@ -277,25 +280,24 @@ public final class StationExhibit {
         e.name("feedCrank", e.add(ECCENTRIC, st, -1, y, 8, Dir.EAST, "throw", 0.001));
         // (a deep clearance over the piston, 3 cm: water barely yields, and a chamber of 2 cm³ at the top of the stroke held
         // the whole plant's solution to fine steps; it changes nothing the pump delivers)
-        int pump = e.add(CYLINDER, st, -1, y + 2, 8, Dir.DOWN, with(steam, "bore", 0.012, "ring_friction", 0.5));
+        // It hangs under the crank, head down, so that the well can stand over it and still below the engine's exhaust.
+        int pump = e.add(CYLINDER, st, -1, y - 2, 8, Dir.UP, with(steam, "bore", 0.012, "ring_friction", 0.5));
         e.name("feedPump", pump);
-        e.add(BLOCK, st, -1, y + 3, 8, Dir.UP, "fill", 0.3); // its head
-        // suction: straight down from under the well and east into a check valve on the pump's west side — two pipe cells,
-        // the well's water standing over the valve (round through a small tank, the water there flashed and refilled at
-        // every change of the well's level, a jolt the solution could not take); the pipe's west end is closed by the
+        e.add(BLOCK, st, -1, y - 3, 8, Dir.UP, "fill", 0.3); // its head
+        // suction: down from under the well into a pipe cell and east into a check valve on the pump's west side, the
+        // well's water standing over the valve (round through a small tank, the water there flashed and refilled at every
+        // change of the well's level, a jolt the solution could not take); the pipe's west end is closed by the
         // condenser's leg
         // (at the well's temperature, so at its pressure: started cold, the full pipes stood at water's vapour pressure at
         // 20 °C, a fifth of the well's, and the well's water rushed into them)
-        e.init(e.add(PIPE, st, -3, y + 3, 8, Dir.UP, water), new Exhibit.Initial(330, 0, 0));
-        e.init(e.add(PIPE, st, -3, y + 2, 8, Dir.EAST, water), new Exhibit.Initial(330, 0, 0));
-        e.name("suction", e.add(VALVE, "brass", -2, y + 2, 8, Dir.EAST, with(steam, "bore", 0.010, "relief", 500)));
+        e.init(e.add(PIPE, st, -3, y - 2, 8, Dir.EAST, water), new Exhibit.Initial(330, 0, 0));
+        e.name("suction", e.add(VALVE, "brass", -2, y - 2, 8, Dir.EAST, with(steam, "bore", 0.010, "relief", 500)));
         e.init(e.named.get("suction"), new Exhibit.Initial(330, 0, 0));
-        // delivery: the north check valve → down, east under the engine, south, east and up into the boiler
-        e.name("delivery", e.add(VALVE, "brass", -1, y + 2, 7, Dir.NORTH, with(steam, "bore", 0.010, "relief", 3000)));
-        e.add(PIPE, st, -1, y + 2, 6, Dir.NORTH, water);
-        e.fill(PIPE, st, -1, 1, 5, -1, y + 2, 5, Dir.UP, water);
-        e.add(BLOCK, st, -1, y + 3, 5, Dir.UP, "fill", 0.2);
-        e.add(BLOCK, st, -1, 0, 5, Dir.UP, "fill", 0.2);
+        // delivery: the north check valve → north, east under the engine, south, east and up into the boiler
+        e.name("delivery", e.add(VALVE, "brass", -1, y - 2, 7, Dir.NORTH, with(steam, "bore", 0.010, "relief", 3000)));
+        e.add(PIPE, st, -1, y - 2, 6, Dir.NORTH, water);
+        e.add(PIPE, st, -1, 1, 5, Dir.EAST, water);
+        e.add(BLOCK, st, -2, 1, 5, Dir.UP, "fill", 0.2);
         e.add(PIPE, st, 0, 1, 5, Dir.EAST, water);
         e.fill(PIPE, st, 1, 1, 5, 1, 1, 11, Dir.SOUTH, water);
         e.add(BLOCK, st, 1, 1, 4, Dir.UP, "fill", 0.2);

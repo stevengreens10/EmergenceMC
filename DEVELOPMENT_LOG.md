@@ -1025,3 +1025,15 @@ volume at exactly its boiling point (the safety line, holding the condensate of 
 how much of it is water, and the reload guessed. The save now keeps the phase, failure dumps write every value, and
 a restart also starts from the passages' saved flows instead of finding every flow at once from none. The rebuilt
 world loads and runs on.
+
+**Where the station's water went.** A fourteen-minute soak showed the hot well emptying at about 0.07 g/s, and
+the water turning up in the chest on the engine's exhaust valve. Wall condensation in the riser above the chest
+accounts for under a tenth of that; the rest is water the exhaust carries out of the cylinder. The chest stood below
+the well, its only outlet at its top, and nothing could lift the water out of it: a drain into the feed pump's
+suction would have had to work against the well's own head. A real condensing engine keeps its condenser below the
+cylinder, so the station now does the same. The condenser column stands five cells lower, its well under the
+exhaust valve. The exhaust runs level into the condenser's side, above the water. The feed pump hangs head-down under
+its crank, so that the well still floods its suction. Over three minutes the well stays full, and the plant steps
+about 2.5 times faster without the water that used to stand in the riser. The same soak showed the fire fading as the
+bottles empty, because the needle's choked flow follows their pressure. The boiler fell from 5.1 to 3.0 bar in
+fourteen minutes, and holding it will need a pressure regulator ahead of the needle.

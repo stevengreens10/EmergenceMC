@@ -1038,3 +1038,13 @@ also steps about 2.5 times faster without the water that used to stand in the ri
 almost unchanged (about 7 % of real time). The station's GameTest and its tour pass on the new layout. The same soak showed the fire fading as the
 bottles empty, because the needle's choked flow follows their pressure. The boiler fell from 5.1 to 3.0 bar in
 fourteen minutes, and holding it will need a pressure regulator ahead of the needle.
+
+**Condensate in a level pipe.** A fifteen-minute soak of the new layout still took the hot well from 197 g to 77 g,
+while the total water in the plant stayed at 714.1 g. The well's water had gone to the low points. Each level pipe
+and valve on the exhaust held water up to exactly half its bore (vapour fraction 0.51), because the face between two
+lying tubes drew from a single port at mid-bore. Steam crossed over the water, but the water below the axis could
+never leave. Between tanks, a side face was already split into a lower and an upper passage, so that water and
+steam can pass each other. Every two-phase side face is now split that way, each half a quarter of the opening above
+or below the port. A new test drains the water under a lying pipe's axis into the vessel beside it; the old compiler
+fails it. A cylinder's side faces stay single for now. Its water lies on a moving piston, and splitting those faces
+made the station's start non-finite, which is still to be explained.

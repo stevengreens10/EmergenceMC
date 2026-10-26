@@ -113,7 +113,14 @@
      now stands low, its well under the exhaust valve, the exhaust led level into its side and the feed pump hung under
      the crank: over three minutes the well stays full (197 g), only the valve bodies and the overflow riser taking
      their fill. In the core test the plant now takes ~5.5 s of wall time a simulated second (from ~14); in the world its pace is
-     barely changed (~7 % of real time). A long soak should confirm the water balance;
+     barely changed (~7 % of real time). The 15-minute soak (2026-10-26) still took the well from 197 g to 77 g:
+     the plant's water is conserved (714.1 g in all), and what the well lost went to fill the plant's low points.
+     Each level pipe and valve on the exhaust held condensate up to half its bore, because a side face between lying
+     tubes drew at mid-bore only. That is fixed: every two-phase side face now passes water low and steam high.
+     Still filling once and then passing water on: the engine's inlet valve (the steam carries the line's condensate
+     forward, and a cylinder's side face is not split), the safety valve's discharge riser (it lifted early and its
+     condensate stands on the seat, 15 g) and the overflow line. Open: splitting a cylinder's side face made the
+     station start non-finite (crankshaft speed, t = 0); find why, then let a cylinder's water leave by its ports;
    - the fire fades as the bottles empty: the needle is choked, so the methane it passes goes as the bottles' pressure
      (200 bar falling ~3 % in two minutes), and over a 14-minute soak (2026-10-26) the boiler fell from 5.1 to 3.0 bar
      with the engine still governed at 14 rad/s. A real plant puts a pressure regulator ahead of the needle: the

@@ -51,7 +51,7 @@ tasks.register('coreTest', Test) {
     systemProperty 'emergence.debugSolver', System.getProperty('emergence.debugSolver', 'false')
     systemProperty 'emergence.multirate', System.getProperty('emergence.multirate', 'true')
     if (System.getProperty('emergence.method')) systemProperty 'emergence.method', System.getProperty('emergence.method')
-    ['emergence.parallelLoad', 'emergence.parallelMin', 'emergence.parallelWays', 'emergence.multirateEm', 'emergence.debugMultirate', 'emergence.kinks', 'emergence.independent', 'diag.parts'].each { k ->
+    ['emergence.parallelLoad', 'emergence.parallelMin', 'emergence.parallelWays', 'emergence.multirateEm', 'emergence.debugMultirate', 'emergence.kinks', 'emergence.independent', 'emergence.concurrentEm'].each { k ->
         if (System.getProperty(k)) systemProperty k, System.getProperty(k)
     }
     // diagnostic knobs for exploratory tests: -Ddiag.<name>=<value> reaches the test JVM

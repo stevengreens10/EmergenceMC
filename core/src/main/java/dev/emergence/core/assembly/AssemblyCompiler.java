@@ -508,6 +508,37 @@ public final class AssemblyCompiler {
             return d.sub(a1.mul(d.dot(a1))).length() < 1e-6;
         }
 
+        /**
+         * Still water on a slide's parts (see {@link dev.emergence.core.sim.elements.Buoyancy}): each part standing in
+         * water, or just over it, displaces its own material — a closed vessel (tank, cylinder) its whole outer box, the
+         * gas or liquid it holds not weighed (air: a few grams).
+         */
+        void buildBuoyancy(CompiledAssembly.Body b) {
+            List<dev.emergence.core.sim.elements.Buoyancy.Immersed> wet = new ArrayList<>();
+            for (long id : b.parts) {
+                Part p = a.get(id);
+                if (isWire(p)) continue;
+                int cx = (p.minX() + p.maxX()) / 2, cz = (p.minZ() + p.maxZ()) / 2;
+                // the water over its bottom cell, or the pond just under it (a float riding high)
+                double surface = a.waterSurface(cx, p.minY(), cz);
+                if (Double.isNaN(surface)) surface = a.waterSurface(cx, p.minY() - 1, cz);
+                if (Double.isNaN(surface)) continue;
+                double h = p.boxSize(1);
+                boolean sealed = p.kind() == PartKind.TANK || p.kind() == PartKind.CYLINDER;
+                double vol = sealed ? p.boxSize(0) * p.boxSize(1) * p.boxSize(2) : PartGeometry.volume(p);
+                // its section across the guide: the displaced volume over its length along it
+                double along = Math.abs(b.axis.x()) * p.boxSize(0) + Math.abs(b.axis.y()) * p.boxSize(1) + Math.abs(b.axis.z()) * p.boxSize(2);
+                wet.add(new dev.emergence.core.sim.elements.Buoyancy.Immersed(vol / h, h, p.center().y() - h / 2, surface,
+                        vol / Math.max(along, 1e-6)));
+            }
+            if (wet.isEmpty()) return;
+            c.network.add(new dev.emergence.core.sim.elements.Buoyancy(b.node, b.tracker, b.axis.y(), WATER_DENSITY,
+                    PartGeometry.gravity(), b.mass + b.carriedMass, wet));
+        }
+
+        /** Still water's density near 15 °C [kg/m³]. */
+        static final double WATER_DENSITY = 999.1;
+
         /** Wire networks take the body of the non-wire parts they touch (static if any is static). */
         void assignWireBodies(CompiledAssembly.Body ground) {
             Set<Long> seen = new HashSet<>();
@@ -728,6 +759,7 @@ public final class AssemblyCompiler {
                     b.drive = c.network.add(new FlowSource(refT, b.node, 0.0));
                     double fg = -mt * PartGeometry.gravity() * b.axis.y();
                     if (fg != 0 && b.carrier == null) c.network.add(new FlowSource(refT, b.node, fg));
+                    if (b.carrier == null) buildBuoyancy(b);
                     if (b.carrier != null) {
                         // riding on a turning body: its weight, the centrifugal and Coriolis forces, and the rotor's
                         // inertia changing as it moves out or in

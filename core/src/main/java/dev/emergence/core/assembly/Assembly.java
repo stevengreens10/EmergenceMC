@@ -23,6 +23,7 @@ public final class Assembly {
     private double ambientPressure = 101_325;
     private dev.emergence.core.math.Vec3 ambientWind = dev.emergence.core.math.Vec3.ZERO;
     private CellPredicate solid = (x, y, z) -> false;
+    private CellPredicate water = (x, y, z) -> false;
 
     /** Tests a grid cell (global cell coordinates). */
     @FunctionalInterface
@@ -85,6 +86,30 @@ public final class Assembly {
 
     public boolean isSolidCell(int x, int y, int z) {
         return solid.test(x, y, z);
+    }
+
+    /** Cells of still water around and in the machine (in Minecraft: water blocks, and its own blocks waterlogged). */
+    public Assembly waterWhen(CellPredicate pred) {
+        this.water = pred;
+        return this;
+    }
+
+    public boolean isWaterCell(int x, int y, int z) {
+        return water.test(x, y, z);
+    }
+
+    /** How far up its top cell still water stands (a Minecraft source block's surface, 8/9 of the block). */
+    public static final double WATER_TOP = 8.0 / 9.0;
+
+    /**
+     * The height [m] of the still water's surface over cell (x, z), the water reaching up from cell y; NaN if cell y
+     * holds no water.
+     */
+    public double waterSurface(int x, int y, int z) {
+        if (!isWaterCell(x, y, z)) return Double.NaN;
+        int top = y;
+        while (top - y < 256 && isWaterCell(x, top + 1, z)) top++;
+        return (top + WATER_TOP) * Part.CELL;
     }
 
     /** Pressure of the surrounding air [Pa]. */

@@ -89,6 +89,26 @@ class FluidAssemblyTest {
         assertEquals(m0, c.fluid(a.id())[2] + c.fluid(b.id())[2], 1e-6 * m0, "mass conserved");
     }
 
+    /**
+     * A lying pipe with water under its vapour, below its axis, beside an empty vessel: the water runs out along the
+     * bottom of the bore. (Drawn at mid-bore alone the face passed only vapour, and a level steam line kept each of
+     * its cells half full of condensate.)
+     */
+    @Test
+    void waterUnderTheAxisOfALyingPipeDrainsSideways() {
+        add(PartKind.BLOCK, "steel_1045", -1, 0, 0, Dir.UP); // the pipe's far end, capped
+        Part pipe = add(PartKind.PIPE, "copper", 0, 0, 0, Dir.EAST, "fluid", 7, "fill", 0.4, "bore", 0.02);
+        Part tank = add(PartKind.TANK, "steel_1045", 1, 0, 0, Dir.UP, "fluid", 7, "fill", 0.02);
+        CompiledAssembly c = AssemblyCompiler.compile(asm);
+        assertTrue(c.vents().isEmpty(), "sealed");
+        java.util.function.ToDoubleFunction<Part> water = t -> c.fluid(t.id())[2] * (1 - c.fluid(t.id())[4]);
+        double w0 = water.applyAsDouble(pipe), m0 = c.fluid(pipe.id())[2] + c.fluid(tank.id())[2];
+        run(c, 30);
+        double w1 = water.applyAsDouble(pipe);
+        assertTrue(w1 < 0.75 * w0, String.format("the pipe drains: %.2f g → %.2f g", 1e3 * w0, 1e3 * w1));
+        assertEquals(m0, c.fluid(pipe.id())[2] + c.fluid(tank.id())[2], 1e-6 * m0, "mass conserved");
+    }
+
     static AssemblyState stateWithTemperature(long id, double t) {
         AssemblyState s = AssemblyState.empty();
         s.temperatures().put(id, t);

@@ -3048,17 +3048,29 @@ public final class AssemblyCompiler {
                                 // one passage drawing at mid-height passes only one phase at a time — a boiler's cell
                                 // making the steam could not take water back from the one its riser drew from. Its upper
                                 // and lower halves, each drawing at its own height:
-                                int halves = va.twoPhase() && p.kind() == PartKind.TANK && q.kind() == PartKind.TANK
-                                        && d != Dir.UP && d != Dir.DOWN ? 2 : 1;
+                                // The same holds for any side face, a lying tube's above all: its condensate runs along
+                                // the bottom of the bore under the steam, so a level steam line drains (into a valve or
+                                // an upright riser), where one passage at mid-bore kept each of its
+                                // cells half full of water. Not a cylinder's: its water lies on the moving piston or
+                                // the head, which a port at a fixed height does not describe (and split there, the
+                                // station's engine started non-finite — open, see NEXT_STEPS).
+                                boolean tanks = p.kind() == PartKind.TANK && q.kind() == PartKind.TANK;
+                                int halves = va.twoPhase() && d != Dir.UP && d != Dir.DOWN
+                                        && p.kind() != PartKind.CYLINDER && q.kind() != PartKind.CYLINDER ? 2 : 1;
+                                // each half's height in the relative coordinate of each side: a tank's rows between
+                                // tanks, else a quarter of the opening (the smaller bore) over the side's liquid height
+                                double open = 2 * Math.sqrt(amin / Math.PI);
+                                double qp = tanks ? 0.25 / (p.maxY() - p.minY() + 1) : 0.25 * Math.min(1, open / liquidHeight(p, rp));
+                                double qq = tanks ? 0.25 / (q.maxY() - q.minY() + 1) : 0.25 * Math.min(1, open / liquidHeight(q, rq));
                                 for (int half = 0; half < halves; half++) {
-                                    double shift = halves == 1 ? 0 : half == 0 ? -0.25 : 0.25;
+                                    double shift = halves == 1 ? 0 : half == 0 ? -1 : 1;
                                     FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(),
                                             vb.temperatureNode(), va.fluid(), len, equivalentDiameter(amin / halves),
                                             Math.max(roughness(p), roughness(q)), k, dz)
                                             .withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id() + (halves == 1 ? "" : half == 0 ? " (lower)" : " (upper)"));
-                                    if (va.twoPhase()) b.withPorts(va.port(rp != null ? rp.portHeight(y, d) : portHeight(p, y, d) + shift / (p.maxY() - p.minY() + 1),
+                                    if (va.twoPhase()) b.withPorts(va.port((rp != null ? rp.portHeight(y, d) : portHeight(p, y, d)) + shift * qp,
                                                     liquidHeight(p, rp)),
-                                            vb.port(rq != null ? rq.portHeight(ny, d.opposite()) : portHeight(q, ny, d.opposite()) + shift / (q.maxY() - q.minY() + 1),
+                                            vb.port((rq != null ? rq.portHeight(ny, d.opposite()) : portHeight(q, ny, d.opposite())) + shift * qq,
                                                     liquidHeight(q, rq)));
                                     double dhMin = Math.min(PartGeometry.hydraulicDiameter(p), PartGeometry.hydraulicDiameter(q));
                                     if (p.kind() != PartKind.TANK && q.kind() != PartKind.TANK) b.withHydraulicDiameter(dhMin);

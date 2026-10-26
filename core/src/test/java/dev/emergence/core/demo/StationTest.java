@@ -175,9 +175,11 @@ class StationTest {
             // -Ddiag.masses=true: every water volume whose mass moved by more than a gram since the last report
             if (Boolean.getBoolean("diag.masses")) {
                 StringBuilder sb = new StringBuilder("   water moved:");
+                double total = 0;
                 for (var el : c.network().elements()) {
                     if (!(el instanceof dev.emergence.core.sim.elements.FluidVolume fv) || !fv.twoPhase()) continue;
                     double m = fv.mass(c.solverView());
+                    total += m;
                     String nm = fv.pressureNode().name();
                     Double was = masses.put(nm, m);
                     if (was != null && Math.abs(m - was) > 1e-3) {
@@ -186,7 +188,7 @@ class StationTest {
                                 1e3 * (m - was), 1e3 * m, fv.vapourFraction(c.solverView())));
                     }
                 }
-                System.out.println(sb);
+                System.out.println(sb.append(String.format(" — all the water and steam: %.1f g", 1e3 * total)));
             }
             var g = c.gas(box);
             System.out.printf("t=%.0f s: engine %.2f rad/s, boiler %.2f bar %.1f K, firebox %.0f K wall %.0f K (CH4 %.2f %%, O2 %.1f %%, CO2 %.1f %%), "

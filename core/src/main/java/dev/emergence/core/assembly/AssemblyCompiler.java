@@ -3052,8 +3052,7 @@ public final class AssemblyCompiler {
                                 // the bottom of the bore under the steam, so a level steam line drains (into a valve or
                                 // an upright riser), where one passage at mid-bore kept each of its
                                 // cells half full of water. Not a cylinder's: its water lies on the moving piston or
-                                // the head, which a port at a fixed height does not describe (and split there, the
-                                // station's engine started non-finite — open, see NEXT_STEPS).
+                                // the head, which a port at a fixed height does not describe.
                                 boolean tanks = p.kind() == PartKind.TANK && q.kind() == PartKind.TANK;
                                 int halves = va.twoPhase() && d != Dir.UP && d != Dir.DOWN
                                         && p.kind() != PartKind.CYLINDER && q.kind() != PartKind.CYLINDER ? 2 : 1;

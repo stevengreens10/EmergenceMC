@@ -79,9 +79,13 @@ public final class FluidWallConvection implements Element {
         double av = st[WaterSteam.ALPHA_V], fl = 1 - av;
         double[] sat = WaterSteam.saturationSet(ts);
         double rl = sat[WaterSteam.SAT_RHO_L], rv = sat[WaterSteam.SAT_RHO_V], hfg = sat[WaterSteam.SAT_H_V] - sat[WaterSteam.SAT_H_L];
+        // the liquid's and vapour's transport properties at no less than the triple point: a Newton iterate may pass
+        // below it (an expanding volume overshooting), and there the liquid's c_p is 0 — its Prandtl number 0 and the
+        // boiling law 0/0, failing the step outright instead of letting the step control reject it (as the ports clamp)
+        double tp = Math.max(tf, 273.16);
         // liquid c_p ≈ dh'/dT from the saturation slope, held per temperature (it varies slowly)
-        if (tf != cpT) {
-            if (tf == cpT2) {
+        if (tp != cpT) {
+            if (tp == cpT2) {
                 double a = cpT, b = cpVal;
                 cpT = cpT2;
                 cpVal = cpVal2;
@@ -90,16 +94,16 @@ public final class FluidWallConvection implements Element {
             } else {
                 cpT2 = cpT;
                 cpVal2 = cpVal;
-                cpT = tf;
-                cpVal = w.cp(tf);
+                cpT = tp;
+                cpVal = w.cp(tp);
             }
         }
-        double mul = w.liquidViscosity(tf), kl = w.liquidConductivity(tf), cpl = cpVal, prl = mul * cpl / kl;
+        double mul = w.liquidViscosity(tp), kl = w.liquidConductivity(tp), cpl = cpVal, prl = mul * cpl / kl;
         double g = dev.emergence.core.units.PhysicalConstants.STANDARD_GRAVITY, sigma = Math.max(WaterSteam.surfaceTension(ts), 1e-4);
         double q = 0;
         // single-phase convection to each phase
         double hl = nusselt(mdotDh / mul, prl) * kl / dh;
-        double muv = w.vapourViscosity(tf), kv = WaterSteam.vapourConductivity(tf);
+        double muv = w.vapourViscosity(tp), kv = WaterSteam.vapourConductivity(tp);
         double hv = nusselt(mdotDh / muv, muv * w.cpVapour() / kv) * kv / dh;
         q += (hl * fl + hv * av) * area * (tw - tf);
         // nucleate boiling on the wetted wall, smoothly capped at the critical heat flux

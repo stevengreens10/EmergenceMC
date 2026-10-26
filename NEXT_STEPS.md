@@ -126,8 +126,11 @@
      tubes drew at mid-bore only. That is fixed: every two-phase side face now passes water low and steam high.
      Still filling once and then passing water on: the engine's inlet valve (the steam carries the line's condensate
      forward, and a cylinder's side face is not split), the safety valve's discharge riser (it lifted early and its
-     condensate stands on the seat, 15 g) and the overflow line. Open: splitting a cylinder's side face made the
-     station start non-finite (crankshaft speed, t = 0); find why, then let a cylinder's water leave by its ports;
+     condensate stands on the seat, 15 g) and the overflow line. Splitting a cylinder's side faces too made the
+     station's start fail (t = 0, non-finite): a Newton iterate took a steam volume to 238 K, below the triple point,
+     where its wall's liquid properties gave c_p = 0 and the boiling law 0/0. Fixed (the wall takes its properties at
+     no less than 273.16 K, as the ports do); a cylinder's faces could now be split, to let its water leave by its
+     ports, once a cylinder's liquid is placed on its piston or head rather than at a fixed height;
    - the fire fades as the bottles empty: the needle is choked, so the methane it passes goes as the bottles' pressure
      (200 bar falling ~3 % in two minutes), and over a 14-minute soak (2026-10-26) the boiler fell from 5.1 to 3.0 bar
      with the engine still governed at 14 rad/s. A real plant puts a pressure regulator ahead of the needle. One
@@ -140,7 +143,7 @@
      kept; fit it once gas volumes away from the reacting zone carry only the species that reach them (or the plant
      is stepped multirate). Two traps on the way: a pipe run's free end is an open vent (the bottles emptied through
      it), and one layout (an eight-cell chamber vessel) made the start non-finite at t = 0, as the split cylinder faces
-     did — the water side's wall elements were the first to return NaN, at a finite iterate;
+     did (the steam wall below the triple point, fixed);
    - the condenser holds ~0.45 bar now that the boiler sends it more steam (checked against 80 kPa): more fin area,
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):

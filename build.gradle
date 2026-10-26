@@ -178,6 +178,12 @@ neoForge {
             systemProperty 'emergence.demoSet', 'station'
             systemProperty 'emergence.dumpFailures', 'true'
             systemProperty 'emergence.forceLoad', '-2,-2,5,3'
+            // -Demergence.islandBudgetMs / globalBudgetMs as for the clients (1e9 runs it flat out, as the GameTest does);
+            // -Demergence.jfr=<file.jfr> records a Java Flight Recording of the server
+            systemProperty 'emergence.islandBudgetMs', System.getProperty('emergence.islandBudgetMs', '12')
+            systemProperty 'emergence.globalBudgetMs', System.getProperty('emergence.globalBudgetMs', '35')
+            systemProperty 'emergence.debugIslands', System.getProperty('emergence.debugIslands', 'false')
+            if (System.getProperty('emergence.jfr')) jvmArguments.add("-XX:StartFlightRecording=filename=${System.getProperty('emergence.jfr')},settings=profile")
         }
     }
 

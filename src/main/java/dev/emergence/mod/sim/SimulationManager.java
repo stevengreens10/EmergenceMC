@@ -282,7 +282,13 @@ public final class SimulationManager {
             }
             isl.launchTick = tickCount;
         }
-        for (Island isl : off) isl.step = OFF_TICK_POOL.submit(() -> stepIsolated(isl));
+        for (Island isl : off) {
+            // (its wall-clock cap the ticks it covers, not one tick's: capped at 60 ms, a step of two ticks stopped short
+            // and the machine ran in slow motion by the cap, not by its pace)
+            if (STEP_WALL_MS > 0) isl.compiled.wallBudget(Math.max(STEP_WALL_MS, 1.2 * isl.stepTicks * TICK_SECONDS * 1e3));
+            isl.step = OFF_TICK_POOL.submit(() -> stepIsolated(isl));
+        }
+        if (STEP_WALL_MS > 0) for (Island isl : run) isl.compiled.wallBudget(STEP_WALL_MS);
         // the steps: each island alone with its own compiled machine (nothing in the core is shared between them), so
         // on several cores at once — the machines around a player each get their budget, not a share of one
         long wall0 = System.nanoTime();
@@ -460,6 +466,10 @@ public final class SimulationManager {
                     isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), String.format("%.2f", pace),
                     String.format("%.2f", isl.timeScale), String.format("%.2f", watchedScale), String.format("%.2f", nearScale),
                     String.format("%.1f", isl.costMs));
+            if (Boolean.getBoolean("emergence.autoShowcase")) {
+                isl.compiled.solver().phaseMatrices(); // (keeps the diagnostics' counters in step)
+                EmergenceMod.LOG.info("Pace: its solver: {}", isl.compiled.solver().phaseCounts());
+            }
         }
         isl.paceSim = sim;
         isl.paceWall = wall;

@@ -48,6 +48,8 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ **Steam engine from parts**: boiler on a heating element, safety valve, throttle, cam-timed admission and
    exhaust, single-acting jacketed cylinder, flywheel, Prony brake load; a condensing engine (Watt's separate
    condenser: exhaust into a sealed 40 °C condenser, twice the load at the same speed)
+✅ Water in the world: parts stand in water (waterlogged); Archimedes' upthrust, drag and wave damping on slides
+   and turning bodies; a stream's current (Manning) turns an undershot water wheel; a pressure regulator from parts
 ⬜ Free surfaces in open vessels, free translational bodies, non-condensable gases mixed with steam
 ✅ **Milestone: heat engine driving a generator** — an alpha Stirling engine from parts (hot and cold
    cylinders 90° apart, transfer pipe, flywheel) runs on a hot block and drives magnets past a coil

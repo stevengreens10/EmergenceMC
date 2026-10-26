@@ -273,7 +273,8 @@ regenerate the demo world → screenshot tour → docs → commit.
    drag-cup speedometer. (Magnets attract iron on slides now.)
 8b. **Water** (buoyancy on slides and turning bodies is in, `floats`; a stream's current turns an undershot wheel,
    `waterwheel`; parts may stand in water, their blocks waterlogged). Still to do:
-   - the water wheel driving a generator (hydroelectric power);
+   - the water wheel driving a generator (hydroelectric power): a bevel pair off its axle up to the hand
+     generator's machine. `Exhibits.generatorBody` is written at fixed coordinates, so it needs an offset first;
    - the stream losing the momentum a paddle takes from it;
    - the added mass;
    - floats in a vessel's own liquid (a cistern's ballcock), its level falling as they displace it;
@@ -283,5 +284,11 @@ regenerate the demo world → screenshot tour → docs → commit.
 10. **Performance**: async island compilation, factorisation reuse for linear islands, cheaper conductor loads (most
    of a circuit island's fast-step time); multirate is in (thermal apart);
    the steam engine and gas engine run slower than real time at speed.
+10b. **Fermentation (first biology)**: yeast turning sugar into ethanol and CO₂ in a warm vessel, the still
+   downstream. The liquid model knows only volatile condensables (an Antoine curve, the vapour's enthalpy), so first
+   add a solutes layer: non-volatile dissolved species (glucose, biomass) in a vessel's liquid, each with its liquid
+   enthalpy of formation and partial molar volume, lowering the solvent's activity (Raoult). Then Monod growth with a
+   cardinal-temperature factor and ethanol inhibition, the enthalpy of C₆H₁₂O₆ → 2 C₂H₅OH + 2 CO₂ (≈ −69 kJ/mol
+   from formation enthalpies), and the CO₂ leaving through the gas space.
 11. **Broader science**: geology (ores, strata), environmental processes, biology — each connected to the existing
     chemistry, thermodynamics and fluids.

@@ -98,8 +98,15 @@
    the middle cell, the inlet cell a mixing chamber), and the braked engine holds within 3 %. That needed a fix to
    the water model itself: no water moved between vessels side by side (a port did not feel the liquid over it, and
    one mid-height passage passed one phase at a time). Open:
-   - it runs ~4x slower than real time: the generator's current pulses set ~1000 steps/s for the whole plant, whose
-     two-phase and gas network is most of the cost — multirate stepping of the fluid network is the fix;
+   - it runs ~14x slower than real time in the core (2026-10-25; ~22x before the iron's magnetisation was held to its
+     coils' flux tolerance), ~6 % of real time in the game: ~1400 steps a simulated second, a third more rejected by
+     the error estimate (not Newton), ~5 Newton iterations each over 1143 unknowns (6 300 matrix entries, 15 000 after
+     fill). The magnetic system sets most steps (the generator's magnet passes, its steel's hysteresis corners), then
+     friction sticking and releasing. Time: the sparse LU 42 % (refactored each iteration), fluid and gas elements
+     30 %, the solver's own work 22 %. Tried without gain: PI step control (rejections halved, more steps, 4 %); the
+     assembly replay kept in step (hash lookups gone, ~3 %; kept). What is left is structural: step the fluid and gas
+     network apart from the fast electromechanics (multirate), with the stiff liquid volumes at the pistons and pumps
+     on the fast side and the pistons' work exchanged conservatively, as the thermal network's heat already is;
    - the hot well still falls ~0.3 g/s over the first four minutes as condensate fills the steam path's low points
      (the throttle's body half full, the safety and overflow lines, the condenser's upper cells: one passage up a
      stacked column passes one phase at a time, as the side faces did). Watch a ten-minute soak: if it does not level

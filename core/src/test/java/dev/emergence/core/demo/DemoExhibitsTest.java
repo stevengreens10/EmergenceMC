@@ -1225,6 +1225,34 @@ class DemoExhibitsTest {
      * the receiver holds what is left (its pressure rising a little as its walls warm the air the expansion cooled).
      */
     @Test
+    void regulatorHoldsItsOutletWhileTheReceiverEmpties() {
+        Exhibit e = ControlExhibits.pressureRegulator();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertTrue(c.warnings().isEmpty(), c.warnings().toString());
+        long receiver = b.id(e, "receiver"), outlet = b.id(e, "outlet"), rod = b.id(e, "rod");
+        double p0 = 101_325, pr0 = 0, po0 = 0;
+        for (int t = 0; t <= 120; t += 5) {
+            if (t > 0) run(c, 5);
+            double pr = c.fluid(receiver)[0], po = c.fluid(outlet)[0];
+            System.out.printf("regulator t=%3d s: receiver %.2f bar, outlet %.3f bar gauge, rod drawn back %.3f mm%n",
+                    t, 1e-5 * pr, 1e-5 * (po - p0), 1e3 * c.probe(rod).angle());
+            if (t == 10) {
+                pr0 = pr;
+                po0 = po;
+            }
+        }
+        double pr1 = c.fluid(receiver)[0], po1 = c.fluid(outlet)[0];
+        assertTrue(pr1 < 0.75 * pr0, String.format("the receiver blows down: %.2f → %.2f bar", 1e-5 * pr0, 1e-5 * pr1));
+        assertEquals(po0, po1, 0.05e5, "the outlet holds within 0.05 bar");
+        // where the piston's force balances the spring's: p − p₀ = k·(preload − x)/A
+        var spring = b.assembly().get(b.id(e, "spring"));
+        double k = dev.emergence.core.assembly.PartGeometry.springRate(spring), area = Math.PI / 4 * 0.03 * 0.03;
+        double balance = k * (spring.param("preload", 0) - c.probe(rod).angle()) / area;
+        assertEquals(balance, po1 - p0, 0.02 * balance, "the outlet is where pressure on the piston balances the spring");
+    }
+
+    @Test
     void slideValveThrottlesWithItsRod() {
         Exhibit e = MechanicsExhibits.slideValve();
         Exhibits.Built b = Exhibits.build(e, AMBIENT);

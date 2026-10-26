@@ -130,8 +130,10 @@
      station start non-finite (crankshaft speed, t = 0); find why, then let a cylinder's water leave by its ports;
    - the fire fades as the bottles empty: the needle is choked, so the methane it passes goes as the bottles' pressure
      (200 bar falling ~3 % in two minutes), and over a 14-minute soak (2026-10-26) the boiler fell from 5.1 to 3.0 bar
-     with the engine still governed at 14 rad/s. A real plant puts a pressure regulator ahead of the needle: the
-     fluid's force on a plug against a spring (item 1, Control), which would hold the fire;
+     with the engine still governed at 14 rad/s. A real plant puts a pressure regulator ahead of the needle. One
+     built from parts now holds its outlet within 0.03 bar while a receiver falls from 20 to 10 bar (the `regulator`
+     exhibit); next, fit one between the station's bottles and its needle, the needle opened to pass the same
+     methane at the regulator's few bar instead of the bottles' 200;
    - the condenser holds ~0.45 bar now that the boiler sends it more steam (checked against 80 kPa): more fin area,
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):
@@ -202,7 +204,8 @@ regenerate the demo world → screenshot tour → docs → commit.
 
 1. **Control**: (the flyball governor is in, working a rheostat through link bars; slide-worked plug valves are in,
    `slidevalve`; and Watt's governor on the steam engine's throttle, `governed`, through bevel gears) the fluid's
-   force on a plug (unbalanced valves, spring-loaded regulators); floats (buoyancy on slides) for cistern valves; contact bounce and arcing for the travel contacts; the EM-4
+   force on a plug (unbalanced valves; a spring-loaded regulator built from parts is in, `regulator`: its piston on
+   the outlet side against a spring, the plug riding the piston's rod); floats (buoyancy on slides) for cistern valves; contact bounce and arcing for the travel contacts; the EM-4
    closing a loop through a light-barrier encoder; integrator wind-up limits. (The servo is a PID loop, the
    electronic speed governor a PI loop.)
 2. **Dynamics of structures**: (an unbalanced rotor on a sprung platform is in) a motor driving it (coils and magnets

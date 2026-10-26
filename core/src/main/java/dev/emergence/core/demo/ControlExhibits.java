@@ -424,6 +424,66 @@ public final class ControlExhibits {
      * the opposite of its input; two switches pull the inputs up. Forward or reverse: one side low, the other high.
      * Neither: both sides high, the motor shorted through the two P-channels — it brakes.
      */
+    /**
+     * A pressure regulator from parts: an air receiver at 20 bar feeds a needle valve through a plug valve whose plug
+     * rides a rod. The rod is also the piston rod of a small cylinder fed from the outlet side, and a preloaded spring
+     * pushes it back open: the outlet's pressure on the piston closes the plug until it balances the spring, so the
+     * outlet holds near k·preload/A (here ~2 bar gauge) while the receiver behind it empties. Its spring's preload sets
+     * the pressure; the spring's rate over the plug's travel sets the droop.
+     */
+    public static Exhibit pressureRegulator() {
+        Exhibit e = new Exhibit("regulator", "Pressure regulator",
+                List.of("PRESSURE REGULATOR", "The receiver empties,", "the outlet holds:", "piston against spring"),
+                "The air receiver on the left starts at 20 bar and blows down through the needle valve on the right, "
+                        + "but its pressure never reaches the needle directly. Between them is a valve with no hand "
+                        + "wheel: its plug rides the rod beside it, and that rod is also the piston rod of the small "
+                        + "cylinder behind, which is piped to the outlet side. A compressed spring pushes the rod back, "
+                        + "opening the plug; the outlet's pressure on the piston pushes it forward, closing it. Where "
+                        + "the two forces balance (pressure × piston area = spring force), the valve opens just enough "
+                        + "to pass what the needle takes. As the receiver falls the plug opens a little further, and "
+                        + "the outlet gauge barely moves — a gas regulator, as on a welding bottle or a gas main. The "
+                        + "spring's preload sets the pressure it holds; its stiffness over the plug's travel sets how "
+                        + "much the outlet droops (here about a tenth of a bar).");
+        String st = "steel_1045", al = "aluminium_6061";
+        e.fill(BLOCK, st, 0, 0, 4, 9, 0, 14, Dir.UP);
+        e.name("receiver", e.fill(TANK, st, 0, 1, 5, 2, 3, 7, Dir.UP, "pressure", 2e6, "wall", 0.004, "gauge_range", 25));
+        // the regulating valve: its plug rides the rod pointing into its side from the south, a cell clear of it
+        e.name("valve", e.add(VALVE, "brass", 3, 2, 6, Dir.EAST, "bore", 0.0015, "plug_travel", 0.003));
+        // the outlet: a gauge chamber, the needle and its open end
+        e.add(PIPE, "copper", 4, 2, 6, Dir.EAST, "bore", 0.006);
+        e.add(PIPE, "copper", 5, 2, 6, Dir.EAST, "bore", 0.006);
+        e.name("outlet", e.add(TANK, st, 6, 2, 6, Dir.UP, "wall", 0.002, "gauge_range", 4));
+        e.fill(BLOCK, st, 6, 1, 6, 7, 1, 6, Dir.UP);
+        int needle = e.add(VALVE, "brass", 7, 2, 6, Dir.EAST, "bore", 0.0012);
+        e.name("needle", needle);
+        e.latch(needle); // open, the receiver blowing down
+        e.add(PIPE, "copper", 8, 2, 6, Dir.EAST, "bore", 0.006);
+        // the rod: built pushed in (the plug seated), free to draw back 1 cm, in a linear bearing packed with grease
+        // (100 N·s/m, damping the rod's swing against the spring)
+        e.name("rod", e.fill(SHAFT, st, 3, 2, 8, 3, 2, 10, Dir.SOUTH, "diameter", 0.01));
+        e.add(LINEAR_BEARING, st, 3, 2, 9, Dir.SOUTH, "travel_fwd", 0.01, "travel_back", 0, "viscosity", 100);
+        e.add(BLOCK, st, 3, 1, 9, Dir.UP);
+        // the sensing cylinder (3 cm bore) behind the rod, its piston pushing the rod towards the valve (closing)
+        e.name("piston", e.add(CYLINDER, st, 3, 2, 11, Dir.NORTH, "bore", 0.03, "ring_friction", 0.2));
+        e.add(BLOCK, st, 3, 1, 11, Dir.UP);
+        // the sensing line from the cylinder's head round to the outlet pipe
+        e.add(PIPE, "copper", 3, 2, 12, Dir.SOUTH, "bore", 0.004);
+        e.add(PIPE, "copper", 3, 2, 13, Dir.EAST, "bore", 0.004);
+        e.add(BLOCK, st, 2, 2, 13, Dir.UP, "fill", 0.2); // blind end
+        e.add(PIPE, "copper", 4, 2, 13, Dir.EAST, "bore", 0.004);
+        e.fill(PIPE, "copper", 5, 2, 7, 5, 2, 13, Dir.NORTH, "bore", 0.004);
+        e.add(BLOCK, st, 5, 2, 14, Dir.UP, "fill", 0.2); // blind end
+        // the spring: between a collar on the rod (a hub on its valve end, a post up from it) and a seat on the frame
+        // north of it, pushing the rod back (open). 4 mm wire, 8 turns on a 37.5 mm coil: ~6 kN/m; fitted 24 mm short,
+        // ~140 N, balanced by ~2 bar on the piston
+        e.add(BLOCK, al, 3, 2, 8, Dir.SOUTH, "fill", 0.5);
+        e.fill(BLOCK, al, 3, 3, 8, 3, 4, 8, Dir.UP);
+        e.name("spring", e.add(SPRING, st, 3, 4, 7, Dir.SOUTH, "wire", 0.004, "turns", 8, "preload", 0.024));
+        e.fill(BLOCK, st, 3, 1, 5, 3, 4, 5, Dir.UP);
+        e.add(BLOCK, st, 3, 4, 6, Dir.UP);
+        return e.view(11, 4.5, 9.5, 18, 90);
+    }
+
     public static Exhibit hBridge() {
         return hBridge(false, 0);
     }

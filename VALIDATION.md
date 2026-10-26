@@ -206,6 +206,13 @@ Slide valve (`DemoExhibitsTest.slideValveThrottlesWithItsRod`): built with its r
 resting 0.34 mm off its seat after its collar's rebound. The receiver's pressure then rises 1.12 → 1.30 bar as its
 walls warm the air its expansion cooled (its mass, not its pressure, is what the seat holds).
 
+Pressure regulator (`DemoExhibitsTest.regulatorHoldsItsOutletWhileTheReceiverEmpties`), built from parts: a plug valve
+whose plug rides the piston rod of a 3 cm cylinder fed from the outlet, a preloaded spring (4 mm wire, 8 turns,
+k = G·d⁴/(8·D³·n) ≈ 6.07 kN/m, fitted 24 mm short) pushing it open. Over two minutes the 20 bar receiver blows down
+to 9.8 bar through a 1.2 mm needle, while the outlet stays between 2.010 and 1.987 bar gauge. The plug opens from 0.59 to
+0.84 mm, and the outlet sits where the pressure on the piston balances the spring, k·(preload − x)/A = 2.009 bar,
+within 2 % (checked). Its droop, k·Δx/A = 0.021 bar for the 0.25 mm the plug opened further, is the 0.023 bar seen.
+
 Cavitation (`FluidValidationTest`): water drained from a closed 0.1 L vessel towards a 200 Pa sink holds at 3.32 kPa
 (p_v = 3.16 kPa by Antoine at 25 °C, CRC 3.17 kPa) while 7 % of it leaves, mass conserved; ∂ρ/∂p and ∂ρ/∂T match
 finite differences across the onset.

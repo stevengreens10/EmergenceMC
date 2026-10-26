@@ -1048,3 +1048,12 @@ steam can pass each other. Every two-phase side face is now split that way, each
 or below the port. A new test drains the water under a lying pipe's axis into the vessel beside it; the old compiler
 fails it. A cylinder's side faces stay single for now. Its water lies on a moving piston, and splitting those faces
 made the station's start non-finite, which is still to be explained.
+
+**A pressure regulator from parts.** The station's fire fades because its needle valve passes methane in proportion
+to the bottles' falling pressure, and a real plant holds the fire steady with a regulator. One can already be built
+without a new block: a plug valve whose plug rides a rod, the rod also the piston rod of a small cylinder piped to
+the outlet side, and a preloaded spring between a collar on the rod and the frame. The outlet's pressure on the
+piston closes the plug until it balances the spring. In the new `regulator` exhibit, a 20 bar receiver blows down to
+10 bar in two minutes while the outlet holds 2.01 to 1.99 bar gauge. That is k·(preload − x)/A from the spring's
+coil formula and the piston's area, within 2 %. The first build taught one lesson: a block beside a shaft does not
+ride it, so the collar starts from a hub in the rod's own cell, as a pulley's or an arm's does.

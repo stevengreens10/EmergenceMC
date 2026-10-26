@@ -416,6 +416,23 @@ public final class AutoShowcase {
                 STEPS.add(new Step(10, view, shot.apply("pumped")).check(key + " pumping raises the ram",
                         () -> atLeast("ram's rise [mm]", 1e3 * (position(server, ram, PartKind.SHAFT) - before[0]), 0.5)));
             }
+            if (id.equals("regulator")) {
+                // the receiver blows down through the needle; the regulator between them holds the outlet
+                BlockPos receiver = at.apply("receiver"), outlet = at.apply("outlet");
+                double[] pr0 = {Double.NaN}, po0 = {Double.NaN};
+                STEPS.add(new Step(60, view, null));
+                STEPS.add(new Step(0, () -> {
+                    pr0[0] = pressure(server, receiver, PartKind.TANK);
+                    po0[0] = pressure(server, outlet, PartKind.TANK);
+                }, null));
+                STEPS.add(new Step(300, view, shot.apply("later")).show()
+                        .check(key + " the receiver blows down", () -> atLeast("receiver pressure drop [bar]",
+                                1e-5 * (pr0[0] - pressure(server, receiver, PartKind.TANK)), 1))
+                        .check(key + " the outlet holds", () -> atMost("outlet pressure change [bar]",
+                                1e-5 * Math.abs(pressure(server, outlet, PartKind.TANK) - po0[0]), 0.1))
+                        .check(key + " at the spring's setting", () -> atLeast("outlet pressure [bar gauge]",
+                                1e-5 * (pressure(server, outlet, PartKind.TANK) - 101_325), 1.5)));
+            }
             if (id.equals("slidevalve")) {
                 // draw the rod out by its knob: the plug leaves its seat and the air spins the rotor; push it home and the
                 // receiver holds what is left (its pressure even rising as its walls warm the air the expansion cooled)

@@ -200,6 +200,8 @@
       about 70 % while watched, the loudspeaker (190–360 ms) at 10–20 %.
    Expected: 1 and 2 reach real time; a fast combustion engine may stay costly (real time alone near a player, the
    slow-motion fallback when several are).
+   Status 2026-10-26 (idle bench, 76 exhibits): every exhibit but the loudspeaker (200 ms a tick) fits the 35 ms a
+   watched island gets; unwatched (12 ms) the condensing and steam engines (26, 19 ms) run at about half speed.
 
 0c. **World blocks as thermal masses** (KNOWN_LIMITATIONS: they are not): a part touching a solid block exchanges
    heat with it — a node per touched block (ρ·c_p of a mapped material — stone as granite, dirt as soil, iron blocks

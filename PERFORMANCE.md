@@ -32,6 +32,13 @@ island per tick** (10 % of the tick). `/emergence perf` reports running averages
 Idle, every other exhibit fits in 50 ms; the costliest are the flyball (41), the condensing engine (30), the boost (24)
 and the steam engine (23).
 
+Idle, 2026-10-26 (`SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`, 76 exhibits): only the loudspeaker is over 50 ms
+(200 ms: ~1050 steps a tick, a fifth more rejected, its 47 nF timing capacitor and Schmitt trigger setting the step).
+Then the condensing engine 26, the steam engine 19, the boost 10, the governed engine 9.0, the burner 8.5, the
+regulator 5.9, the PWM motor 4.7; the flyball is down to 3.5. In the game an island gets 12 ms a tick (35 while
+watched): watched, every exhibit but the loudspeaker runs at real time; unwatched, the two steam engines slow to
+about half.
+
 ## Compilation (`coreTest --tests *CompileTimeBenchTest*`, 2026-10-22)
 A machine is compiled when it is built, changed or loaded: on the server thread, a hitch for everyone. 73 exhibits
 take 14 s in all; the slowest were the optics: the colour-filter bench 6.2 s and the spectrometer 2.7 s. Light from

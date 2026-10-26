@@ -161,9 +161,11 @@
    then A deep solver work; not C). Done: parallel loading, circuits sub-cycled and overlapped with the plant on two
    threads, independent plant parts, cheaper LU/Newton passes, bristle tolerance 1 %, off-tick stepping in the game
    (PERFORMANCE.md, "Large multiphysics machines at real time"). Core test 6.8 → ~1.0 s/s; **in the game 0.6 of real
-   time** (~1.4 s/s there: client threads, more circuit Newton iterations). Open: the engine's valve-port Newton failures
-   (a fifth of the plant's iterations), water/steam property cost, why the game's circuits iterate more (daylight on
-   the photodiode?), a dedicated solver thread pool. Real time in the game needs another ~1.5×.
+   time** (~1.4 s/s there); since then held-unknown pivoting and adaptive accuracy (×3 before slow motion) bring the
+   in-game state, replayed in the core, from 1.28 to 1.05 s/s — **to be measured in the game** (the station tour could
+   not open a window at 18:47: "Failed to find a primary monitor"). Open: the engine's valve-port Newton failures (a
+   fifth of the plant's iterations), why the in-game state's circuits iterate ~6 times a step (vs ~4), water/steam
+   property cost.
 
 0a2. **Tour triage, 2026-10-26** (full tour: 152 passed, 2 failed — both the PWM exhibit's hand, its checks passing):
    - the PWM hand again, 33rd of 75: the client had no block entity at the transistor's block for the whole 30 s the

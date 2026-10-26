@@ -276,6 +276,8 @@ thread outside the tick.
 | Thermal syncs without draining the overlap | 1.20 | the circuits' heat over the interval they lag by is in transit until the next synchronisation |
 | Bristle friction resolved to 1 % of its limit (option B) | 1.11 | a governor's flyweights held against the generator's ripple set two fifths of the plant's steps; outputs unchanged to three digits |
 | The plant's parts step while the plant does; convection properties memoised | 1.04 (1.0 from t = 40 s) | the gas network steps on the calling thread while it waits for the plant |
+| Held unknowns pivoted in one pass in fresh factorisations | 1.0 | the Markowitz search had scanned all 1141 columns at every pivot (a fifth of the plant thread in the in-game state) |
+| Adaptive accuracy (game, islands off the tick) | in-game state 1.2 → 1.05 | falling behind, an island relaxes its truncation tolerances up to ×3 before it slows; the station's outputs matched to three digits |
 | Off-tick stepping in the game (option D) | — | an island costing more than 8 ms a tick steps on a thread of its own across the server tick (paced against 45 ms, its wall-clock cap the ticks it covers), so ~0.9 s/s is real time; the world sees its results a tick later |
 
 **Tried, not kept (this round):** a minimum-degree column pre-ordering (fewer fresh-factorisation costs but more
@@ -284,9 +286,11 @@ stability margin); a quadratic Newton predictor (more iterations and failures); 
 from converging, a per-unknown two-cycle detector and early abandonment of stalled solves (the engine's valve-port
 failures are a port at a water surface switching between liquid and vapour outflow; none of these moved the time).
 
-**Where it stands:** core test ~1.0 s/s; **in the game 0.6 of real time** (the station's tour, 7/7 checks passing):
-there it costs ~1.4 s per simulated second — the client's threads share the cores, and its circuits take ~6 Newton
-iterations a step where the core test's take ~4.
+**Where it stands:** core test ~1.0 s/s; **in the game 0.6 of real time** before the last two rows (the station's tour,
+7/7 checks passing), ~1.4 s per simulated second there. Replaying the in-game state in the core (`IslandDumpReplayTest`,
+`-Ddiag.dumpProfile=true`) showed most of the gap is the state, not the client: it costs 1.28 s/s in the core too, its
+circuits taking ~6 Newton iterations a step against ~4 (the generator's coil currents and magnetisation lag). With the
+last two rows the replay is 1.05 s/s; not yet measured in the game (the display was unavailable for the tour).
 
 **What sets the time now** (per 10 simulated seconds, core test): the plant ~8 s on its own thread (6.4k steps, its
 step set by the cylinder's 1.85 cm³ at top dead centre, the flyweights' bristles and the valve ports' flows; ~160 Newton

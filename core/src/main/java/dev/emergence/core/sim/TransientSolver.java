@@ -210,7 +210,7 @@ public final class TransientSolver implements StateView {
     private double[] emMeanLast;
     private double emMidLast = Double.NaN, emMidPrev = Double.NaN;
     /** Plant steps overlapped with the circuits, and times the circuits were brought level (diagnostics). */
-    private long overlaps, drains;
+    private long overlaps, drains, overlapBusy, overlapWait, partsNanos, syncNanos, drainNanos, lonePlantNanos;
     private boolean emMeanValid;
     private double emT0;
     /** Energy the circuits delivered into the plant's rows not yet taken up by it (work along the plant's motion) [J]. */
@@ -960,6 +960,8 @@ public final class TransientSolver implements StateView {
         if (em != null) em.partId = -2;
         ctx.partOf = partOf;
         if (em != null && em.ctx != null) em.ctx.partOf = partOf;
+        // overlapped, the parts step on the calling thread while the plant steps on another: arrays of their own
+        if (overlap) for (Phase p : ps) ownScratch(p);
         if (Boolean.getBoolean("emergence.debugMultirate")) {
             StringBuilder sb = new StringBuilder("multirate: the plant in " + (ps.length + 1) + " independent parts, elements:");
             sb.append(' ').append(fast.elems.length);
@@ -991,8 +993,6 @@ public final class TransientSolver implements StateView {
         }
         t = tSaved;
         active = saved;
-        ctx.jac = active.jac;
-        ctx.frozen = active.frozen;
     }
 
     /** {@code emergence.kinks} (on by default): steps end on elements' kinks (see Element#kinkCount). */
@@ -1352,15 +1352,25 @@ public final class TransientSolver implements StateView {
                 if (te > t && te - t < h) h = Math.max(te - t, hMin * 2);
                 stepAdaptive(ph, h);
             }
+            long pt0 = System.nanoTime();
             stepParts(now(), false);
+            partsNanos += System.nanoTime() - pt0;
             if (partsMet) {
                 drainCircuits();
                 joinParts();
             }
-            if (multirate && now() - slow.t >= syncInterval()) synchronise();
+            if (multirate && now() - slow.t >= syncInterval()) {
+                long st0 = System.nanoTime();
+                synchronise();
+                syncNanos += System.nanoTime() - st0;
+            }
         }
+        long dt0 = System.nanoTime();
         drainCircuits();
+        long dt1 = System.nanoTime();
         synchronise();
+        drainNanos += dt1 - dt0;
+        syncNanos += System.nanoTime() - dt1;
         fireEvents();
         return t - tStart;
     }
@@ -1426,7 +1436,9 @@ public final class TransientSolver implements StateView {
             // nothing to overlap with yet: the plant's step alone
             double t0 = fast.t;
             for (int i : plantRows) plantStart[i] = x[i];
+            long l0 = System.nanoTime();
             stepAdaptive(fast, h);
+            lonePlantNanos += System.nanoTime() - l0;
             if (fast.t == t0) return;
             for (int i : plantRows) plantEnd[i] = x[i];
             pending = true;
@@ -1440,8 +1452,12 @@ public final class TransientSolver implements StateView {
         inFlight = true;
         overlaps++;
         java.util.concurrent.ForkJoinTask<?> task = java.util.concurrent.ForkJoinPool.commonPool().submit(() -> stepAdaptive(fast, h));
+        long c0 = System.nanoTime(), c1 = c0;
         try {
             crossCircuits(pendT0, pendT1);
+            // and the plant's independent parts, as far as the plant is going, while it is still at it
+            stepParts(t0 + h, false);
+            c1 = System.nanoTime();
         } finally {
             try {
                 task.join();
@@ -1449,6 +1465,9 @@ public final class TransientSolver implements StateView {
                 inFlight = false;
             }
         }
+        long c2 = System.nanoTime();
+        overlapBusy += c1 - c0;
+        overlapWait += c2 - c1;
         if (discontinuityLater) {
             discontinuityLater = false;
             markDiscontinuity();
@@ -1520,8 +1539,10 @@ public final class TransientSolver implements StateView {
                     ph.nRejected, ph.nFailed, ph.nNewton, ph.nRestarts));
             ph.nAccepted = ph.nRejected = ph.nFailed = ph.nNewton = ph.nRestarts = 0;
         }
-        if (overlap) sb.append(String.format("overlapped %d, drained %d; ", overlaps, drains));
-        overlaps = drains = 0;
+        if (overlap) sb.append(String.format("overlapped %d, drained %d; circuits busy %.1f s, waiting for the plant %.1f s; "
+                        + "parts %.1f s, syncs %.1f s, drains %.1f s, lone plant steps %.1f s; ",
+                overlaps, drains, overlapBusy / 1e9, overlapWait / 1e9, partsNanos / 1e9, syncNanos / 1e9, drainNanos / 1e9, lonePlantNanos / 1e9));
+        overlaps = drains = overlapBusy = overlapWait = partsNanos = syncNanos = drainNanos = lonePlantNanos = 0;
         return sb.toString();
     }
 
@@ -2100,7 +2121,8 @@ public final class TransientSolver implements StateView {
             // the heat the fast elements delivered into each thermal node over this step (f is their residual at
             // the converged point: −heat in), and the coupling's stiffness there
             boolean beq = m == IntegrationMethod.BACKWARD_EULER;
-            double[] acc = ph == em ? emHeat : heatAccum;
+            // (the circuits and the plant's parts step on the calling thread, the plant perhaps on another meanwhile)
+            double[] acc = ph == em || isPart(ph) ? emHeat : heatAccum;
             for (int i : slowRows) {
                 double rate = -f[i];
                 // the quadrature of the step taken: the end point after backward Euler, else the trapezoid
@@ -2192,7 +2214,7 @@ public final class TransientSolver implements StateView {
         double pLoss = power(ph, false, sv);
         boolean be = m == IntegrationMethod.BACKWARD_EULER;
         double in = (be ? pExt : 0.5 * (pExt + ph.lastPext)) * h, out = (be ? pLoss : 0.5 * (pLoss + ph.lastPloss)) * h;
-        if (ph == em) {
+        if (ph == em || isPart(ph)) {
             emExternalIn += in;
             emUntrackedOut += out;
         } else {

@@ -119,6 +119,14 @@ public final class SimulationManager {
         long stepNanos;
         List<Long> stepFailed;
         RuntimeException stepError;
+        /**
+         * Off the tick: its step runs on a thread of its own across the server's tick, what came of it taken up at a
+         * later tick (see {@link #OFF_TICK}); the step while it runs, the tick it set off, and the ticks it covers.
+         */
+        boolean offTick;
+        java.util.concurrent.Future<?> step;
+        long launchTick = Long.MIN_VALUE;
+        int stepTicks = 1;
 
         public double timeScale() {
             return timeScale;
@@ -215,6 +223,8 @@ public final class SimulationManager {
     public void tick() {
         tickCount++;
         if (!dirty.isEmpty()) {
+            // (a machine being rebuilt finishes the step it is taking first)
+            for (Island isl : new HashSet<>(islandOf.values())) settle(isl);
             long r0 = System.nanoTime();
             int n = dirty.size();
             rebuild();
@@ -226,10 +236,19 @@ public final class SimulationManager {
         Set<Island> islands = new HashSet<>(islandOf.values());
         double watchedTotal = 0, nearTotal = 0, farTotal = 0;
         Set<Island> nearest = nearestToPlayers(islands);
+        // steps taken off the tick that have finished: what came of them, applied to the world (on this thread)
+        for (Island isl : islands) {
+            if (isl.step == null || !isl.step.isDone()) continue;
+            isl.step = null;
+            if (isl.compiled == null) continue;
+            land(isl, 1, true);
+        }
         // the islands to step this tick, their inputs set from the world (on this thread)
-        List<Island> run = new ArrayList<>();
+        List<Island> run = new ArrayList<>(), off = new ArrayList<>();
         for (Island isl : islands) {
             if (isl.compiled == null) continue;
+            // still stepping off the tick
+            if (isl.step != null) continue;
             // like block entities, machines advance only within the simulation distance of a player; further
             // away their state waits, intact. A machine reaching into simulation distance runs as a whole (judging
             // it by an arbitrary one of its blocks made one straddling a chunk border run or freeze by chance)
@@ -248,9 +267,22 @@ public final class SimulationManager {
             updateWind(isl);
             isl.near = nearPlayer(isl);
             isl.watched = isl.near && (nearest.contains(isl) || watchedBy(isl));
-            isl.stepDt = TICK_SECONDS * isl.timeScale * scaleOf(isl);
-            run.add(isl);
+            // a costly machine steps off the tick (from above OFF_TICK_MS a tick, back below half of it)
+            isl.offTick = OFF_TICK && (isl.offTick ? isl.costMs > 0.5 * OFF_TICK_MS : isl.costMs > OFF_TICK_MS);
+            if (isl.offTick) {
+                // across the ticks since it last set off (a step that ran over a tick: the next one covers both), at its
+                // own pace — it weighs on no tick, so on no common budget
+                isl.stepTicks = (int) Math.max(1, Math.min(4, tickCount - isl.launchTick));
+                isl.stepDt = TICK_SECONDS * isl.stepTicks * isl.timeScale;
+                off.add(isl);
+            } else {
+                isl.stepTicks = 1;
+                isl.stepDt = TICK_SECONDS * isl.timeScale * scaleOf(isl);
+                run.add(isl);
+            }
+            isl.launchTick = tickCount;
         }
+        for (Island isl : off) isl.step = OFF_TICK_POOL.submit(() -> stepIsolated(isl));
         // the steps: each island alone with its own compiled machine (nothing in the core is shared between them), so
         // on several cores at once — the machines around a player each get their budget, not a share of one
         long wall0 = System.nanoTime();
@@ -282,6 +314,27 @@ public final class SimulationManager {
         double share = cpu > 0 ? Math.min(1, (double) wall / cpu) : 1;
         // the results, applied to the world (on this thread)
         for (Island isl : run) {
+            double ms = land(isl, share, false);
+            if (isl.watched) watchedTotal += ms;
+            else if (isl.near) nearTotal += ms;
+            else farTotal += ms;
+        }
+        tickLoggers();
+        // all islands together within the server's budget, by priority: the machine a player stands at first, then
+        // those around them, then the rest — if they cost more, the further ones slow (down to nearly paused) before
+        // the one being watched does
+        watchedScale = adjust(watchedScale, watchedTotal, GLOBAL_BUDGET_MS, 0.05);
+        double left = Math.max(GLOBAL_BUDGET_MS - watchedTotal, 0.1 * GLOBAL_BUDGET_MS);
+        nearScale = adjust(nearScale, nearTotal, left, 0.02);
+        farScale = adjust(farScale, farTotal, Math.max(left - nearTotal, 0.1 * GLOBAL_BUDGET_MS), 0.01);
+    }
+
+    /**
+     * What came of an island's step, applied to the world (on the server thread): a failure restarted, parts destroyed,
+     * light, plumes, the clients' view. Returns the step's cost to the server's tick [ms] (0 for one taken off it).
+     */
+    private double land(Island isl, double share, boolean offTick) {
+        {
             RuntimeException err = isl.stepError;
             isl.stepError = null;
             if (err != null) {
@@ -304,7 +357,7 @@ public final class SimulationManager {
                     EmergenceMod.LOG.error("Restart failed too; resetting the island's state", again);
                     isl.compiled = compile(isl, AssemblyState.empty());
                 }
-                continue;
+                return 0;
             }
             List<Long> failed = isl.stepFailed;
             isl.stepFailed = null;
@@ -314,13 +367,12 @@ public final class SimulationManager {
                         isl.blocks.iterator().next(), isl.compiled.motionReset() ? "motion was" : "coil currents were");
             }
             long cost = isl.stepNanos;
-            if (cost / 1_000_000 > SLOW_MS) EmergenceMod.LOG.warn("Slow simulation: a step of the island at {} ({} parts) took {} ms",
+            if (cost / 1_000_000 > SLOW_MS * isl.stepTicks) EmergenceMod.LOG.warn("Slow simulation: a step of the island at {} ({} parts) took {} ms",
                     isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), cost / 1_000_000);
-            if (isl.watched) watchedTotal += share * cost / 1e6;
-            else if (isl.near) nearTotal += share * cost / 1e6;
-            else farTotal += share * cost / 1e6;
             Profiler.record(cost, isl.compiled.network().size());
-            pace(isl, cost / 1e6, isl.watched ? Math.max(ISLAND_BUDGET_MS, GLOBAL_BUDGET_MS) : ISLAND_BUDGET_MS);
+            // (paced by its cost per tick: off the tick, against most of a tick's wall time on a thread of its own)
+            if (offTick) pace(isl, cost / 1e6 / isl.stepTicks, OFF_TICK_BUDGET_MS, 0.85);
+            else pace(isl, cost / 1e6, isl.watched ? Math.max(ISLAND_BUDGET_MS, GLOBAL_BUDGET_MS) : ISLAND_BUDGET_MS);
             if (LOG_PACE && isl.watched && tickCount % 200 == 0) logPace(isl);
             if (failed != null && !failed.isEmpty()) destroyParts(isl, failed);
             updateLight(isl);
@@ -339,15 +391,39 @@ public final class SimulationManager {
             }
             sync(isl);
             if (tickCount % 100 == 0) saveIsland(isl);
+            return offTick ? 0 : share * cost / 1e6;
         }
-        tickLoggers();
-        // all islands together within the server's budget, by priority: the machine a player stands at first, then
-        // those around them, then the rest — if they cost more, the further ones slow (down to nearly paused) before
-        // the one being watched does
-        watchedScale = adjust(watchedScale, watchedTotal, GLOBAL_BUDGET_MS, 0.05);
-        double left = Math.max(GLOBAL_BUDGET_MS - watchedTotal, 0.1 * GLOBAL_BUDGET_MS);
-        nearScale = adjust(nearScale, nearTotal, left, 0.02);
-        farScale = adjust(farScale, farTotal, Math.max(left - nearTotal, 0.1 * GLOBAL_BUDGET_MS), 0.01);
+    }
+
+    /**
+     * {@code emergence.offTick} (on by default): an island whose step costs more than {@link #OFF_TICK_MS} a tick
+     * steps on a thread of its own across the server's tick, what came of it taken up at the next tick it has
+     * finished by — it holds up no tick, and may take most of one (paced against {@link #OFF_TICK_BUDGET_MS}), so a
+     * large machine runs at real time where its step costs up to that. The world sees its results a tick later.
+     */
+    static final boolean OFF_TICK = !"false".equals(System.getProperty("emergence.offTick"))
+            && Double.parseDouble(System.getProperty("emergence.globalBudgetMs", "35")) < 1e6; // (not where the budgets are lifted)
+    static final double OFF_TICK_MS = Double.parseDouble(System.getProperty("emergence.offTickMs", "8"));
+    static final double OFF_TICK_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.offTickBudgetMs", "45"));
+    private static final java.util.concurrent.ExecutorService OFF_TICK_POOL = java.util.concurrent.Executors.newFixedThreadPool(
+            Math.max(1, Math.min(8, Runtime.getRuntime().availableProcessors() - 1)), r -> {
+                Thread t = new Thread(r, "Emergence off-tick simulation");
+                t.setDaemon(true);
+                return t;
+            });
+
+    /** Waits for an island's step off the tick, if one is running (before anything else touches its machine). */
+    private static void settle(Island isl) {
+        var f = isl.step;
+        if (f == null) return;
+        try {
+            f.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (java.util.concurrent.ExecutionException e) {
+            if (e.getCause() instanceof Error err) throw err;
+            throw new IllegalStateException(e.getCause());
+        }
     }
 
     /** One island's step, touching nothing but its own compiled machine: its outcome and cost kept on it. */
@@ -608,9 +684,18 @@ public final class SimulationManager {
 
     /** Time dilation: shrink an island's simulated step while its cost exceeds the budget, recover when cheap. */
     static void pace(Island isl, double ms, double budgetMs) {
+        pace(isl, ms, budgetMs, 0.6);
+    }
+
+    /**
+     * As {@link #pace(Island, double, double)}, recovering below {@code recover} of the budget. (An island off the tick
+     * recovers up to 85 % of its own: at 60 % one costing 35 of its 45 ms stayed at the slow motion it fell into while
+     * starting, 0.58, where 0.75 was within reach.)
+     */
+    static void pace(Island isl, double ms, double budgetMs, double recover) {
         isl.costMs = isl.costMs == 0 ? ms : 0.8 * isl.costMs + 0.2 * ms;
         if (isl.costMs > budgetMs) isl.timeScale = Math.max(0.05, isl.timeScale * 0.92);
-        else if (isl.costMs < 0.6 * budgetMs) isl.timeScale = Math.min(1, isl.timeScale * 1.05);
+        else if (isl.costMs < recover * budgetMs) isl.timeScale = Math.min(1, isl.timeScale * 1.05);
     }
 
     private void rebuild() {
@@ -1207,8 +1292,13 @@ public final class SimulationManager {
      * never got going when the tour came to them straight from a costlier machine).
      */
     private Island islandAt(BlockPos pos) {
-        if (dirty.contains(pos)) rebuild();
+        if (dirty.contains(pos)) {
+            for (Island i : new HashSet<>(islandOf.values())) settle(i);
+            rebuild();
+        }
         Island isl = islandOf.get(pos);
+        // (a player's hand, a probe: on the machine as its step off the tick leaves it)
+        if (isl != null) settle(isl);
         if (isl != null && isl.pending != null) {
             try {
                 isl.pending.get();
@@ -1525,6 +1615,7 @@ public final class SimulationManager {
     }
 
     private void saveIsland(Island isl, boolean markChanged) {
+        settle(isl);
         // (still compiling: the state it is being compiled from, which it has not run on from)
         AssemblyState s = isl.compiled != null ? isl.compiled.exportState() : isl.pending != null ? isl.startState : null;
         if (s == null) return;

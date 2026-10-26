@@ -70,6 +70,27 @@ public final class FluidWallConvection implements Element {
     private final WaterSteam.JoinCache join = new WaterSteam.JoinCache();
     private double cpT = Double.NaN, cpVal, cpT2 = Double.NaN, cpVal2;
 
+    private final double[] propA = new double[10], propB = new double[10];
+
+    /** {ρ', ρ'', h_fg at T_s; μ_l, k_l at T; σ at T_s; μ_v, k_v at T; T; T_s}, from the memo or worked out. */
+    private double[] props(WaterSteam w, double tp, double ts) {
+        if (propA[8] == tp && propA[9] == ts) return propA;
+        if (propB[8] == tp && propB[9] == ts) return propB;
+        System.arraycopy(propA, 0, propB, 0, 10);
+        double[] sat = WaterSteam.saturationSet(ts);
+        propA[0] = sat[WaterSteam.SAT_RHO_L];
+        propA[1] = sat[WaterSteam.SAT_RHO_V];
+        propA[2] = sat[WaterSteam.SAT_H_V] - sat[WaterSteam.SAT_H_L];
+        propA[3] = w.liquidViscosity(tp);
+        propA[4] = w.liquidConductivity(tp);
+        propA[5] = Math.max(WaterSteam.surfaceTension(ts), 1e-4);
+        propA[6] = w.vapourViscosity(tp);
+        propA[7] = WaterSteam.vapourConductivity(tp);
+        propA[8] = tp;
+        propA[9] = ts;
+        return propA;
+    }
+
     /** Heat flow from the wall into a water/steam volume [W]. */
     double twoPhaseHeat(double tw, double tf, double s, double mdotDh) {
         WaterSteam w = (WaterSteam) fluid;
@@ -77,8 +98,11 @@ public final class FluidWallConvection implements Element {
         // saturated: the fluid is at the saturation temperature (exactly, so the film law is smooth through ΔT = 0)
         double ts = s >= 0 && s <= 1 ? tf : WaterSteam.tSat(st[WaterSteam.P]);
         double av = st[WaterSteam.ALPHA_V], fl = 1 - av;
-        double[] sat = WaterSteam.saturationSet(ts);
-        double rl = sat[WaterSteam.SAT_RHO_L], rv = sat[WaterSteam.SAT_RHO_V], hfg = sat[WaterSteam.SAT_H_V] - sat[WaterSteam.SAT_H_L];
+        // the properties at the fluid's and the saturation temperature, held for the last two pairs of them (of this
+        // element's four evaluations a load — the finite differences — two move neither)
+        double tp0 = Math.max(tf, 273.16);
+        double[] pr = props(w, tp0, ts);
+        double rl = pr[0], rv = pr[1], hfg = pr[2];
         // the liquid's and vapour's transport properties at no less than the triple point: a Newton iterate may pass
         // below it (an expanding volume overshooting), and there the liquid's c_p is 0 — its Prandtl number 0 and the
         // boiling law 0/0, failing the step outright instead of letting the step control reject it (as the ports clamp)
@@ -98,12 +122,12 @@ public final class FluidWallConvection implements Element {
                 cpVal = w.cp(tp);
             }
         }
-        double mul = w.liquidViscosity(tp), kl = w.liquidConductivity(tp), cpl = cpVal, prl = mul * cpl / kl;
-        double g = dev.emergence.core.units.PhysicalConstants.STANDARD_GRAVITY, sigma = Math.max(WaterSteam.surfaceTension(ts), 1e-4);
+        double mul = pr[3], kl = pr[4], cpl = cpVal, prl = mul * cpl / kl;
+        double g = dev.emergence.core.units.PhysicalConstants.STANDARD_GRAVITY, sigma = pr[5];
         double q = 0;
         // single-phase convection to each phase
         double hl = nusselt(mdotDh / mul, prl) * kl / dh;
-        double muv = w.vapourViscosity(tp), kv = WaterSteam.vapourConductivity(tp);
+        double muv = pr[6], kv = pr[7];
         double hv = nusselt(mdotDh / muv, muv * w.cpVapour() / kv) * kv / dh;
         q += (hl * fl + hv * av) * area * (tw - tf);
         // nucleate boiling on the wetted wall, smoothly capped at the critical heat flux

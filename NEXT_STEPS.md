@@ -107,10 +107,11 @@
      assembly replay kept in step (hash lookups gone, ~3 %; kept). What is left is structural: step the fluid and gas
      network apart from the fast electromechanics (multirate), with the stiff liquid volumes at the pistons and pumps
      on the fast side and the pistons' work exchanged conservatively, as the thermal network's heat already is;
-   - the hot well still falls ~0.3 g/s over the first four minutes as condensate fills the steam path's low points
-     (the throttle's body half full, the safety and overflow lines, the condenser's upper cells: one passage up a
-     stacked column passes one phase at a time, as the side faces did). Watch a ten-minute soak: if it does not level
-     out, split vertical faces between vessels for counter-current flow too, or give the well more reserve;
+   - the hot well falls (197 g to 45 g over a ten-minute soak, the rate slowing) as condensate gathers in the steam
+     path: the valve bodies fill to their ports and stop (~15 g each), but the exhaust chest under the engine's
+     exhaust riser goes on filling (its outlet is at its top; the wet exhaust's water falls back down the riser), and
+     it stands below the hot well, so it cannot drain to it. Fix: a drain from the chest into the feed pump's
+     suction (both near the condenser's pressure), or the exhaust led down to the condenser instead of up;
    - the condenser holds ~0.45 bar now that the boiler sends it more steam (checked against 80 kPa): more fin area,
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):

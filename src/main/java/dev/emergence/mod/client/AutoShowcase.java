@@ -501,7 +501,22 @@ public final class AutoShowcase {
                 String name = id.equals("lens") ? "lens" : "mirrorB";
                 PartKind kind = id.equals("lens") ? PartKind.LENS : PartKind.MIRROR;
                 BlockPos led = at.apply("lit"), optic = at.apply(name); // the receiver's LED
-                STEPS.add(new Step(40, NOTHING, shot.apply("lit")).check(key + " the light reaches the photodiode and lights the LED", () -> lit(server, led)));
+                // (up to 10 s: an island compiled only as the tour lands — its chunks loaded on arrival — has first to run
+                // its battery's LED and the receiver up; the periscope's, once its neighbours moved it on, was checked two
+                // simulated seconds after it compiled)
+                STEPS.add(new Step(200, NOTHING, shot.apply("lit"), () -> light(server, led) > 1e-5)
+                        .check(key + " the light reaches the photodiode and lights the LED", () -> {
+                            Verdict v = lit(server, led);
+                            if (v.pass() || !id.equals("periscope")) return v;
+                            // what the chain carried, to find where it broke; and the island written out, to replay in the
+                            // core (IslandDumpDiffTest, IslandDumpReplayTest)
+                            BlockPos ledAt = led;
+                            server.execute(() -> dev.emergence.mod.sim.SimulationManager.get(server.overworld()).dumpIsland(ledAt));
+                            PlacedPart pd = partIn(server, at.apply("pd"), PartKind.PHOTODIODE);
+                            CompiledAssembly cc = compiled(server, at.apply("pd"));
+                            return new Verdict(false, v.measured() + String.format("; red LED %.3g mW, photodiode %s",
+                                    1e3 * light(server, at.apply("led")), pd == null || cc == null ? "not compiled" : String.format("%.3g µA", 1e6 * cc.probe(pd.id).current())));
+                        }));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.attack(key + " take the " + name + " away", part.apply(name, kind))));
                 STEPS.add(new Step(60, view, shot.apply("dark")).check(key + " without it the LED goes out", () -> has(server, optic, kind)
                         ? that(false, "the " + name + " is still there") : dark(server, led)));

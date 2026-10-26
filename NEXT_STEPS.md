@@ -170,6 +170,19 @@
      (`DemoExhibitsTest.gasBurnerLitAfterStanding`, -Ddiag.burnerIdle=…, every timing tried runs on). Tour runs now
      write failure dumps by default: replay the next one.
 
+0a3. **Tour triage, 2026-10-26 12:59** (full tour: 159 passed, 3 failed):
+   - the PWM hand, 33rd of 78. The server's block at the transistor's place is air too, and the nearest
+     transistor is elsewhere, so the part is gone from the world, not missing on the client. It passes alone (3 of 3).
+     Parts the simulation destroys were not logged; they are now ("Part destroyed: kind #id at pos (reason; T)").
+     Read the next full tour for the transistor's fate (burnt in the noon sun before the tour came?);
+   - the periscope's receiver stays dark in the world, alone too (a regression since the 07:19 tour). The red LED
+     gives 11.5 mW and the photodiode passes 3.34 µA, as in the core, but the Schmitt trigger's output stays high and
+     the green LED off; the core exhibit lights it (6.7 mA). Its island takes in the gas engine next door by line of
+     sight (251 parts); its plot moved 60 blocks east when three exhibits were added before it. The tour now waits up
+     to 10 s for the LED (it was checked two seconds after compiling), reports the chain's readings and writes a dump
+     on failure. Replayed, the dump keeps the receiver dark, but its photodiode gets no light at all. Next: why the
+     merged island's receiver does not switch (its supply, its threshold, the engine's battery beside it?).
+
 0b. **Every exhibit at real time** (asked for 2026-10-22; measure first: `SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`
    prints ms per 50 ms tick and the unknowns that limit the step):
    1. power electronics — fidelity switching: fast, decided states (a logic output's 10 ns slew, a gate's charge)

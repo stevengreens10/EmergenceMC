@@ -1410,6 +1410,9 @@ public final class SimulationManager {
             if (be == null) continue;
             PlacedPart p = be.removePart(id);
             if (p == null) continue;
+            EmergenceMod.LOG.info("Part destroyed: {} #{} at {} ({}; {} K)", p.kind, id, pos,
+                    isl.compiled != null && isl.compiled.burstUtilisation(id) >= 1 ? "burst" : broken.contains(id) ? "overloaded" : "too hot",
+                    isl.compiled == null ? "?" : String.format("%.0f", isl.compiled.temperature(id)));
             double r = be.resolution();
             double px = pos.getX() + (p.x0 + 0.5) / r, py = pos.getY() + (p.y0 + 0.5) / r, pz = pos.getZ() + (p.z0 + 0.5) / r;
             double burst = isl.compiled == null ? Double.NaN : isl.compiled.burstUtilisation(id);

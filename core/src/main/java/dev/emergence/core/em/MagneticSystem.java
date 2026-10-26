@@ -766,14 +766,14 @@ public final class MagneticSystem implements Element {
             // tolerance far below the signal forces needlessly tiny steps whenever λ crosses zero.)
             double swing = 0;
             for (Term t : terms) if (t.kind == Kind.FLUX && t.j == j) swing = Math.max(swing, t.spline.range());
-            fluxTol[j] = Math.max(Math.max(l * 1e-6, 1e-4 * swing), 1e-12);
+            fluxTol[j] = Math.max(Math.max(l * 1e-6, 1e-4 * swing), 1e-12) * Double.parseDouble(System.getProperty("diag.fluxTolScale", "1"));
             c.slot = ctx.allocState(fluxTol[j]);
         }
         hIdx = new int[modes.size()];
         hSlot = new int[modes.size()];
         for (int k = 0; k < modes.size(); k++) {
             SatMode md = modes.get(k);
-            if (md.w <= 0) {
+            if (md.w <= 0 || Boolean.getBoolean("diag.noHyst")) {
                 hIdx[k] = -1;
                 continue;
             }
@@ -995,6 +995,7 @@ public final class MagneticSystem implements Element {
     public double storedEnergy(StateView s) {
         return evaluate(s);
     }
+
 
     /**
      * A dead zone of half-width w, exactly flat inside |d| < 0.98w (a slope there, however small, lets the state creep

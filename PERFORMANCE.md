@@ -209,3 +209,55 @@ compile or island step over 1 s ("Slow simulation: …"), naming the island's bl
    server thread when a structure changes. Plan: asynchronous compilation with the old model continuing.
 3. **Sync** sends every island every tick; plan: distance culling and delta compression.
 4. Parallel stepping of independent islands.
+
+## Large multiphysics machines at real time (2026-10-26, benchmark: the power station)
+The power station is the benchmark, but nothing here is specific to it: every measure considered acts on any machine a
+player builds.
+
+**Where the time goes** (core test, wall-clock seconds per simulated second):
+
+| Configuration | s/s | Notes |
+|---|---|---|
+| Whole station | 6.8 | 1141 unknowns, ~1550 accepted steps/s (+520 rejected), ~8000 Newton iterations |
+| Plant alone (no generator or electronics) | 1.7 | 738 unknowns, ~450 steps/s |
+
+An iteration costs ~0.85 ms. About 22 % of that is the LU's refactorisation, ~18 % the matrix's assembly, and ~35 %
+fluid and gas elements.
+
+What sets the step:
+
+1. The generator. Its coil currents kink as the bridge diodes turn on and off, and its steel's magnetisation tracks
+   them. That steel is a hysteresis play in its following regime, which turns no corner of its own, so these are the
+   diodes' steep exponentials, and resolving them is physical.
+2. The flyball weights' bristle friction, which reverses twice a revolution.
+3. The engine cylinder's steam near top dead centre (1.85 cm³) and the feed pump's clearance.
+4. The firebox's combustion.
+
+Real time needs ≤ 0.7 s/s (35 ms of a watched island's 50 ms tick), or ≤ 1.0 if a large island steps on its own
+thread outside the tick.
+
+**Measured, keeping the model** (diagnostic knobs `diag.lteScale`, `diag.fluxTolScale`, `diag.frictionTolScale`,
+`diag.noHyst`):
+
+| Change | s/s | Effect on 20 s outputs |
+|---|---|---|
+| Flux and friction tolerances 10× looser | 5.0 | unchanged |
+| Every truncation-error tolerance 10× looser, hysteresis off | 3.8–4.0 | engine, boiler, fire and charge unchanged to three digits |
+
+**Tried, not kept:**
+
+| Approach | Result |
+|---|---|
+| Fluid network stepped apart from the mechanics, as the thermal network is | Holding a flow across the boundary empties small volumes: a turbine's receiver and an engine's valve chest ran to negative temperatures, 10 core tests failed. |
+| Circuits stepped apart from the plant and mechanics, the mechanics' angles carried on for the fast side | Averaging a generator's force over a synchronisation loses its damping and breaks the energy ledger, 7 exhibits failed. Needs work-conserving coupling. |
+| Kinks located as events (friction reversals) | Friction-limited steps fell from ~1400 to ~500 per 10 s, but the total did not move: the generator sets it. |
+
+**Options** (awaiting a decision; see NEXT_STEPS 0a):
+
+- **A. Deep solver work, full fidelity:** work-conserving multirate between circuits and mechanics, and parallel
+  element evaluation. Days of work; realistically 2–4×.
+- **B. Small shortcuts:** looser tolerances. About 1.8×, negligible measured loss.
+- **C. An averaged generator-and-rectifier fidelity level:** used when its electrical frequency is high next to the
+  machine's. The station would drop to about the plant's 1.7 s/s, and to about 1.0 with B. This is a substantial
+  fidelity cost: no per-pass waveform.
+- **D. Off-tick stepping:** large islands step on their own thread, so 1.0× counts as real time.

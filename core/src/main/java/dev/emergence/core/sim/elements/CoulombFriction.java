@@ -59,7 +59,7 @@ public final class CoulombFriction implements Element {
         // the bristles' torque resolved to 0.1 % of its limit (10⁻⁹ absolute: a light slide whose friction reverses with
         // a vibrating plate, 500 times a second, had every reversal resolved to a millionth of τ_c — the loudspeaker's
         // step, switched on); a brake applied later (τ_c = 0 now) keeps the absolute floor
-        double tol = Math.max(1e-9, 1e-3 * Math.abs(tauC));
+        double tol = Math.max(1e-9, 1e-3 * Math.abs(tauC)) * Double.parseDouble(System.getProperty("diag.frictionTolScale", "1"));
         zIdx = ctx.allocUnknown("friction", tol);
         zSlot = ctx.allocState(tol);
     }

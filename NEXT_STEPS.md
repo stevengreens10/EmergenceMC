@@ -157,6 +157,12 @@
      brake went on: the hot well's flow into the feed pump's suction pipe); the core does not reproduce it. Dumps now
      also write the last good state (`island-failure-last-*.txt`): replay the next one from there.
 
+0a1. **The power station at real time** (asked 2026-10-26; findings and options in PERFORMANCE.md, "Large
+   multiphysics machines at real time"): 6.8 s of wall time per simulated second, against ≤ 0.7–1.0. Small shortcuts
+   reach ~3.8, and splitting the plant from its circuits failed so far. Awaiting the user's choice between deep solver
+   work (A), small shortcuts (B), an averaged generator fidelity level (C, a substantial fidelity cost) and off-tick
+   stepping (D).
+
 0a2. **Tour triage, 2026-10-26** (full tour: 152 passed, 2 failed — both the PWM exhibit's hand, its checks passing):
    - the PWM hand again, 33rd of 75: the client had no block entity at the transistor's block for the whole 30 s the
      hand waits (it passes alone, 3 of 3). The hand's failure now says what the client holds there (block state,

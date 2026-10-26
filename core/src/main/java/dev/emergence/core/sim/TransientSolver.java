@@ -54,6 +54,8 @@ public final class TransientSolver implements StateView {
     private boolean forceBE;
     private double relTol = 1e-4;
     private double lteRelTol = 1e-3;
+    /** Diagnostic: every truncation-error tolerance scaled by {@code diag.lteScale} (accuracy against speed). */
+    static final double LTE_SCALE = Double.parseDouble(System.getProperty("diag.lteScale", "1"));
     private double hMin = 1e-10;
     private double hMax = 5e-3;
     /**
@@ -983,7 +985,7 @@ public final class TransientSolver implements StateView {
                     double q3 = 2.0 * ((qdNew[s] - qd0[s]) / h - (qd0[s] - qd1[s]) / hPrev) / (h + hPrev);
                     est = m.errorConstant * h * h * h * Math.abs(q3);
                 }
-                double tol = lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s];
+                double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) * LTE_SCALE;
                 if (est / tol > err) {
                     err = est / tol;
                     worstSlot = s;
@@ -1021,7 +1023,7 @@ public final class TransientSolver implements StateView {
             for (int si = 0; si < nsl; si++) {
                 int s = sl == null ? si : sl[si];
                 double d1 = qdNew[s] - qd0[s], d0 = qd0[s] - qd1[s];
-                double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) / h;
+                double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) * LTE_SCALE / h;
                 if (d1 * d0 < 0 && Math.abs(d1) > tol && Math.abs(d0) > tol) {
                     if (++alternations[s] >= 3) {
                         ph.forceBE = true;

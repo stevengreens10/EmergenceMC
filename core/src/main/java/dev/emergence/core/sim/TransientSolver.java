@@ -175,10 +175,10 @@ public final class TransientSolver implements StateView {
      * {@code emergence.parallelLoad} (on by default): a large machine's elements are loaded side by side on the common
      * pool, each worker into its own residual and its own copy of the matrix's values (see SparseLinearSystem.Sink),
      * summed in a fixed order afterwards — the same result whatever the scheduling. Below {@link #PARALLEL_MIN}
-     * elements the hand-off costs more than it saves.
+     * elements the hand-off costs more than it saves (a phase of the plant alone, ~500 of them, gained 1.7×).
      */
     static final boolean PARALLEL_LOAD = !"false".equals(System.getProperty("emergence.parallelLoad"));
-    static final int PARALLEL_MIN = Integer.getInteger("emergence.parallelMin", 600);
+    static final int PARALLEL_MIN = Integer.getInteger("emergence.parallelMin", 200);
     static final int PARALLEL_WAYS = Math.max(1, Math.min(8, Integer.getInteger("emergence.parallelWays",
             java.util.concurrent.ForkJoinPool.getCommonPoolParallelism() + 1)));
     private final java.util.Map<LinearSystem, dev.emergence.core.math.SparseLinearSystem.Sink[]> sinks = new java.util.IdentityHashMap<>();
@@ -194,11 +194,16 @@ public final class TransientSolver implements StateView {
         return parallelFallbacks;
     }
 
-    /** Loads the phase's elements in parallel if it is worth it; false if the caller should load them serially. */
+    private boolean parallelEligible(LinearSystem jac, int[] el) {
+        int count = el == null ? elements.size() : el.length;
+        return PARALLEL_LOAD && PARALLEL_WAYS >= 2 && count >= PARALLEL_MIN && !ctx.initializing && ctx.touched == null
+                && jac instanceof dev.emergence.core.math.SparseLinearSystem;
+    }
+
+    /** Loads the phase's elements in parallel; false if the caller should load them serially. */
     private boolean loadParallel(LinearSystem jac, int[] el) {
         int count = el == null ? elements.size() : el.length;
-        if (!PARALLEL_LOAD || PARALLEL_WAYS < 2 || count < PARALLEL_MIN || ctx.initializing || ctx.touched != null
-                || !(jac instanceof dev.emergence.core.math.SparseLinearSystem sp)) return false;
+        var sp = (dev.emergence.core.math.SparseLinearSystem) jac;
         int ways = PARALLEL_WAYS;
         var sk = sinks.computeIfAbsent(jac, j -> {
             var a = new dev.emergence.core.math.SparseLinearSystem.Sink[ways];
@@ -285,7 +290,15 @@ public final class TransientSolver implements StateView {
             else Arrays.fill(ctx.frozenDiag, 0.0);
         }
         int[] el = active.elems;
-        if (loadParallel(jac, el)) return;
+        // in parallel where it pays: each phase times its passes both ways and takes the faster, trying the other again
+        // now and then (a loudspeaker's thousands of tiny passes a tick lose more to the hand-off than they gain)
+        Tuning tu = parallelEligible(jac, el) ? tuning.computeIfAbsent(jac, j -> new Tuning()) : null;
+        boolean par = tu != null && tu.choose();
+        long t0 = System.nanoTime();
+        if (par && loadParallel(jac, el)) {
+            tu.record(true, System.nanoTime() - t0);
+            return;
+        }
         if (el == null) {
             for (int k = 0; k < elements.size(); k++) {
                 jac.beginSegment(k);
@@ -298,7 +311,29 @@ public final class TransientSolver implements StateView {
             }
         }
         jac.beginSegment(-1);
+        if (tu != null && !par) tu.record(false, System.nanoTime() - t0);
     }
+
+    /** A phase's passes timed serially and in parallel: moving averages [ns], and how many it has made. */
+    private static final class Tuning {
+        double serial = Double.NaN, parallel = Double.NaN;
+        long passes;
+
+        boolean choose() {
+            passes++;
+            if (Double.isNaN(parallel)) return true;
+            if (Double.isNaN(serial)) return false;
+            boolean faster = parallel < serial;
+            return passes % 64 == 0 ? !faster : faster;
+        }
+
+        void record(boolean par, long nanos) {
+            if (par) parallel = Double.isNaN(parallel) ? nanos : 0.9 * parallel + 0.1 * nanos;
+            else serial = Double.isNaN(serial) ? nanos : 0.9 * serial + 0.1 * nanos;
+        }
+    }
+
+    private final java.util.Map<LinearSystem, Tuning> tuning = new java.util.IdentityHashMap<>();
 
     /**
      * Multirate stepping: the thermal network — thermal nodes and the elements that touch nothing else (heat

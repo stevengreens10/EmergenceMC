@@ -130,6 +130,15 @@
      brake went on: the hot well's flow into the feed pump's suction pipe); the core does not reproduce it. Dumps now
      also write the last good state (`island-failure-last-*.txt`): replay the next one from there.
 
+0a2. **Tour triage, 2026-10-26** (full tour: 152 passed, 2 failed — both the PWM exhibit's hand, its checks passing):
+   - the PWM hand again, 33rd of 75: the client had no block entity at the transistor's block for the whole 30 s the
+     hand waits (it passes alone, 3 of 3). The hand's failure now says what the client holds there (block state,
+     block entity, chunk) — read it from the next full tour;
+   - a burner island failure in a gas-only tour (2026-10-25 20:01, 37.3 s in, as the fuel valve opened: the valve's
+     molar flow did not converge; the restart at rest failed too, then it lit). The core does not reproduce it
+     (`DemoExhibitsTest.gasBurnerLitAfterStanding`, -Ddiag.burnerIdle=…, every timing tried runs on). Tour runs now
+     write failure dumps by default: replay the next one.
+
 0b. **Every exhibit at real time** (asked for 2026-10-22; measure first: `SolverBenchmarkTest.exhibitIslandsFitTheTickBudget`
    prints ms per 50 ms tick and the unknowns that limit the step):
    1. power electronics — fidelity switching: fast, decided states (a logic output's 10 ns slew, a gate's charge)

@@ -450,7 +450,10 @@ final class PlayerHand {
 
         private boolean plan(Minecraft mc) {
             if (!(mc.level.getBlockEntity(t.block) instanceof AssemblyBlockEntity be)) {
-                planFailure = "the client has no assembly there";
+                var be0 = mc.level.getBlockEntity(t.block);
+                planFailure = "the client has no assembly there: its block is " + mc.level.getBlockState(t.block)
+                        + (be0 == null ? ", no block entity" : ", " + be0.getClass().getSimpleName())
+                        + (mc.level.hasChunk(t.block.getX() >> 4, t.block.getZ() >> 4) ? "" : ", its chunk not loaded");
                 return false;
             }
             PlacedPart part = null;

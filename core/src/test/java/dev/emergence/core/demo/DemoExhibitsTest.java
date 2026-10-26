@@ -1037,6 +1037,36 @@ class DemoExhibitsTest {
         assertTrue(c.gas(top).moleFraction(c.solverView(), g.indexOf(ch.species("CO2"))) > 0.02, "CO2 goes up the chimney");
     }
 
+    /**
+     * The burner lit as a player lights it in the world: left standing a while, the igniter on, the gas a moment later
+     * (a tour once failed there, 37.3 s in, the valve's flow not converging). -Ddiag.burnerIdle=a,b,… the idle times
+     * tried [s]; -Ddiag.burnerDelay the gas's delay after the igniter [s].
+     */
+    @Test
+    @org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "diag.burnerIdle", matches = ".+")
+    void gasBurnerLitAfterStanding() {
+        double delay = Double.parseDouble(System.getProperty("diag.burnerDelay", "2"));
+        for (String s : System.getProperty("diag.burnerIdle").split(",")) {
+            double idle = Double.parseDouble(s);
+            Exhibit e = ChemistryExhibits.gasBurner();
+            Exhibits.Built b = Exhibits.build(e, AMBIENT);
+            CompiledAssembly c = compile(e, b);
+            int i0 = (int) Math.round(idle / 0.05), i1 = i0 + (int) Math.round(delay / 0.05);
+            String failed = null;
+            for (int i = 0; i < i1 + 200 && failed == null; i++) {
+                if (i == i0) c.toggleSwitch(b.id(e, "switch"));
+                if (i == i1) c.toggleSwitch(b.id(e, "valve"));
+                try {
+                    c.step(0.05);
+                } catch (RuntimeException x) {
+                    failed = String.format("t=%.2f s: %s", c.time(), x.getMessage());
+                }
+            }
+            System.out.printf("burner idle %.2f s, gas %.2f s later: %s%n", idle, delay, failed == null ? "ran on" : failed);
+            assertNull(failed, "lights after standing " + idle + " s");
+        }
+    }
+
     /** The amplified thermocouple voltage tracks (S_Cu − S_con)·(T_hot − T_cold)·201. */
     @Test
     void thermocoupleReadsTheTemperatureDifference() {

@@ -97,7 +97,7 @@ neoForge {
             if (System.getProperty('emergence.dumpIslands')) systemProperty 'emergence.dumpIslands', System.getProperty('emergence.dumpIslands')
             // the part editor's look: -Demergence.editorShots=all (or BATTERY,TANK,…) saves screenshots/editor-*.png
             systemProperty 'emergence.editorShots', System.getProperty('emergence.editorShots', '')
-            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
+            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'true')
             systemProperty 'emergence.debugIslands', System.getProperty('emergence.debugIslands', 'false')
         }
         // Watch the demo gallery being built: a fresh flat world, the exhibits going up part by part as the camera
@@ -157,7 +157,7 @@ neoForge {
             systemProperty 'emergence.demoSet', 'station'
             systemProperty 'emergence.showcaseOnly', ''
             systemProperty 'emergence.gifs', System.getProperty('emergence.gifs', '')
-            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'false')
+            systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'true')
             // the station is its world's only island: the whole tick budget is its own (not one island's share of many)
             systemProperty 'emergence.islandBudgetMs', '35'
         }

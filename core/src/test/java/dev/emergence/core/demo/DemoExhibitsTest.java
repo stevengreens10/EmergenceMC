@@ -1225,6 +1225,20 @@ class DemoExhibitsTest {
      * the receiver holds what is left (its pressure rising a little as its walls warm the air the expansion cooled).
      */
     @Test
+    void floatsOakFloatsSteelSinksTheCanRidesHighest() {
+        Exhibit e = MechanicsExhibits.floats();
+        Exhibits.Built b = Exhibits.build(e, AMBIENT);
+        CompiledAssembly c = compile(e, b);
+        assertTrue(c.warnings().isEmpty(), c.warnings().toString());
+        run(c, 8);
+        double oak = c.probe(b.id(e, "oakRod")).angle(), steel = c.probe(b.id(e, "steelRod")).angle(), can = c.probe(b.id(e, "canRod")).angle();
+        System.out.printf("floats: oak %+.2f mm, steel %+.2f mm, can %+.2f mm%n", 1e3 * oak, 1e3 * steel, 1e3 * can);
+        assertTrue(Math.abs(oak) < 0.029, "the oak floats, off its rod's stops: " + oak);
+        assertEquals(-0.03, steel, 1e-3, "the steel block sinks to its rod's end");
+        assertTrue(can > oak + 0.005, "the steel can rides higher than the oak");
+    }
+
+    @Test
     void regulatorHoldsItsOutletWhileTheReceiverEmpties() {
         Exhibit e = ControlExhibits.pressureRegulator();
         Exhibits.Built b = Exhibits.build(e, AMBIENT);

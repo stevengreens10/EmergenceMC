@@ -15,11 +15,16 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SimpleWaterloggedBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -28,15 +33,28 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * Invisible container block for sub-block parts. Its shape is the union of its parts; it is
- * rendered entirely by the block-entity renderer. Its light level follows incandescent parts.
+ * rendered entirely by the block-entity renderer. Its light level follows incandescent parts. It may stand in water
+ * (waterlogged), the water filling around its parts — a float, a paddle, a pontoon's frame.
  */
-public final class AssemblyBlock extends BaseEntityBlock {
+public final class AssemblyBlock extends BaseEntityBlock implements SimpleWaterloggedBlock {
     public static final MapCodec<AssemblyBlock> CODEC = simpleCodec(AssemblyBlock::new);
     public static final IntegerProperty LIGHT = IntegerProperty.create("light", 0, 15);
+    public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
 
     public AssemblyBlock(Properties props) {
         super(props);
-        registerDefaultState(stateDefinition.any().setValue(LIGHT, 0));
+        registerDefaultState(stateDefinition.any().setValue(LIGHT, 0).setValue(WATERLOGGED, false));
+    }
+
+    /** The block's state for a new part at pos: waterlogged if it goes into water. */
+    public static BlockState stateAt(net.minecraft.world.level.LevelReader level, BlockPos pos) {
+        return dev.emergence.mod.registry.ModRegistries.ASSEMBLY.get().defaultBlockState()
+                .setValue(WATERLOGGED, level.getFluidState(pos).getType() == Fluids.WATER);
+    }
+
+    @Override
+    protected FluidState getFluidState(BlockState state) {
+        return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
     }
 
     @Override
@@ -46,7 +64,7 @@ public final class AssemblyBlock extends BaseEntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> b) {
-        b.add(LIGHT);
+        b.add(LIGHT, WATERLOGGED);
     }
 
     @Override
@@ -159,6 +177,7 @@ public final class AssemblyBlock extends BaseEntityBlock {
     @Override
     protected BlockState updateShape(BlockState state, net.minecraft.core.Direction direction, BlockState neighborState,
                                      net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+        if (state.getValue(WATERLOGGED)) level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         if (level instanceof net.minecraft.server.level.ServerLevel sl) {
             dev.emergence.mod.sim.SimulationManager.get(sl).neighbourChanged(pos, neighborPos, direction.getOpposite());
         }

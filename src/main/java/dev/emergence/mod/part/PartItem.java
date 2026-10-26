@@ -277,7 +277,7 @@ public final class PartItem extends Item {
         }
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (be == null) {
-            level.setBlock(pos, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+            level.setBlock(pos, dev.emergence.mod.block.AssemblyBlock.stateAt(level, pos), 3);
             be = level.getBlockEntity(pos) instanceof AssemblyBlockEntity e ? e : null;
             if (be == null) return InteractionResult.FAIL;
         }
@@ -333,7 +333,7 @@ public final class PartItem extends Item {
                                                AssemblyBlockEntity be, Dir axis) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (be == null) {
-            level.setBlock(pos, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+            level.setBlock(pos, dev.emergence.mod.block.AssemblyBlock.stateAt(level, pos), 3);
             be = level.getBlockEntity(pos) instanceof AssemblyBlockEntity e ? e : null;
             if (be == null) return InteractionResult.FAIL;
             be.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
@@ -346,7 +346,7 @@ public final class PartItem extends Item {
             for (int i = 1; i < spec.length(); i++) {
                 next = next.offset(axis.dx, axis.dy, axis.dz);
                 if (!level.getBlockState(next).canBeReplaced() || level.getBlockEntity(next) != null) break;
-                level.setBlock(next, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+                level.setBlock(next, dev.emergence.mod.block.AssemblyBlock.stateAt(level, next), 3);
                 if (!(level.getBlockEntity(next) instanceof AssemblyBlockEntity nbe)) break;
                 nbe.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
                 nbe.addPart(new PlacedPart(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE), kind, spec, 0, 0, 0, 0, 0, 0, axis, false));

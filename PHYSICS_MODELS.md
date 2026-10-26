@@ -835,3 +835,26 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * Energy: the chemistry is an external reservoir delivering N·E·i; N·i²·r heats the battery. Its state of charge is
   saved with the assembly (in the capacitors' voltage channel). Not modelled: entropic heat, Peukert capacity loss
   beyond the resistance, temperature dependence, self-discharge, sulfation.
+
+## Buoyancy in still water (`Buoyancy`, `Assembly.waterWhen`)
+Parts on a slide standing in still water (in Minecraft: water blocks, the machine's own blocks waterlogged) feel
+Archimedes' upthrust ρ·g·V_sub along the slide's guide. Each part is a prism of its displaced volume over its box
+height h: its material volume (a block's fill, a shaft's cylinder), or for a closed vessel (tank, cylinder) its whole
+outer box. The weight of what a vessel holds is not counted. The submerged depth is the water's surface less the
+part's bottom, clamped to [0, h] with C¹ corners over 1 mm. The surface lies where the column of water over the part
+ends, 8/9 up its top block (a source block's level). The upthrust is conservative while the level is fixed, an
+external reservoir: its potential ρ·g·A·∫depth is the element's stored energy. A moving part loses energy two ways:
+
+- quadratic drag over its wetted fraction (C_d = 1);
+- the waves it makes while the surface cuts it. This is the radiation damping of a small body heaving in deep water,
+  B = ρ·ω³·A_w²/(2π·g) (Newman, *Marine Hydrodynamics* §6.18), at its heave frequency ω = √(ρ·g·A_w/m). It settles a
+  bobbing float within a few bobs; drag alone at millimetres a second let it ring for twenty seconds.
+
+Validated in `BuoyancyTest`: oak floats at its draft within 3 %, steel sinks, and a thin steel vessel floats. A float
+pushed under settles, its energy balancing. Not modelled:
+
+- the added mass of the water a part accelerates;
+- waves reflected by a pond's walls;
+- currents;
+- turning bodies in water (no upthrust torque, no paddle drag);
+- the water level falling as floats displace it (the pond is a reservoir).

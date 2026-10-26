@@ -216,7 +216,7 @@ public final class DemoBuilder {
         for (Exhibit.PartDef d : e.parts) {
             BlockPos bp = plot.offset(d.x0(), d.y0(), d.z0());
             AssemblyBlockEntity be = bes.computeIfAbsent(bp, p -> {
-                level.setBlock(p, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+                level.setBlock(p, dev.emergence.mod.block.AssemblyBlock.stateAt(level, p), 3);
                 AssemblyBlockEntity n = (AssemblyBlockEntity) level.getBlockEntity(p);
                 n.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
                 return n;
@@ -236,7 +236,7 @@ public final class DemoBuilder {
     public static void addPart(ServerLevel level, BlockPos plot, int x, int y, int z, dev.emergence.core.assembly.PartKind kind,
                                String material, dev.emergence.core.assembly.Dir axis, Object... params) {
         BlockPos bp = plot.offset(x, y, z);
-        if (!(level.getBlockEntity(bp) instanceof AssemblyBlockEntity)) level.setBlock(bp, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+        if (!(level.getBlockEntity(bp) instanceof AssemblyBlockEntity)) level.setBlock(bp, dev.emergence.mod.block.AssemblyBlock.stateAt(level, bp), 3);
         AssemblyBlockEntity be = (AssemblyBlockEntity) level.getBlockEntity(bp);
         be.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
         be.addPart(new PlacedPart(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE), kind, PartSpec.of(material, 1, 1, params),
@@ -255,7 +255,7 @@ public final class DemoBuilder {
 
     /** Places a miniature exhibit at true scale: all its cells inside the one block {@code at}. */
     private static void placeMiniature(ServerLevel level, BlockPos at, Exhibit e) {
-        level.setBlock(at, ModRegistries.ASSEMBLY.get().defaultBlockState(), 3);
+        level.setBlock(at, dev.emergence.mod.block.AssemblyBlock.stateAt(level, at), 3);
         AssemblyBlockEntity be = (AssemblyBlockEntity) level.getBlockEntity(at);
         be.setResolution(AssemblyBlockEntity.MINIATURE);
         for (Exhibit.PartDef d : e.parts) {

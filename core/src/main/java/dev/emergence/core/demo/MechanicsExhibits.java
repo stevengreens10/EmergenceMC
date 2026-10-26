@@ -173,6 +173,49 @@ public final class MechanicsExhibits {
     }
 
     /**
+     * Archimedes in a pond: three floats on vertical rods in linear bearings, standing in still water — an oak block,
+     * a steel block and a thin steel can (a closed vessel of 0.5 mm sheet on a hub beside its rod). The water lifts each
+     * by the weight of the water it displaces: the oak rides at about three-quarters of its depth, the steel block sinks
+     * to the end of its rod, and the can — steel too, but mostly air inside — rides highest of all.
+     */
+    public static Exhibit floats() {
+        Exhibit e = new Exhibit("floats", "Floats",
+                List.of("FLOATS", "Oak floats, steel", "sinks — and a steel", "can floats highest"),
+                "Three floats on vertical rods stand in the pond. Water pushes up on anything in it with the weight "
+                        + "of the water it pushes aside (Archimedes). The oak block, three-quarters as dense as water, "
+                        + "settles with about three-quarters of itself under. The steel block, nearly eight times "
+                        + "denser, sinks to the end of its rod. The can on the right is steel as well, but a closed "
+                        + "box of half-millimetre sheet: it displaces its whole volume and weighs a third as much, so it "
+                        + "rides higher than the oak — why steel ships float. Push a float under and let it go: it bobs "
+                        + "up and settles, its energy carried off by the ripples it makes.");
+        String st = "steel_1045", al = "aluminium_6061";
+        // the pond: glass walls, two blocks of still water
+        e.scenery(0, 0, 4, 11, 2, 4, "glass");
+        e.scenery(0, 0, 10, 11, 2, 10, "glass");
+        e.scenery(0, 0, 5, 0, 2, 9, "glass");
+        e.scenery(11, 0, 5, 11, 2, 9, "glass");
+        e.scenery(1, 0, 5, 10, 1, 9, "water");
+        String[] names = {"oak", "steel", "can"};
+        int[] xs = {2, 5, 8};
+        for (int k = 0; k < 3; k++) {
+            int x = xs[k];
+            // a light aluminium rod in a linear bearing above the water, free to travel 3 cm either way
+            e.name(names[k] + "Rod", e.fill(SHAFT, al, x, 0, 7, x, 4, 7, Dir.UP, "diameter", 0.005));
+            e.add(LINEAR_BEARING, st, x, 3, 7, Dir.UP, "travel_fwd", 0.03, "travel_back", 0.03);
+            // the bearing's arm and post (thin plates, edge-on to the pond's front), a cell clear of the float
+            // (touching it, the float would be fixed to them)
+            e.add(BLOCK, st, x, 3, 8, Dir.EAST, "fill", 0.25);
+            e.fill(BLOCK, st, x, 0, 9, x, 3, 9, Dir.EAST, "fill", 0.25);
+        }
+        e.name("oak", e.add(BLOCK, "oak", 2, 1, 7, Dir.UP));
+        e.name("steel", e.add(BLOCK, st, 5, 1, 7, Dir.UP));
+        // the can rides its rod on a small hub (a vessel in the rod's own cell would not grip it)
+        e.add(BLOCK, al, 8, 1, 7, Dir.UP, "fill", 0.1);
+        e.name("can", e.add(TANK, st, 9, 1, 7, Dir.UP, "wall", 0.0005));
+        return e.view(5.5, 3, 13, 18);
+    }
+
+    /**
      * A throttle worked by a slide: a receiver of air at 10 bar discharges through a valve into a duct with a bladed
      * rotor. The valve's plug is on a rod in a linear bearing pointing into its side — pushed in, the plug sits in its
      * seat; drawn back, the valve opens in proportion to the travel, and the rotor spins up. Nothing turns a hand wheel:

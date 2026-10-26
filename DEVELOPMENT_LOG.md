@@ -1067,3 +1067,13 @@ splitting the engine cylinder's faces had earlier, and this time the cause came 
 steam volume to 238 K, below the triple point. There the wall's liquid c_p came out as 0, so the boiling law
 returned 0/0 and the whole solve failed instead of rejecting the step. The wall now takes its properties at no less
 than 273.16 K, as the ports already did.
+
+**Buoyancy.** CLAUDE.md lists buoyancy among the fluid basics, and nothing in the mod knew about water. Now parts can
+stand in it: the assembly block takes a waterlogged state, so a part placed into water leaves the water around it. A
+slide's parts in still water feel Archimedes' upthrust from the volume they displace, which for a closed vessel is its
+whole box. The upthrust is conservative against the pond's fixed level, so its potential goes into the energy ledger.
+The first float rang for twenty seconds, because quadratic drag at millimetres a second does almost nothing. Real
+floats settle by making waves, so the element adds the radiation damping of a small heaving body, and a float pushed
+under now settles in a few bobs. The new `floats` exhibit stands an oak block, a steel block and a thin steel can in a
+glass-walled pond. The oak rides at its draft, the steel sinks, and the can floats highest, in the core and in the
+world alike.

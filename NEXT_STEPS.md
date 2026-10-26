@@ -271,6 +271,10 @@ regenerate the demo world → screenshot tour → docs → commit.
    timer (needs a high-permeability alloy such as 80 % permalloy in the database); hinged armatures and plungers; coils adding to a magnet's MMF
    (polarised relays, electro-permanent releases); relay logic (done: a self-holding relay, `latch`; still: latching relays proper, relay gates); core losses; a
    drag-cup speedometer. (Magnets attract iron on slides now.)
+8b. **Water** (buoyancy on slides is in, `floats`; parts may stand in water, their blocks waterlogged): upthrust and
+   drag on turning bodies (paddle wheels; an unbalanced float on a hinge); flowing world water exerting drag (an
+   undershot water wheel in a river); the added mass; floats in a vessel's own liquid (a cistern's ballcock), its
+   level falling as they displace it.
 9. **Aerodynamics next**: (propellers on carts are in) twisted and cambered blades, wings on free bodies (gliders
    need free rigid bodies), a motor-driven propeller (magnetics on carried rotors), wind loads on structures.
 10. **Performance**: async island compilation, factorisation reuse for linear islands, cheaper conductor loads (most

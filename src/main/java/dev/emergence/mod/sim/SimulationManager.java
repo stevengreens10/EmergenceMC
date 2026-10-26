@@ -1072,6 +1072,28 @@ public final class SimulationManager {
             BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
             return !own.contains(bp) && solidCells.contains(bp);
         });
+        // still water in and over its blocks (its own waterlogged, the world's water above each and just under it),
+        // read now as well: the surface a float rides is where the column of water over it ends
+        Set<BlockPos> water = new HashSet<>();
+        for (BlockPos b : own) {
+            for (int k = -1; k <= 16; k++) {
+                BlockPos n = b.above(k);
+                if (!level.isLoaded(n) || !level.getFluidState(n).is(net.minecraft.tags.FluidTags.WATER)) {
+                    if (k >= 0) break;
+                    continue;
+                }
+                water.add(n);
+            }
+        }
+        if (!water.isEmpty()) {
+            // a finer lattice: the top block of a column holds water only up to its surface, 8/9 of the block
+            int wet = res == 1 ? 1 : (int) Math.round(res * dev.emergence.core.assembly.Assembly.WATER_TOP);
+            asm.waterWhen((x, y, z) -> {
+                BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
+                if (!water.contains(bp)) return false;
+                return res == 1 || water.contains(bp.above()) || Math.floorMod(y, res) < wet;
+            });
+        }
         asm.anchoredWhen(p -> anchored.containsKey(p.id()));
         if (asm.parts().isEmpty()) return null;
         if (Boolean.getBoolean("emergence.debugIslands")) {

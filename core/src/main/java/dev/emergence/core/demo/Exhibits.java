@@ -38,7 +38,7 @@ public final class Exhibits {
         return List.of(generator(), gearTrain(), capacitorGlow(), fuse(), conductionRace(), flywheels(), dcMotor(),
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(), governedEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
-                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ControlExhibits.flyball(), Exhibits.rectifier(), Exhibits.boost(), ControlExhibits.hBridge(), ControlExhibits.pwmMotor(), ControlExhibits.inverter(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), MechanicsExhibits.fourBar(), AeroExhibits.windTurbine(), AeroExhibits.propellerCart(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.slideValve(), ControlExhibits.pressureRegulator(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.relayLatch(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
+                OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ControlExhibits.flyball(), Exhibits.rectifier(), Exhibits.boost(), ControlExhibits.hBridge(), ControlExhibits.pwmMotor(), ControlExhibits.inverter(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), MechanicsExhibits.fourBar(), AeroExhibits.windTurbine(), AeroExhibits.propellerCart(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.floats(), MechanicsExhibits.slideValve(), ControlExhibits.pressureRegulator(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.relayLatch(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
                 miniatureGenerator());
     }
 
@@ -1476,6 +1476,13 @@ public final class Exhibits {
             a.add(part);
         }
         a.anchoredWhen(p -> p.minY() == 0 && p.kind().structural && p.kind() != dev.emergence.core.assembly.PartKind.SHAFT);
+        // its pond: the water in its scenery, the parts standing in it waterlogged as in the world
+        List<Exhibit.Scenery> ponds = e.scenery.stream().filter(s -> s.block().equals("water")).toList();
+        if (!ponds.isEmpty()) a.waterWhen((x, y, z) -> {
+            for (Exhibit.Scenery s : ponds)
+                if (x >= s.x0() && x <= s.x1() && y >= s.y0() && y <= s.y1() && z >= s.z0() && z <= s.z1()) return true;
+            return false;
+        });
         for (var en : e.initial.entrySet()) {
             long id = ids.get(en.getKey());
             Exhibit.Initial in = en.getValue();

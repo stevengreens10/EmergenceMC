@@ -416,6 +416,18 @@ public final class AutoShowcase {
                 STEPS.add(new Step(10, view, shot.apply("pumped")).check(key + " pumping raises the ram",
                         () -> atLeast("ram's rise [mm]", 1e3 * (position(server, ram, PartKind.SHAFT) - before[0]), 0.5)));
             }
+            if (id.equals("floats")) {
+                // the water lifts each float by the weight of the water it pushes aside
+                java.util.function.DoubleSupplier oak = () -> where(server, at.apply("oakRod"), PartKind.SHAFT),
+                        steel = () -> where(server, at.apply("steelRod"), PartKind.SHAFT),
+                        can = () -> where(server, at.apply("canRod"), PartKind.SHAFT);
+                STEPS.add(new Step(100, view, shot.apply("afloat")).show()
+                        .check(key + " the oak floats", () -> that(Math.abs(oak.getAsDouble()) < 0.029,
+                                String.format("the oak block at %+.1f mm, within its rod's ±30 mm", 1e3 * oak.getAsDouble())))
+                        .check(key + " the steel block sinks", () -> atMost("steel block's travel [mm]", 1e3 * steel.getAsDouble(), -25))
+                        .check(key + " the steel can rides highest", () -> that(can.getAsDouble() > oak.getAsDouble() + 0.005,
+                                String.format("the can at %+.1f mm, the oak at %+.1f mm", 1e3 * can.getAsDouble(), 1e3 * oak.getAsDouble()))));
+            }
             if (id.equals("regulator")) {
                 // the receiver blows down through the needle; the regulator between them holds the outlet
                 BlockPos receiver = at.apply("receiver"), outlet = at.apply("outlet");

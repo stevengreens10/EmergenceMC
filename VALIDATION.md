@@ -206,6 +206,12 @@ Slide valve (`DemoExhibitsTest.slideValveThrottlesWithItsRod`): built with its r
 resting 0.34 mm off its seat after its collar's rebound. The receiver's pressure then rises 1.12 → 1.30 bar as its
 walls warm the air its expansion cooled (its mass, not its pressure, is what the seat holds).
 
+Buoyancy (`BuoyancyTest`): three floats on 5 mm aluminium rods in a pond two cells deep. An oak block settles 4.46 mm
+above where it was built, its draft (ρ_w·(A·d + a_rod·(d + cell)) = m) within 3 % of the prediction. A steel block
+sinks to its rod's end, −30 mm. A closed steel can of 0.5 mm sheet floats highest, +15.2 mm, its draft also within
+3 %. Pushed under and let go, the oak returns to within 0.5 mm in 6 s. Its energy balances to 0.012 J (the same as the
+dry rig, the rounding of 1.8 MJ of the parts' heat). In the world, the `floats` exhibit gives the same three positions.
+
 Pressure regulator (`DemoExhibitsTest.regulatorHoldsItsOutletWhileTheReceiverEmpties`), built from parts: a plug valve
 whose plug rides the piston rod of a 3 cm cylinder fed from the outlet, a preloaded spring (4 mm wire, 8 turns,
 k = G·d⁴/(8·D³·n) ≈ 6.07 kN/m, fitted 24 mm short) pushing it open. Over two minutes the 20 bar receiver blows down

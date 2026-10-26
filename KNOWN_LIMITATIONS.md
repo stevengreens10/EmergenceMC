@@ -99,6 +99,10 @@ behaviour; where physics is missing the effect is simply absent.
 * A single small blade row cannot make a self-sustaining gas turbine (consistent with real physics at this
   scale); jet kinetic energy is not modelled, so impulse turbines are under-powered.
 
+- Buoyancy acts only on slides (floats on guides). A turning body in water gets neither upthrust torque nor paddle
+  drag, and flowing world water exerts no force, so there is no water wheel in a river yet. The water's added mass and
+  reflected waves are ignored, and a pond's level does not rise as floats displace it.
+
 ## Structures
 * Linear statics: no buckling, dynamic or impact loads, vibration, fatigue or creep; first yield is failure
   (no plastic redistribution). Large deflections (a 1.25 mm steel shelf sags 70 mm) are computed linearly.

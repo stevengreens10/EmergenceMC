@@ -48,6 +48,25 @@ public interface Element {
     default void acceptStep(StateView s, double time, double dt) {
     }
 
+    /**
+     * How many kinks this element has: places where its law turns a corner (dry friction reversing), each the zero of
+     * {@link #kink}. The solver ends a step on each one it crosses and starts the next afresh from there, so a corner
+     * costs a step or two, not the dozens that shrink to it and grow back.
+     */
+    default int kinkCount() {
+        return 0;
+    }
+
+    /** Kink k's switching function at a state: it changes sign where the law turns its corner. */
+    default double kink(StateView s, int k) {
+        return 1;
+    }
+
+    /** Kink k's dead band: crossings that stay within ±this of zero are dither, not a corner, and are let through. */
+    default double kinkScale(int k) {
+        return 0;
+    }
+
     /** Human readable label for diagnostics. */
     default String label() {
         return getClass().getSimpleName();

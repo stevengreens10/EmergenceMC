@@ -53,6 +53,23 @@ public final class CoulombFriction implements Element {
         return "CoulombFriction(" + a.name() + " – " + b.name() + ")";
     }
 
+    /** Its reversal: the relative speed through zero, where the bristles turn over. */
+    @Override
+    public int kinkCount() {
+        return zIdx < 0 ? 0 : 1;
+    }
+
+    @Override
+    public double kink(StateView s, int k) {
+        return s.x(a.index()) - s.x(b.index());
+    }
+
+    /** (a part held still, its speed dithering about zero within the bristles' scale, turns no corner) */
+    @Override
+    public double kinkScale(int k) {
+        return ws;
+    }
+
     @Override
     public void setup(SetupContext ctx) {
         if (!STICTION) return;

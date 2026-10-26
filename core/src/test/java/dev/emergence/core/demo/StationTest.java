@@ -162,15 +162,29 @@ class StationTest {
                     System.out.println(sb);
                     dev.emergence.core.math.SparseLinearSystem.COLLAPSES.clear();
                 }
-                System.out.printf("   factorisations: %d fresh (pattern), %d fresh (unstable pivot), %d reused%n",
+                long refs = dev.emergence.core.math.SparseLinearSystem.REFACTORS.sumThenReset();
+                System.out.printf("   factorisations: %d fresh (pattern), %d fresh (unstable pivot), %d reused, %.0f multiply-adds each on average%n",
                         dev.emergence.core.math.SparseLinearSystem.FULL_PATTERN.sumThenReset(),
-                        dev.emergence.core.math.SparseLinearSystem.FULL_UNSTABLE.sumThenReset(),
-                        dev.emergence.core.math.SparseLinearSystem.REFACTORS.sumThenReset());
+                        dev.emergence.core.math.SparseLinearSystem.FULL_UNSTABLE.sumThenReset(), refs,
+                        dev.emergence.core.math.SparseLinearSystem.REFACTOR_FLOPS.sumThenReset() / (double) Math.max(1, refs));
                 System.out.printf("   profile: %.1f s of wall time for 10 s, %d steps accepted, %d rejected, %d Newton iterations, %d unknowns; limiters: %s%n",
                         (System.nanoTime() - wall0) / 1e9, c.solver().acceptedSteps() - acc0, c.solver().rejectedSteps() - rej0,
                         c.solver().newtonIterations() - it0, c.solver().unknowns(), top);
+                long[] pn = c.solver().phaseNanos();
+                System.out.printf("   circuits: %d steps in all, the coupling's energy in transit %.3g J; wall time in all: circuits %.1f s, plant %.1f s, thermal %.1f s; %d steps cut to land on a kink%n",
+                        c.solver().circuitSteps(), c.solver().couplingTransit(), pn[0] / 1e9, pn[1] / 1e9, pn[2] / 1e9, c.solver().kinkStops());
                 System.out.printf("   matrix: %d entries, LU fill %d; rejected steps from Newton failing: %d (the rest by the error estimate)%n",
                         c.solver().jacobianFill()[0], c.solver().jacobianFill()[1], c.solver().newtonFailures() - nf0);
+                System.out.println("   phases: " + c.solver().phaseMatrices());
+                System.out.println("   phase counts: " + c.solver().phaseCounts());
+                if (dev.emergence.core.sim.TransientSolver.FAILURE_CAUSES != null) {
+                    var fc = new java.util.ArrayList<>(dev.emergence.core.sim.TransientSolver.FAILURE_CAUSES.entrySet());
+                    fc.sort((p, q) -> q.getValue() - p.getValue());
+                    System.out.println("   Newton failures: " + fc.subList(0, Math.min(12, fc.size())));
+                    dev.emergence.core.sim.TransientSolver.FAILURE_CAUSES.clear();
+                }
+                if (Boolean.getBoolean("diag.pivots")) System.out.println("   costliest pivots:" + c.solver().costliestPivots(40));
+                if (Boolean.getBoolean("diag.components")) System.out.println("   plant components:" + c.solver().plantComponents());
             }
             // -Ddiag.masses=true: every water volume whose mass moved by more than a gram since the last report
             if (Boolean.getBoolean("diag.masses")) {

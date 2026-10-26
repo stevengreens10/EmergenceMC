@@ -20,6 +20,8 @@ public final class Material {
     private final Map<MaterialProperty, Double> props;
     private final List<String> sources;
     private final int color;
+    /** The resistivity law's coefficients, read once (the law is evaluated in every conductor's every load). */
+    private final double rho20, rhoExponent, rhoAlpha;
 
     public Material(String id, String name, MaterialCategory category, Map<MaterialProperty, Double> props,
                     List<String> sources, int color) {
@@ -29,6 +31,9 @@ public final class Material {
         this.props = Collections.unmodifiableMap(new EnumMap<>(props));
         this.sources = List.copyOf(sources);
         this.color = color;
+        this.rho20 = get(MaterialProperty.ELECTRICAL_RESISTIVITY, 1e12);
+        this.rhoExponent = get(MaterialProperty.RESISTIVITY_EXPONENT, Double.NaN);
+        this.rhoAlpha = get(MaterialProperty.RESISTIVITY_TEMP_COEFF, 0.0);
     }
 
     public String id() { return id; }
@@ -107,10 +112,9 @@ public final class Material {
      * follows measured filament data (Forsythe &amp; Worthing 1925) to within ~5 % up to 3000 K.
      */
     public double resistivity(double temperatureK) {
-        double rho20 = get(MaterialProperty.ELECTRICAL_RESISTIVITY, 1e12);
-        Double n = props.get(MaterialProperty.RESISTIVITY_EXPONENT);
-        if (n != null) return rho20 * Math.pow(Math.max(temperatureK, 20.0) / PhysicalConstants.T_REF, n);
-        double alpha = get(MaterialProperty.RESISTIVITY_TEMP_COEFF, 0.0);
+        double n = rhoExponent;
+        if (!Double.isNaN(n)) return rho20 * Math.pow(Math.max(temperatureK, 20.0) / PhysicalConstants.T_REF, n);
+        double alpha = rhoAlpha;
         double dT = temperatureK - PhysicalConstants.T_REF;
         double f = 1.0 + alpha * dT;
         return rho20 * Math.max(f, 0.05);
@@ -118,13 +122,12 @@ public final class Material {
 
     /** dρ/dT at temperature T. */
     public double resistivityDerivative(double temperatureK) {
-        double rho20 = get(MaterialProperty.ELECTRICAL_RESISTIVITY, 1e12);
-        Double n = props.get(MaterialProperty.RESISTIVITY_EXPONENT);
-        if (n != null) {
+        double n = rhoExponent;
+        if (!Double.isNaN(n)) {
             if (temperatureK <= 20.0) return 0.0;
             return rho20 * n * Math.pow(temperatureK / PhysicalConstants.T_REF, n - 1) / PhysicalConstants.T_REF;
         }
-        double alpha = get(MaterialProperty.RESISTIVITY_TEMP_COEFF, 0.0);
+        double alpha = rhoAlpha;
         double f = 1.0 + alpha * (temperatureK - PhysicalConstants.T_REF);
         return f > 0.05 ? rho20 * alpha : 0.0;
     }

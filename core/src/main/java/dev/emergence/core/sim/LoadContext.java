@@ -22,7 +22,7 @@ public final class LoadContext implements StateView {
     /** Per unknown: the smallest Newton update that is resolvable at all (see {@link #noiseFloor}). */
     double[] floor;
     /** When set, every row an element writes is marked (the solver's partitioning dry run), and every slot it keeps. */
-    boolean[] touched, touchedSlots;
+    boolean[] touched, touchedSlots, touchedCols;
     /**
      * Multirate: unknowns held fixed in the current phase. Jacobian entries in their rows or columns are left out of the
      * phase's own matrix (its factorisation covers only what moves); a held row's diagonal is summed in
@@ -32,6 +32,20 @@ public final class LoadContext implements StateView {
     /** Residuals wanted, not a Jacobian (the held rows' coupling is still recorded): stamps go nowhere. */
     boolean residualOnly;
     double[] frozenDiag;
+    /**
+     * Multirate: which of the plant's independent parts each unknown belongs to (0 the plant phase's own, k for its
+     * k-th part, −1 none), and the part now stepping (−2: the circuits, which may read only the plant phase's own; −1:
+     * no check). An element stamping into another part's unknowns — a crank taken up, gears coming into mesh — sets
+     * {@link #crossed}: the parts are no longer independent.
+     */
+    int[] partOf;
+    int part = -1;
+    boolean crossed;
+
+    private void reach(int i) {
+        int p = partOf[i];
+        if (p >= 0 && p != part && (part >= 0 || p > 0)) crossed = true;
+    }
 
     @Override
     public double x(int index) {
@@ -61,18 +75,24 @@ public final class LoadContext implements StateView {
         if (row >= 0) {
             f[row] += v;
             if (touched != null) touched[row] = true;
+            if (partOf != null && part != -1 && frozen != null && frozen[row] && v != 0) reach(row);
         }
     }
 
     /** Adds ∂F_row/∂x_col. Entries touching reference nodes are ignored. */
     public void addJ(int row, int col, double v) {
         if (touched != null && row >= 0) touched[row] = true;
+        if (touchedCols != null && col >= 0) touchedCols[col] = true;
         // (a zero still goes to the matrix: an element whose derivative is zero this time — a passage's downstream side
         // — keeps its place in the matrix's assembly replay, which a skipped entry made it lose for a hash lookup at
         // every following entry; the matrix creates no entry for a zero)
         if (row < 0 || col < 0) return;
         if (frozen != null && (frozen[row] || frozen[col])) {
             if (row == col && frozenDiag != null) frozenDiag[row] += v;
+            if (partOf != null && part != -1 && v != 0) {
+                reach(row);
+                reach(col);
+            }
             return;
         }
         if (residualOnly) return;

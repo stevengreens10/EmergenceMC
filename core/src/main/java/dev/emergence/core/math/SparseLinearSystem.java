@@ -13,8 +13,21 @@ import java.util.Arrays;
  * (the "KLU-style" strategy used by circuit simulators).
  */
 public final class SparseLinearSystem implements LinearSystem {
-    private static final double PIVOT_THRESHOLD = 0.1;
+    private static final double PIVOT_THRESHOLD = Double.parseDouble(System.getProperty("diag.pivotThreshold", "0.1"));
     private static final double PIVOT_COLLAPSE = 1e-8;
+    /** Columns of fewest entries the Markowitz search weighs at each pivot. */
+    private static final int CANDIDATES = Integer.getInteger("diag.markowitzColumns", 4);
+    /** Columns taken in a minimum-degree order of the pattern (else chosen by Markowitz cost as elimination goes). */
+    private static final boolean MIN_DEGREE = "md".equals(System.getProperty("diag.ordering", "markowitz"));
+    /** The pattern's minimum-degree column order (recomputed when the pattern changes). */
+    private int[] mdOrder;
+    /**
+     * How many of the first pivots stand alone: a row with only its diagonal, in a column with only that entry (an
+     * unknown a multirate phase holds). Minimum-degree order takes them first; refactorisation and substitution give
+     * each a division, not the general row pass (a phase holding most of a machine's unknowns spent a third of its
+     * solves passing over them).
+     */
+    private int nIso;
     /** Each pivot's value, and its share of its U row (|d| / max(|d|, row's largest)), when the pivot order was last chosen (see refactor). */
     private double[] pivotAtFactor, pivotShareAtFactor;
 
@@ -32,11 +45,14 @@ public final class SparseLinearSystem implements LinearSystem {
     private double[][] lVal, uVal;
     private double[] uDiag;
     private final double[] work;
+    /** The substitutions' vector (every entry written before it is read: never cleared, unlike {@link #work}). */
+    private final double[] sub;
     private boolean factored;
 
     public SparseLinearSystem(int n) {
         this.n = n;
         this.work = new double[n];
+        this.sub = new double[n];
     }
 
     @Override
@@ -277,10 +293,15 @@ public final class SparseLinearSystem implements LinearSystem {
 
     /** Adds the sinks' accumulated values into this system's entries, sink by sink in order. */
     public void merge(Sink[] sinks) {
+        merge(sinks, 0, nnz);
+    }
+
+    /** {@link #merge} over entries [from, to) only (disjoint ranges may merge on separate threads). */
+    public void merge(Sink[] sinks, int from, int to) {
         for (Sink s : sinks) {
             double[] l = s.local;
-            int m = Math.min(nnz, l.length);
-            for (int i = 0; i < m; i++) val[i] += l[i];
+            int m = Math.min(Math.min(nnz, to), l.length);
+            for (int i = from; i < m; i++) val[i] += l[i];
         }
     }
 
@@ -304,14 +325,42 @@ public final class SparseLinearSystem implements LinearSystem {
         return idx;
     }
 
+    /** Each diagonal's entry index once known (entries are never removed, so a found index stays good). */
+    private int[] diagIdx;
+
     @Override
     public double diagonal(int i) {
-        int e = lookup((((long) i + 1) << 32) | (i & 0xffffffffL));
+        if (diagIdx == null) {
+            diagIdx = new int[n];
+            Arrays.fill(diagIdx, -1);
+        }
+        int e = diagIdx[i];
+        if (e < 0) e = diagIdx[i] = lookup((((long) i + 1) << 32) | (i & 0xffffffffL));
         return e < 0 ? 0.0 : val[e];
     }
 
     public int nonZeros() {
         return nnz;
+    }
+
+    /** Multiply-adds in one numeric refactorisation (diagnostics): each L entry's U row. */
+    public long factorFlops() {
+        if (lPat == null) return 0;
+        long c = 0;
+        for (int s = 0; s < n; s++) for (int k : lPat[s]) c += 1 + uPat[k].length;
+        return c;
+    }
+
+    /** The pivots costing most in a refactorisation (diagnostics): {column, multiply-adds, L length, U length}, costliest first. */
+    public long[][] costliestPivots(int k) {
+        long[][] r = new long[n][];
+        for (int s = 0; s < n; s++) {
+            long c = 0;
+            for (int q : lPat[s]) c += 1 + uPat[q].length;
+            r[s] = new long[]{colPerm[s], c, lPat[s].length, uPat[s].length, s};
+        }
+        Arrays.sort(r, (a, b) -> Long.compare(b[1], a[1]));
+        return Arrays.copyOf(r, Math.min(k, n));
     }
 
     /** Number of stored L+U off-diagonal entries (fill diagnostics). */
@@ -336,13 +385,16 @@ public final class SparseLinearSystem implements LinearSystem {
 
     /** Diagnostics: factorisations with a fresh pivot order (pattern changed / pivot unstable), and reused ones. */
     public static final java.util.concurrent.atomic.LongAdder FULL_PATTERN = new java.util.concurrent.atomic.LongAdder(),
-            FULL_UNSTABLE = new java.util.concurrent.atomic.LongAdder(), REFACTORS = new java.util.concurrent.atomic.LongAdder();
+            FULL_UNSTABLE = new java.util.concurrent.atomic.LongAdder(), REFACTORS = new java.util.concurrent.atomic.LongAdder(),
+            REFACTOR_FLOPS = new java.util.concurrent.atomic.LongAdder();
+    private long flopsNow;
 
     @Override
     public void solve(double[] b) {
         if (patternChanged || !factored) {
             FULL_PATTERN.increment();
             buildRowIndex();
+            mdOrder = MIN_DEGREE ? minimumDegreeOrder() : null;
             fullFactor();
             patternChanged = false;
         } else if (!refactor()) {
@@ -350,14 +402,16 @@ public final class SparseLinearSystem implements LinearSystem {
             fullFactor();
         } else {
             REFACTORS.increment();
+            REFACTOR_FLOPS.add(flopsNow);
         }
         substitute(b);
     }
 
     private void substitute(double[] b) {
         // Forward substitution (L has unit diagonal)
-        double[] y = work;
-        for (int s = 0; s < n; s++) {
+        double[] y = sub;
+        for (int s = 0; s < nIso; s++) y[s] = b[rowPerm[s]];
+        for (int s = nIso; s < n; s++) {
             double v = b[rowPerm[s]];
             int[] lp = lPat[s];
             double[] lv = lVal[s];
@@ -365,15 +419,15 @@ public final class SparseLinearSystem implements LinearSystem {
             y[s] = v;
         }
         // Back substitution
-        for (int s = n - 1; s >= 0; s--) {
+        for (int s = n - 1; s >= nIso; s--) {
             double v = y[s];
             int[] up = uPat[s];
             double[] uv = uVal[s];
             for (int k = 0; k < up.length; k++) v -= uv[k] * y[up[k]];
             y[s] = v / uDiag[s];
         }
+        for (int s = 0; s < nIso; s++) y[s] /= uDiag[s];
         for (int s = 0; s < n; s++) b[colPerm[s]] = y[s];
-        Arrays.fill(work, 0.0);
     }
 
     private void buildRowIndex() {
@@ -432,12 +486,20 @@ public final class SparseLinearSystem implements LinearSystem {
         double[][] uValsOrig = new double[n][];
         uDiag = new double[n];
 
+        int mdPos = 0;
         for (int s = 0; s < n; s++) {
-            // --- choose pivot: scan columns with smallest counts first
             int bestR = -1, bestC = -1;
             long bestCost = Long.MAX_VALUE;
             double bestMag = 0;
-            int[] order = smallestColumns(cl, colDone, 4);
+            int[] order;
+            if (mdOrder != null) {
+                // the next column in minimum-degree order, its pivot the shortest row among those large enough
+                while (colDone[mdOrder[mdPos]]) mdPos++;
+                order = new int[]{mdOrder[mdPos]};
+            } else {
+                // --- choose pivot: scan columns with smallest counts first
+                order = smallestColumns(cl, colDone, CANDIDATES);
+            }
             for (int c : order) {
                 if (c < 0) continue;
                 double colMax = 0;
@@ -583,6 +645,10 @@ public final class SparseLinearSystem implements LinearSystem {
             uPat[s] = up;
             uVal[s] = uv;
         }
+        flopsNow = factorFlops();
+        nIso = 0;
+        while (nIso < n && lPat[nIso].length == 0 && uPat[nIso].length == 0
+                && aRowStart[rowPerm[nIso] + 1] - aRowStart[rowPerm[nIso]] == 1) nIso++;
         pivotAtFactor = uDiag.clone();
         pivotShareAtFactor = new double[n];
         for (int s = 0; s < n; s++) {
@@ -626,7 +692,15 @@ public final class SparseLinearSystem implements LinearSystem {
     /** Numeric refactorisation reusing the pivot order and fill pattern. Returns false if a pivot is unstable. */
     private boolean refactor() {
         double[] w = work;
-        for (int s = 0; s < n; s++) {
+        for (int s = 0; s < nIso; s++) {
+            double d = val[aRowIdx[aRowStart[rowPerm[s]]]];
+            if (!Double.isFinite(d) || d == 0 || Math.abs(d) < PIVOT_COLLAPSE * Math.abs(pivotAtFactor[s])) {
+                if (COLLAPSES != null) COLLAPSES.merge(colPerm[s], 1, Integer::sum);
+                return false;
+            }
+            uDiag[s] = d;
+        }
+        for (int s = nIso; s < n; s++) {
             int r = rowPerm[s];
             double rowMax = 0;
             for (int p = aRowStart[r]; p < aRowStart[r + 1]; p++) {
@@ -669,6 +743,55 @@ public final class SparseLinearSystem implements LinearSystem {
             uDiag[s] = d;
         }
         return true;
+    }
+
+    /**
+     * A minimum-degree elimination order of the symmetrised pattern (A + Aᵀ): each step the node with the fewest
+     * neighbours, whose neighbours then become a clique. Adjacency is held as bitsets (cheap at a few thousand
+     * unknowns; recomputed only when the pattern changes).
+     */
+    private int[] minimumDegreeOrder() {
+        int words = (n + 63) >>> 6;
+        long[][] adj = new long[n][words];
+        for (int e = 0; e < nnz; e++) {
+            int r = rowOf[e], c = colOf[e];
+            if (r == c) continue;
+            adj[r][c >>> 6] |= 1L << c;
+            adj[c][r >>> 6] |= 1L << r;
+        }
+        int[] deg = new int[n];
+        for (int i = 0; i < n; i++) for (long w : adj[i]) deg[i] += Long.bitCount(w);
+        boolean[] done = new boolean[n];
+        int[] order = new int[n];
+        for (int s = 0; s < n; s++) {
+            int v = -1, best = Integer.MAX_VALUE;
+            for (int i = 0; i < n; i++) {
+                if (!done[i] && deg[i] < best) {
+                    best = deg[i];
+                    v = i;
+                }
+            }
+            order[s] = v;
+            done[v] = true;
+            long[] av = adj[v];
+            for (int w = 0; w < words; w++) {
+                long bits = av[w];
+                while (bits != 0) {
+                    int u = (w << 6) + Long.numberOfTrailingZeros(bits);
+                    bits &= bits - 1;
+                    long[] au = adj[u];
+                    int d = 0;
+                    for (int k = 0; k < words; k++) {
+                        au[k] |= av[k];
+                        if (k == (u >>> 6)) au[k] &= ~(1L << u);
+                        if (k == (v >>> 6)) au[k] &= ~(1L << v);
+                        d += Long.bitCount(au[k]);
+                    }
+                    deg[u] = d;
+                }
+            }
+        }
+        return order;
     }
 
     private int[] smallestColumns(int[] colCount, boolean[] colDone, int k) {

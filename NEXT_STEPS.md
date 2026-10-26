@@ -107,7 +107,14 @@
      30 %, the solver's own work 22 %. Tried without gain: PI step control (rejections halved, more steps, 4 %); the
      assembly replay kept in step (hash lookups gone, ~3 %; kept). What is left is structural: step the fluid and gas
      network apart from the fast electromechanics (multirate), with the stiff liquid volumes at the pistons and pumps
-     on the fast side and the pistons' work exchanged conservatively, as the thermal network's heat already is;
+     on the fast side and the pistons' work exchanged conservatively, as the thermal network's heat already is.
+     The world adds nothing hidden: a flight recording of the headless station server with lifted budgets
+     (2026-10-26, `runStationServer -Demergence.islandBudgetMs=1e9 -Demergence.globalBudgetMs=1e9
+     -Demergence.jfr=<file>,duration=360s`; its one endless tick meets the 60 s watchdog after about a minute,
+     enough to sample) spends its time in the solver alone: the LU's refactor 21 %, the Jacobian's assembly
+     ~19 %, water/steam properties ~11 %, tanh in three smooth switches 4.5 %. Replacing tanh with the equivalent
+     logistic gained nothing measurable (60 s of plant, 6 min 41 s against 6 min 39 s), so it was not kept. The
+     world's slower pace is its budgets', not overhead;
    - (fixed 2026-10-26) the hot well ran dry: the exhaust chest under the engine's exhaust riser, below the well,
      gathered the water the exhaust brings out of the cylinder (~0.07 g/s; 197 g to 28 g in 14 minutes). The condenser
      now stands low, its well under the exhaust valve, the exhaust led level into its side and the feed pump hung under

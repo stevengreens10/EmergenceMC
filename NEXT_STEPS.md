@@ -132,8 +132,15 @@
      (200 bar falling ~3 % in two minutes), and over a 14-minute soak (2026-10-26) the boiler fell from 5.1 to 3.0 bar
      with the engine still governed at 14 rad/s. A real plant puts a pressure regulator ahead of the needle. One
      built from parts now holds its outlet within 0.03 bar while a receiver falls from 20 to 10 bar (the `regulator`
-     exhibit); next, fit one between the station's bottles and its needle, the needle opened to pass the same
-     methane at the regulator's few bar instead of the bottles' 200;
+     exhibit). Fitted between the station's bottles and its needle (2026-10-26: the exhibit's arrangement, the needle
+     opened to 0.31 mm to pass the same 40 mg/s at 3 bar absolute), it held the needle's inlet at 3.04 bar with the fire as
+     before. But it cost the station ~40 % of its speed: each gas volume on the fuel side carries every species of
+     the firebox's mixture (+204 unknowns and +3000 matrix entries for six small volumes, the LU's fill nearly doubled),
+     and the fire fades only over a quarter of an hour of plant time, some three hours of real time in the world. Not
+     kept; fit it once gas volumes away from the reacting zone carry only the species that reach them (or the plant
+     is stepped multirate). Two traps on the way: a pipe run's free end is an open vent (the bottles emptied through
+     it), and one layout (an eight-cell chamber vessel) made the start non-finite at t = 0, as the split cylinder faces
+     did — the water side's wall elements were the first to return NaN, at a finite iterate;
    - the condenser holds ~0.45 bar now that the boiler sends it more steam (checked against 80 kPa): more fin area,
      or a fan, would deepen it;
    - the generator's net charge is small (~0.03 A after the electronics' own ~35 mA, most of it the 24 mA IR beam):

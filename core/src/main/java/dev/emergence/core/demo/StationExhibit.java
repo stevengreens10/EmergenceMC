@@ -11,8 +11,8 @@ import static dev.emergence.core.demo.Exhibits.with;
  * The power station: one machine of many disciplines, every part of it doing a job, built as a player builds — in
  * its own world, apart from the gallery. Methane burns in a firebox under a boiler; the steam drives an engine held to
  * its speed by Watt's flyball governor; the engine turns a generator whose rectified output charges the station's
- * battery; and that battery runs the electronics that keep the boiler at its pressure, opening and shutting the fuel
- * through a solenoid valve, and count the engine's turns.
+ * battery; and that battery runs the electronics that hold its own charge (a regulator dumping the surplus into a
+ * lamp) and count the engine's turns.
  *
  * <p>Built in sections, each in its own coordinates ({@link Exhibit#origin}):
  * <ul>

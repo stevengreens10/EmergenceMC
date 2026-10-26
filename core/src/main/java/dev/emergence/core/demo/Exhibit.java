@@ -46,6 +46,36 @@ public final class Exhibit {
      */
     public record Scenery(int x0, int y0, int z0, int x1, int y1, int z1, String block) {}
 
+    /**
+     * A stream one block deep at height y, running along +x from its springs at x0 (sources across z0…z1) to x1. In the
+     * world the game spreads it, its level falling a ninth of a block for each block of run; built in the core, the same.
+     */
+    public record Stream(int x0, int y, int z0, int x1, int z1) {
+        /** Its level at x, a fraction of the block (the springs 8/9, then a ninth less a block, down to 1/9). */
+        public double level(int x) {
+            return Math.max(1, 8 - (x - x0)) / 9.0;
+        }
+
+        /**
+         * Its speed at x [m/s] for blocks of the given size: Manning's formula for a smooth channel, v = R^⅔·S^½/n
+         * (n = 0.015), its slope a ninth, its hydraulic radius its depth; still at its springs.
+         */
+        public double speed(int x, double blockSize) {
+            return x == x0 ? 0 : Math.pow(level(x) * blockSize, 2.0 / 3) * Math.sqrt(1.0 / 9) / 0.015;
+        }
+
+        public boolean contains(int x, int yy, int z) {
+            return x >= x0 && x <= x1 && yy == y && z >= z0 && z <= z1;
+        }
+    }
+
+    public final List<Stream> streams = new ArrayList<>();
+
+    public Exhibit stream(int x0, int y, int z0, int x1, int z1) {
+        streams.add(new Stream(x0, y, z0, x1, z1));
+        return this;
+    }
+
     public final List<Scenery> scenery = new ArrayList<>();
 
     public Exhibit scenery(int x0, int y0, int z0, int x1, int y1, int z1, String block) {

@@ -99,9 +99,10 @@ behaviour; where physics is missing the effect is simply absent.
 * A single small blade row cannot make a self-sustaining gas turbine (consistent with real physics at this
   scale); jet kinetic energy is not modelled, so impulse turbines are under-powered.
 
-- Buoyancy acts only on slides (floats on guides). A turning body in water gets neither upthrust torque nor paddle
-  drag, and flowing world water exerts no force, so there is no water wheel in a river yet. The water's added mass and
-  reflected waves are ignored, and a pond's level does not rise as floats displace it.
+- Water acts on slides and on bodies turning about a fixed axis. A stream keeps its speed whatever a wheel takes from
+  it, so a heavily loaded wheel in a narrow race is too strong. The water's added mass and reflected waves are
+  ignored, and a pond's level does not rise as floats displace it. A stream's speed comes from Manning's formula at
+  Minecraft's fixed slope, not from how much water feeds it.
 
 ## Structures
 * Linear statics: no buckling, dynamic or impact loads, vibration, fatigue or creep; first yield is failure

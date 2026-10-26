@@ -1075,16 +1075,76 @@ public final class SimulationManager {
         // still water in and over its blocks (its own waterlogged, the world's water above each and just under it),
         // read now as well: the surface a float rides is where the column of water over it ends
         Set<BlockPos> water = new HashSet<>();
+        Map<BlockPos, dev.emergence.core.math.Vec3> current = new HashMap<>();
+        Map<BlockPos, Double> height = new HashMap<>();
+        java.util.function.Consumer<BlockPos> readWater = n -> {
+            if (water.contains(n) || !level.isLoaded(n)) return;
+            var fs = level.getFluidState(n);
+            if (!fs.is(net.minecraft.tags.FluidTags.WATER)) return;
+            water.add(n);
+            height.put(n, (double) fs.getHeight(level, n));
+            if (fs.isSource()) return;
+            // flowing water: its direction from the game, its speed from its slope (each block of run drops it a ninth of
+            // a block) and depth by Manning's formula for a smooth channel, v = R^⅔·S^½/n (n = 0.015; a wide stream's
+            // hydraulic radius is its depth)
+            net.minecraft.world.phys.Vec3 dir = fs.getFlow(level, n);
+            double hx = dir.x, hz = dir.z, len = Math.sqrt(hx * hx + hz * hz);
+            if (len < 1e-6) return;
+            double depth = Math.max(fs.getHeight(level, n), 1.0 / 9) * dev.emergence.core.assembly.Part.CELL * res;
+            double v = Math.pow(depth, 2.0 / 3) * Math.sqrt(1.0 / 9) / 0.015;
+            current.put(n, new dev.emergence.core.math.Vec3(v * hx / len, 0, v * hz / len));
+        };
+        int x0 = Integer.MAX_VALUE, y0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, y1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
         for (BlockPos b : own) {
-            for (int k = -1; k <= 16; k++) {
+            x0 = Math.min(x0, b.getX()); y0 = Math.min(y0, b.getY()); z0 = Math.min(z0, b.getZ());
+            x1 = Math.max(x1, b.getX()); y1 = Math.max(y1, b.getY()); z1 = Math.max(z1, b.getZ());
+        }
+        // all the water about the machine (a paddle's path passes cells it does not own), then the columns over it
+        if ((long) (x1 - x0 + 5) * (y1 - y0 + 5) * (z1 - z0 + 5) <= 200_000) {
+            for (int x = x0 - 2; x <= x1 + 2; x++)
+                for (int y = y0 - 2; y <= y1 + 2; y++)
+                    for (int z = z0 - 2; z <= z1 + 2; z++) readWater.accept(new BlockPos(x, y, z));
+        } else {
+            for (BlockPos b : own) for (int k = -1; k <= 0; k++) readWater.accept(b.above(k));
+        }
+        for (BlockPos b : new java.util.ArrayList<>(water)) {
+            for (int k = 1; k <= 16; k++) {
                 BlockPos n = b.above(k);
-                if (!level.isLoaded(n) || !level.getFluidState(n).is(net.minecraft.tags.FluidTags.WATER)) {
-                    if (k >= 0) break;
-                    continue;
-                }
-                water.add(n);
+                int before = water.size();
+                if (water.contains(n)) continue;
+                readWater.accept(n);
+                if (water.size() == before) break;
             }
         }
+        // its own blocks standing in a stream: a part there is no waterlogged source (that would still the stream at
+        // it), so it takes the water of the stream beside it — its current, and its level
+        for (BlockPos b : own) {
+            if (water.contains(b)) continue;
+            double vx = 0, vz = 0, h = 0;
+            int n = 0;
+            for (net.minecraft.core.Direction d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                BlockPos nb = b.relative(d);
+                dev.emergence.core.math.Vec3 cur = current.get(nb);
+                if (cur == null) continue;
+                vx += cur.x();
+                vz += cur.z();
+                h += height.get(nb);
+                n++;
+            }
+            if (n == 0) continue;
+            water.add(b);
+            current.put(b, new dev.emergence.core.math.Vec3(vx / n, 0, vz / n));
+            height.put(b, h / n);
+        }
+        if (!height.isEmpty()) asm.waterTopWhen((x, y, z) -> {
+            BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
+            Double hb = height.get(bp);
+            // the surface within its top cell: the block's own level over a finer lattice's cells
+            return hb == null ? dev.emergence.core.assembly.Assembly.WATER_TOP
+                    : res == 1 ? hb : Math.max(0, Math.min(1, hb * res - Math.floorMod(y, res)));
+        });
+        if (!current.isEmpty()) asm.flowWhen((x, y, z) -> current.getOrDefault(
+                new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res)), dev.emergence.core.math.Vec3.ZERO));
         if (!water.isEmpty()) {
             // a finer lattice: the top block of a column holds water only up to its surface, 8/9 of the block
             int wet = res == 1 ? 1 : (int) Math.round(res * dev.emergence.core.assembly.Assembly.WATER_TOP);

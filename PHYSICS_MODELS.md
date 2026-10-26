@@ -856,5 +856,15 @@ pushed under settles, its energy balancing. Not modelled:
 - the added mass of the water a part accelerates;
 - waves reflected by a pond's walls;
 - currents;
-- turning bodies in water (no upthrust torque, no paddle drag);
 - the water level falling as floats displace it (the pond is a reservoir).
+
+Turning bodies (`WaterOnRotor`): each part carried round by a body turning about a fixed axis feels, at its turned
+place, the upthrust over its submerged fraction and the water's drag against its motion relative to the water's own
+velocity. A thin block is a plate with normal drag only, ½·ρ·2·A·|v_n|·v_n; any other part is a bluff body over a
+frontal area of V^⅔. The torque is n·Σ r × F, and the water's work is external (a pond, a stream). A stream's current
+comes from its slope and depth by Manning's formula, v = R^⅔·S^½/n with n = 0.015, the hydraulic radius taken as the
+depth. A Minecraft stream falls a ninth of a block per block of run (S = 1/9), so a block-scale stream at 5/9 of a
+block deep runs at 2.4 m/s. A part standing in flowing water is not waterlogged, since a waterlogged block would be a
+still source; it takes the current and level of the stream beside it. Validated in `BuoyancyTest`: a four-paddle wheel
+in a 1 m/s stream reaches 7.1 rad/s, its paddles at 0.89 m/s, and turns the other way in a reversed stream, its energy
+balancing. Not modelled: the stream slowing as a paddle takes its momentum (it keeps its speed), and splashing.

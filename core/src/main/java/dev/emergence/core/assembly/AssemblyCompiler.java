@@ -536,6 +536,63 @@ public final class AssemblyCompiler {
                     PartGeometry.gravity(), b.mass + b.carriedMass, wet));
         }
 
+        /** The water about the machine, as the turning parts in it see it: the surface over a point, its current there. */
+        dev.emergence.core.sim.elements.WaterOnRotor.Field waterField() {
+            return new dev.emergence.core.sim.elements.WaterOnRotor.Field() {
+                int[] cell(Vec3 p) {
+                    int x = (int) Math.floor(p.x() / Part.CELL), y = (int) Math.floor(p.y() / Part.CELL), z = (int) Math.floor(p.z() / Part.CELL);
+                    if (a.isWaterCell(x, y, z)) return new int[]{x, y, z};
+                    if (a.isWaterCell(x, y - 1, z)) return new int[]{x, y - 1, z}; // just over the water
+                    return null;
+                }
+
+                @Override
+                public double surface(Vec3 p) {
+                    int[] c0 = cell(p);
+                    return c0 == null ? Double.NaN : a.waterSurface(c0[0], c0[1], c0[2]);
+                }
+
+                @Override
+                public Vec3 velocity(Vec3 p) {
+                    int[] c0 = cell(p);
+                    return c0 == null ? Vec3.ZERO : a.waterVelocity(c0[0], c0[1], c0[2]);
+                }
+            };
+        }
+
+        /**
+         * Water on a turning body's parts (see {@link dev.emergence.core.sim.elements.WaterOnRotor}): those whose path
+         * round the axis dips into water. A thin block (filled to half its depth or less) is a plate, its face normal to
+         * its axis; any other part a bluff body.
+         */
+        void buildWaterOnRotor(CompiledAssembly.Body b) {
+            var field = waterField();
+            List<dev.emergence.core.sim.elements.WaterOnRotor.Wetted> wet = new ArrayList<>();
+            for (long id : b.parts) {
+                Part p = a.get(id);
+                if (isWire(p)) continue;
+                Vec3 r0 = p.center().sub(b.pivot);
+                boolean dips = false;
+                for (int k = 0; k < 24 && !dips; k++) {
+                    double th = 2 * Math.PI * k / 24, c0 = Math.cos(th), s0 = Math.sin(th);
+                    Vec3 along = b.axis.mul(r0.dot(b.axis)), across = r0.sub(along);
+                    Vec3 at = b.pivot.add(along).add(across.mul(c0)).add(b.axis.cross(across).mul(s0));
+                    dips = !Double.isNaN(field.surface(at));
+                }
+                if (!dips) continue;
+                boolean sealed = p.kind() == PartKind.TANK || p.kind() == PartKind.CYLINDER;
+                double vol = sealed ? p.boxSize(0) * p.boxSize(1) * p.boxSize(2) : PartGeometry.volume(p);
+                boolean plate = p.kind() == PartKind.BLOCK && p.param("fill", 1.0) <= 0.5;
+                int ax = p.axis().axis();
+                double plateArea = plate ? p.boxSize((ax + 1) % 3) * p.boxSize((ax + 2) % 3) : 0;
+                wet.add(new dev.emergence.core.sim.elements.WaterOnRotor.Wetted(r0, vol, p.boxSize(1), plateArea,
+                        plate ? p.axis().vec() : Vec3.ZERO, Math.pow(vol, 2.0 / 3)));
+            }
+            if (wet.isEmpty()) return;
+            c.network.add(new dev.emergence.core.sim.elements.WaterOnRotor(b.node, b.tracker, b.axis, b.pivot, WATER_DENSITY,
+                    PartGeometry.gravity(), wet, field));
+        }
+
         /** Still water's density near 15 °C [kg/m³]. */
         static final double WATER_DENSITY = 999.1;
 
@@ -790,6 +847,7 @@ public final class AssemblyCompiler {
                 if (m > 0 && perp.length() > 1e-6 && Math.abs(b.axis.y()) < 0.999) {
                     c.network.add(new GravityTorque(b.node, b.tracker, b.axis, offset, m, new Vec3(0, -PartGeometry.gravity(), 0)));
                 }
+                if (b.carrier == null) buildWaterOnRotor(b);
                 // riding on a slide: an unbalanced rotor shakes it, and the slide's acceleration swings the rotor
                 if (b.carrier != null && m > 0 && perp.length() > 1e-6) {
                     c.network.add(new dev.emergence.core.sim.elements.CarriedRotor(b.carrier.node, b.carrier.axis, b.node, b.tracker,

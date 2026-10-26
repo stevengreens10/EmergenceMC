@@ -210,7 +210,10 @@ Buoyancy (`BuoyancyTest`): three floats on 5 mm aluminium rods in a pond two cel
 above where it was built, its draft (ρ_w·(A·d + a_rod·(d + cell)) = m) within 3 % of the prediction. A steel block
 sinks to its rod's end, −30 mm. A closed steel can of 0.5 mm sheet floats highest, +15.2 mm, its draft also within
 3 %. Pushed under and let go, the oak returns to within 0.5 mm in 6 s. Its energy balances to 0.012 J (the same as the
-dry rig, the rounding of 1.8 MJ of the parts' heat). In the world, the `floats` exhibit gives the same three positions.
+dry rig, the rounding of 1.8 MJ of the parts' heat). In the world, the `floats` exhibit gives the same three positions. A paddle wheel (four aluminium plates two cells
+from its axle) over a 1 m/s stream reaches 7.14 rad/s, its paddles at 0.89 m/s, and −7.14 rad/s in a reversed stream.
+The stream's work balances to 4×10⁻⁵ J. The `waterwheel` exhibit turns at 17.5 rad/s in the core and 16.9 in the world,
+its paddles at 2.2 m/s in a 2.4 m/s stream.
 
 Pressure regulator (`DemoExhibitsTest.regulatorHoldsItsOutletWhileTheReceiverEmpties`), built from parts: a plug valve
 whose plug rides the piston rod of a 3 cm cylinder fed from the outlet, a preloaded spring (4 mm wire, 8 turns,

@@ -1077,3 +1077,15 @@ floats settle by making waves, so the element adds the radiation damping of a sm
 under now settles in a few bobs. The new `floats` exhibit stands an oak block, a steel block and a thin steel can in a
 glass-walled pond. The oak rides at its draft, the steel sinks, and the can floats highest, in the core and in the
 world alike.
+
+**A water wheel.** Water now also acts on turning bodies: upthrust and drag on each part at its turned place, against
+the water's own velocity. Minecraft gives flowing water a direction but no speed, so its speed comes from the stream's
+slope (a ninth of a block per block) and depth by Manning's formula, about 2.4 m/s at block scale. In the `waterwheel`
+exhibit a stream runs down a glass channel from its springs, and the lowest paddle of a four-paddle wheel stands in it.
+The wheel turns at 17.5 rad/s in the core and 16.9 in the world, its paddles just slower than the water. Three things
+had to be found first:
+
+- A paddle on the ground was anchored, as every structural part at y = 0 is, so the channel is raised a block.
+- A paddle resting on the channel's bed was held by the bed, as a part touching any solid world block is, so the bed
+  has a pit under it.
+- A waterlogged block is a still source, so a paddle in a stream takes the current and level of the water beside it.

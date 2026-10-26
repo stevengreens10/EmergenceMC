@@ -216,6 +216,50 @@ public final class MechanicsExhibits {
     }
 
     /**
+     * An undershot water wheel: a stream one block deep runs down a glass channel from its springs, and a wheel of four
+     * paddles on an axle across it dips its lowest paddle into the middle of the current. The water pushes on the
+     * paddle as it runs past (drag on a plate against the water's speed relative to it) and turns the wheel; the
+     * paddle can never go faster than the stream.
+     */
+    public static Exhibit waterWheel() {
+        Exhibit e = new Exhibit("waterwheel", "Water wheel",
+                List.of("WATER WHEEL", "The stream pushes", "the lowest paddle:", "the wheel turns"),
+                "A stream runs down the glass channel from the springs on the left, its level falling as it goes and "
+                        + "its speed set by its slope and depth (about 2 m/s here, by Manning's formula). The wheel's "
+                        + "lowest paddle stands in the current. The water pushes on it in proportion to the square of "
+                        + "how fast it runs past, so the wheel speeds up until its paddles move nearly as fast as the "
+                        + "water and the push dies away — an undershot wheel, the oldest water mill. Put a load on its "
+                        + "axle and it turns slower, the water pushing harder: that difference is the power it delivers.");
+        String st = "steel_1045", al = "aluminium_6061";
+        // the channel: a stone bed and glass walls round three lanes, a block up (a part on the ground is fixed to it),
+        // the springs at its upstream end; a pit in the bed under the lowest paddle, clear of it (a paddle resting on
+        // the bed would be held by it, as a part touching any solid block is)
+        e.scenery(0, 0, 5, 3, 0, 9, "smooth_stone");
+        e.scenery(5, 0, 5, 9, 0, 9, "smooth_stone");
+        e.scenery(4, 0, 5, 4, 0, 6, "smooth_stone");
+        e.scenery(4, 0, 8, 4, 0, 9, "smooth_stone");
+        e.scenery(0, 1, 5, 9, 1, 5, "glass");
+        e.scenery(0, 1, 9, 9, 1, 9, "glass");
+        e.scenery(0, 1, 6, 0, 1, 8, "glass");
+        e.scenery(9, 1, 6, 9, 1, 8, "glass");
+        e.stream(1, 1, 6, 8, 8); // it runs out seven blocks from its springs
+        // the axle across the channel, in bearings on posts outside its walls
+        e.name("axle", e.fill(SHAFT, st, 4, 3, 3, 4, 3, 11, Dir.SOUTH, "diameter", 0.01));
+        e.add(BEARING, st, 4, 3, 3, Dir.SOUTH);
+        e.add(BEARING, st, 4, 3, 11, Dir.SOUTH);
+        e.fill(BLOCK, st, 4, 0, 3, 4, 2, 3, Dir.UP);
+        e.fill(BLOCK, st, 4, 0, 11, 4, 2, 11, Dir.UP);
+        // the wheel: a hub, four arms and four paddles of thin aluminium, the paddles tangent to it two blocks out
+        e.add(BLOCK, al, 4, 3, 7, Dir.SOUTH, "fill", 0.5);
+        for (int[] arm : new int[][]{{0, 1}, {0, -1}, {1, 0}, {-1, 0}}) {
+            e.add(BLOCK, al, 4 + arm[0], 3 + arm[1], 7, Dir.SOUTH, "fill", 0.2);
+            int paddle = e.add(BLOCK, al, 4 + 2 * arm[0], 3 + 2 * arm[1], 7, arm[0] == 0 ? Dir.EAST : Dir.UP, "fill", 0.2);
+            if (arm[1] == -1) e.name("paddle", paddle);
+        }
+        return e.view(10, 5, 15, 25, 150);
+    }
+
+    /**
      * A throttle worked by a slide: a receiver of air at 10 bar discharges through a valve into a duct with a bladed
      * rotor. The valve's plug is on a rod in a linear bearing pointing into its side — pushed in, the plug sits in its
      * seat; drawn back, the valve opens in proportion to the travel, and the rotor spins up. Nothing turns a hand wheel:

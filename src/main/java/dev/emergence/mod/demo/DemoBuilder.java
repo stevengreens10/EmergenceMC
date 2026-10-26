@@ -195,6 +195,9 @@ public final class DemoBuilder {
                 for (int y = s.y0(); y <= s.y1(); y++)
                     for (int z = s.z0(); z <= s.z1(); z++) level.setBlock(plot.offset(x, y, z), block.defaultBlockState(), 2);
         }
+        // a stream's springs: the game runs it down its channel from them
+        for (Exhibit.Stream s : e.streams)
+            for (int z = s.z0(); z <= s.z1(); z++) level.setBlock(plot.offset(s.x0(), s.y(), z), Blocks.WATER.defaultBlockState(), 3);
     }
 
     /** The sign in front of an exhibit. */

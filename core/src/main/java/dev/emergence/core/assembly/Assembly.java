@@ -24,6 +24,8 @@ public final class Assembly {
     private dev.emergence.core.math.Vec3 ambientWind = dev.emergence.core.math.Vec3.ZERO;
     private CellPredicate solid = (x, y, z) -> false;
     private CellPredicate water = (x, y, z) -> false;
+    private CellVector flow = (x, y, z) -> dev.emergence.core.math.Vec3.ZERO;
+    private CellDouble waterTop = (x, y, z) -> WATER_TOP;
 
     /** Tests a grid cell (global cell coordinates). */
     @FunctionalInterface
@@ -98,6 +100,21 @@ public final class Assembly {
         return water.test(x, y, z);
     }
 
+    /** The water's velocity in a cell [m/s]. */
+    public interface CellVector {
+        dev.emergence.core.math.Vec3 at(int x, int y, int z);
+    }
+
+    /** How the water around the machine flows (a stream's current); still everywhere unless given. */
+    public Assembly flowWhen(CellVector flow) {
+        this.flow = flow;
+        return this;
+    }
+
+    public dev.emergence.core.math.Vec3 waterVelocity(int x, int y, int z) {
+        return flow.at(x, y, z);
+    }
+
     /** How far up its top cell still water stands (a Minecraft source block's surface, 8/9 of the block). */
     public static final double WATER_TOP = 8.0 / 9.0;
 
@@ -109,7 +126,18 @@ public final class Assembly {
         if (!isWaterCell(x, y, z)) return Double.NaN;
         int top = y;
         while (top - y < 256 && isWaterCell(x, top + 1, z)) top++;
-        return (top + WATER_TOP) * Part.CELL;
+        return (top + waterTop.at(x, top, z)) * Part.CELL;
+    }
+
+    /** A value per cell. */
+    public interface CellDouble {
+        double at(int x, int y, int z);
+    }
+
+    /** How far up the top cell of a column of water its surface stands (a stream's falls along its run). */
+    public Assembly waterTopWhen(CellDouble top) {
+        this.waterTop = top;
+        return this;
     }
 
     /** Pressure of the surrounding air [Pa]. */

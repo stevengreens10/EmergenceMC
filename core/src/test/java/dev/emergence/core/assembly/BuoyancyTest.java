@@ -97,4 +97,43 @@ class BuoyancyTest {
         assertEquals(0, c.energyError(), 0.03, "energy balances");
     }
 
+
+    /**
+     * An undershot paddle wheel over a stream: four plate paddles on arms two cells from a horizontal axle, the lowest
+     * dipping into water two cells deep that runs at u along x. The stream drives the wheel its own way round, the
+     * paddles at most as fast as the water (ω < u/r).
+     */
+    static double paddleWheel(double u) {
+        BuoyancyTest t = new BuoyancyTest();
+        t.asm.waterWhen((x, y, z) -> y >= 0 && y <= 1 && x >= 0 && x <= 10 && z >= 1 && z <= 3)
+                .flowWhen((x, y, z) -> new dev.emergence.core.math.Vec3(u, 0, 0));
+        Part shaft = t.add(PartKind.SHAFT, "steel_1045", 5, 3, 0, 5, 3, 4, Dir.SOUTH, "diameter", 0.01);
+        t.add(PartKind.BEARING, "steel_1045", 5, 3, 0, 5, 3, 0, Dir.SOUTH);
+        t.add(PartKind.BEARING, "steel_1045", 5, 3, 4, 5, 3, 4, Dir.SOUTH);
+        t.add(PartKind.BLOCK, "steel_1045", 5, 0, 0, 5, 2, 0, Dir.UP);
+        t.add(PartKind.BLOCK, "steel_1045", 5, 0, 4, 5, 2, 4, Dir.UP);
+        // hub and arms of thin aluminium, the paddles at their ends tangent to the wheel
+        t.add(PartKind.BLOCK, "aluminium_6061", 5, 3, 2, 5, 3, 2, Dir.SOUTH, "fill", 0.5);
+        for (int[] arm : new int[][]{{0, 1}, {0, -1}, {1, 0}, {-1, 0}}) {
+            t.add(PartKind.BLOCK, "aluminium_6061", 5 + arm[0], 3 + arm[1], 2, 5 + arm[0], 3 + arm[1], 2, Dir.SOUTH, "fill", 0.2);
+            t.add(PartKind.BLOCK, "aluminium_6061", 5 + 2 * arm[0], 3 + 2 * arm[1], 2, 5 + 2 * arm[0], 3 + 2 * arm[1], 2,
+                    arm[0] == 0 ? Dir.EAST : Dir.UP, "fill", 0.2);
+        }
+        CompiledAssembly c = AssemblyCompiler.compile(t.asm);
+        assertTrue(c.warnings().isEmpty(), c.warnings().toString());
+        run(c, 10);
+        double w = c.probe(shaft.id()).angularVelocity();
+        System.out.printf("paddle wheel in a %.1f m/s stream: %.2f rad/s (paddles at %.2f m/s), energy error %.2e J%n",
+                u, w, w * 2 * CELL, c.energyError());
+        assertEquals(0, c.energyError(), 0.05, "energy balances, the stream's work counted");
+        return w;
+    }
+
+    @Test
+    void aStreamTurnsAPaddleWheelItsOwnWayRound() {
+        double fwd = paddleWheel(1.0), back = paddleWheel(-1.0);
+        assertTrue(fwd > 2, "the stream turns the wheel: " + fwd);
+        assertTrue(fwd * 2 * CELL < 1.0, "its paddles no faster than the water");
+        assertEquals(-fwd, back, 0.05 * fwd, "the other way round in a stream the other way");
+    }
 }

@@ -417,10 +417,14 @@ public final class AutoShowcase {
                         () -> atLeast("ram's rise [mm]", 1e3 * (position(server, ram, PartKind.SHAFT) - before[0]), 0.5)));
             }
             if (id.equals("waterwheel")) {
-                // the stream, run down its channel from its springs, turns the wheel by its lowest paddle
-                STEPS.add(new Step(200, view, shot.apply("turning")).show()
+                // the stream, run down its channel from its springs, turns the wheel by its lowest paddle, and the
+                // wheel's magnets drive a current through the load
+                Sampler load = new Sampler();
+                STEPS.add(new Step(200, view, null));
+                STEPS.add(new Step(40, view, shot.apply("turning")).show().sample(load, () -> power(server, at.apply("load"), PartKind.RESISTOR))
                         .check(key + " the stream turns the wheel", () -> atLeast("wheel speed [rad/s]",
-                                Math.abs(spin(server, at.apply("axle"), PartKind.SHAFT)), 5)));
+                                Math.abs(spin(server, at.apply("axle"), PartKind.SHAFT)), 5))
+                        .check(key + " its generator powers the load", () -> atLeast("peak load power [mW]", 1e3 * load.max(), 1)));
             }
             if (id.equals("floats")) {
                 // the water lifts each float by the weight of the water it pushes aside

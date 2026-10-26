@@ -273,8 +273,8 @@ regenerate the demo world → screenshot tour → docs → commit.
    drag-cup speedometer. (Magnets attract iron on slides now.)
 8b. **Water** (buoyancy on slides and turning bodies is in, `floats`; a stream's current turns an undershot wheel,
    `waterwheel`; parts may stand in water, their blocks waterlogged). Still to do:
-   - the water wheel driving a generator (hydroelectric power): a bevel pair off its axle up to the hand
-     generator's machine. `Exhibits.generatorBody` is written at fixed coordinates, so it needs an offset first;
+   - (done: the water wheel drives an axial-flux generator on its own axle, the hand generator's magnets and
+     coils on their side: 11.6 rad/s and 0.3 W peak into 20 Ω, against 17.5 rad/s free);
    - the stream losing the momentum a paddle takes from it;
    - the added mass;
    - floats in a vessel's own liquid (a cistern's ballcock), its level falling as they displace it;

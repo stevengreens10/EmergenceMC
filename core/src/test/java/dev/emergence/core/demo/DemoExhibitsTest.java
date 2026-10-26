@@ -1247,7 +1247,13 @@ class DemoExhibitsTest {
         double stream = e.streams.get(0).speed(4, dev.emergence.core.assembly.Part.CELL);
         run(c, 10);
         double w = c.probe(b.id(e, "axle")).angularVelocity(), paddle = w * 2 * dev.emergence.core.assembly.Part.CELL;
-        System.out.printf("water wheel: %.2f rad/s, its paddles at %.2f m/s in a %.2f m/s stream%n", w, paddle, stream);
+        double load = 0;
+        for (int i = 0; i < 40; i++) {
+            c.step(0.05);
+            load = Math.max(load, c.probe(b.id(e, "load")).power());
+        }
+        System.out.printf("water wheel: %.2f rad/s, its paddles at %.2f m/s in a %.2f m/s stream, the load's peak %.2f mW%n", w, paddle, stream, 1e3 * load);
+        assertTrue(load > 1e-3, "its generator lights the load: " + load);
         assertTrue(paddle > 0.5 * stream, "the stream drives the wheel its way round, the paddles near the water's speed");
         assertTrue(paddle < stream, "but no faster than the water");
     }

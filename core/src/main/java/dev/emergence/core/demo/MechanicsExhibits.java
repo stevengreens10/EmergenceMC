@@ -223,13 +223,16 @@ public final class MechanicsExhibits {
      */
     public static Exhibit waterWheel() {
         Exhibit e = new Exhibit("waterwheel", "Water wheel",
-                List.of("WATER WHEEL", "The stream pushes", "the lowest paddle:", "the wheel turns"),
+                List.of("WATER WHEEL", "The stream turns it;", "its magnets sweep", "two coils: power"),
                 "A stream runs down the glass channel from the springs on the left, its level falling as it goes and "
                         + "its speed set by its slope and depth (about 2 m/s here, by Manning's formula). The wheel's "
                         + "lowest paddle stands in the current. The water pushes on it in proportion to the square of "
                         + "how fast it runs past, so the wheel speeds up until its paddles move nearly as fast as the "
-                        + "water and the push dies away — an undershot wheel, the oldest water mill. Put a load on its "
-                        + "axle and it turns slower, the water pushing harder: that difference is the power it delivers.");
+                        + "water and the push dies away — an undershot wheel, the oldest water mill. On the far end of "
+                        + "its axle two magnets sweep past two coils, as in the hand generator: the current they drive "
+                        + "through the 20 Ω resistor brakes the wheel (Lenz), so it turns slower than it would free and "
+                        + "the water pushes harder — that difference is the power it delivers. A hydroelectric plant in "
+                        + "miniature.");
         String st = "steel_1045", al = "aluminium_6061";
         // the channel: a stone bed and glass walls round three lanes, a block up (a part on the ground is fixed to it),
         // the springs at its upstream end; a pit in the bed under the lowest paddle, clear of it (a paddle resting on
@@ -244,11 +247,11 @@ public final class MechanicsExhibits {
         e.scenery(9, 1, 6, 9, 1, 8, "glass");
         e.stream(1, 1, 6, 8, 8); // it runs out seven blocks from its springs
         // the axle across the channel, in bearings on posts outside its walls
-        e.name("axle", e.fill(SHAFT, st, 4, 3, 3, 4, 3, 11, Dir.SOUTH, "diameter", 0.01));
+        e.name("axle", e.fill(SHAFT, st, 4, 3, 3, 4, 3, 12, Dir.SOUTH, "diameter", 0.01));
         e.add(BEARING, st, 4, 3, 3, Dir.SOUTH);
-        e.add(BEARING, st, 4, 3, 11, Dir.SOUTH);
+        e.add(BEARING, st, 4, 3, 12, Dir.SOUTH);
         e.fill(BLOCK, st, 4, 0, 3, 4, 2, 3, Dir.UP);
-        e.fill(BLOCK, st, 4, 0, 11, 4, 2, 11, Dir.UP);
+        e.fill(BLOCK, st, 4, 0, 12, 4, 2, 12, Dir.UP);
         // the wheel: a hub, four arms and four paddles of thin aluminium, the paddles tangent to it two blocks out
         e.add(BLOCK, al, 4, 3, 7, Dir.SOUTH, "fill", 0.5);
         for (int[] arm : new int[][]{{0, 1}, {0, -1}, {1, 0}, {-1, 0}}) {
@@ -256,7 +259,21 @@ public final class MechanicsExhibits {
             int paddle = e.add(BLOCK, al, 4 + 2 * arm[0], 3 + 2 * arm[1], 7, arm[0] == 0 ? Dir.EAST : Dir.UP, "fill", 0.2);
             if (arm[1] == -1) e.name("paddle", paddle);
         }
-        return e.view(10, 5, 15, 25, 150);
+        // the generator (the hand generator's, turned on its side): a bar across the axle beyond the channel carrying
+        // two NdFeB magnets, two coils facing them on nylon columns, in series through the load
+        e.fill(BLOCK, al, 2, 3, 11, 6, 3, 11, Dir.SOUTH, "fill", 0.08);
+        e.add(MAGNET, "ndfeb_n42", 6, 3, 12, Dir.SOUTH);
+        e.add(MAGNET, "ndfeb_n42", 2, 3, 12, Dir.NORTH);
+        e.name("coil", e.add(COIL, "copper", 6, 3, 13, Dir.SOUTH, "turns", 300, "wire_diameter", 0.8e-3));
+        e.add(COIL, "copper", 2, 3, 13, Dir.NORTH, "turns", 300, "wire_diameter", 0.8e-3);
+        e.fill(BLOCK, "nylon_66", 6, 0, 13, 6, 2, 13, Dir.UP);
+        e.fill(BLOCK, "nylon_66", 2, 0, 13, 2, 2, 13, Dir.UP);
+        // the outer leads joined round the outside; the inner ones through the load across the middle
+        e.path(INSULATED_WIRE, "copper", new int[][]{{7, 3, 13}, {7, 3, 14}, {7, 3, 15}, {6, 3, 15}, {5, 3, 15}, {4, 3, 15},
+                {3, 3, 15}, {2, 3, 15}, {1, 3, 15}, {1, 3, 14}, {1, 3, 13}}, "diameter", 1.5e-3);
+        e.path(INSULATED_WIRE, "copper", new int[][]{{5, 3, 13}, {5, 4, 13}, {3, 4, 13}, {3, 3, 13}}, "diameter", 1.5e-3);
+        e.name("load", e.add(RESISTOR, "alumina", 4, 4, 13, Dir.EAST, "resistance", 20));
+        return e.view(12, 7, 20, 28, 150);
     }
 
     /**

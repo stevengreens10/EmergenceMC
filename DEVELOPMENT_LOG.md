@@ -1089,3 +1089,29 @@ had to be found first:
 - A paddle resting on the channel's bed was held by the bed, as a part touching any solid world block is, so the bed
   has a pit under it.
 - A waterlogged block is a still source, so a paddle in a stream takes the current and level of the water beside it.
+
+**The power station towards real time (2026-10-26, evening).** All of it generic: nothing knows it is a power station.
+Core test, wall seconds per simulated second, from 3.1 to about 1.0:
+- *Phase-local Newton loops.* A held unknown's pivot skips the general row pass in the LU (the circuits' phase holds
+  most of the machine's 1141 unknowns). Cached diagonal positions, replayed identity stamps, stored energy summed only
+  when asked: 3.1 → 2.0.
+- *Independent parts of the plant step apart.* The firebox's gas network and the steam engine share no unknown in the
+  plant; they meet only through the boiler's walls in the thermal network. The gas network had been stepping at the
+  engine's pace, with the most expensive LU of the machine: 2.0 → 1.37. Elements don't declare their nodes, and
+  contacts stamp only when they touch, so the split watches every stamp. An element reaching into another part (a
+  crank taken up, gears meshing) joins the parts at once; the first in-suite failures were exactly that (a resting
+  crank stamps nothing).
+- *A circuit's switching event restarts only the circuits*, not the plant.
+- *Circuits and plant overlapped on two threads.* The plant takes its next step on the common pool while the circuits
+  cross the interval before it. The plant's input is carried on from the circuits' last two interval means; energy in
+  transit stays booked. The threads meet only at fixed points, so results are deterministic. Each phase got its own
+  working arrays and context; the ledger, heat and counters became thread-safe. Thermal syncs no longer drain the
+  overlap. The plant's independent parts step on the calling thread while it waits: 1.37 → 1.04.
+- *Bristle friction resolved to 1 % of its limit* (the user's option B, small shortcuts): the governor's flyweights had
+  set two fifths of the plant's steps.
+- *Game: off-tick stepping* (option D). An island costing more than 8 ms a tick steps across the server tick on its own
+  thread, paced against 45 ms. Everything that touches its machine waits for its step first.
+Tried and dropped: minimum-degree ordering, a 0.01 pivot threshold, a quadratic predictor, several Newton damping and
+early-abort schemes, and a wider liquid/vapour wetting band at ports (it made the valve ports' failures worse).
+In the game the station passes its tour and runs at 0.6 of real time. There it costs ~1.4 s/s: the client shares the
+cores, and the circuits iterate more.

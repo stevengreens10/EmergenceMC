@@ -261,3 +261,39 @@ thread outside the tick.
   machine's. The station would drop to about the plant's 1.7 s/s, and to about 1.0 with B. This is a substantial
   fidelity cost: no per-pass waveform.
 - **D. Off-tick stepping:** large islands step on their own thread, so 1.0× counts as real time.
+
+**Done (2026-10-26, all generic — nothing here knows it is a power station):**
+
+| Step | Station s/s | What it does |
+|---|---|---|
+| Baseline | 6.8 | one Jacobian for everything but the thermal network |
+| Parallel element loading | 4.0–4.4 | a large phase's elements load on the common pool, each worker into its own residual and copy of the matrix values, summed in a fixed order (deterministic) |
+| Circuits sub-cycled | ~3.0 | electrical nodes, coil currents and magnetisation step apart from the plant; the plant first, with the circuits' delivery carried on from their last two interval means; the circuits then sub-step across the interval with the plant's rows interpolated; the energy in transit is booked |
+| Cheaper LU and Newton passes | 2.0 | held unknowns skip the general row pass in refactor/substitution; Newton loops visit only a phase's own unknowns; diagonal positions cached; held rows' identity stamps replayed; stored energy summed only when asked; resistivity coefficients read once |
+| Independent plant parts | 1.37 | parts of the plant sharing no unknown (the firebox's gas network and the steam side meet only through the boiler's walls) step at their own pace; if an element later reaches across (a crank taken up, gears meshing), they are joined at once |
+| Circuits restart alone on their own events | — | a counter's tick no longer restarts the plant |
+| Circuits and plant overlapped | 1.23 | the plant takes its next step on the common pool while the circuits cross the interval before it; deterministic (the threads meet only at fixed points) |
+| Thermal syncs without draining the overlap | 1.20 | the circuits' heat over the interval they lag by is in transit until the next synchronisation |
+| Bristle friction resolved to 1 % of its limit (option B) | 1.11 | a governor's flyweights held against the generator's ripple set two fifths of the plant's steps; outputs unchanged to three digits |
+| The plant's parts step while the plant does; convection properties memoised | 1.04 (1.0 from t = 40 s) | the gas network steps on the calling thread while it waits for the plant |
+| Off-tick stepping in the game (option D) | — | an island costing more than 8 ms a tick steps on a thread of its own across the server tick (paced against 45 ms, its wall-clock cap the ticks it covers), so ~0.9 s/s is real time; the world sees its results a tick later |
+
+**Tried, not kept (this round):** a minimum-degree column pre-ordering (fewer fresh-factorisation costs but more
+refactorisation work than Markowitz: 22.4 vs 20.8 s per 10 s); a pivot threshold of 0.01 (−2 %, not worth the
+stability margin); a quadratic Newton predictor (more iterations and failures); halving Newton updates only while far
+from converging, a per-unknown two-cycle detector and early abandonment of stalled solves (the engine's valve-port
+failures are a port at a water surface switching between liquid and vapour outflow; none of these moved the time).
+
+**Where it stands:** core test ~1.0 s/s; **in the game 0.6 of real time** (the station's tour, 7/7 checks passing):
+there it costs ~1.4 s per simulated second — the client's threads share the cores, and its circuits take ~6 Newton
+iterations a step where the core test's take ~4.
+
+**What sets the time now** (per 10 simulated seconds, core test): the plant ~8 s on its own thread (6.4k steps, its
+step set by the cylinder's 1.85 cm³ at top dead centre, the flyweights' bristles and the valve ports' flows; ~160 Newton
+failures at those ports, each costing the 40-iteration cap — a fifth of the plant's iterations), the circuits ~5 s
+alongside (15k steps, the generator's magnetisation following the bridge diodes) — the circuits wait ~4 s for the plant.
+Outside the overlap: thermal synchronisation 0.6 s, end-of-tick drains 0.4 s. Candidates: the valve ports' Newton
+failures (a port at a water surface switching between liquid and vapour outflow; a wider wetting band over the port's
+opening made them worse), cheaper water/steam properties (an eighth of all solver time), the circuits' in-game Newton
+count.
+

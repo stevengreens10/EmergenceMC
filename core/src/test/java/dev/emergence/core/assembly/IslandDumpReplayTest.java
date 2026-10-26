@@ -84,8 +84,20 @@ class IslandDumpReplayTest {
         String[] probes = System.getProperty("diag.dumpProbe", "").isBlank() ? new String[0] : System.getProperty("diag.dumpProbe").split(",");
         // -Ddiag.dumpCrank=<crank part id>:<s>: a hand on that crank for the first s seconds (as the tour's hand)
         String[] crank = System.getProperty("diag.dumpCrank", "").isBlank() ? null : System.getProperty("diag.dumpCrank").split(":");
+        long wall0 = System.nanoTime();
         for (int i = 0; i < Math.round(seconds / 0.05); i++) {
-            if (Boolean.getBoolean("diag.newtonLaggards") && i == 0) {
+            // -Ddiag.dumpProfile=true: every 5 s, the wall time it took and the solver's phases
+            if (Boolean.getBoolean("diag.dumpProfile") && i > 0 && i % 100 == 0) {
+                System.out.printf("profile t=%.1f: %.1f s of wall time for 5 s; %s%n", c.time(), (System.nanoTime() - wall0) / 1e9, c.solver().phaseCounts());
+                if (Boolean.getBoolean("diag.newtonLaggards")) {
+                    var lag = new java.util.ArrayList<>(c.solver().newtonLaggards().entrySet());
+                    lag.sort((p1, p2) -> p2.getValue() - p1.getValue());
+                    System.out.println("   laggards: " + lag.subList(0, Math.min(12, lag.size())));
+                    c.solver().newtonLaggards().clear();
+                }
+                wall0 = System.nanoTime();
+            }
+            if (Boolean.getBoolean("diag.newtonLaggards") && !Boolean.getBoolean("diag.dumpProfile") && i == 0) {
                 try {
                     c.step(0.05);
                 } catch (RuntimeException ex) {
@@ -98,7 +110,7 @@ class IslandDumpReplayTest {
             }
             if (crank != null) c.setCrankEffort(Long.parseLong(crank[0]), (i + 1) * 0.05 <= Double.parseDouble(crank[1]) ? 1 : 0, false);
             c.step(0.05);
-            if (probes.length == 0) System.out.printf("t=%.2f%n", c.time());
+            if (probes.length == 0 && !Boolean.getBoolean("diag.dumpProfile")) System.out.printf("t=%.2f%n", c.time());
             else if ((i + 1) % 20 == 0) {
                 StringBuilder sb = new StringBuilder(String.format("t=%.2f", c.time()));
                 for (String id : probes) {

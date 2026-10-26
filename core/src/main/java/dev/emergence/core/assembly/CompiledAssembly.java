@@ -457,6 +457,11 @@ public final class CompiledAssembly {
      * Wall-clock time a {@link #step} may take [ms] (0: no limit, the default — tests are deterministic): past it the
      * step ends early on an accepted state, and the shortfall shows as {@link #lag()}.
      */
+    /** Relaxes the truncation-error tolerances by {@code relax} (≥ 1; see TransientSolver#setAccuracy). */
+    public void relaxAccuracy(double relax) {
+        solver.setAccuracy(relax);
+    }
+
     public CompiledAssembly wallBudget(double ms) {
         this.wallBudgetNanos = (long) (ms * 1e6);
         return this;

@@ -124,6 +124,8 @@ public final class SimulationManager {
          * later tick (see {@link #OFF_TICK}); the step while it runs, the tick it set off, and the ticks it covers.
          */
         boolean offTick;
+        /** Its truncation-error tolerances' relaxation (1: as validated; up to {@link #MAX_RELAX}): see {@link #land}. */
+        double relax = 1;
         java.util.concurrent.Future<?> step;
         long launchTick = Long.MIN_VALUE;
         int stepTicks = 1;
@@ -286,9 +288,16 @@ public final class SimulationManager {
             // (its wall-clock cap the ticks it covers, not one tick's: capped at 60 ms, a step of two ticks stopped short
             // and the machine ran in slow motion by the cap, not by its pace)
             if (STEP_WALL_MS > 0) isl.compiled.wallBudget(Math.max(STEP_WALL_MS, 1.2 * isl.stepTicks * TICK_SECONDS * 1e3));
+            isl.compiled.relaxAccuracy(isl.relax); // (a machine compiled anew starts at full accuracy)
             isl.step = OFF_TICK_POOL.submit(() -> stepIsolated(isl));
         }
-        if (STEP_WALL_MS > 0) for (Island isl : run) isl.compiled.wallBudget(STEP_WALL_MS);
+        for (Island isl : run) {
+            if (STEP_WALL_MS > 0) isl.compiled.wallBudget(STEP_WALL_MS);
+            if (isl.relax != 1) {
+                isl.relax = 1;
+                isl.compiled.relaxAccuracy(1);
+            }
+        }
         // the steps: each island alone with its own compiled machine (nothing in the core is shared between them), so
         // on several cores at once — the machines around a player each get their budget, not a share of one
         long wall0 = System.nanoTime();
@@ -377,7 +386,23 @@ public final class SimulationManager {
                     isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), cost / 1_000_000);
             Profiler.record(cost, isl.compiled.network().size());
             // (paced by its cost per tick: off the tick, against most of a tick's wall time on a thread of its own)
-            if (offTick) pace(isl, cost / 1e6 / isl.stepTicks, OFF_TICK_BUDGET_MS, 0.85);
+            if (offTick) {
+                // falling behind, it first relaxes its accuracy a little (up to MAX_RELAX), and only then slows down;
+                // with time to spare, it is back at full speed before it tightens again
+                double perTick = cost / 1e6 / isl.stepTicks;
+                double smoothed = isl.costMs == 0 ? perTick : 0.8 * isl.costMs + 0.2 * perTick;
+                if (smoothed > OFF_TICK_BUDGET_MS && isl.relax < MAX_RELAX) {
+                    isl.costMs = smoothed;
+                    isl.relax = Math.min(MAX_RELAX, isl.relax * 1.1);
+                    isl.compiled.relaxAccuracy(isl.relax);
+                } else {
+                    pace(isl, perTick, OFF_TICK_BUDGET_MS, 0.85);
+                    if (isl.timeScale >= 1 && isl.costMs < 0.6 * OFF_TICK_BUDGET_MS && isl.relax > 1) {
+                        isl.relax = Math.max(1, isl.relax / 1.1);
+                        isl.compiled.relaxAccuracy(isl.relax);
+                    }
+                }
+            }
             else pace(isl, cost / 1e6, isl.watched ? Math.max(ISLAND_BUDGET_MS, GLOBAL_BUDGET_MS) : ISLAND_BUDGET_MS);
             if (LOG_PACE && isl.watched && tickCount % 200 == 0) logPace(isl);
             if (failed != null && !failed.isEmpty()) destroyParts(isl, failed);
@@ -410,6 +435,12 @@ public final class SimulationManager {
     static final boolean OFF_TICK = !"false".equals(System.getProperty("emergence.offTick"))
             && Double.parseDouble(System.getProperty("emergence.globalBudgetMs", "35")) < 1e6; // (not where the budgets are lifted)
     static final double OFF_TICK_MS = Double.parseDouble(System.getProperty("emergence.offTickMs", "8"));
+    /**
+     * How far an island off the tick may relax its truncation-error tolerances to keep real time before it slows
+     * ({@code emergence.maxRelax}; 1 for never): ×3 left the power station's engine speed, pressures, temperatures,
+     * water and fuel as they were to three digits.
+     */
+    static final double MAX_RELAX = Double.parseDouble(System.getProperty("emergence.maxRelax", "3"));
     static final double OFF_TICK_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.offTickBudgetMs", "45"));
     private static final java.util.concurrent.ExecutorService OFF_TICK_POOL = java.util.concurrent.Executors.newFixedThreadPool(
             Math.max(1, Math.min(8, Runtime.getRuntime().availableProcessors() - 1)), r -> {
@@ -462,9 +493,9 @@ public final class SimulationManager {
         long wall = System.nanoTime();
         if (!Double.isNaN(isl.paceSim) && wall > isl.paceWall) {
             double pace = (sim - isl.paceSim) / ((wall - isl.paceWall) * 1e-9);
-            EmergenceMod.LOG.info("Pace: island at {} ({} parts) ran {} s simulated per real second (its own scale {}, the watched {}, near {}; {} ms a tick)",
+            EmergenceMod.LOG.info("Pace: island at {} ({} parts) ran {} s simulated per real second (its own scale {}, accuracy relaxed ×{}, the watched {}, near {}; {} ms a tick)",
                     isl.blocks.iterator().next(), isl.compiled.assembly().parts().size(), String.format("%.2f", pace),
-                    String.format("%.2f", isl.timeScale), String.format("%.2f", watchedScale), String.format("%.2f", nearScale),
+                    String.format("%.2f", isl.timeScale), String.format("%.2f", isl.relax), String.format("%.2f", watchedScale), String.format("%.2f", nearScale),
                     String.format("%.1f", isl.costMs));
             if (Boolean.getBoolean("emergence.autoShowcase")) {
                 isl.compiled.solver().phaseMatrices(); // (keeps the diagnostics' counters in step)

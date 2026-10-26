@@ -56,6 +56,20 @@ public final class TransientSolver implements StateView {
     private double lteRelTol = 1e-3;
     /** Diagnostic: every truncation-error tolerance scaled by {@code diag.lteScale} (accuracy against speed). */
     static final double LTE_SCALE = Double.parseDouble(System.getProperty("diag.lteScale", "1"));
+    /**
+     * The accuracy level: truncation-error tolerances times this (1: as validated). A machine that cannot keep real
+     * time may relax it a little before it falls into slow motion (see SimulationManager): energy and mass stay
+     * booked exactly, only each step's local error may be larger.
+     */
+    private volatile double accuracy = 1;
+
+    public void setAccuracy(double relax) {
+        this.accuracy = Math.max(1, relax);
+    }
+
+    public double accuracy() {
+        return accuracy;
+    }
     private double hMin = 1e-10;
     private double hMax = 5e-3;
     /**
@@ -2008,7 +2022,7 @@ public final class TransientSolver implements StateView {
                     double q3 = 2.0 * ((qdNew[s] - qd0[s]) / h - (qd0[s] - qd1[s]) / hPrev) / (h + hPrev);
                     est = m.errorConstant * h * h * h * Math.abs(q3);
                 }
-                double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) * LTE_SCALE;
+                double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) * LTE_SCALE * accuracy;
                 if (est / tol > err) {
                     err = est / tol;
                     worstSlot = s;
@@ -2066,7 +2080,7 @@ public final class TransientSolver implements StateView {
             for (int si = 0; si < nsl; si++) {
                 int s = sl == null ? si : sl[si];
                 double d1 = qdNew[s] - qd0[s], d0 = qd0[s] - qd1[s];
-                double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) * LTE_SCALE / h;
+                double tol = (lteRelTol * Math.max(Math.abs(qNew[s]), Math.abs(q0[s])) + slotTol[s]) * LTE_SCALE * accuracy / h;
                 if (d1 * d0 < 0 && Math.abs(d1) > tol && Math.abs(d0) > tol) {
                     if (++alternations[s] >= 3) {
                         ph.forceBE = true;

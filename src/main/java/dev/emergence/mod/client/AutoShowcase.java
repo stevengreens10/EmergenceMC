@@ -198,7 +198,8 @@ public final class AutoShowcase {
                         .check(key + " the engine runs on it", () -> atLeast("mean crankshaft speed [rad/s]", w0.mean(), 8))
                         .check(key + " it exhausts into a partial vacuum", () -> atMost("condenser pressure [kPa]", 1e-3 * pressure(server, cnd, PartKind.TANK), 80))
                         .check(key + " its generator charges its battery", () -> atLeast("charge taken in [mA·h]", -q.change() / 3.6, 0.001))
-                        .check(key + " its counter counts the engine's turns", () -> atLeast("counter states seen", counts.size(), 2)));
+                        .check(key + " its counter counts the engine's turns", () -> atLeast("counter states seen", counts.size(), 2))
+                        .after(() -> dumpIf(server, key, shaft)));
                 // a load put on it by hand: the governor holds its speed
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake on", part.apply("brake", PartKind.BRAKE))));
                 double[] on = {Double.NaN};

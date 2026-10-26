@@ -486,8 +486,34 @@ public final class SparseLinearSystem implements LinearSystem {
         double[][] uValsOrig = new double[n][];
         uDiag = new double[n];
 
+        // the unknowns that stand alone — a row with one entry, in a column with only it: what a multirate phase holds —
+        // pivoted first, in one pass; the search below then weighs only the rest (scanning all the columns at every
+        // pivot, a phase holding nine tenths of a machine spent a fifth of its time choosing pivots for those)
+        int s0 = 0;
+        for (int r = 0; r < n; r++) {
+            if (rl[r] != 1) continue;
+            int c = rc[r][0];
+            double v = rv[r][0];
+            if (cl[c] != 1 || colDone[c] || v == 0) continue;
+            rowPerm[s0] = r;
+            colPerm[s0] = c;
+            rowStep[r] = s0;
+            colStep[c] = s0;
+            uDiag[s0] = v;
+            uColsOrig[s0] = new int[0];
+            uValsOrig[s0] = new double[0];
+            colDone[c] = true;
+            cl[c] = 0;
+            rc[r] = null;
+            rv[r] = null;
+            rl[r] = 0;
+            s0++;
+        }
+        int[] act = new int[n - s0];
+        int[] nAct = {0};
+        for (int c = 0; c < n; c++) if (!colDone[c]) act[nAct[0]++] = c;
         int mdPos = 0;
-        for (int s = 0; s < n; s++) {
+        for (int s = s0; s < n; s++) {
             int bestR = -1, bestC = -1;
             long bestCost = Long.MAX_VALUE;
             double bestMag = 0;
@@ -498,7 +524,7 @@ public final class SparseLinearSystem implements LinearSystem {
                 order = new int[]{mdOrder[mdPos]};
             } else {
                 // --- choose pivot: scan columns with smallest counts first
-                order = smallestColumns(cl, colDone, CANDIDATES);
+                order = smallestColumns(cl, colDone, CANDIDATES, act, nAct);
             }
             for (int c : order) {
                 if (c < 0) continue;
@@ -794,13 +820,17 @@ public final class SparseLinearSystem implements LinearSystem {
         return order;
     }
 
-    private int[] smallestColumns(int[] colCount, boolean[] colDone, int k) {
+    /** The k remaining columns with fewest entries, from the active list (compacted as columns finish). */
+    private int[] smallestColumns(int[] colCount, boolean[] colDone, int k, int[] act, int[] nAct) {
         int[] best = new int[k];
         int[] bestCount = new int[k];
         Arrays.fill(best, -1);
         Arrays.fill(bestCount, Integer.MAX_VALUE);
-        for (int c = 0; c < n; c++) {
+        int w = 0;
+        for (int q = 0; q < nAct[0]; q++) {
+            int c = act[q];
             if (colDone[c]) continue;
+            act[w++] = c;
             int cnt = colCount[c];
             if (cnt == 0) continue;
             for (int i = 0; i < k; i++) {
@@ -815,6 +845,7 @@ public final class SparseLinearSystem implements LinearSystem {
                 }
             }
         }
+        nAct[0] = w;
         return best;
     }
 

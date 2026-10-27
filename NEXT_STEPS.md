@@ -157,6 +157,23 @@
      brake went on: the hot well's flow into the feed pump's suction pipe); the core does not reproduce it. Dumps now
      also write the last good state (`island-failure-last-*.txt`): replay the next one from there.
 
+00. **GOAL (asked 2026-10-26): monitors and custom chips — a monitor graphing data such as temperature and pressure.**
+   Design (agreed with the user; decisions mine): primitive wherever the physics is the interesting part; abstract the
+   inside of a part once it is mere repetition, keeping everything at its pins physical (supply current, thresholds,
+   timing, loading, heat). Wireless left out for now. Pieces, in order:
+   1. A chip language (text, register-transfer, Verilog-flavoured) with a parser, an evaluator and synthesis
+      estimates (gates, logic depth → propagation delay and maximum clock, switching energy → power).
+   2. An event-driven digital domain: chips' insides outside Newton; nets joining only chip pins taken out of the
+      analog network; pins on analog nets physical (threshold crossings in, switched pull-up/down out, landing the
+      circuit steps only on events an analog part can see); supply current from static and switching power.
+   3. Library parts: crystal clock module, SPI ADC, 128×64 monochrome SPI display panel (SSD1306-style command set,
+      page addressing, framebuffer, current by lit pixels), amplified pressure transducer on a vessel port.
+   4. A shipped chart-recorder chip design (in the chip language) and a core end-to-end test: thermistor and pressure
+      transducer on a heated vessel → ADC → plotter → display, the trace following them.
+   5. Mod: parts and items, the framebuffer synced to clients (compressed deltas, capped rate) and drawn on the panel.
+   6. Mod: a chip designer screen (text with errors and estimates, example library, writes the design onto a chip).
+   7. A "Chart recorder" exhibit with tour checks; docs.
+
 0a0. **The power station runs at real time in the game** (2026-10-26 21:10): its headless server ran 98 s in 100 s,
    time scale 1.00 throughout. Still to see with a client (the station tour; the display was unavailable at 18:47,
    20:14 and 21:10): rendering shares the cores, and the tour's samplers make the server wait on each step, so expect

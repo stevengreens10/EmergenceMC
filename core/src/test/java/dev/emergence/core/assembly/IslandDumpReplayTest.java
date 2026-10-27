@@ -138,8 +138,11 @@ class IslandDumpReplayTest {
                 StringBuilder sb = new StringBuilder(String.format("t=%.2f", c.time()));
                 for (String id : probes) {
                     var pr = c.probe(Long.parseLong(id.trim()));
-                    sb.append(String.format("  %s: ω %.3f, I %.4f A, V %.4f V, T %.2f K", id.trim(), pr.angularVelocity(), pr.current(),
+                    sb.append(String.format("  %s: ω %.3f, I %.4g A, V %.4f V, T %.2f K", id.trim(), pr.angularVelocity(), pr.current(),
                             pr.voltage(), pr.temperature()));
+                    // light: what an LED gives out, what a photodiode takes in
+                    double lo = c.lightOutput(pr.partId()), li = c.lightInput(pr.partId());
+                    if (lo > 0 || li > 0) sb.append(String.format(" light out %.4g W, in %.4g W", lo, li));
                 }
                 System.out.println(sb);
             }
@@ -154,6 +157,8 @@ class IslandDumpReplayTest {
                         System.out.printf("friction %s: limit %.4g, torque %.4g, %.4f W%n", f, f.frictionTorque(), tp[0], tp[1]);
                 }
         }
+        // -Ddiag.dumpNodes=true: every component's lead nodes and their voltages at the end (which nets it joins)
+        if (Boolean.getBoolean("diag.dumpNodes")) printNodes(a, c);
         // -Ddiag.dumpCurrents=<A>: every part carrying more than that at the end, where the current goes
         if (System.getProperty("diag.dumpCurrents") != null) {
             double min = Double.parseDouble(System.getProperty("diag.dumpCurrents"));
@@ -164,5 +169,19 @@ class IslandDumpReplayTest {
                             p.minZ(), p.maxX(), p.maxY(), p.maxZ(), pr.current(), pr.voltage(), pr.power());
             }
         }
+    }
+
+    /** Each non-wire part's lead nodes, by name, with their voltages. */
+    static void printNodes(Assembly a, CompiledAssembly c) {
+        for (Part p : a.parts()) {
+            if (p.kind() == PartKind.INSULATED_WIRE || p.kind() == PartKind.WIRE) continue;
+            dev.emergence.core.sim.Node[] leads = c.leadsOfPart.get(p.id());
+            if (leads == null) continue;
+            StringBuilder sb = new StringBuilder(String.format("nodes %s %s at %d,%d,%d:", p.kind(), p.material().id(), p.minX(), p.minY(), p.minZ()));
+            for (var n : leads) sb.append(String.format(" %s=%.4f", n.name(), n.index() >= 0 ? c.solver().x(n.index()) : 0));
+            System.out.println(sb);
+        }
+        for (var n : c.network().nodes())
+            if (n.domain() == dev.emergence.core.sim.Domain.ELECTRICAL) System.out.printf("enode %s = %.4f%n", n.name(), n.index() >= 0 ? c.solver().x(n.index()) : Double.NaN);
     }
 }

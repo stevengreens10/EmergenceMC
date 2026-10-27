@@ -66,6 +66,23 @@ public final class Network {
         return electricalUngrounded;
     }
 
+    private final java.util.Set<Node> datumHints = new java.util.HashSet<>();
+
+    /**
+     * Prefers this node as its circuit's datum (a supply's negative terminal, as a schematic is drawn). Every other
+     * node's 10⁻¹² shunt returns through the datum, so the datum should be where the circuit is stiff: on a
+     * high-impedance node (a photodiode's 2.2 MΩ load) the shunts of the wires elsewhere, microamps in all, swamp the
+     * signal.
+     */
+    public void preferDatum(Node n) {
+        requireMutable();
+        if (n != null && !n.isReference()) datumHints.add(n);
+    }
+
+    public boolean isDatumHint(Node n) {
+        return datumHints.contains(n);
+    }
+
     public <E extends Element> E add(E e) {
         requireMutable();
         elements.add(e);

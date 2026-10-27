@@ -2075,6 +2075,7 @@ public final class AssemblyCompiler {
                     }
                     case BATTERY -> {
                         Node[] l = leads(p);
+                        c.network.preferDatum(l[0]); // its circuit's datum: the supply's negative terminal, where it is stiff
                         // its charge carries over from the running state (kept with the capacitors' voltages)
                         Double held = prev.capacitorVoltages().get(p.id());
                         c.deviceOfPart.put(p.id(), c.network.add(new Battery(Battery.Chemistry.of(p.param("chemistry", 0)), l[1], l[0],

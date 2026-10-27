@@ -288,6 +288,10 @@ public final class TransientSolver implements StateView {
             for (Node node : net.nodes()) {
                 thermalUnknown[node.index] = node.domain == Domain.THERMAL;
                 electricalNode[node.index] = node.domain == Domain.ELECTRICAL;
+                if (net.isDatumHint(node)) {
+                    if (datumHint == null) datumHint = new boolean[n];
+                    datumHint[node.index] = true;
+                }
             }
         }
         for (int s = 0; s < ns; s++) slotTol[s] = net.slotAbsTol(s);
@@ -2146,7 +2150,7 @@ public final class TransientSolver implements StateView {
     // ---- datums (Network.electricalUngrounded): one grounded node per galvanically connected circuit
     /** Union–find over the unknowns, joined by the Jacobian's entries (thermal nodes left out: heat is no connection). */
     private int[] circuitOf;
-    private boolean[] thermalUnknown, electricalNode;
+    private boolean[] thermalUnknown, electricalNode, datumHint;
     /** How many of each matrix's entries have been joined in. */
     private final java.util.Map<LinearSystem, Integer> datumSeen = new java.util.IdentityHashMap<>();
     /** The datum's shunt [S]: what flows through it is the circuit's share of the other nodes' 10⁻¹² shunts. */
@@ -2159,7 +2163,7 @@ public final class TransientSolver implements StateView {
 
     /**
      * After an assembly: joins in the entries new to the matrix's pattern and, if circuits joined (or on the first call),
-     * grounds the lowest node of each circuit and only that one. Connectivity from the pattern can only over-join — every
+     * grounds one node of each circuit and only that one (a preferred node, else its lowest). Connectivity from the pattern can only over-join — every
      * real coupling has an entry (a contact that closes adds one when it does) — so a circuit never gets two datums; two
      * galvanically separate circuits coupled otherwise (a transformer's windings) share one, the other left as before.
      */
@@ -2176,14 +2180,19 @@ public final class TransientSolver implements StateView {
         });
         datumSeen.put(js, now);
         if (!joined[0]) return;
-        boolean[] grounded = new boolean[n];
+        // the datum: the circuit's first preferred node (a supply's negative terminal: Network.preferDatum), else its first
+        int[] datum = new int[n];
+        Arrays.fill(datum, -1);
         for (int i = 0; i < n; i++) {
             if (!electricalNode[i]) continue;
             int r = circuit(i);
-            boolean datum = !grounded[r];
-            grounded[r] = true;
-            gmin[i] = datum ? DATUM_G : Domain.ELECTRICAL.gmin;
-            relGmin[i] = !datum;
+            if (datum[r] < 0 || datumHint != null && datumHint[i] && !datumHint[datum[r]]) datum[r] = i;
+        }
+        for (int i = 0; i < n; i++) {
+            if (!electricalNode[i]) continue;
+            boolean d = datum[circuit(i)] == i;
+            gmin[i] = d ? DATUM_G : Domain.ELECTRICAL.gmin;
+            relGmin[i] = !d;
         }
     }
 

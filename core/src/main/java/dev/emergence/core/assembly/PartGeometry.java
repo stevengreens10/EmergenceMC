@@ -406,6 +406,8 @@ public final class PartGeometry {
             case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP, PRESSURE_SENSOR -> p.param("mass", 0.002) / p.material().density();
             // a panel: glass 1 mm thick over its face, and its frame
             case DISPLAY -> p.boxSize((p.axis().axis() + 1) % 3) * p.boxSize((p.axis().axis() + 2) % 3) * 0.0015;
+            // a 16-way ribbon: 20 mm wide, about 1 mm thick, its copper a sixth of that
+            case RIBBON -> p.boxSize(p.axis().axis()) * 0.020 * 0.001 / 6;
             // lead, acid and case: about 55 g per cell per ampere-hour (a 12 V 7 Ah battery: 2.3 kg)
             case BATTERY -> 0.055 * p.param("cells", 6) * p.param("capacity", 7) / p.material().density();
             case SOURCE -> p.param("mass", 0.005) / p.material().density();

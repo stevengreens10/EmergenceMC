@@ -26,7 +26,7 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
      * rotor riding a slide, a part of that slide (its pivot moves with it), else −1.
      */
     public record BodyState(double px, double py, double pz, double ax, double ay, double az,
-                            double angle, double omega, long[] partIds, boolean slider, long carrier) {}
+                            double angle, double omega, long[] partIds, boolean slider, long carrier, float scale) {}
 
     public static final Type<IslandSyncPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(EmergenceMod.MODID, "island_sync"));
@@ -49,6 +49,7 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
             buf.writeLongArray(b.partIds);
             buf.writeBoolean(b.slider);
             buf.writeLong(b.carrier);
+            buf.writeFloat(b.scale);
         }
         buf.writeLongArray(p.hotIds);
         buf.writeVarInt(p.hotTemps.length);
@@ -81,7 +82,8 @@ public record IslandSyncPayload(long[] partIds, List<BodyState> bodies, long[] h
         List<BodyState> bodies = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
             bodies.add(new BodyState(buf.readDouble(), buf.readDouble(), buf.readDouble(),
-                    buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readDouble(), buf.readFloat(), buf.readLongArray(), buf.readBoolean(), buf.readLong()));
+                    buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readDouble(), buf.readFloat(), buf.readLongArray(), buf.readBoolean(), buf.readLong(),
+                    buf.readFloat()));
         }
         long[] hot = buf.readLongArray();
         int m = buf.readVarInt();

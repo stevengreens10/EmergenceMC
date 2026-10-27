@@ -49,6 +49,16 @@ public final class PlacedPart {
      * (miniature) a block holds 16³ cells; with resolution 1 (block scale) the block is one cell. Either
      * way a cell is 1/16 m physically, so block-scale builds are 16× magnified scale models.
      */
+    /** As {@link #toCore(BlockPos, int)}, moved by {@code shift} cells (a joined island's full-size parts, see the manager). */
+    public Part toCore(BlockPos pos, int resolution, int[] shift) {
+        Part p = toCore(pos, resolution);
+        if (shift == null) return p;
+        Part q = new Part(id, kind, p.material(), p.minX() + shift[0], p.minY() + shift[1], p.minZ() + shift[2],
+                p.maxX() + shift[0], p.maxY() + shift[1], p.maxZ() + shift[2], axis, spec.params(), spec.text().isEmpty() ? null : spec.text());
+        q.setSwitchClosed(closed);
+        return q;
+    }
+
     public Part toCore(BlockPos pos, int resolution) {
         int ox = pos.getX() * resolution, oy = pos.getY() * resolution, oz = pos.getZ() * resolution;
         Part p = new Part(id, kind, spec.resolveMaterial(), ox + x0, oy + y0, oz + z0, ox + x1, oy + y1, oz + z1, axis, spec.params(),

@@ -1448,6 +1448,26 @@ public final class AssemblyCompiler {
             return r;
         }
 
+        /**
+         * A ribbon meeting something: another ribbon joins it conductor to conductor; an insulated wire joins the
+         * conductor of its colour. Nothing else connects to a ribbon (its conductors are insulated). A conductor's
+         * few milliohms a block are left out: one node.
+         */
+        void ribbonJoin(Part p, Part q) {
+            if (p.kind() == PartKind.RIBBON && q.kind() == PartKind.RIBBON) {
+                for (int k = 0; k < 16; k++) emerge("p" + p.id() + "c" + k, "p" + q.id() + "c" + k);
+                return;
+            }
+            Part r = p.kind() == PartKind.RIBBON ? p : q, w = r == p ? q : p;
+            if (w.kind() != PartKind.INSULATED_WIRE) return;
+            emerge("p" + r.id() + "c" + Math.round(w.param("color", 0)), "p" + w.id());
+        }
+
+        Part partById(long id) {
+            for (Part p : parts) if (p.id() == id) return p;
+            return null;
+        }
+
         void emerge(String x, String y) {
             String rx = eroot(x), ry = eroot(y);
             if (!rx.equals(ry)) eunion.put(rx, ry);
@@ -1470,6 +1490,9 @@ public final class AssemblyCompiler {
             switch (p.kind()) {
                 case WIRE, INSULATED_WIRE -> {
                     return "p" + p.id();
+                }
+                case RIBBON -> {
+                    return "p" + p.id() + "r"; // a placeholder: which conductor depends on what it meets (ribbonJoin)
                 }
                 case OPAMP -> {
                     // like a single-gate logic package: in+ (a) and out (o) on the axial faces, V−/V+ on the lead-axis
@@ -1760,6 +1783,10 @@ public final class AssemblyCompiler {
                                     CompiledAssembly.Body slide = null;
                                     double end = 0, sense = 0;
                                     if (qk == null) continue;
+                                    if (p.kind() == PartKind.RIBBON || q.kind() == PartKind.RIBBON) {
+                                        ribbonJoin(p, q);
+                                        continue;
+                                    }
                                     if (!compatible(p, q)) continue;
                                     // a thin shaft physically touches neighbours only at its ends (or hubs on it)
                                     if (!shaftReaches(p, q) || !shaftReaches(q, p)) continue;
@@ -1791,6 +1818,11 @@ public final class AssemblyCompiler {
                                     contacts.add(new Contact(p, pk, q, qk, sliding, slide, end, sense));
                                 }
                             }
+            }
+            // ---- joins across scales: a full-size ribbon's conductors to the miniature wires against its face
+            for (long[] br : a.bridges()) {
+                Part r = partById(br[0]), w = partById(br[1]);
+                if (r != null && w != null) ribbonJoin(r, w);
             }
             // ---- zero-resistance joins (lead to lead), and solid metal pieces in contact whose resistance is a few
             // micro-ohms: one node, not a 10⁷ S conductance — which would leave a circuit's potential determined only

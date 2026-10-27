@@ -163,6 +163,15 @@ public final class Router {
         return null;
     }
 
+    /** Insulation colours fixed in advance (a net leaving through a ribbon cable keeps its conductor's colour). */
+    private final Map<String, Integer> fixedColour = new HashMap<>();
+
+    /** Net {@code net}'s wires are this insulation colour (0–15); the others are coloured around it. */
+    public Router colour(String net, int c) {
+        fixedColour.put(net, c);
+        return this;
+    }
+
     private void colourAndAdd() {
         // colour: nets whose wires touch must differ; greedy, most-connected first
         Map<String, Set<String>> touch = new HashMap<>();
@@ -178,8 +187,14 @@ public final class Router {
         }
         List<String> order = new ArrayList<>(pins.keySet());
         order.sort((a, b) -> touch.getOrDefault(b, Set.of()).size() - touch.getOrDefault(a, Set.of()).size());
-        Map<String, Integer> colour = new HashMap<>();
+        Map<String, Integer> colour = new HashMap<>(fixedColour);
+        for (var en : fixedColour.entrySet()) {
+            for (String o : touch.getOrDefault(en.getKey(), Set.of())) {
+                if (en.getValue().equals(fixedColour.get(o))) throw new IllegalStateException("nets " + en.getKey() + " and " + o + " touch and are both colour " + en.getValue());
+            }
+        }
         for (String n : order) {
+            if (colour.containsKey(n)) continue;
             Set<Integer> used = new HashSet<>();
             for (String o : touch.getOrDefault(n, Set.of())) if (colour.containsKey(o)) used.add(colour.get(o));
             int c = 0;

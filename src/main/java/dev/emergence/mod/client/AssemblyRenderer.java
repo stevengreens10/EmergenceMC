@@ -261,7 +261,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         Vector3f y = new Vector3f(z).cross(x);
         if ((p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE || p.kind == PartKind.LED || p.kind == PartKind.TRANSISTOR
                 || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP || p.kind == PartKind.OPAMP || p.kind == PartKind.DISPLAY
-                || p.kind == PartKind.PRESSURE_SENSOR) && a != 1) {
+                || p.kind == PartKind.PRESSURE_SENSOR || p.kind == PartKind.RIBBON) && a != 1) {
             // a knife switch lying on its side: base down (model −Y), whatever the lead axis
             y.set(0, 1, 0);
             x.set(new Vector3f(y).cross(z));
@@ -365,6 +365,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             }
             case LOGIC -> drawModel(c, "logic", p, 1, 1, 1, false);
             case DISPLAY -> drawDisplay(c, p, ex, ey, ez);
+            case RIBBON -> drawRibbon(c, ez);
             case PRESSURE_SENSOR -> {
                 // a stainless body on a hex port (the −axis end, against the vessel), a cable gland at the other
                 TextureAtlasSprite s = PartModels.sprite("metal_smooth");
@@ -1140,6 +1141,21 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         // joint
         box(c, s, rgb, -r * 1.05f, -r * 1.05f, -r * 1.05f, r * 1.05f, r * 1.05f, r * 1.05f);
         c.ps.popPose();
+    }
+
+    /**
+     * A ribbon cable: a flat grey strip lying along its axis on the floor of its cell, its sixteen conductors' colours
+     * striped along the top (the insulation colours, conductor 0 at model −X).
+     */
+    private void drawRibbon(Ctx c, float ez) {
+        TextureAtlasSprite s = PartModels.sprite("plastic");
+        float w = 0.34f, y0 = -0.5f, y1 = -0.44f, z = 0.5f * ez;
+        box(c, s, tintOf(c, 0x8C8C8C), -w, y0, -z, w, y1, z);
+        float sw = 2 * w / INSULATION.length;
+        for (int k = 0; k < INSULATION.length; k++) {
+            float x = -w + k * sw;
+            box(c, s, tintOf(c, INSULATION[k]), x + 0.004f, y1, -z, x + sw - 0.004f, y1 + 0.006f, z);
+        }
     }
 
     /** Insulation colours (parameter "color" 0–15): blue (default), then the usual wiring colours. */

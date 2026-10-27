@@ -129,6 +129,43 @@ public final class ChipToolGameTests {
         });
     }
 
+    /**
+     * The same exhibit's ribbon cable: the miniature block and the full-size ribbon against its east face are one
+     * machine, and the count reaches the full-size LEDs through it — each LED in turn lit, as the count goes round.
+     */
+    @GameTest(template = "arena", timeoutTicks = 400, batch = "ribbon")
+    public static void ribbonCarriesTheCountToFullSizeLeds(GameTestHelper h) {
+        var ex = dev.emergence.core.demo.MonitorExhibits.miniatureCounterDisplay();
+        BlockPos plot = h.absolutePos(new BlockPos(0, 1, 0));
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        BlockPos mini = plot.offset(dev.emergence.mod.demo.DemoBuilder.MINIATURE_AT);
+        var sim = dev.emergence.mod.sim.SimulationManager.get(h.getLevel());
+        java.util.function.IntFunction<BlockPos> led = k -> {
+            var d = ex.blockParts.get(ex.namedBlock.get("led" + k));
+            return mini.offset(d.x0(), d.y0(), d.z0());
+        };
+        int[] seen = new int[1];
+        h.onEachTick(() -> {
+            var c = sim.compiledAt(mini);
+            if (c == null) return;
+            for (int k = 0; k < 4; k++) {
+                BlockPos at = led.apply(k);
+                if (!(h.getLevel().getBlockEntity(at) instanceof AssemblyBlockEntity be)) continue;
+                PlacedPart p = be.parts().stream().filter(q -> q.kind == PartKind.LED).findFirst().orElse(null);
+                var pr = p == null ? null : c.probe(p.id);
+                if (pr != null && Math.abs(pr.current()) > 1e-3) seen[0] |= 1 << k;
+            }
+        });
+        h.runAtTickTime(380, () -> {
+            var c = sim.compiledAt(mini);
+            var ribbon = ex.blockParts.get(ex.namedBlock.get("ribbon"));
+            h.assertTrue(c != null && c == sim.compiledAt(mini.offset(ribbon.x0(), ribbon.y0(), ribbon.z0())), "the miniature and its ribbon are one machine");
+            h.assertTrue(c.warnings().isEmpty(), "no warnings: " + c.warnings());
+            h.assertTrue(seen[0] == 15, "every full-size LED lit at some count, seen " + Integer.toBinaryString(seen[0]));
+            h.succeed();
+        });
+    }
+
     /** A wire run between two resistors' ends goes round a third part rather than beside it. */
     @GameTest(template = "arena", timeoutTicks = 40, batch = "chiptools")
     public static void wireRunsAroundWhatItShouldNotTouch(GameTestHelper h) {

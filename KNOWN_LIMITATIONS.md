@@ -246,8 +246,13 @@ multimeter, oscilloscope/data logging.
   through a wide opening); a chilled vessel above a warm one just stratifies.
 
 ## Across scales
-* Miniature and block-scale machines are separate. The only link between them so far is a display controller
-  driving a screen across a block face; wires, shafts, pipes and heat do not cross between scales yet.
+* Miniature and block-scale machines join only where a full-size ribbon cable lies against a miniature block (its
+  conductors joining the miniature wires of their colours at that face). A display controller also drives a
+  full-size screen across a block face. Shafts, pipes and heat do not cross between scales.
+* In a machine joined across scales, the full-size parts are shifted in the assembly's grid. World-side lookups
+  made in cells still use the island's first block's scale: the capping of open pipe ends against world blocks,
+  still water, and optical beams drawn for the player. These can be wrong for the other scale's parts. A ribbon's
+  conductors have no resistance.
 
 ## Building chip circuits
 * The chip designer's text uses Minecraft's proportional font (columns do not line up exactly); it has no

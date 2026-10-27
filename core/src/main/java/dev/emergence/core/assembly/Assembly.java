@@ -37,6 +37,23 @@ public final class Assembly {
         return ((long) (x & 0x1FFFFF) << 42) | ((long) (y & 0x1FFFFF) << 21) | (z & 0x1FFFFF);
     }
 
+    /** Joins across scales: {ribbon part, insulated wire part} (see {@link #bridge}). */
+    private final List<long[]> bridges = new ArrayList<>();
+
+    /**
+     * Joins a ribbon's conductor to an insulated wire that touches it in the world but not in this assembly's grid —
+     * a miniature wire against a full-size ribbon's face (the two scales' parts lie in separate grids). The conductor
+     * is the wire's colour.
+     */
+    public Assembly bridge(long ribbon, long wire) {
+        bridges.add(new long[]{ribbon, wire});
+        return this;
+    }
+
+    public List<long[]> bridges() {
+        return java.util.Collections.unmodifiableList(bridges);
+    }
+
     public Assembly add(Part p) {
         parts.put(p.id(), p);
         for (int x = p.minX(); x <= p.maxX(); x++)

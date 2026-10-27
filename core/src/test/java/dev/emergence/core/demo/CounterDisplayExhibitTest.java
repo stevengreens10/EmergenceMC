@@ -72,7 +72,11 @@ class CounterDisplayExhibitTest {
             c.step(0.05);
             if (i % 20 != 10) continue;
             int leds = 0;
-            for (int k = 0; k < 4; k++) if (Math.abs(c.probe(b.id(e, "led" + k)).current()) > 1e-3) leds |= 1 << k;
+            for (int k = 0; k < 4; k++) {
+                // its own LEDs, or (the miniature's) the full-size ones its ribbon cable feeds
+                long led = e.named.containsKey("led" + k) ? b.id(e, "led" + k) : b.blockId(e, "led" + k);
+                if (Math.abs(c.probe(led).current()) > 1e-3) leds |= 1 << k;
+            }
             int dec = shown(screen), bin = binaryRow(screen);
             System.out.printf("t %4.1f s: LEDs %2d, screen %2d (binary %2d)%n", i * 0.05, leds, dec, bin);
             checked++;

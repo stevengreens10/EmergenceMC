@@ -102,9 +102,9 @@ public final class ClientSimState {
             BEAM.remove(id);
             LINK.remove(id);
         }
-        double s = p.worldScale();
         long now = System.nanoTime();
         for (IslandSyncPayload.BodyState b : p.bodies()) {
+            double s = b.scale(); // world blocks per metre: its own grid's (an island may join both scales)
             // pivot arrives in physical metres; convert to world block coordinates
             double k = b.slider() ? s : 1;
             Pose pose = new Pose(b.px() * s, b.py() * s, b.pz() * s, b.ax(), b.ay(), b.az(), b.angle() * k, b.omega() * k, p.gameTime(), b.slider(),

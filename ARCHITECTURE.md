@@ -155,3 +155,15 @@ segment lies against a face of its block drives the block-scale screen standing 
 panels are passive; their current is the controller's. The server sends the panels the controller's image with
 tiles from `DisplayTiles`, the same code that tiles a screen within one machine. A miniature exhibit can carry
 block-scale parts beside its block (`Exhibit.blockParts`).
+
+### Across scales: ribbon cables, one machine with two grids
+A full-size ribbon cable (part RIBBON) lying against a miniature block joins the two into one island (`mixed`).
+- **Grids:** each block keeps its own grid. In the assembly the full-size parts are shifted to just beside the
+  miniature cells (`Island.shift`), so its extent stays metres and nothing of one grid touches the other. Positions
+  going back to the world (body poses, particles) take the shift off, and each body's pose carries its own scale.
+- **Joins:** the game finds the miniature insulated wires touching the face the ribbon lies against and declares them
+  (`Assembly.bridge`). The compiler joins each to the ribbon conductor of its colour (`ribbonJoin`), as it joins a
+  ribbon to full-size wires of matching colour, and ribbon blocks to each other conductor by conductor. Nets through
+  a ribbon between chip pins stay digital.
+- **Core tests:** they build an exhibit's full-size parts the same way: a cell a block, 48 cells off, with the same
+  bridge rule (`Exhibits.build`, `Exhibit.blockParts`).

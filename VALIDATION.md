@@ -586,3 +586,17 @@ The miniature counter display is placed in the world: its circuit in one miniatu
 block-scale panels against the block's north face. Its island links the one screen (8 panels) to its controller,
 which is on and drawing the count. The core test reads that controller's image against the LEDs through a full
 count.
+
+## Ribbon cable, and one machine across scales (`RibbonCableTest`, `CounterDisplayExhibitTest`, `ChipToolGameTests.ribbonCarriesTheCountToFullSizeLeds`)
+- A battery on colour-1 and colour-0 wires into a three-block ribbon drives 51 mA through a 100 Ω resistor between
+  colour-1 and colour-0 taps at the far end. A resistor on a colour-2 tap carries nothing.
+- The miniature counter display sends its count out on miniature wires of colours 1–4 (and ground on 0) into a
+  full-size ribbon, tapped to four full-size LEDs. In the core test they match the screen every second through a
+  full count.
+- In the world: the miniature block and the ribbon are one machine, with no warnings, and every full-size LED lights
+  as the count goes round.
+- Tour (2026-10-27): all four checks pass:
+  - the controller draws;
+  - the full-size screen shows its image;
+  - the miniature and its ribbon are one machine;
+  - the LEDs show the chip's count (12 = 1100).

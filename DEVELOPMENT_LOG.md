@@ -1184,3 +1184,17 @@ ones; first, the miniature counter display with a full-size monitor.
 - *Text fix.* The miniature exhibits' texts gave cells as 6.25 mm; they are 6.25 cm.
 - *Tests.* A GameTest checks the link and the controller drawing in the world. A tour could not run: the display
   disconnected again at 09:16.
+
+**Ribbon cables between scales (2026-10-27).** The user's idea: a ribbon cable whose conductors remember their
+colours, with coloured miniature wires pulling each signal out of a full-size ribbon at a miniature block's face.
+- *The part.* A RIBBON is sixteen insulated conductors. Each joins the insulated wires of its colour and the next
+  block of ribbon.
+- *One machine, two grids.* An electrical join must be solved together, so a ribbon against a miniature block joins
+  the two into one island. The game declares the face joins (`Assembly.bridge`), and the compiler joins them
+  conductor by colour.
+- *Two out-of-memory crashes.* Both came from the two grids' distance. The core test first put the full-size parts a
+  million cells away. In the world, the miniature's cells lie at sixteen times its block coordinates, so the island's
+  box was huge. Sunlight tracing covers that box with half-cell ray tubes. A joined island now shifts its full-size
+  parts beside the miniature in the assembly and takes the shift off on the way back to the world.
+- *The exhibit.* The miniature counter display sends its count over a ribbon to four full-size LEDs. Core test,
+  GameTest, world build and tour all pass.

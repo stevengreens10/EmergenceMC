@@ -202,7 +202,10 @@ public final class MonitorExhibits {
      * four LEDs, the counter-display chip and its font ROM, the display controller — driving a full-size screen of
      * 4 × 2 block-scale panels behind it: the controller stands against the block's north face, and a display
      * controller drives the screen across the face it lies against, whatever the scale (the game's display links).
-     * Built with the precision tweezers; the screen as any block-scale part.
+     * Its counter's outputs and ground leave the block through a full-size ribbon cable on its east face: each on a
+     * miniature wire of its own colour touching that face, joined to the ribbon conductor of that colour, tapped off
+     * further along by full-size wires of the same colours to four full-size LEDs. Built with the precision tweezers;
+     * the screen, ribbon and LEDs as any block-scale parts.
      */
     public static Exhibit miniatureCounterDisplay() {
         Exhibit e = new Exhibit("minicounter", "Miniature counter display",
@@ -210,9 +213,12 @@ public final class MonitorExhibits {
                 "The counter display's whole circuit at true scale, built with the precision tweezers inside a single "
                         + "block of 6.25 cm cells: the same chips, the same design and font ROM, a 4-bit counter ticking "
                         + "once a second and its LEDs. Its display controller stands against the back of the block, and "
-                        + "drives the full-size screen behind it across that face, as a ribbon cable would: a controller "
-                        + "drives the screen it touches, whatever the scale. (A full-size part is the same 6.25 cm part as "
-                        + "a miniature one, drawn sixteen times larger: here the circuit is drawn at its true size.)");
+                        + "drives the full-size screen behind it across that face: a controller drives the screen it "
+                        + "touches, whatever the scale. The counter's four outputs and ground leave by the east face on "
+                        + "miniature wires of five colours, into a full-size ribbon cable: each wire joins the ribbon's "
+                        + "conductor of its own colour. Further along, full-size wires of the same colours tap the ribbon "
+                        + "and light the four big LEDs in binary. (A full-size part is the same 6.25 cm part as a miniature "
+                        + "one, drawn sixteen times larger: here the circuit is drawn at its true size.)");
         e.miniature = true;
         String si = "silicon";
         // ---- the back row: the supply (+ east), the 1 Hz clock, the 500 kHz clock
@@ -247,14 +253,27 @@ public final class MonitorExhibits {
                 if (y == 0 && dx == 0) e.namedBlock.put("screen", sc);
             }
         }
-        // ---- the LEDs (Q3 on the left, seen from the south) and their resistors, side by side: their leads stand up
-        // (the default, across the part, would join each to its neighbour)
-        for (int k = 0; k < 4; k++) {
-            int x = 15 - k;
-            e.name("led" + k, e.add(LED, si, x, 0, 7, Dir.SOUTH, "wavelength", 630, "face", 1, "beam", 20, "lead_axis", 1));
-            e.add(RESISTOR, "alumina", x, 0, 8, Dir.SOUTH, "resistance", 470, "lead_axis", 1);
+        // ---- out by the east face into a full-size ribbon: Q0–Q3 on colours 1–4, ground on 0; the ribbon runs east,
+        // tapped every other block by full-size wires of those colours to the LEDs (Q3 on the left, seen from the
+        // south), their ground returning over them onto the ribbon's end
+        for (int dx = 1; dx <= 7; dx++) {
+            int rb = e.blockPart(RIBBON, "copper", dx, 0, 0, Dir.EAST);
+            if (dx == 1) e.namedBlock.put("ribbon", rb);
         }
+        String cu = "copper";
+        for (int k = 0; k < 4; k++) {
+            int dx = 1 + 2 * (3 - k);
+            e.blockPart(INSULATED_WIRE, cu, dx, 0, 1, Dir.UP, "color", k + 1);
+            e.namedBlock.put("led" + k, e.blockPart(LED, si, dx, 0, 2, Dir.SOUTH, "wavelength", 630, "face", 1, "beam", 20));
+            e.blockPart(RESISTOR, "alumina", dx, 0, 3, Dir.SOUTH, "resistance", 470);
+        }
+        for (int dx = 1; dx <= 7; dx++) e.blockPart(INSULATED_WIRE, cu, dx, 0, 4, Dir.UP, "color", 0);
+        for (int dz = 0; dz <= 4; dz++) e.blockPart(INSULATED_WIRE, cu, 7, 1, dz, Dir.UP, "color", 0);
         Router r = new Router(e, 0, 0, 0, 15, 6, 15);
+        // the east face carries only the five wires into the ribbon (any other wire touching it would join a conductor)
+        r.keepClear(15, 1, 0, 15, 6, 15).keepClear(15, 0, 0, 15, 0, 3).keepClear(15, 0, 8, 15, 0, 8).keepClear(15, 0, 10, 15, 0, 15);
+        for (int k = 0; k < 4; k++) r.colour("q" + k, k + 1);
+        r.colour("gnd", 0);
         r.pin("vdd", 2, 0, 1).pin("gnd", 0, 0, 1);
         r.pin("vdd", 5, 0, 2).pin("gnd", 5, 0, 0);                   // the 1 Hz clock
         r.pin("vdd", 9, 0, 2).pin("gnd", 9, 0, 0);                   // the 500 kHz clock
@@ -266,15 +285,12 @@ public final class MonitorExhibits {
         r.pin("vdd", 12, 4, 0);                                      // its rst, tied high
         r.pin("tick", 4, 0, 2).pin("tick", 5, 0, 3);
         r.pin("clk", 8, 0, 2).pin("clk", 0, 0, 7);
-        for (int k = 0; k < 4; k++) {
-            int x = 15 - k;
-            r.pin("q" + k, 1 + k, 0, 5).pin("q" + k, x, 0, 6).pin("q" + k, 1 + k, 0, 7);
-            r.pin("gnd", x, 0, 9);
-        }
+        for (int k = 0; k < 4; k++) r.pin("q" + k, 1 + k, 0, 5).pin("q" + k, 15, 0, 4 + k).pin("q" + k, 1 + k, 0, 7);
+        r.pin("gnd", 15, 0, 9);
         for (int k = 0; k < 6; k++) r.pin("a" + k, 4 + k, 0, 9).pin("a" + k, 6 + k, 0, 11);
         for (int k = 0; k < 5; k++) r.pin("f" + k, 6 + k, 0, 13).pin("f" + k, 5 + k, 0, 7);
         for (int k = 0; k < 4; k++) r.pin(new String[]{"cs", "dc", "sclk", "din"}[k], k, 0, 9).pin(new String[]{"cs", "dc", "sclk", "din"}[k], 12, k, 0);
         r.route();
-        return e.view(8.0, 1.5, 11.0, 18);
+        return e.view(9.5, 3.4, 15.0, 20);
     }
 }

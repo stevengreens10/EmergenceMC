@@ -913,3 +913,11 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
   The net's level is the last driver's (a stand-in for the undefined level in between).
 * Delay against supply: an output's delay scales as v/(v − V_T)² (long-channel square law, V_T 0.75 V), normalised
   at 5 V. That is ×4.0 at 2 V (74HC data: 4–5×) and ×0.75 at 6 V (data: ×0.9). Not temperature-dependent.
+
+## Ribbon cable (part RIBBON)
+* Sixteen insulated conductors, colour-coded 0–15 as insulated wire is. Each conductor is one node along the cable,
+  joining the next ribbon block's same conductor and the insulated wires of its colour touching the ribbon. Its
+  resistance is left out: 28 AWG is about 0.2 Ω/m, so 13 mΩ a 6.25 cm cell. Nothing else connects to it; its
+  insulation keeps other parts' leads off.
+* Across scales: against a miniature block, each conductor joins the miniature insulated wires of its colour that touch
+  that face from inside. Physically consistent: a full-size part is the same 6.25 cm part drawn larger.

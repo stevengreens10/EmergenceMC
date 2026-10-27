@@ -1443,11 +1443,27 @@ public final class Exhibits {
     // ------------------------------------------------------------------ conversion for tests/tools
 
     /** A built assembly plus its initial state and the part-id mapping. */
-    public record Built(Assembly assembly, AssemblyState state, Map<Integer, Long> ids) {
+    public record Built(Assembly assembly, AssemblyState state, Map<Integer, Long> ids, Map<Integer, Long> blockIds) {
+        public Built(Assembly assembly, AssemblyState state, Map<Integer, Long> ids) {
+            this(assembly, state, ids, Map.of());
+        }
+
         public long id(Exhibit e, String name) {
             return ids.get(e.named.get(name));
         }
+
+        /** A miniature exhibit's named full-size part (see {@link Exhibit#blockParts}). */
+        public long blockId(Exhibit e, String name) {
+            return blockIds.get(e.namedBlock.get(name));
+        }
     }
+
+    /**
+     * Where a miniature exhibit's full-size parts go in a test assembly's grid: one cell a block, clear of the
+     * miniature's cells (in the world the two are separate grids; here one assembly holds both, apart — nothing of one
+     * touches the other, and the box round them stays small for the spatial structures sized by it).
+     */
+    public static final int BLOCK_PART_OFFSET = 48;
 
     /** Builds an exhibit as a core assembly; parts in layer y = 0 rest on the ground (anchored). */
     public static Built build(Exhibit e, double ambient) {
@@ -1496,6 +1512,24 @@ public final class Exhibits {
                 return dev.emergence.core.math.Vec3.ZERO;
             });
         }
+        // a miniature exhibit's full-size parts, in their own region of the grid, and the joins across scales: each
+        // full-size ribbon against the miniature block's face to the miniature wires touching that face (the rule the
+        // game's machines use)
+        Map<Integer, Long> blockIds = new HashMap<>();
+        for (Exhibit.PartDef d : e.blockParts) {
+            long id = 1_000_000_000L + d.index();
+            blockIds.put(d.index(), id);
+            int o = BLOCK_PART_OFFSET;
+            a.add(new Part(id, d.kind(), MaterialDatabase.standard().get(d.material()), o + d.x0(), d.y0(), o + d.z0(),
+                    o + d.x1(), d.y1(), o + d.z1(), d.axis(), d.params(), null));
+            if (d.kind() != dev.emergence.core.assembly.PartKind.RIBBON || Math.abs(d.x0()) + Math.abs(d.y0()) + Math.abs(d.z0()) != 1) continue;
+            for (Exhibit.PartDef w : e.parts) {
+                if (w.kind() != dev.emergence.core.assembly.PartKind.INSULATED_WIRE) continue;
+                boolean face = d.x0() == 1 ? w.x1() == 15 : d.x0() == -1 ? w.x0() == 0 : d.y0() == 1 ? w.y1() == 15
+                        : d.y0() == -1 ? w.y0() == 0 : d.z0() == 1 ? w.z1() == 15 : w.z0() == 0;
+                if (face) a.bridge(id, ids.get(w.index()));
+            }
+        }
         for (var en : e.initial.entrySet()) {
             long id = ids.get(en.getKey());
             Exhibit.Initial in = en.getValue();
@@ -1503,6 +1537,6 @@ public final class Exhibits {
             if (in.omega() != 0 || in.angle() != 0) st.bodyMotion().put(id, new double[]{in.omega(), in.angle()});
             if (in.capacitorVoltage() != 0) st.capacitorVoltages().put(id, in.capacitorVoltage());
         }
-        return new Built(a, st, ids);
+        return new Built(a, st, ids, blockIds);
     }
 }

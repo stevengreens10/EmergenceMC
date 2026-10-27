@@ -598,14 +598,15 @@ public final class AutoShowcase {
             if (id.equals("minicounter")) {
                 // the miniature: every part in one block, so each is found by its cell
                 java.util.function.Function<String, PlacedPart> named = nm -> cellPart(server, plot, e, nm);
+                // its full-size parts: at their blocks beside the miniature's
+                java.util.function.Function<String, BlockPos> big = nm -> {
+                    var d = e.blockParts.get(e.namedBlock.get(nm));
+                    return plot.offset(DemoBuilder.MINIATURE_AT).offset(d.x0(), d.y0(), d.z0());
+                };
+                // the count on the full-size LEDs its ribbon cable feeds
                 java.util.function.DoubleSupplier leds = () -> {
                     int v = 0;
-                    for (int k = 0; k < 4; k++) {
-                        PlacedPart led = named.apply("led" + k);
-                        CompiledAssembly c = compiled(server, at.apply("led" + k));
-                        Probe pr = led == null || c == null ? null : c.probe(led.id);
-                        if (pr != null && Math.abs(pr.current()) > 1e-3) v |= 1 << k;
-                    }
+                    for (int k = 0; k < 4; k++) if (Math.abs(current(server, big.apply("led" + k), PartKind.LED)) > 1e-3) v |= 1 << k;
                     return v;
                 };
                 STEPS.add(new Step(800, view, shot.apply("count"), () -> onServer(server, key + "n", leds) >= 11)
@@ -617,13 +618,15 @@ public final class AutoShowcase {
                             return that(d != null && d.on() && d.shown() > 100, d == null ? "no controller" : d.shown() + " pixels lit");
                         })
                         .check(key + " the full-size screen behind it shows its image", () -> {
-                            BlockPos screen = plot.offset(DemoBuilder.MINIATURE_AT).offset(e.blockParts.get(e.namedBlock.get("screen")).x0(),
-                                    e.blockParts.get(e.namedBlock.get("screen")).y0(), e.blockParts.get(e.namedBlock.get("screen")).z0());
-                            PlacedPart panel = partIn(server, screen, PartKind.DISPLAY);
+                            PlacedPart panel = partIn(server, big.apply("screen"), PartKind.DISPLAY);
                             return that(panel != null && ClientDisplays.tile(panel.id) != null, panel == null ? "no panel there"
                                     : ClientDisplays.tile(panel.id) == null ? "no image has reached it" : "showing it");
                         })
-                        .check(key + " its chip draws the count its LEDs show", () -> {
+                        .check(key + " one machine across the scales: the miniature and its ribbon cable", () -> {
+                            CompiledAssembly a = compiled(server, at.apply("chip")), b = compiled(server, big.apply("ribbon"));
+                            return that(a != null && a == b, a == null ? "not simulated" : a == b ? "one machine" : "two machines");
+                        })
+                        .check(key + " its chip draws the count its full-size LEDs show", () -> {
                             PlacedPart cp = named.apply("chip");
                             CompiledAssembly c = compiled(server, at.apply("chip"));
                             var chip = cp == null || c == null ? null : c.digitalChip(cp.id);

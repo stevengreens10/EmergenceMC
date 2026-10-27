@@ -166,6 +166,7 @@ public final class PartCatalog {
         }
         add(PartKind.CHIP, "Crystal clock, 100 kHz", "silicon", "function", 6, "frequency", 100_000);
         add(PartKind.DISPLAY, "128 × 64 OLED display", "glass");
+        add(PartKind.RIBBON, "Ribbon cable, 16 ways", "copper");
         add(PartKind.PRESSURE_SENSOR, "Pressure transducer, 0–10 bar", "stainless_304", "pmin", 0, "pmax", 10e5);
         add(PartKind.PRESSURE_SENSOR, "Pressure transducer, 0–2 bar", "stainless_304", "pmin", 0, "pmax", 2e5);
         add(PartKind.PHOTODIODE, "Photodiode (BPW34)", "silicon", "area", 7.5e-6);

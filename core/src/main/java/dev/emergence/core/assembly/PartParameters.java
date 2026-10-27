@@ -589,6 +589,7 @@ public final class PartParameters {
                 .adv().real("max_temperature", "Temperature limit", "K", 300, 400, 333, "Hotter than this it is ruined.")
                 .build();
         new B(PartKind.DISPLAY).made("glass", TRANSPARENT).build();
+        new B(PartKind.RIBBON).made("copper", CONDUCTOR).build();
         new B(PartKind.PRESSURE_SENSOR).made("stainless_304", VESSEL)
                 .shown("bar", 1e-5).real("pmin", "Range from", "Pa", -1e5, 1e8, 0, "Gauge pressure at which its output is 10 % of its supply.")
                 .shown("bar", 1e-5).real("pmax", "Range to", "Pa", 1e3, 1e8, 10e5, "Gauge pressure at which its output is 90 % of its supply.")

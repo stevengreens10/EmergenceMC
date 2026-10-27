@@ -89,6 +89,15 @@ public final class SimulationManager {
         /** The share of the wind reaching it past solid blocks upwind (1: open), and the direction it was found for. */
         double shelter = 1, shelterDir = Double.NaN;
         int resolution = AssemblyBlockEntity.MINIATURE;
+        /** Holds blocks of both scales, joined by ribbon cables ({@link #resolution} is then its first block's). */
+        boolean mixed;
+        /**
+         * In a joined island, how far its full-size parts are moved in the assembly's grid [cells]: from their own grid
+         * (a cell a block) to just beside the miniature cells (sixteen a block), so the assembly spans metres, not
+         * the gap between the two grids' coordinates (sunlight tracing and the like are sized by its extent). The two
+         * never touch: physics does not see the move; positions going back to the world take it off.
+         */
+        int[] shift;
         /** Simulated seconds per real second: below 1 when the island cannot keep up within its budget. */
         double timeScale = 1;
         /** Smoothed wall-clock cost of this island's tick [ms]. */
@@ -184,6 +193,81 @@ public final class SimulationManager {
         if (isl != null) saveIsland(isl, false);
         blocks.remove(pos);
         markDirty(pos);
+    }
+
+    /** Whether one of two neighbouring blocks, of different scales, is a full-size ribbon cable against the other. */
+    private boolean ribbonBetween(BlockPos a, BlockPos b) {
+        AssemblyBlockEntity ba = blocks.get(a), bb = blocks.get(b);
+        AssemblyBlockEntity full = ba.resolution() == AssemblyBlockEntity.BLOCK_SCALE ? ba : bb;
+        return full.resolution() == AssemblyBlockEntity.BLOCK_SCALE && full.parts().stream().anyMatch(p -> p.kind == PartKind.RIBBON);
+    }
+
+    /**
+     * The joins across scales: each full-size ribbon against a miniature block of the island to the miniature
+     * insulated wires touching that face from inside — each to the conductor of its colour (Assembly#bridge).
+     */
+    private void bridgeRibbons(Island isl, Assembly asm) {
+        for (BlockPos b : isl.blocks) {
+            AssemblyBlockEntity be = be(b);
+            if (be == null || be.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
+            for (PlacedPart r : be.parts()) {
+                if (r.kind != PartKind.RIBBON) continue;
+                for (Direction d : Direction.values()) {
+                    BlockPos n = b.relative(d);
+                    AssemblyBlockEntity m = isl.blocks.contains(n) ? be(n) : null;
+                    if (m == null || m.resolution() != AssemblyBlockEntity.MINIATURE) continue;
+                    // the miniature block's face towards the ribbon: its cells on the side −d
+                    int last = m.resolution() - 1;
+                    for (PlacedPart w : m.parts()) {
+                        if (w.kind != PartKind.INSULATED_WIRE) continue;
+                        boolean face = switch (d) {
+                            case EAST -> w.x0 == 0;
+                            case WEST -> w.x1 == last;
+                            case UP -> w.y0 == 0;
+                            case DOWN -> w.y1 == last;
+                            case SOUTH -> w.z0 == 0;
+                            case NORTH -> w.z1 == last;
+                        };
+                        if (face) asm.bridge(r.id, w.id);
+                    }
+                }
+            }
+        }
+    }
+
+    /** A joined island's shift for its full-size parts: their box put 32 cells past the miniature cells' box in x. */
+    private int[] shiftFor(Island isl) {
+        int[] mini = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE};
+        int[] full = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE};
+        for (BlockPos b : isl.blocks) {
+            AssemblyBlockEntity be = be(b);
+            if (be == null) continue;
+            int r = be.resolution();
+            if (r == AssemblyBlockEntity.MINIATURE) {
+                mini[0] = Math.min(mini[0], b.getX() * r);
+                mini[1] = Math.min(mini[1], b.getY() * r);
+                mini[2] = Math.min(mini[2], b.getZ() * r);
+                mini[3] = Math.max(mini[3], b.getX() * r + r - 1);
+            } else {
+                full[0] = Math.min(full[0], b.getX());
+                full[1] = Math.min(full[1], b.getY());
+                full[2] = Math.min(full[2], b.getZ());
+            }
+        }
+        if (mini[0] == Integer.MAX_VALUE || full[0] == Integer.MAX_VALUE) return null;
+        return new int[]{mini[3] + 32 - full[0], mini[1] - full[1], mini[2] - full[2]};
+    }
+
+    /** A part's shift in the assembly's grid [cells] (a joined island's full-size parts), or null. */
+    private int[] shiftOf(Island isl, long partId) {
+        return isl.shift != null && resOf(isl, partId) == AssemblyBlockEntity.BLOCK_SCALE ? isl.shift : null;
+    }
+
+    /** The grid resolution of the block a part of the island is in (a joined island holds both). */
+    private int resOf(Island isl, long partId) {
+        BlockPos b = isl.partPos.get(partId);
+        AssemblyBlockEntity be = b == null ? null : be(b);
+        return be == null ? isl.resolution : be.resolution();
     }
 
     private AssemblyBlockEntity be(BlockPos pos) {
@@ -809,15 +893,23 @@ public final class SimulationManager {
                 BlockPos b = q.poll();
                 isl.blocks.add(b);
                 islandOf.put(b, isl);
-                // only blocks of the same grid resolution form one machine
-                int bcx = b.getX() >> 4, bcz = b.getZ() >> 4;
-                forNeighbours(b, isl.resolution == AssemblyBlockEntity.BLOCK_SCALE ? blockReach : 1, n -> {
-                    if (blocks.containsKey(n) && blocks.get(n).resolution() == isl.resolution && visited.add(n)) q.add(n);
+                // blocks of the same grid resolution form one machine; across scales, only where a full-size ribbon
+                // cable lies against a miniature block (its conductors join the miniature wires at that face)
+                int bcx = b.getX() >> 4, bcz = b.getZ() >> 4, res = blocks.get(b).resolution();
+                forNeighbours(b, res == AssemblyBlockEntity.BLOCK_SCALE ? blockReach : 1, n -> {
+                    if (blocks.containsKey(n) && blocks.get(n).resolution() == res && visited.add(n)) q.add(n);
                     // a neighbour in a chunk not loaded: the machine may go on there, unseen
                     else if (((n.getX() >> 4) != bcx || (n.getZ() >> 4) != bcz) && !level.isLoaded(n)) isl.incomplete = true;
                 });
+                for (Direction d : Direction.values()) {
+                    BlockPos n = b.relative(d);
+                    if (blocks.containsKey(n) && blocks.get(n).resolution() != res && ribbonBetween(b, n) && visited.add(n)) {
+                        q.add(n);
+                        isl.mixed = true;
+                    }
+                }
                 for (BlockPos n : sight.getOrDefault(b, Set.of())) {
-                    if (blocks.containsKey(n) && blocks.get(n).resolution() == isl.resolution && visited.add(n)) q.add(n);
+                    if (blocks.containsKey(n) && blocks.get(n).resolution() == res && visited.add(n)) q.add(n);
                 }
             }
             AssemblyState st = mergeWithSaved(isl, merged);
@@ -1175,15 +1267,18 @@ public final class SimulationManager {
         Assembly asm = new Assembly();
         isl.partPos.clear();
         Map<Long, int[]> anchored = new HashMap<>();
+        isl.shift = isl.mixed ? shiftFor(isl) : null;
         for (BlockPos b : isl.blocks) {
             AssemblyBlockEntity be = be(b);
             if (be == null) continue;
+            int[] shift = be.resolution() == AssemblyBlockEntity.BLOCK_SCALE ? isl.shift : null;
             for (PlacedPart pp : be.parts()) {
-                asm.add(pp.toCore(b, be.resolution()));
+                asm.add(pp.toCore(b, be.resolution(), shift));
                 isl.partPos.put(pp.id, b);
                 if (touchesWorld(b, pp, be.resolution())) anchored.put(pp.id, null);
             }
         }
+        if (isl.mixed) bridgeRibbons(isl, asm);
         isl.solidAround.clear();
         for (BlockPos b : isl.blocks) {
             for (Direction d : Direction.values()) {
@@ -1613,21 +1708,24 @@ public final class SimulationManager {
     private void bubbles(Island isl) {
         if (tickCount % 4 != 0) return;
         CompiledAssembly c = isl.compiled;
-        double toWorld = 1.0 / (Part.CELL * isl.resolution); // metres → world blocks
         for (long id : isl.partPos.keySet()) {
             double rate = c.gasEvolution(id);
             if (!(rate > 2e-8)) continue;
+            int res = resOf(isl, id);
+            double toWorld = 1.0 / (Part.CELL * res); // metres → world blocks
             Part p = c.assembly().get(id);
             if (p == null) continue;
             // 1 particle per 4 ticks at ~20 nmol/s, rising logarithmically
             int n = (int) Math.min(6, 1 + Math.log10(rate / 2e-8) * 1.5);
             Vec3 pc = p.center();
+            int[] sh = shiftOf(isl, id);
+            if (sh != null) pc = pc.sub(new Vec3(sh[0] * Part.CELL, sh[1] * Part.CELL, sh[2] * Part.CELL));
             for (Part q : c.assembly().neighbors(p)) {
                 if (q.kind() != PartKind.ELECTROLYTE) continue;
-                Vec3 qc = q.center();
+                Vec3 qc = sh != null ? q.center().sub(new Vec3(sh[0] * Part.CELL, sh[1] * Part.CELL, sh[2] * Part.CELL)) : q.center();
                 // at the electrode surface, inside the liquid
                 Vec3 at = pc.add(qc.sub(pc).mul(0.55));
-                double spread = 0.25 / isl.resolution;
+                double spread = 0.25 / res;
                 level.sendParticles(ParticleTypes.BUBBLE_POP, at.x() * toWorld, at.y() * toWorld, at.z() * toWorld,
                         n, spread, spread, spread, 0.02);
             }
@@ -1638,8 +1736,9 @@ public final class SimulationManager {
     private void ventPlumes(Island isl) {
         if (tickCount % 2 != 0) return;
         CompiledAssembly c = isl.compiled;
-        double toWorld = 1.0 / (Part.CELL * isl.resolution);
         for (CompiledAssembly.Vent v : c.vents()) {
+            int res = resOf(isl, v.partId());
+            double toWorld = 1.0 / (Part.CELL * res);
             double q = c.ventOutflow(v);
             double[] f = c.fluid(v.partId());
             if (f == null || Math.abs(q) < 1e-4) continue;
@@ -1647,13 +1746,15 @@ public final class SimulationManager {
             double area = PartGeometry.passageArea(p);
             double rho = Math.max(f[2] / Math.max(PartGeometry.fluidVolume(p), 1e-12), 1e-3);
             double speed = q / (rho * area); // m/s, + outwards
-            int[] cell = v.cell();
+            int[] cell = v.cell().clone();
+            int[] vs = shiftOf(isl, v.partId());
+            if (vs != null) for (int k = 0; k < 3; k++) cell[k] -= vs[k];
             Dir d = v.face();
             double cx = (cell[0] + 0.5 + 0.5 * d.dx) * Part.CELL * toWorld, cy = (cell[1] + 0.5 + 0.5 * d.dy) * Part.CELL * toWorld,
                     cz = (cell[2] + 0.5 + 0.5 * d.dz) * Part.CELL * toWorld;
             if (speed < 0) continue; // intake: nothing visible
             // particle speed in blocks/tick, compressed logarithmically so jets stay on screen
-            double vis = Math.min(0.6, 0.05 * Math.log1p(speed)) * 16.0 / isl.resolution;
+            double vis = Math.min(0.6, 0.05 * Math.log1p(speed)) * 16.0 / res;
             int n = (int) Math.min(4, 1 + Math.log10(1 + q * 1000));
             var type = f[1] > 373 ? ParticleTypes.CLOUD : ParticleTypes.POOF;
             for (int i = 0; i < n; i++) {
@@ -1721,7 +1822,7 @@ public final class SimulationManager {
     record DisplayLink(dev.emergence.core.digital.DisplayPanel controller, long[] panels, float[][] tiles, BlockPos at, long[] sent) {}
 
     private void syncDisplayLinks(Island isl) {
-        if (isl.resolution != AssemblyBlockEntity.MINIATURE) return;
+        if (isl.resolution != AssemblyBlockEntity.MINIATURE && !isl.mixed) return;
         if (isl.displayLinks == null || isl.displayLinksFor != isl.compiled || tickCount - isl.displayLinksAt >= 40) {
             List<DisplayLink> old = isl.displayLinks;
             isl.displayLinks = findDisplayLinks(isl);
@@ -1768,7 +1869,7 @@ public final class SimulationManager {
             BlockPos b = en.getValue();
             AssemblyBlockEntity be = be(b);
             PlacedPart seg = be == null ? null : be.byId(en.getKey());
-            if (seg == null) continue;
+            if (seg == null || be.resolution() != AssemblyBlockEntity.MINIATURE) continue;
             int last = be.resolution() - 1;
             for (Direction dir : Direction.values()) {
                 int coord = switch (dir.getAxis()) {
@@ -1837,8 +1938,12 @@ public final class SimulationManager {
             Vec3 pv = b.pivot(), ax = b.axis();
             long[] ids = b.parts().stream().mapToLong(Long::longValue).toArray();
             long carrier = b.carrier() == null || b.carrier().parts().isEmpty() ? -1 : b.carrier().parts().get(0);
+            // world blocks per physical metre for this body: its parts' grid (an island joined across scales holds both)
+            float bodyScale = 16f / (ids.length > 0 ? resOf(isl, ids[0]) : isl.resolution);
+            int[] sh = ids.length > 0 ? shiftOf(isl, ids[0]) : null;
+            if (sh != null) pv = pv.sub(new Vec3(sh[0] * Part.CELL, sh[1] * Part.CELL, sh[2] * Part.CELL));
             bodies.add(new IslandSyncPayload.BodyState(pv.x(), pv.y(), pv.z(), ax.x(), ax.y(), ax.z(),
-                    c.angle(b), c.angularVelocity(b), ids, b.slider(), carrier));
+                    c.angle(b), c.angularVelocity(b), ids, b.slider(), carrier, bodyScale));
             if (dev.emergence.mod.debug.PoseLog.ENABLED && ids.length > 0) {
                 dev.emergence.mod.debug.PoseLog.server(level.getGameTime() + "," + ids[0] + "," + b.slider() + "," + c.angle(b) + ","
                         + c.angularVelocity(b) + "," + isl.timeScale + "," + scaleOf(isl) + "," + isl.costMs + "," + isl.near);

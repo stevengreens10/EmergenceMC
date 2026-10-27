@@ -104,5 +104,7 @@
   "item.emergence.display": "Display panel",
   "tooltip.emergence.display": "A 128 × 64 monochrome OLED screen, its image on its axis face. It has no pins: the display controller chip (a chip of function 8) touching it drives it, as by a flex cable, taking commands and image bytes over its serial bus (SSD1306-style: page addressing, contrast, invert). The panel draws current for every lit pixel.",
   "item.emergence.pressure_sensor": "Pressure transducer",
-  "tooltip.emergence.pressure_sensor": "A silicon diaphragm with a strain-gauge bridge and its amplifier. Its port (the face opposite its axis) goes against a vessel or pipe; it gives 10 % of its supply at pmin and 90 % at pmax (gauge pressure, above the air's) on its axis face — ratiometric, so an ADC fed from the same supply reads the pressure whatever the supply. GND and V_DD on its sides."
+  "tooltip.emergence.pressure_sensor": "A silicon diaphragm with a strain-gauge bridge and its amplifier. Its port (the face opposite its axis) goes against a vessel or pipe; it gives 10 % of its supply at pmin and 90 % at pmax (gauge pressure, above the air's) on its axis face — ratiometric, so an ADC fed from the same supply reads the pressure whatever the supply. GND and V_DD on its sides.",
+  "item.emergence.ribbon": "Ribbon Cable",
+  "tooltip.emergence.ribbon": "Sixteen insulated conductors in a flat cable, colour-coded as insulated wire is. Each conductor joins the insulated wires of its own colour that touch the ribbon, and the next block of ribbon; nothing else. Lay it against a miniature block and the miniature wires of each colour touching that face join its conductors: how signals and power pass between the scales."
 }

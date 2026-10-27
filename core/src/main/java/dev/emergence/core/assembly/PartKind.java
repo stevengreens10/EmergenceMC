@@ -213,7 +213,15 @@ public enum PartKind {
      * it reads (gauge, above the ambient). Output on the +axis face (10 % of the supply at "pmin", 90 % at "pmax",
      * gauge Pa; defaults 0 and 10 bar), GND and V_DD on the −/+ lead-axis sides.
      */
-    PRESSURE_SENSOR(false, true);
+    PRESSURE_SENSOR(false, true),
+    /**
+     * Ribbon cable: a flat bundle of 16 insulated conductors, colour-coded as insulated wire is ("color" 0–15). A block
+     * of it joins the next block of ribbon conductor to conductor, and each conductor joins the insulated wires of its
+     * own colour that touch it — so wires of many colours go in at one end and come out at the other. Against a
+     * miniature block, a full-size ribbon's conductors join the miniature wires of their colours touching that face
+     * from inside: the way signals pass between scales (see {@link Assembly#bridge}).
+     */
+    RIBBON(false, false);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

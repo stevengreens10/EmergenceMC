@@ -403,7 +403,9 @@ public final class PartGeometry {
                 yield coil(p).wireLength() * Math.PI * d * d / 4;
             }
             case WIRE, INSULATED_WIRE -> wireArea(p) * CELL * Math.max(p.extent(0), Math.max(p.extent(1), p.extent(2)));
-            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP -> p.param("mass", 0.002) / p.material().density();
+            case RESISTOR, DIODE, CAPACITOR, SWITCH, TRANSISTOR, LED, LOGIC, CHIP, PHOTODIODE, OPAMP, PRESSURE_SENSOR -> p.param("mass", 0.002) / p.material().density();
+            // a panel: glass 1 mm thick over its face, and its frame
+            case DISPLAY -> p.boxSize((p.axis().axis() + 1) % 3) * p.boxSize((p.axis().axis() + 2) % 3) * 0.0015;
             // lead, acid and case: about 55 g per cell per ampere-hour (a 12 V 7 Ah battery: 2.3 kg)
             case BATTERY -> 0.055 * p.param("cells", 6) * p.param("capacity", 7) / p.material().density();
             case SOURCE -> p.param("mass", 0.005) / p.material().density();

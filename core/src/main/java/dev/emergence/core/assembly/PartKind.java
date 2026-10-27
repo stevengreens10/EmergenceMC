@@ -89,10 +89,14 @@ public enum PartKind {
      */
     BRAKE(false, false),
     /**
-     * One segment (pin pair) of a medium-scale-integration chip (manufactured, 74HC class): "function" 0 4-bit
-     * counter, 1 4-bit register, 2 4-bit adder, 3 16×8 ROM (contents "w0".."w15"). A chip is a row of segments
-     * along their axis; segment k carries input k on its −lead-axis side and output k on its +lead-axis side, and
-     * the last segment carries GND (−) and V_DD (+). See {@code MsiChip.Type} for the pin order.
+     * One segment (pin pair) of a chip (manufactured). A chip is a row of segments along their axis; segment k carries
+     * input k on its −lead-axis side and output k on its +lead-axis side, and the last segment carries GND (−) and
+     * V_DD (+): a chip of i inputs and o outputs is max(i, o) + 1 segments. "function": 0 4-bit counter, 1 4-bit
+     * register, 2 4-bit adder, 3 16×8 ROM (contents "w0".."w15"), 4 16×4 RAM (74HC-class, see {@code MsiChip.Type}
+     * for their pins); and simulated by events (see dev.emergence.core.digital): 5 a chip of the player's own design
+     * (its source in the part's text, its parameters the design's), 6 crystal clock ("frequency" [Hz], default 10 kHz;
+     * output clk), 7 10-bit SPI ADC (inputs cs, sclk, vin; output dout), 8 the controller of a display panel (inputs
+     * cs, d/c, sclk, din, rst; its panel the DISPLAY part it touches).
      */
     CHIP(false, true),
     /**
@@ -197,7 +201,19 @@ public enum PartKind {
      * delivered (default 1: full). Positive terminal on the +axis face, negative on the −axis face. Its voltage follows
      * what the charge drawn has done to its electrodes and electrolyte; its internal resistance warms it.
      */
-    BATTERY(false, true);
+    BATTERY(false, true),
+    /**
+     * Display panel (manufactured: a 128×64 monochrome OLED screen, any size), its image on its +axis face. It is
+     * driven by the display controller chip (a CHIP of function 8) whose segments touch it, as by a flex cable; it
+     * has no pins of its own.
+     */
+    DISPLAY(false, false),
+    /**
+     * Amplified pressure transducer (manufactured), its port on its −axis face against a vessel or pipe whose pressure
+     * it reads (gauge, above the ambient). Output on the +axis face (10 % of the supply at "pmin", 90 % at "pmax",
+     * gauge Pa; defaults 0 and 10 bar), GND and V_DD on the −/+ lead-axis sides.
+     */
+    PRESSURE_SENSOR(false, true);
 
     /** True for parts that hold a working fluid. */
     public boolean holdsFluid() {

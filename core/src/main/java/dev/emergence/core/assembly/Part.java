@@ -28,9 +28,17 @@ public final class Part {
     private final Dir axis;
     private final Map<String, Double> params;
     private final Map<String, Double> state = new HashMap<>();
+    /** Text a part carries (a chip's design source), or null. */
+    private final String text;
 
     public Part(long id, PartKind kind, Material material, int x0, int y0, int z0, int x1, int y1, int z1,
                 Dir axis, Map<String, Double> params) {
+        this(id, kind, material, x0, y0, z0, x1, y1, z1, axis, params, null);
+    }
+
+    public Part(long id, PartKind kind, Material material, int x0, int y0, int z0, int x1, int y1, int z1,
+                Dir axis, Map<String, Double> params, String text) {
+        this.text = text;
         this.id = id;
         this.kind = kind;
         this.material = material;
@@ -49,6 +57,8 @@ public final class Part {
     public Material material() { return material; }
     public Dir axis() { return axis; }
     public Map<String, Double> params() { return params; }
+    /** The text it carries (a chip's design), or null. */
+    public String text() { return text; }
     public int minX() { return x0; }
     public int minY() { return y0; }
     public int minZ() { return z0; }

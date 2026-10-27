@@ -51,7 +51,8 @@ public final class PlacedPart {
      */
     public Part toCore(BlockPos pos, int resolution) {
         int ox = pos.getX() * resolution, oy = pos.getY() * resolution, oz = pos.getZ() * resolution;
-        Part p = new Part(id, kind, spec.resolveMaterial(), ox + x0, oy + y0, oz + z0, ox + x1, oy + y1, oz + z1, axis, spec.params());
+        Part p = new Part(id, kind, spec.resolveMaterial(), ox + x0, oy + y0, oz + z0, ox + x1, oy + y1, oz + z1, axis, spec.params(),
+                spec.text().isEmpty() ? null : spec.text());
         p.setSwitchClosed(closed);
         return p;
     }

@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import dev.emergence.core.assembly.CompiledAssembly;
 import dev.emergence.core.assembly.Probe;
+import dev.emergence.core.digital.DisplayPanel;
 import dev.emergence.mod.part.PartPresets;
 import dev.emergence.mod.part.PartSpec;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
@@ -559,6 +560,34 @@ public final class AutoShowcase {
                 STEPS.add(new Step(1200, view, shot.apply("boiling"), () -> onServer(server, "pot", () -> temperature(server, pot, PartKind.TANK)) > 345)
                         .check(key + " the pot heats towards boiling",
                         () -> atLeast("pot temperature [K]", temperature(server, pot, PartKind.TANK), 340)));
+            }
+            if (id.equals("chartrecorder")) {
+                // found running: wait until the recorders have drawn most of a sweep, then read the screens
+                BlockPos tank = at.apply("tank"), recP = at.apply("recorderP");
+                double[] p0 = {Double.NaN};
+                STEPS.add(new Step(0, () -> p0[0] = pressure(server, tank, PartKind.TANK), null));
+                java.util.function.Function<String, String> climb = ch -> {
+                    DisplayPanel d = display(server, at.apply("screen" + ch));
+                    long x = column(server, recP);
+                    if (d == null || x < 8) return "no trace yet (column " + x + ")";
+                    int r0 = topLit(d, 2), r1 = topLit(d, (int) x - 2);
+                    return r0 < 64 && r1 < 64 && r1 < r0 ? null : "trace rows " + r0 + " -> " + r1 + " (column " + x + ")";
+                };
+                STEPS.add(new Step(2400, view, shot.apply("graph"), () -> onServer(server, key + "x", () -> column(server, recP)) >= 100)
+                        .check(key + " both screens are lit", () -> {
+                            DisplayPanel a = display(server, at.apply("screenP")), b = display(server, at.apply("screenT"));
+                            return that(a != null && b != null && a.on() && b.on(), "screens " + (a == null ? "missing" : a.on()) + ", " + (b == null ? "missing" : b.on()));
+                        })
+                        .check(key + " the hot block presses up the vessel", () -> atLeast("tank pressure rise [kPa]",
+                                1e-3 * (pressure(server, tank, PartKind.TANK) - p0[0]), 5))
+                        .check(key + " the pressure trace climbs", () -> {
+                            String why = climb.apply("P");
+                            return that(why == null, why == null ? "climbs" : why);
+                        })
+                        .check(key + " the temperature trace climbs", () -> {
+                            String why = climb.apply("T");
+                            return that(why == null, why == null ? "climbs" : why);
+                        }));
             }
             if (id.equals("loudspeaker")) {
                 // switch the loudspeaker on; the simulation resolves every vibration, so give the microphone time
@@ -1273,6 +1302,27 @@ public final class AutoShowcase {
         if (b == null) return "none";
         return String.format("at %.5f m moving %.5f m/s, stops %.5f…%.5f, %.3f kg%s", c.angle(b), c.angularVelocity(b), b.strokeLo(), b.strokeHi(), b.mass(),
                 b.isStatic() ? " (static!)" : "");
+    }
+
+    /** The display panel in the block (null if there is none or it is not simulated). */
+    private static DisplayPanel display(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        PlacedPart p = any(s, at, PartKind.DISPLAY);
+        CompiledAssembly c = compiled(s, at);
+        return p == null || c == null ? null : c.display(p.id);
+    }
+
+    /** The column a chart-recorder chip (a chip of the player's design) in the block is drawing (its register x; −1 if none). */
+    private static long column(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        PlacedPart p = any(s, at, PartKind.CHIP);
+        CompiledAssembly c = compiled(s, at);
+        var chip = p == null || c == null ? null : c.digitalChip(p.id);
+        return chip != null && chip.component() instanceof dev.emergence.core.digital.DesignComponent d ? d.instance().value("x") : -1;
+    }
+
+    /** The topmost lit row of a display's column (64 if it is dark). */
+    private static int topLit(DisplayPanel d, int x) {
+        for (int y = 0; y < 64; y++) if (d.pixel(x, y)) return y;
+        return 64;
     }
 
     /** Pressure of the fluid in a vessel or pipe [Pa]. */

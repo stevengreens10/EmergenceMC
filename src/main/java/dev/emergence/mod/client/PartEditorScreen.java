@@ -53,6 +53,9 @@ public final class PartEditorScreen extends Screen {
     private final List<Object[]> labels = new ArrayList<>();
     private int listTop, listBottom, rowsTotal;
 
+    /** The part's text (a chip's design), kept as it is: the chip designer edits it, not this form. */
+    private final String text;
+
     public PartEditorScreen(PartKind kind, boolean offhand, PartSpec spec) {
         super(Component.translatable("item.emergence." + kind.name().toLowerCase()));
         this.kind = kind;
@@ -61,6 +64,7 @@ public final class PartEditorScreen extends Screen {
         this.materials = schema.allowedMaterials();
         this.presets = PartCatalog.of(kind);
         this.material = spec.material();
+        this.text = spec.text();
         this.length = spec.length();
         values.putAll(spec.params());
         for (String k : values.keySet()) {
@@ -393,7 +397,7 @@ public final class PartEditorScreen extends Screen {
     private void done() {
         validate();
         if (error != null) return;
-        PacketDistributor.sendToServer(new PartSpecEditPayload(offhand, new PartSpec(material, length, 1, new TreeMap<>(values))));
+        PacketDistributor.sendToServer(new PartSpecEditPayload(offhand, new PartSpec(material, length, 1, new TreeMap<>(values), text)));
         onClose();
     }
 

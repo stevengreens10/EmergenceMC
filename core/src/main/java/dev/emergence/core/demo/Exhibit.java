@@ -37,6 +37,14 @@ public final class Exhibit {
     /** Longer explanation shown to the player. */
     public final String description;
     public final List<PartDef> parts = new ArrayList<>();
+    /** Text some parts carry (a chip's design), by part index. */
+    public final Map<Integer, String> texts = new java.util.HashMap<>();
+
+    /** Part {@code index} carries {@code text} (a chip's design source); returns the index. */
+    public int text(int index, String text) {
+        texts.put(index, text);
+        return index;
+    }
 
     /**
      * Scenery: ordinary solid blocks, no part of any machine — a windbreak, a wall (by Minecraft block id, e.g.

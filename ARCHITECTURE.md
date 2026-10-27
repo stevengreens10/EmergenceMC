@@ -36,6 +36,7 @@ mod jar.
 | `em` | Magnetostatics (cuboid magnets, current loops), coil geometry, `MagneticSystem` coupling. |
 | `optics` | Geometric optics: Snell/Fresnel/Cauchy (`Optics`), surfaces of an assembly on a cell grid per moving frame (`OpticalScene`), ray-tube light transport (`TubeTracer`). |
 | `assembly` | Grid parts → physics: `Part`, `Assembly`, `AssemblyCompiler`, `CompiledAssembly`, probes, state; what each kind of part can be set to (`PartParameters`: parameters, ranges, defaults, materials — the part editor's form and the server's check), stock variants (`PartCatalog`), values as text (`ParamText`). |
+| `digital` | Chips by events: the chip language (`ChipDesign`: parser, evaluator, synthesis estimates), the event-driven `DigitalDomain`, its bridge to the circuit (`DigitalChip`), library parts (`ClockOscillator`, `SpiAdc`, `DisplayPanel`), shipped designs (`ChipLibrary`). |
 | `demo` | Platform-independent exhibit definitions shared by tests and the demo-world builder. |
 
 ### Unified multiphysics coupling
@@ -111,3 +112,23 @@ the end of every `advance` (a game tick) and whenever the thermal network's step
 (interval ≤ ½·C/G, G the fast side's ∂(heat in)/∂T). Each phase factorises its own matrix, entries in held rows and
 columns left out. The ledger integrates each phase's boundary power with the quadrature its steps used (the end point
 after backward Euler), and counts heat in transit as stored. `-Demergence.multirate=false` steps everything together.
+
+## Digital domain (`core.digital`)
+Repeated logic is the one place where simulating every part costs everything and shows nothing new, so a chip's
+inside is a model while its pins stay physical:
+- A **design** is text in the chip language, written by the player (or shipped: `ChipLibrary`). `ChipDesign` parses
+  it into signals and clocked blocks, and evaluates it. It also estimates what synthesis would make of it: gates,
+  logic depth, so the maximum clock, and the energy each clock edge switches.
+- The **`DigitalDomain`** advances chips by events: one queue of pin changes and wake-ups in time order. A net that
+  joins only chip pins (found by the compiler by union-find over contacts: a group made only of wires and digital
+  pins) is not in the analog network at all. Its edges cost a queue entry, not a circuit step.
+- **`DigitalChip`** is the bridge to the circuit, an `Element` and an `EventSource`. It draws its supply as a
+  conductance from leakage plus smoothed switching power (τ 1 ms). Its outputs on analog nets are 50 Ω switched to a
+  rail; its inputs on analog nets cross at 0.55/0.45 of its supply, the crossing time interpolated. It powers up
+  at 2 V and down below 1.5 V, and its heat goes to its package. Only output changes an analog part can see land
+  solver steps.
+- Library parts implement `DigitalComponent` directly (a crystal clock, a 10-bit SPI ADC, an SSD1306-style display
+  controller); a player's design runs as `DesignComponent`. Their state is saved with the assembly.
+- Display panels (part DISPLAY) are grouped by the compiler into screens: each screen's panels show one controller's
+  128 × 64 image, each panel its tile of it. The mod syncs each panel's image to clients when it changes (at most
+  every other tick) and draws it as a texture.

@@ -78,6 +78,48 @@ public final class CompiledAssembly {
     final Map<Long, Object> deviceOfPart = new HashMap<>(); // Resistor, Diode, Switch, Capacitor, MagneticSystem.Coil
     /** Chips with registers or memory, by their first segment's part id (their bits are saved with the build). */
     final Map<Long, dev.emergence.core.sim.elements.MsiChip> chips = new HashMap<>();
+    /** The digital side: event-driven chips' insides and the nets of their pins (see DigitalDomain). */
+    final dev.emergence.core.digital.DigitalDomain digital = new dev.emergence.core.digital.DigitalDomain();
+    /** Event-driven chips by their first segment's part id; each segment's package; display panels' controllers. */
+    final Map<Long, dev.emergence.core.digital.DigitalChip> digitalChips = new java.util.LinkedHashMap<>();
+    final Map<Long, Long> packageOfPart = new HashMap<>();
+    final Map<Long, dev.emergence.core.digital.DisplayPanel> displays = new java.util.LinkedHashMap<>();
+    /**
+     * Each display part's share of its screen's image: {u at its left edge, v at its top, u at its right, v at its
+     * bottom} (the image 0..1 across and down; beyond that range, the bezel).
+     */
+    final Map<Long, float[]> displayTiles = new HashMap<>();
+
+    /** A display part's share of its screen's image (see displayTiles), or null. */
+    public float[] displayTile(long partId) {
+        return displayTiles.get(partId);
+    }
+
+    /** The digital domain (its nets and events). */
+    public dev.emergence.core.digital.DigitalDomain digital() {
+        return digital;
+    }
+
+    /** The event-driven chip a part (any of its segments) belongs to, or null. */
+    public dev.emergence.core.digital.DigitalChip digitalChip(long partId) {
+        Long pkg = packageOfPart.get(partId);
+        return pkg == null ? null : digitalChips.get(pkg);
+    }
+
+    /** Event-driven chips by their first segment's part id. */
+    public Map<Long, dev.emergence.core.digital.DigitalChip> digitalChips() {
+        return java.util.Collections.unmodifiableMap(digitalChips);
+    }
+
+    /** The display a DISPLAY part shows (its controller's), or null. */
+    public dev.emergence.core.digital.DisplayPanel display(long partId) {
+        return displays.get(partId);
+    }
+
+    /** Display parts and what they show. */
+    public Map<Long, dev.emergence.core.digital.DisplayPanel> displays() {
+        return java.util.Collections.unmodifiableMap(displays);
+    }
     /** A phototransistor's light-sensitive collector–base junction (its device is the transistor). */
     final Map<Long, dev.emergence.core.sim.elements.Photodiode> photoJunction = new HashMap<>();
 
@@ -1073,6 +1115,17 @@ public final class CompiledAssembly {
             for (int i = 0; i < e.getValue().type().flipFlops; i++) {
                 double bit = Math.max(0, Math.min(1, e.getValue().register(solver, i)));
                 s.chemistry().put(AssemblyState.registerKey(e.getKey(), i), bit);
+            }
+        }
+        // event-driven chips' state (registers, memories, a display's image), each word as two 32-bit halves (doubles
+        // hold them exactly)
+        for (var e : digitalChips.entrySet()) {
+            long[] st = e.getValue().component().save();
+            if (st.length == 0) continue;
+            s.chemistry().put("R" + e.getKey() + ":n", (double) st.length);
+            for (int i = 0; i < st.length; i++) {
+                s.chemistry().put("R" + e.getKey() + ":w" + (2 * i), (double) (st[i] & 0xffffffffL));
+                s.chemistry().put("R" + e.getKey() + ":w" + (2 * i + 1), (double) (st[i] >>> 32));
             }
         }
         // the flows in the passages (a restart that has to find every flow at once, from none, can fail to)

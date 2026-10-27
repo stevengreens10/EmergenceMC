@@ -124,6 +124,8 @@ public final class SimulationManager {
          * later tick (see {@link #OFF_TICK}); the step while it runs, the tick it set off, and the ticks it covers.
          */
         boolean offTick;
+        /** Each display panel's image version and tick last sent to clients. */
+        final Map<Long, long[]> displaySent = new HashMap<>();
         /** Its truncation-error tolerances' relaxation (1: as validated; up to {@link #MAX_RELAX}): see {@link #land}. */
         double relax = 1;
         java.util.concurrent.Future<?> step;
@@ -1701,6 +1703,25 @@ public final class SimulationManager {
         for (Island isl : new HashSet<>(islandOf.values())) saveIsland(isl);
     }
 
+    /**
+     * Each display panel's image, when it has changed (at most every other tick) or every 5 s regardless (for players
+     * who came since): 1 KB, as shown.
+     */
+    private void syncDisplays(Island isl, BlockPos any) {
+        for (var en : isl.compiled.displays().entrySet()) {
+            var d = en.getValue();
+            long[] last = isl.displaySent.computeIfAbsent(en.getKey(), k -> new long[]{-1, Long.MIN_VALUE / 2});
+            boolean changed = d.version() != last[0];
+            if (!(changed && tickCount - last[1] >= 2) && tickCount - last[1] < 100) continue;
+            byte[] img = new byte[1024];
+            for (int y = 0; y < 64; y++) for (int x = 0; x < 128; x++) if (d.pixel(x, y)) img[(y >> 3) * 128 + x] |= (byte) (1 << (y & 7));
+            PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any),
+                    new dev.emergence.mod.net.DisplaySyncPayload(en.getKey(), img, d.contrast(), isl.compiled.displayTile(en.getKey())));
+            last[0] = d.version();
+            last[1] = tickCount;
+        }
+    }
+
     private void sync(Island isl) {
         CompiledAssembly c = isl.compiled;
         List<IslandSyncPayload.BodyState> bodies = new ArrayList<>();
@@ -1826,6 +1847,7 @@ public final class SimulationManager {
         BlockPos any = isl.blocks.iterator().next();
         PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any), payload);
         syncSounds(isl, scale, any);
+        syncDisplays(isl, any);
     }
 
     /**

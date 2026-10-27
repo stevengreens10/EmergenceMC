@@ -80,7 +80,14 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
    complementary MOSFET pairs reversing (and dynamically braking) the DC motor ✅; PWM speed control through it (a
    Schmitt ramp and an op-amp comparator against a knob) ✅; an inverter driving Faraday's ring (DC → ±46 V AC) ✅;
    buck converters ⬜
-⬜ A richer instruction set (load/store to RAM), more sensors and actuators; event-driven simulation for thousands of gates
+✅ Chips of the player's design: a register-transfer chip language with synthesis estimates (delay, maximum clock,
+   switching energy); an event-driven digital domain whose pins stay physical in the circuit (supply current,
+   thresholds, loading, heat)
+✅ Monitors: crystal clock, 10-bit SPI ADC, amplified pressure transducer, 128 × 64 OLED panels tiling screens;
+   a shipped chart-recorder design graphing pressure and temperature (chart recorder exhibit)
+🟡 The chip designer screen (edit a design in game, see its errors and estimates, write it onto a chip) ⬜;
+   fabricating chips from materials ⬜; radio links ⬜
+⬜ A richer instruction set (load/store to RAM), more sensors and actuators
 
 ## Phase 5 — Chemistry and manufacturing
 ✅ Electrochemistry: Butler–Volmer/Nernst electrodes, galvanic cells, corrosion, displacement plating,

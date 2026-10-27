@@ -530,3 +530,20 @@ checks; the build check finds every exhibit's bodies (parts, mass, inertia, trav
 ## Known validation gaps
 No tests yet for: diode temperature dependence, brush/commutator contacts, multi-coil mutual coupling on
 rotors, thermal radiation exchange between parts, long-run energy drift under BE restarts.
+
+## Chips and monitors (`ChipDesignTest`, `DigitalDomainTest`, `DigitalPartsTest`, `ChartRecorderTest`, `ChartRecorderExhibitTest`)
+- The chip language: a blinker toggles every half-period of edges. Registered bus outputs and combinational ones
+  follow. Memories, `case`, slices and concatenation evaluate as written. Errors give their line and say what is
+  wrong. Estimates grow with the logic, and a clock faster than the estimate's maximum is counted as violations
+  while the registers hold. State saves and restores exactly.
+- The digital domain: a clocked chip blinks an LED through the circuit without the solver stepping on every clock
+  edge (only the LED's edges land steps). An analog input switches at half the supply with hysteresis. Supply
+  current rises with the clock as (1.1·E_edge + C_net·V²)·Δf / V.
+- The library parts over SPI, against a chip of the player's design: the ADC reads its input as a fraction of the
+  supply; the display takes commands and data. The pressure transducer gives 10 % to 90 % of its supply over its range.
+- End to end: a rising voltage on the ADC draws a rising trace on the display. The bus is a digital net, so the
+  solver does not follow it.
+- The chart-recorder exhibit (block scale, 45 simulated seconds, 3 s of CPU): copper at 500 K heats a sealed tank
+  of air from 293 K to 457 K (101 → 158 kPa). The pressure channel's ADC goes from code 117 to 565, the
+  thermistor's from 108 to 927. The recorder draws 114 columns at 2 kHz (a sweep is 128). Both traces climb, both
+  screens are on, and 15 nets are digital.

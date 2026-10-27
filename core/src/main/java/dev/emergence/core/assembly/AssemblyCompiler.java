@@ -7,6 +7,14 @@ import dev.emergence.core.materials.Material;
 import dev.emergence.core.materials.MaterialDatabase;
 import dev.emergence.core.materials.MaterialProperty;
 import dev.emergence.core.math.Vec3;
+import dev.emergence.core.digital.ChipDesign;
+import dev.emergence.core.digital.ClockOscillator;
+import dev.emergence.core.digital.DesignComponent;
+import dev.emergence.core.digital.DigitalChip;
+import dev.emergence.core.digital.DigitalComponent;
+import dev.emergence.core.digital.DigitalDomain;
+import dev.emergence.core.digital.DisplayPanel;
+import dev.emergence.core.digital.SpiAdc;
 import dev.emergence.core.sim.Domain;
 import dev.emergence.core.sim.Node;
 import dev.emergence.core.sim.TransientSolver;
@@ -137,6 +145,7 @@ public final class AssemblyCompiler {
             buildJets();
             checkpoint();
             buildElectrical();
+            buildDisplays();
             buildAbsorbedLight();
             c.fatigue = ShaftFatigue.build(a, c, prev);
             checkpoint();
@@ -1504,6 +1513,16 @@ public final class AssemblyCompiler {
                 case SOURCE -> {
                     return null; // a sealed capsule: no electrical contact
                 }
+                case DISPLAY -> {
+                    return null; // the screen: its controller chip has the pins
+                }
+                case PRESSURE_SENSOR -> {
+                    // output on the +axis face, GND/V_DD on the lead-axis sides; the −axis face is its fluid port
+                    Dir ax = p.axis();
+                    if (d.axis() == ax.axis()) return d.sign() == ax.sign() ? "p" + p.id() + "o" : null;
+                    if (d.axis() == PartGeometry.leadAxis(p)) return "p" + p.id() + (d.sign() > 0 ? "v" : "n");
+                    return null;
+                }
                 case RESISTOR, CAPACITOR, BATTERY, DIODE, LED, PHOTODIODE, GM_TUBE, SWITCH, COIL, BRUSH -> {
                     Dir ax = p.axis();
                     int a0 = ax.axis();
@@ -1537,6 +1556,252 @@ public final class AssemblyCompiler {
                     return conductive(p) ? "p" + p.id() : null;
                 }
             }
+        }
+
+        // ---- event-driven chips (functions 5–8)
+
+        /** An event-driven chip package: its segments (first to last) and what runs it. */
+        record DigitalPackage(List<Part> seg, DigitalComponent comp, String label) { }
+
+        final Map<Long, DigitalPackage> digitalPackages = new LinkedHashMap<>();
+        /** Signal pin keys of event-driven chips ("p{segment}i" / "p{segment}o"). */
+        final Set<String> digitalPinKeys = new HashSet<>();
+        final Map<String, DigitalDomain.Net> digitalNetOfRoot = new HashMap<>(), digitalNetsByGroup = new HashMap<>();
+        final Set<String> connectedRoots = new HashSet<>();
+
+        /** Compiled designs, by their source (the same design on many chips, and on every rebuild, compiled once). */
+        static final Map<String, Object> DESIGNS = new java.util.concurrent.ConcurrentHashMap<>();
+
+        static Object design(String source) {
+            return DESIGNS.computeIfAbsent(source, src -> {
+                try {
+                    return ChipDesign.compile(src);
+                } catch (ChipDesign.ChipError e) {
+                    return e;
+                }
+            });
+        }
+
+        /** The packages of event-driven chips, each with its component, and their signal pins' keys. */
+        void prepareDigitalPackages() {
+            if (!digitalPackages.isEmpty()) return;
+            for (Part p : parts) {
+                if (p.kind() != PartKind.CHIP || chipNeighbour(p, -1) != null) continue;
+                int fn = (int) Math.round(p.param("function", 0));
+                if (fn < 5 || fn > 8) continue;
+                List<Part> seg = new ArrayList<>();
+                for (Part q = p; q != null && seg.size() < 128; q = chipNeighbour(q, 1)) seg.add(q);
+                DigitalComponent comp;
+                String label;
+                switch (fn) {
+                    case 5 -> {
+                        if (p.text() == null || p.text().isBlank()) {
+                            c.warnings.add("Chip #" + p.id() + " has no design");
+                            continue;
+                        }
+                        Object d = design(p.text());
+                        if (d instanceof ChipDesign.ChipError e) {
+                            c.warnings.add("Chip #" + p.id() + ": its design does not compile: " + e.getMessage());
+                            continue;
+                        }
+                        ChipDesign cd = (ChipDesign) d;
+                        Map<String, Double> overrides = new HashMap<>();
+                        for (var en : p.params().entrySet()) {
+                            if (en.getKey().startsWith(PartParameters.DESIGN_PARAM)) overrides.put(en.getKey().substring(PartParameters.DESIGN_PARAM.length()), en.getValue());
+                        }
+                        comp = new DesignComponent(cd, overrides);
+                        label = cd.name();
+                    }
+                    case 6 -> {
+                        comp = new ClockOscillator(p.param("frequency", 10_000), p.param("ppm", 0));
+                        label = "clock";
+                    }
+                    case 7 -> {
+                        comp = new SpiAdc(10);
+                        label = "adc";
+                    }
+                    default -> {
+                        comp = new DisplayPanel();
+                        label = "display controller";
+                    }
+                }
+                int ni = comp.inputs().size(), no = comp.outputs().size(), need = Math.max(ni, no) + 1;
+                if (seg.size() != need) {
+                    c.warnings.add("Chip #" + p.id() + " (" + label + ") needs " + need + " segments in a row, has " + seg.size());
+                    continue;
+                }
+                digitalPackages.put(p.id(), new DigitalPackage(seg, comp, label));
+                for (int k = 0; k < ni; k++) digitalPinKeys.add("p" + seg.get(k).id() + "i");
+                for (int k = 0; k < no; k++) digitalPinKeys.add("p" + seg.get(k).id() + "o");
+            }
+        }
+
+        /**
+         * An event-driven chip: its pins on digital nets join them; those on analog nets get nodes (and a CMOS input's
+         * 5 pF); unconnected ones neither (an input then reads low).
+         */
+        void buildDigitalChip(Part p, Node th) {
+            DigitalPackage pk = digitalPackages.get(p.id());
+            List<Part> seg = pk.seg();
+            DigitalComponent comp = pk.comp();
+            int slot = c.digital.add(comp);
+            Part last = seg.get(seg.size() - 1);
+            Node gnd = enode("p" + last.id() + "i"), vdd = enode("p" + last.id() + "o");
+            int ni = comp.inputs().size(), no = comp.outputs().size();
+            Node[] in = new Node[ni], out = new Node[no];
+            for (int k = 0; k < ni; k++) {
+                String key = "p" + seg.get(k).id() + "i", root = eroot(key);
+                DigitalDomain.Net n = digitalNetOfRoot.get(root);
+                if (n != null) c.digital.connectInput(slot, k, n);
+                else if (connectedRoots.contains(root)) in[k] = enode(key);
+            }
+            for (int k = 0; k < no; k++) {
+                String key = "p" + seg.get(k).id() + "o", root = eroot(key);
+                DigitalDomain.Net n = digitalNetOfRoot.get(root);
+                if (n != null) c.digital.connectOutput(slot, k, n);
+                else if (connectedRoots.contains(root)) out[k] = enode(key);
+            }
+            // a chip's state as it was (registers, memories, a display's image)
+            Double len = prev.chemistry().get("R" + p.id() + ":n");
+            if (len != null) {
+                long[] st = new long[(int) Math.round(len)];
+                for (int i = 0; i < st.length; i++) {
+                    long lo = Math.round(prev.chemistry().getOrDefault("R" + p.id() + ":w" + (2 * i), 0.0));
+                    long hi = Math.round(prev.chemistry().getOrDefault("R" + p.id() + ":w" + (2 * i + 1), 0.0));
+                    st[i] = (lo & 0xffffffffL) | (hi << 32);
+                }
+                comp.restore(st);
+            }
+            DigitalChip chip = c.network.add(new DigitalChip(c.digital, slot, vdd, gnd, in, out, th, pk.label()));
+            c.digitalChips.put(p.id(), chip);
+            for (int k = 0; k < seg.size(); k++) {
+                Part q = seg.get(k);
+                c.deviceOfPart.put(q.id(), chip);
+                c.packageOfPart.put(q.id(), p.id());
+                Node a = k < ni && in[k] != null ? in[k] : q == last ? gnd : null, b = k < no && out[k] != null ? out[k] : q == last ? vdd : null;
+                c.leadsOfPart.put(q.id(), new Node[]{a != null ? a : gnd, b != null ? b : gnd});
+            }
+            for (Node n : in) if (n != null) c.network.add(Capacitor.parasitic(n, gnd, 5e-12));
+            c.network.add(new Capacitor(vdd, gnd, 100e-9));
+            if (comp instanceof DisplayPanel dp) displayControllers.put(p.id(), dp);
+        }
+
+        final Map<Long, DisplayPanel> displayControllers = new LinkedHashMap<>();
+
+        /** Each display panel is driven by the display controller chip touching it. */
+        void buildDisplays() {
+            // panels side by side in one plane, facing the same way, are one screen (tiles of it)
+            List<Part> panels = new ArrayList<>();
+            for (Part d : parts) if (d.kind() == PartKind.DISPLAY) panels.add(d);
+            int n = panels.size();
+            int[] group = new int[n];
+            for (int i = 0; i < n; i++) group[i] = i;
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    Part a = panels.get(i), b = panels.get(j);
+                    if (a.axis() != b.axis() || !a.touches(b) || a.overlaps(b)) continue;
+                    int ax = a.axis().axis();
+                    int ca = ax == 0 ? a.minX() : ax == 1 ? a.minY() : a.minZ(), cb = ax == 0 ? b.minX() : ax == 1 ? b.minY() : b.minZ();
+                    if (ca != cb) continue;
+                    int gi = root(group, i), gj = root(group, j);
+                    if (gi != gj) group[Math.max(gi, gj)] = Math.min(gi, gj);
+                }
+            }
+            Map<Integer, List<Part>> screens = new LinkedHashMap<>();
+            for (int i = 0; i < n; i++) screens.computeIfAbsent(root(group, i), k -> new ArrayList<>()).add(panels.get(i));
+            for (List<Part> screen : screens.values()) {
+                DisplayPanel found = null;
+                search:
+                for (var en : displayControllers.entrySet()) {
+                    for (Part q : digitalPackages.get(en.getKey()).seg()) {
+                        for (Part d : screen) {
+                            if (q.touches(d) && !q.overlaps(d)) {
+                                found = en.getValue();
+                                break search;
+                            }
+                        }
+                    }
+                }
+                if (found == null) {
+                    c.warnings.add("Display #" + screen.get(0).id() + " has no controller chip touching it");
+                    continue;
+                }
+                // the screen's cells in its plane: right and up as its viewer sees them (up is the world's up, or north
+                // for a panel lying flat); the image letterboxed at 2:1 across them
+                Dir ax = screen.get(0).axis();
+                int[] up = ax.axis() == 1 ? new int[]{0, 0, -1} : new int[]{0, 1, 0};
+                int[] z = {ax.dx, ax.dy, ax.dz};
+                int[] right = {up[1] * z[2] - up[2] * z[1], up[2] * z[0] - up[0] * z[2], up[0] * z[1] - up[1] * z[0]};
+                int c0 = Integer.MAX_VALUE, c1 = Integer.MIN_VALUE, r0 = Integer.MAX_VALUE, r1 = Integer.MIN_VALUE;
+                for (Part d : screen) {
+                    for (int[] cell : cellsOf(d)) {
+                        int col = dot(cell, right), row = dot(cell, up);
+                        c0 = Math.min(c0, col);
+                        c1 = Math.max(c1, col);
+                        r0 = Math.min(r0, row);
+                        r1 = Math.max(r1, row);
+                    }
+                }
+                double w = c1 - c0 + 1, h = r1 - r0 + 1;
+                double iw = Math.min(0.92 * w, 2 * 0.92 * h), ih = iw / 2;
+                double ox = c0 + (w - iw) / 2, oyTop = r1 + 1 - (h - ih) / 2; // the image's left edge and top edge
+                for (Part d : screen) {
+                    c.displays.put(d.id(), found);
+                    // this panel's face as a rectangle of the screen: [col, col + cols) × [row, row + rows)
+                    int pc0 = Integer.MAX_VALUE, pc1 = Integer.MIN_VALUE, pr0 = Integer.MAX_VALUE, pr1 = Integer.MIN_VALUE;
+                    for (int[] cell : cellsOf(d)) {
+                        int col = dot(cell, right), row = dot(cell, up);
+                        pc0 = Math.min(pc0, col);
+                        pc1 = Math.max(pc1, col);
+                        pr0 = Math.min(pr0, row);
+                        pr1 = Math.max(pr1, row);
+                    }
+                    // the image's coordinates (u right, v down, 0..1) at this face's edges
+                    float uL = (float) ((pc0 - ox) / iw), uR = (float) ((pc1 + 1 - ox) / iw);
+                    float vT = (float) ((oyTop - (pr1 + 1)) / ih), vB = (float) ((oyTop - pr0) / ih);
+                    c.displayTiles.put(d.id(), new float[]{uL, vT, uR, vB});
+                }
+            }
+        }
+
+        private static int root(int[] g, int i) {
+            while (g[i] != i) i = g[i] = g[g[i]];
+            return i;
+        }
+
+        private static int dot(int[] a, int[] b) {
+            return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        }
+
+        private static List<int[]> cellsOf(Part p) {
+            List<int[]> out = new ArrayList<>();
+            for (int x = p.minX(); x <= p.maxX(); x++)
+                for (int y = p.minY(); y <= p.maxY(); y++)
+                    for (int z = p.minZ(); z <= p.maxZ(); z++) out.add(new int[]{x, y, z});
+            return out;
+        }
+
+        /** A pressure transducer on the vessel or pipe at its −axis face. */
+        void buildPressureSensor(Part p) {
+            Dir ax = p.axis();
+            FluidVolume v = null;
+            for (Part q : parts) {
+                if (!q.kind().holdsFluid() || !q.touches(p) || q.overlaps(p)) continue;
+                // on the port side: the part's centre lies behind the sensor's −axis face
+                double along = (q.center().x() - p.center().x()) * ax.dx + (q.center().y() - p.center().y()) * ax.dy
+                        + (q.center().z() - p.center().z()) * ax.dz;
+                if (along >= 0) continue;
+                v = c.fluidOfPart.get(q.id());
+                if (v != null) break;
+            }
+            Node out = enode("p" + p.id() + "o"), gnd = enode("p" + p.id() + "n"), vdd = enode("p" + p.id() + "v");
+            c.leadsOfPart.put(p.id(), new Node[]{gnd, out});
+            if (v == null) {
+                c.warnings.add("Pressure sensor #" + p.id() + " has no vessel or pipe on its port (its −axis face)");
+                return;
+            }
+            c.deviceOfPart.put(p.id(), c.network.add(new dev.emergence.core.sim.elements.PressureTransducer(v.pressureNode(), vdd, gnd, out,
+                    a.ambientPressure(), p.param("pmin", 0), p.param("pmax", 10e5))));
         }
 
         /** The chip segment adjacent to p one cell along {@code dir} that belongs to the same package, or null. */
@@ -1684,6 +1949,48 @@ public final class AssemblyCompiler {
                 WireRun run = runOf.get(p.id());
                 if (run != null && run.parts.get(0) != p) emerge("p" + p.id(), "p" + run.parts.get(0).id());
             }
+            // ---- nets of event-driven chips' signal pins and of wires, and nothing else: the digital domain's (see
+            // DigitalDomain) — no conductors and no nodes in the circuit, so the solver never sees their edges. A net
+            // with anything else on it (a resistor, an LED, a supply pin, a 74HC chip) stays analog, and the chips'
+            // pins on it are physical there.
+            prepareDigitalPackages();
+            if (!digitalPinKeys.isEmpty()) {
+                Map<String, String> uf = new HashMap<>();
+                java.util.function.UnaryOperator<String> find = new java.util.function.UnaryOperator<>() {
+                    public String apply(String k) {
+                        String r = k;
+                        while (uf.containsKey(r) && !uf.get(r).equals(r)) r = uf.get(r);
+                        uf.put(k, r);
+                        return r;
+                    }
+                };
+                Map<String, Part> keyPart = new HashMap<>();
+                for (Contact k : contacts) {
+                    if (k.sliding || k.slide != null) continue;
+                    keyPart.put(k.pk, k.p);
+                    keyPart.put(k.qk, k.q);
+                    String ra = find.apply(eroot(k.pk)), rb = find.apply(eroot(k.qk));
+                    if (!ra.equals(rb)) uf.put(ra, rb);
+                }
+                for (Part p : parts) if (runOf.containsKey(p.id())) keyPart.put("p" + p.id(), p);
+                Map<String, List<String>> members = new HashMap<>();
+                for (String key : keyPart.keySet()) members.computeIfAbsent(find.apply(eroot(key)), r -> new ArrayList<>()).add(key);
+                for (var en : members.entrySet()) {
+                    boolean pins = false, other = false;
+                    for (String key : en.getValue()) {
+                        if (digitalPinKeys.contains(key)) pins = true;
+                        else if (!isWire(keyPart.get(key))) other = true;
+                    }
+                    if (!pins || other) continue;
+                    DigitalDomain.Net net = c.digital.net(en.getKey());
+                    for (String key : en.getValue()) digitalNetOfRoot.put(eroot(key), net);
+                    digitalNetsByGroup.put(en.getKey(), net);
+                }
+                for (Contact k : contacts) {
+                    connectedRoots.add(eroot(k.pk));
+                    connectedRoots.add(eroot(k.qk));
+                }
+            }
             if (Boolean.getBoolean("diag.contacts")) {
                 for (Contact k : contacts) {
                     CompiledAssembly.Body b1 = c.bodyOfPart.get(k.p.id()), b2 = c.bodyOfPart.get(k.q.id());
@@ -1695,6 +2002,7 @@ public final class AssemblyCompiler {
             // ---- conductors between contacts
             for (Contact k : contacts) {
                 Part p = k.p, q = k.q;
+                if (digitalNetOfRoot.containsKey(eroot(k.pk)) && digitalNetOfRoot.get(eroot(k.pk)) == digitalNetOfRoot.get(eroot(k.qk))) continue;
                 Node np = enode(k.pk), nq = enode(k.qk);
                 if (np == nq) continue;
                 if (k.slide != null) {
@@ -1772,7 +2080,11 @@ public final class AssemblyCompiler {
                                 p.param("efficiency", 0.2), th)));
                         c.network.add(Capacitor.parasitic(l[0], l[1], 20e-12));
                     }
-                    case CHIP -> buildChip(p, th);
+                    case CHIP -> {
+                        if (digitalPackages.containsKey(p.id())) buildDigitalChip(p, th);
+                        else buildChip(p, th);
+                    }
+                    case PRESSURE_SENSOR -> buildPressureSensor(p);
                     case POTENTIOMETER -> {
                         Node[] l = leads(p);
                         Node w = enode("p" + p.id() + "w");

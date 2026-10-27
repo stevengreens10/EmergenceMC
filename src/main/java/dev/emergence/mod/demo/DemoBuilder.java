@@ -224,7 +224,7 @@ public final class DemoBuilder {
                 n.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
                 return n;
             });
-            PartSpec spec = new PartSpec(d.material(), 1, 1, d.params());
+            PartSpec spec = new PartSpec(d.material(), 1, 1, d.params(), e.texts.getOrDefault(d.index(), ""));
             long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
             be.addPart(new PlacedPart(id, d.kind(), spec, 0, 0, 0, 0, 0, 0, d.axis(), e.latched.contains(d.index())));
             Exhibit.Initial in = e.initial.get(d.index());
@@ -266,7 +266,7 @@ public final class DemoBuilder {
             int len = 1 + (a == 0 ? d.x1() - d.x0() : a == 1 ? d.y1() - d.y0() : d.z1() - d.z0());
             int cross = 1 + Math.max(a == 0 ? d.y1() - d.y0() : d.x1() - d.x0(), a == 2 ? d.y1() - d.y0() : d.z1() - d.z0());
             long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
-            be.addPart(new PlacedPart(id, d.kind(), new PartSpec(d.material(), len, cross, d.params()),
+            be.addPart(new PlacedPart(id, d.kind(), new PartSpec(d.material(), len, cross, d.params(), e.texts.getOrDefault(d.index(), "")),
                     d.x0(), d.y0(), d.z0(), d.x1(), d.y1(), d.z1(), d.axis(), false));
         }
     }

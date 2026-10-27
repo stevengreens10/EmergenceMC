@@ -868,3 +868,34 @@ block deep runs at 2.4 m/s. A part standing in flowing water is not waterlogged,
 still source; it takes the current and level of the stream beside it. Validated in `BuoyancyTest`: a four-paddle wheel
 in a 1 m/s stream reaches 7.1 rad/s, its paddles at 0.89 m/s, and turns the other way in a reversed stream, its energy
 balancing. Not modelled: the stream slowing as a paddle takes its momentum (it keeps its speed), and splashing.
+
+## Chips by events, and monitors (`core.digital`, parts CHIP functions 5–8, DISPLAY, PRESSURE_SENSOR)
+* **The chip language** (`ChipDesign`) describes registers and the logic between them: `in`/`out` pins and buses,
+  `reg`, `wire`, `mem`, `param`, `assign`, and `on rise|fall clk { … }` blocks of non-blocking assignments with
+  `if`/`case`; unsigned arithmetic up to 64 bits. A part's design parameters are its `p_<name>` parameters.
+* **Synthesis estimate**, 74HC-class: gates counted from the operators (an n-bit adder or comparator 5n, a multiplier
+  6n², a divider 8n², a bitwise operator n, a variable shift 3n·log₂n, …); logic depth along the longest path from a
+  register to a register; gate delay 3 ns, setup 5 ns, clock-to-output 8 ns, so f_max = 1/(depth·t_g + t_setup + t_cq).
+  An edge sooner than 1/f_max after the last is counted as a timing violation and the registers hold (a real chip
+  would latch garbage; holding is the deterministic stand-in). Energy per clock edge: a sixth of the gates switching,
+  (gates + 8·flip-flops)/6 × 30 fF × V²; edges of other inputs cost a tenth of that; leakage 2 nA a gate (memory bits
+  and flip-flops counted as gates).
+* **Pins in the circuit.** Supply: a conductance drawing leakage plus switching power (smoothed over 1 ms); its I·V
+  heats the package. Outputs on analog nets: a 50 Ω switch to either rail. Inputs on analog nets: high above 0.55,
+  low below 0.45 of the supply (hysteresis), 5 pF each, the crossing time interpolated within the step. Up at 2 V,
+  off below 1.5 V. A net joining only chip pins is ideal apart from its capacitance, charged on each edge (½CV²
+  from the supply): 5 pF a pin, its wire not yet counted.
+* **Crystal clock module** (function 6): a square wave at "frequency" × (1 + ppm·10⁻⁶), 1 mA at 5 V whatever the
+  frequency, starting 1 ms after power.
+* **10-bit SPI ADC** (function 7, cs/sclk/vin → dout): samples on CS falling and presents the MSB; each SCLK falling
+  edge presents the next bit. Its reading is ratiometric, code = round(1023·V_in/V_DD) with ±½ LSB noise. Its
+  maximum SCLK is 1 MHz; 300 µA.
+* **Display controller** (function 8, cs/dc/sclk/din/rst) with display panels (part DISPLAY): the SSD1306 command
+  subset that matters for drawing (display on/off, contrast, inverse, all-on, page/horizontal/vertical addressing,
+  column and page ranges); data bytes are 8 rows of a column. Current 300 µA plus 2.5 µA a lit pixel × contrast/255.
+  Its maximum SCLK is 10 MHz.
+* **Pressure transducer** (PRESSURE_SENSOR): a strain-gauge diaphragm and amplifier on a vessel port; output
+  10 %…90 % of its supply over its gauge range (ratiometric, like the ADC: the supply cancels), 100 Ω output
+  resistance, 1.5 mA, a smooth clamp at the ends of its range.
+* Validity: logic levels and timing of 74HC/AHC-class CMOS at 2–6 V. Not modelled inside chips: glitches,
+  metastability, ground bounce, per-pin drive strength beyond 50 Ω, analog behaviour between thresholds.

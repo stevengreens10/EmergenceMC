@@ -127,7 +127,7 @@ public final class PlayerBuilder {
                 // a shaft goes in before what is mounted on it (whose orientation it would otherwise follow)
                 if (d.kind() != PartKind.SHAFT && mountable(d.kind()) && pending.stream().anyMatch(q -> q != d && q.kind() == PartKind.SHAFT
                         && q.x0() == d.x0() && q.y0() == d.y0() && q.z0() == d.z0())) continue;
-                Long id = place(level, p, at, d, problems, e.id);
+                Long id = place(level, p, at, d, problems, e.id, e.texts.getOrDefault(d.index(), ""));
                 if (id == null) continue;
                 placedId.put(d.index(), id);
                 // a warm start where getting warm would take many minutes (see Exhibit.Initial): set as the part goes
@@ -209,7 +209,7 @@ public final class PlayerBuilder {
                 // a part to be mounted on a shaft waits for the shaft
                 boolean waits = pending.stream().anyMatch(q -> q != d && q.kind() == PartKind.SHAFT && overlaps(q, d));
                 if (waits) continue;
-                placeMiniature(level, p, at, d, problems, e.id);
+                placeMiniature(level, p, at, d, problems, e.id, e.texts.getOrDefault(d.index(), ""));
                 it.remove();
                 progress = true;
             }
@@ -241,14 +241,14 @@ public final class PlayerBuilder {
         return a.x0() <= b.x1() && b.x0() <= a.x1() && a.y0() <= b.y1() && b.y0() <= a.y1() && a.z0() <= b.z1() && b.z0() <= a.z1();
     }
 
-    private static void placeMiniature(ServerLevel level, FakePlayer p, BlockPos at, Exhibit.PartDef d, List<String> problems, String exhibit) {
+    private static void placeMiniature(ServerLevel level, FakePlayer p, BlockPos at, Exhibit.PartDef d, List<String> problems, String exhibit, String text) {
         int ax = d.axis().axis();
         int[] lo = {d.x0(), d.y0(), d.z0()}, hi = {d.x1(), d.y1(), d.z1()};
         int len = hi[ax] - lo[ax] + 1, cross = 1;
         for (int k = 0; k < 3; k++) if (k != ax) cross = Math.max(cross, hi[k] - lo[k] + 1);
         ItemStack stack = PartPresets.stack(d.kind(), PartSpec.of("steel_1045", 1, 1));
         p.setItemInHand(InteractionHand.MAIN_HAND, stack);
-        String why = PartSpecEdits.apply(p, InteractionHand.MAIN_HAND, new PartSpec(d.material(), len, cross, d.params()));
+        String why = PartSpecEdits.apply(p, InteractionHand.MAIN_HAND, new PartSpec(d.material(), len, cross, d.params(), text));
         if (why != null) {
             problems.add(exhibit + ": the editor refused the " + d.kind() + " at " + cell(d) + ": " + why);
             return;
@@ -305,11 +305,11 @@ public final class PlayerBuilder {
      * Places one part: makes it in the editor, then clicks where it goes. Returns its id once it is there (problems
      * noted if it came out otherwise than defined), or null if there is nothing to click against yet.
      */
-    private static Long place(ServerLevel level, FakePlayer p, BlockPos at, Exhibit.PartDef d, List<String> problems, String exhibit) {
+    private static Long place(ServerLevel level, FakePlayer p, BlockPos at, Exhibit.PartDef d, List<String> problems, String exhibit, String text) {
         // the part from the creative tab, then the editor
         ItemStack stack = PartPresets.stack(d.kind(), PartSpec.of("steel_1045", 1, 1));
         p.setItemInHand(InteractionHand.MAIN_HAND, stack);
-        PartSpec spec = new PartSpec(d.material(), 1, 1, d.params());
+        PartSpec spec = new PartSpec(d.material(), 1, 1, d.params(), text);
         String why = PartSpecEdits.apply(p, InteractionHand.MAIN_HAND, spec);
         if (why != null) {
             problems.add(exhibit + ": the editor refused the " + d.kind() + " at " + cell(d) + ": " + why);

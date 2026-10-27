@@ -104,12 +104,22 @@ public final class PartParameters {
         if (!s.materials().test(m)) return "a " + kind.name().toLowerCase().replace('_', ' ') + " cannot be made of " + m.name();
         for (var e : params.entrySet()) {
             Param p = s.param(e.getKey());
+            if (p == null && kind == PartKind.CHIP && e.getKey().startsWith(DESIGN_PARAM)) {
+                if (!Double.isFinite(e.getValue())) return e.getKey().substring(DESIGN_PARAM.length()) + " is not a number";
+                continue;
+            }
             if (p == null) return "a " + kind.name().toLowerCase().replace('_', ' ') + " has no parameter \"" + e.getKey() + "\"";
             String why = checkValue(p, e.getValue());
             if (why != null) return why;
         }
         return null;
     }
+
+    /**
+     * The prefix of a chip part's design parameters: "p_lo" overrides the {@code param lo} of the design written on it.
+     * Which there are depends on the design, so the schema takes any.
+     */
+    public static final String DESIGN_PARAM = "p_";
 
     /** Null if the value is allowed for the parameter, else why not. */
     public static String checkValue(Param p, double v) {
@@ -483,9 +493,13 @@ public final class PartParameters {
                 .build();
         new B(PartKind.CHIP).made("silicon", SEMICONDUCTOR)
                 .choice("function", "Chip", 0, List.of(new Choice(0, "4-bit counter"), new Choice(1, "4-bit register"), new Choice(2, "4-bit adder"),
-                        new Choice(3, "16 × 8 ROM"), new Choice(4, "16 × 4 RAM")), "Which medium-scale chip this segment row belongs to.")
-                .adv().log().real("delay", "Propagation delay", "s", 1e-10, 1e-3, 10e-9, "How long its outputs take to follow.")
-                .adv().log().real("output_resistance", "Output resistance", "Ω", 1, 10_000, 50, "How stiffly its outputs hold their level.")
+                        new Choice(3, "16 × 8 ROM"), new Choice(4, "16 × 4 RAM"), new Choice(5, "your design (chip designer)"),
+                        new Choice(6, "crystal clock"), new Choice(7, "10-bit SPI ADC"), new Choice(8, "128 × 64 display controller")),
+                        "Which chip this segment row belongs to. A design of your own is written in the chip designer.")
+                .when(is("function", 0, 6)).log().real("frequency", "Frequency", "Hz", 1, 1e8, 10_000, "The crystal's frequency: the square wave on its output.")
+                .when(is("function", 0, 6)).adv().real("ppm", "Crystal error", "ppm", -500, 500, 0, "How far off nominal this crystal runs, parts per million.")
+                .when(is("function", 0, 0, 1, 2, 3, 4)).adv().log().real("delay", "Propagation delay", "s", 1e-10, 1e-3, 10e-9, "How long its outputs take to follow.")
+                .when(is("function", 0, 0, 1, 2, 3, 4)).adv().log().real("output_resistance", "Output resistance", "Ω", 1, 10_000, 50, "How stiffly its outputs hold their level.")
                 .family("w", "ROM contents", romWords(), "The ROM's sixteen bytes.", is("function", 0, 3))
                 .component(0.002, Double.NaN).build();
         new B(PartKind.PHOTODIODE).made("silicon", SEMICONDUCTOR)
@@ -572,6 +586,11 @@ public final class PartParameters {
                 .adv().shown("cm²", 1e4).log().real("surface_area", "Cooling surface", "m²", 1e-4, 1, 0.02, "Its case's surface to the air.")
                 .adv().real("max_temperature", "Temperature limit", "K", 300, 400, 333, "Hotter than this it is ruined.")
                 .build();
+        new B(PartKind.DISPLAY).made("glass", TRANSPARENT).build();
+        new B(PartKind.PRESSURE_SENSOR).made("stainless_304", VESSEL)
+                .shown("bar", 1e-5).real("pmin", "Range from", "Pa", -1e5, 1e8, 0, "Gauge pressure at which its output is 10 % of its supply.")
+                .shown("bar", 1e-5).real("pmax", "Range to", "Pa", 1e3, 1e8, 10e5, "Gauge pressure at which its output is 90 % of its supply.")
+                .component(0.03, 400).build();
         for (PartKind k : PartKind.values()) if (!SCHEMAS.containsKey(k)) throw new IllegalStateException("no parameter schema for " + k);
     }
 

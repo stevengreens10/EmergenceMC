@@ -89,7 +89,7 @@
   "item.emergence.opamp": "Op-Amp",
   "tooltip.emergence.opamp": "Operational amplifier: + input on its back face, output on its front, supplies on its sides, − input below. Gain 10⁵, 3 MHz, output near the rails.",
   "tooltip.emergence.photodiode": "Silicon junction: light on its face drives current out of the anode (−) lead. Large ones are solar cells.",
-  "tooltip.emergence.chip": "One pin pair of a 74HC-class chip: lay segments of the same chip in a row along their axis.",
+  "tooltip.emergence.chip": "One pin pair of a chip: lay segments of the same chip in a row along their axis — segment k has input k on one side and output k on the other, the last GND and V_DD. 74HC-class counter, register, adder, ROM and RAM; or a chip simulated by events: one of your own design (write it in the chip designer), a crystal clock, a 10-bit SPI ADC, or a display controller (touching a display panel).",
   "tooltip.emergence.brake": "Friction pad: its face presses on whatever turns in front of it (torque μ·F·r). Use it to apply or release.",
   "item.emergence.cylinder": "Piston Cylinder",
   "item.emergence.eccentric": "Crank Throw",
@@ -100,5 +100,9 @@
   "tooltip.emergence.transistor": "Emitter/source on the −axis face, collector/drain on the +axis face, base/gate on the sides. Bipolar (Ebers–Moll) or MOSFET physics.",
   "tooltip.emergence.led": "Anode on the −axis lead, cathode on +axis. Light from recombining electrons: the colour sets the forward voltage.",
   "item.emergence.logic": "Logic Chip",
-  "tooltip.emergence.logic": "CMOS logic (74HC class). Input A / D on the −axis face, output on +axis, GND and V_DD on the −/+ lead-axis sides, input B / clock on the remaining −side, Q̄ on its +side."
+  "tooltip.emergence.logic": "CMOS logic (74HC class). Input A / D on the −axis face, output on +axis, GND and V_DD on the −/+ lead-axis sides, input B / clock on the remaining −side, Q̄ on its +side.",
+  "item.emergence.display": "Display panel",
+  "tooltip.emergence.display": "A 128 × 64 monochrome OLED screen, its image on its axis face. It has no pins: the display controller chip (a chip of function 8) touching it drives it, as by a flex cable, taking commands and image bytes over its serial bus (SSD1306-style: page addressing, contrast, invert). The panel draws current for every lit pixel.",
+  "item.emergence.pressure_sensor": "Pressure transducer",
+  "tooltip.emergence.pressure_sensor": "A silicon diaphragm with a strain-gauge bridge and its amplifier. Its port (the face opposite its axis) goes against a vessel or pipe; it gives 10 % of its supply at pmin and 90 % at pmax (gauge pressure, above the air's) on its axis face — ratiometric, so an ADC fed from the same supply reads the pressure whatever the supply. GND and V_DD on its sides."
 }

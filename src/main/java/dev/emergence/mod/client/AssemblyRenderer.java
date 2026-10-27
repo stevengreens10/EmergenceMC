@@ -73,6 +73,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         VertexConsumer solid, glass;
         /** Where box()/quad() draw (null: the opaque buffer) and with what alpha. */
         VertexConsumer quadTarget;
+        /** The frame's buffers (for a display's own texture). */
+        MultiBufferSource buffers;
         int quadAlpha = 255;
         int light;
         int glowRgb = -1; // −1: not glowing
@@ -88,6 +90,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         Ctx c = new Ctx();
         c.ps = ps;
         c.solid = buffers.getBuffer(Sheets.solidBlockSheet());
+        c.buffers = buffers;
         BlockPos pos = be.getBlockPos();
         double now = level.getGameTime() + partialTick;
         ClientSimState.frameTime();
@@ -190,7 +193,8 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
         Vector3f x = new Vector3f(l == 0 ? 1 : 0, l == 1 ? 1 : 0, l == 2 ? 1 : 0);
         Vector3f y = new Vector3f(z).cross(x);
         if ((p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE || p.kind == PartKind.LED || p.kind == PartKind.TRANSISTOR
-                || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP || p.kind == PartKind.OPAMP) && a != 1) {
+                || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP || p.kind == PartKind.OPAMP || p.kind == PartKind.DISPLAY
+                || p.kind == PartKind.PRESSURE_SENSOR) && a != 1) {
             // a knife switch lying on its side: base down (model −Y), whatever the lead axis
             y.set(0, 1, 0);
             x.set(new Vector3f(y).cross(z));
@@ -293,6 +297,14 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 if (p.spec.params().getOrDefault("photo", 0.0) > 0) drawPhotoWindow(c, p, f);
             }
             case LOGIC -> drawModel(c, "logic", p, 1, 1, 1, false);
+            case DISPLAY -> drawDisplay(c, p, ex, ey, ez);
+            case PRESSURE_SENSOR -> {
+                // a stainless body on a hex port (the −axis end, against the vessel), a cable gland at the other
+                TextureAtlasSprite s = PartModels.sprite("metal_smooth");
+                box(c, PartModels.sprite("metal_cast"), tintOf(c, 0x9A9CA0), -0.3f, -0.3f, -0.5f * ez, 0.3f, 0.3f, -0.3f * ez);
+                cylinder(c, s, tintOf(c, 0xC4C6CA), 0.22f, -0.3f * ez, 0.32f * ez, 16, true);
+                box(c, PartModels.sprite("plastic"), tintOf(c, 0x1E1E20), -0.08f, -0.08f, 0.32f * ez, 0.08f, 0.08f, 0.5f * ez);
+            }
             case LED -> drawModel(c, "led", p, 1, 1, 1, false);
             case CYLINDER -> {
                 drawModel(c, "cylinder", p, Math.min(ex, ey), Math.min(ex, ey), ez, false);
@@ -1323,6 +1335,43 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 quad(c, s, rgb, 0, 0, z0, r * c1, r * s1, z0, r * c0, r * s0, z0, 0, 0, z0, 0, 0, -1);
             }
         }
+    }
+
+    /**
+     * A display panel: a dark bezel and, on its axis face, the image its controller shows (2:1, as large as the face
+     * allows), lit by itself.
+     */
+    private void drawDisplay(Ctx c, PlacedPart p, float ex, float ey, float ez) {
+        float t = Math.min(0.12f, 0.3f * ez);
+        box(c, PartModels.sprite("plastic"), tintOf(c, 0x1A1B1E), -0.5f * ex, -0.5f * ey, 0.5f * ez - t, 0.5f * ex, 0.5f * ey, 0.5f * ez);
+        net.minecraft.resources.ResourceLocation loc = ClientDisplays.texture(p.id);
+        float[] tile = ClientDisplays.tile(p.id);
+        if (tile == null) {
+            // one panel alone: the image letterboxed in its face
+            float w = 0.92f * ex, h = 0.92f * ey;
+            if (w > 2 * h) w = 2 * h;
+            else h = w / 2;
+            tile = new float[]{-(ex - w) / 2 / w, -(ey - h) / 2 / h, 1 + (ex - w) / 2 / w, 1 + (ey - h) / 2 / h};
+        }
+        float z = 0.5f * ez + 0.002f;
+        // the part of the image on this face: u across from its left edge, v down from its top
+        float uL = tile[0], vT = tile[1], uR = tile[2], vB = tile[3];
+        float u0 = Math.max(0, uL), u1 = Math.min(1, uR), v0 = Math.max(0, vT), v1 = Math.min(1, vB);
+        if (u0 >= u1 || v0 >= v1) return;
+        float x0 = -ex / 2 + (u0 - uL) / (uR - uL) * ex, x1 = -ex / 2 + (u1 - uL) / (uR - uL) * ex;
+        float y0 = ey / 2 - (v0 - vT) / (vB - vT) * ey, y1 = ey / 2 - (v1 - vT) / (vB - vT) * ey;
+        if (loc == null) {
+            box(c, PartModels.sprite("plastic"), tintOf(c, 0x08090A), x0, y1, z - 0.001f, x1, y0, z);
+            return;
+        }
+        VertexConsumer vc = c.buffers.getBuffer(net.minecraft.client.renderer.RenderType.text(loc));
+        Matrix4f m = c.ps.last().pose();
+        int light = LightTexture.FULL_BRIGHT;
+        // column 0 on the viewer's left (model −X), row 0 at the top (model +Y)
+        vc.addVertex(m, x0, y0, z).setColor(255, 255, 255, 255).setUv(u0, v0).setLight(light);
+        vc.addVertex(m, x0, y1, z).setColor(255, 255, 255, 255).setUv(u0, v1).setLight(light);
+        vc.addVertex(m, x1, y1, z).setColor(255, 255, 255, 255).setUv(u1, v1).setLight(light);
+        vc.addVertex(m, x1, y0, z).setColor(255, 255, 255, 255).setUv(u1, v0).setLight(light);
     }
 
     private void box(Ctx c, TextureAtlasSprite s, int rgb, float x0, float y0, float z0, float x1, float y1, float z1) {

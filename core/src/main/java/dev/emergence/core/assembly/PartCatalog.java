@@ -145,8 +145,13 @@ public final class PartCatalog {
         add(PartKind.LED, "Infrared LED", "silicon", "wavelength", 850, "efficiency", 0.3, "beam", 20);
         String[] gates = {"Buffer", "NOT gate", "NAND gate", "NOR gate", "AND gate", "OR gate", "XOR gate", "Schmitt inverter", "D flip-flop"};
         for (int fn = 0; fn < gates.length; fn++) add(PartKind.LOGIC, gates[fn], "silicon", "function", fn);
-        String[] chips = {"4-bit counter", "4-bit register", "4-bit adder", "16 × 8 ROM", "16 × 4 RAM"};
+        String[] chips = {"4-bit counter", "4-bit register", "4-bit adder", "16 × 8 ROM", "16 × 4 RAM", "Custom chip (your design)",
+                "Crystal clock", "10-bit SPI ADC", "Display controller"};
         for (int fn = 0; fn < chips.length; fn++) add(PartKind.CHIP, chips[fn], "silicon", "function", fn);
+        add(PartKind.CHIP, "Crystal clock, 100 kHz", "silicon", "function", 6, "frequency", 100_000);
+        add(PartKind.DISPLAY, "128 × 64 OLED display", "glass");
+        add(PartKind.PRESSURE_SENSOR, "Pressure transducer, 0–10 bar", "stainless_304", "pmin", 0, "pmax", 10e5);
+        add(PartKind.PRESSURE_SENSOR, "Pressure transducer, 0–2 bar", "stainless_304", "pmin", 0, "pmax", 2e5);
         add(PartKind.PHOTODIODE, "Photodiode (BPW34)", "silicon", "area", 7.5e-6);
         add(PartKind.PHOTODIODE, "Solar cell", "silicon", "area", 0.0035);
         add(PartKind.OPAMP, "Op-amp (TL071)", "silicon");

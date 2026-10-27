@@ -1115,3 +1115,19 @@ Tried and dropped: minimum-degree ordering, a 0.01 pivot threshold, a quadratic 
 early-abort schemes, and a wider liquid/vapour wetting band at ports (it made the valve ports' failures worse).
 In the game the station passes its tour and runs at 0.6 of real time. There it costs ~1.4 s/s: the client shares the
 cores, and the circuits iterate more.
+
+**Monitors and chips of the player's design (2026-10-26, night).** The user's next goal is a monitor that graphs data
+such as temperature or pressure. The design was agreed with the user and the decisions were mine. Primitive where the
+physics is the interesting part; where a part is only repetition, its inside is abstracted but its pins stay physical.
+- *A chip language* (`ChipDesign`), register-transfer and Verilog-flavoured, with synthesis estimates (gates, logic
+  depth, maximum clock, energy per edge).
+- *An event-driven digital domain.* Chips' insides run outside Newton. Nets joining only chip pins leave the analog
+  network. Pins on analog nets are physical: thresholds, 50 Ω outputs, supply current from leakage and switching, heat.
+- *Library parts:* a crystal clock, a 10-bit SPI ADC, an SSD1306-style 128 × 64 display controller with panels that
+  tile screens, and an amplified pressure transducer on a vessel port.
+- *A shipped chart-recorder design.* It reads the ADC and sweeps the reading across the screen, joining points with
+  strokes and clearing ahead.
+- *The chart recorder exhibit:* a heated vessel's pressure and temperature graphed on two screens. A design's own
+  parameters are a chip part's `p_<name>` parameters, so the part editor accepts any design's.
+- *The mod:* the parts, the panels' images synced and drawn, and a tour step.
+Still to come: the chip designer screen, fabrication, and radio (left out for now by the user).

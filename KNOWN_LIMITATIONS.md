@@ -115,7 +115,13 @@ behaviour; where physics is missing the effect is simply absent.
 ## Electronics
 * Transistors: no breakdown, high-injection or short-channel effects; MOSFET body tied to source.
 * Logic chips are a reduced-order model (thresholds of ratioed 74HC parts, fixed 10 ns delay, no input
-  leakage or ESD diodes); large digital systems still run in the analog solver (no event-driven engine).
+  leakage or ESD diodes). The gate-level LOGIC parts and MSI chips (functions 0–4) still run in the analog solver;
+  chips of the player's design and the library parts (functions 5–8) run by events.
+* Chips by events: a timing violation holds the registers rather than latching garbage; no glitches, metastability
+  or ground bounce; a digital net is ideal apart from its capacitance; outputs are 50 Ω whatever the load. A design
+  can be set only through its part's text (exhibits, item data): the in-game chip designer is not written yet, and
+  chips are not yet fabricated from materials (a CHIP part of silicon is enough). Display images reach clients as
+  whole frames (1 KB) at most every other tick per panel, not as compressed deltas. No radio.
 * Light: LEDs, daylight and hot parts illuminate photodiodes (hot parts directly only: not by way of mirrors and
   lenses, and not lighting other parts); torches and Minecraft light do not. Tungsten does not oxidise in air (a real
   filament needs a bulb of inert gas). Diffuse

@@ -29,6 +29,17 @@ public final class CodeEditor extends AbstractWidget {
             "if", "else", "case", "default");
 
     private final Font font;
+    /** What is coloured as a keyword, and whether case matters; what starts a comment. */
+    private Set<String> keywords = KEYWORDS;
+    private boolean anyCase;
+    private String[] comments = {"//"};
+
+    /** Colours another language: its keywords (case-insensitive if asked) and comment openers. */
+    public void syntax(Set<String> kw, boolean caseInsensitive, String... commentStarts) {
+        keywords = kw;
+        anyCase = caseInsensitive;
+        comments = commentStarts;
+    }
     private final List<String> lines = new ArrayList<>();
     private int line, col;            // the cursor
     private int anchorLine = -1, anchorCol;  // the selection's other end (−1: none)
@@ -140,12 +151,15 @@ public final class CodeEditor extends AbstractWidget {
         while (i < n) {
             char c = text.charAt(i);
             int j = i + 1, colour = TEXT;
-            if (c == '/' && i + 1 < n && text.charAt(i + 1) == '/') {
+            boolean comment = false;
+            for (String cs : comments) comment |= text.startsWith(cs, i);
+            if (comment) {
                 j = n;
                 colour = COMMENT;
-            } else if (Character.isLetter(c) || c == '_') {
+            } else if (Character.isLetter(c) || c == '_' || c == '.') {
                 while (j < n && (Character.isLetterOrDigit(text.charAt(j)) || text.charAt(j) == '_')) j++;
-                if (KEYWORDS.contains(text.substring(i, j))) colour = KEYWORD;
+                String word = text.substring(i, j);
+                if (keywords.contains(anyCase ? word.toUpperCase(java.util.Locale.ROOT) : word)) colour = KEYWORD;
             } else if (Character.isDigit(c)) {
                 while (j < n && (Character.isLetterOrDigit(text.charAt(j)) || text.charAt(j) == '\'' || text.charAt(j) == '_')) j++;
                 colour = LITERAL;

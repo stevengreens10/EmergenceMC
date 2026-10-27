@@ -106,5 +106,7 @@
   "item.emergence.pressure_sensor": "Pressure transducer",
   "tooltip.emergence.pressure_sensor": "A silicon diaphragm with a strain-gauge bridge and its amplifier. Its port (the face opposite its axis) goes against a vessel or pipe; it gives 10 % of its supply at pmin and 90 % at pmax (gauge pressure, above the air's) on its axis face — ratiometric, so an ADC fed from the same supply reads the pressure whatever the supply. GND and V_DD on its sides.",
   "item.emergence.ribbon": "Ribbon Cable",
-  "tooltip.emergence.ribbon": "Sixteen insulated conductors in a flat cable, colour-coded as insulated wire is. Each conductor joins the insulated wires of its own colour that touch the ribbon, and the next block of ribbon; nothing else. Lay it against a miniature block and the miniature wires of each colour touching that face join its conductors: how signals and power pass between the scales."
+  "tooltip.emergence.ribbon": "Sixteen insulated conductors in a flat cable, colour-coded as insulated wire is. Each conductor joins the insulated wires of its own colour that touch the ribbon, and the next block of ribbon; nothing else. Lay it against a miniature block and the miniature wires of each colour touching that face join its conductors: how signals and power pass between the scales.",
+  "item.emergence.logic_analyzer": "Logic Analyser",
+  "tooltip.emergence.logic_analyzer": "Eight probes and a ground lead. Use on a wire: clip the next probe to it; sneak-use: the ground lead. A net only chips touch is recorded as its level switches, to the nanosecond; any other, as its voltage at every simulation step. Use in the air: its screen (zoom, pan, trigger a single capture)."
 }

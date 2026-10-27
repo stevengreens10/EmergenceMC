@@ -44,6 +44,14 @@ public final class ClientHooks {
         }
     }
 
+    public static void openAnalyzer() {
+        Minecraft.getInstance().setScreen(new AnalyzerScreen());
+    }
+
+    public static void analyzerData(dev.emergence.mod.net.AnalyzerPayloads.Data d) {
+        if (Minecraft.getInstance().screen instanceof AnalyzerScreen s) s.data(d);
+    }
+
     /** A running chip's state came back: to the designer or ROM editor that asked. */
     public static void chipProbe(ChipProbePayload p) {
         var s = Minecraft.getInstance().screen;

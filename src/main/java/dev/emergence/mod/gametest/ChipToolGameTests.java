@@ -166,6 +166,129 @@ public final class ChipToolGameTests {
         });
     }
 
+    /**
+     * Across scales in the world: the full-size crank on the miniature generator's block turns the miniature shaft —
+     * the two blocks one machine, their shafts coupled across the face — and the miniature generator lights its load.
+     */
+    @GameTest(template = "arena", timeoutTicks = 300, batch = "acrossscales")
+    public static void aFullSizeCrankTurnsAMiniatureGenerator(GameTestHelper h) {
+        var ex = dev.emergence.core.demo.ScaleExhibits.crankAcrossScales();
+        BlockPos plot = h.absolutePos(new BlockPos(0, 1, 0));
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        BlockPos mini = plot.offset(dev.emergence.mod.demo.DemoBuilder.MINIATURE_AT);
+        var cd = ex.blockParts.get(ex.namedBlock.get("crank"));
+        BlockPos crankAt = mini.offset(cd.x0(), cd.y0(), cd.z0());
+        var sim = dev.emergence.mod.sim.SimulationManager.get(h.getLevel());
+        double[] peak = {0};
+        java.util.function.Function<PartKind, PlacedPart> in = k -> {
+            BlockPos at = k == PartKind.CRANK ? crankAt : mini;
+            return h.getLevel().getBlockEntity(at) instanceof AssemblyBlockEntity be
+                    ? be.parts().stream().filter(q -> q.kind == k).findFirst().orElse(null) : null;
+        };
+        h.onEachTick(() -> {
+            var c = sim.compiledAt(mini);
+            PlacedPart crank = in.apply(PartKind.CRANK), load = in.apply(PartKind.RESISTOR);
+            if (c == null || crank == null || load == null) return;
+            c.setCrankTorque(crank.id, 1.0);
+            var pr = c.probe(load.id);
+            if (pr != null && Double.isFinite(pr.current())) peak[0] = Math.max(peak[0], Math.abs(pr.current()));
+        });
+        h.runAtTickTime(280, () -> {
+            var c = sim.compiledAt(mini);
+            h.assertTrue(c != null && c == sim.compiledAt(crankAt), "the miniature block and the full-size crank are one machine");
+            h.assertTrue(c.shaftCouplings() == 1, "their shafts are coupled across the face: " + c.shaftCouplings() + " " + c.warnings());
+            PlacedPart crank = in.apply(PartKind.CRANK), shaft = in.apply(PartKind.SHAFT);
+            double big = Math.abs(c.probe(crank.id).angularVelocity()), small = Math.abs(c.probe(shaft.id).angularVelocity());
+            h.assertTrue(big > 2, "the full-size crank turns: " + big + " rad/s");
+            h.assertTrue(Math.abs(big - small) < 0.05 * big, "the miniature shaft turns with it: " + big + " / " + small + " rad/s");
+            h.assertTrue(peak[0] > 1e-3, "the miniature generator drives its load: " + peak[0] + " A");
+            h.succeed();
+        });
+    }
+
+    /** Places a part item by clicking the top of the block below {@code at}, the player sneaking and looking along {@code axis}. */
+    private static void placeAt(GameTestHelper h, FakePlayer p, ItemStack stack, BlockPos at, Direction axis) {
+        p.setShiftKeyDown(true);
+        float yaw = switch (axis) {
+            case SOUTH -> 0;
+            case WEST -> 90;
+            case NORTH -> 180;
+            default -> -90;
+        };
+        p.setYRot(yaw);
+        p.setXRot(0);
+        clickTop(h, p, stack, at.below());
+        p.setShiftKeyDown(false);
+    }
+
+    /** A sneak-click wire run from the free cell against face {@code fa} of block {@code a} to that against {@code fb} of {@code b}. */
+    private static void run(FakePlayer p, PartSpec wire, BlockPos a, Direction fa, BlockPos b, Direction fb) {
+        ItemStack stack = PartPresets.stack(PartKind.INSULATED_WIRE, wire);
+        WireRouting.click(p, stack, PartKind.INSULATED_WIRE, wire, a, fa);
+        WireRouting.click(p, stack, PartKind.INSULATED_WIRE, wire, b, fb);
+    }
+
+    /**
+     * The whole path a player takes to a working chip circuit, with the tools only: a battery, a crystal clock and a
+     * chip of their own design (a blinker) placed from items — the chips whole — an LED and its resistor, every
+     * connection a sneak-click wire run; the LED blinks. Then a new design written onto the placed chip, as the chip
+     * designer does: the LED does what it says.
+     */
+    @GameTest(template = "arena", timeoutTicks = 400, batch = "workflow")
+    public static void playerBuildsAWorkingChipCircuit(GameTestHelper h) {
+        BlockPos o = h.absolutePos(new BlockPos(1, 2, 1));
+        FakePlayer p = player(h, o.offset(5, 0, 12), 180);
+        p.setPos(o.getX() + 5.5, o.getY() + 1, o.getZ() + 12.5);
+        String blink = "chip blink\nin clk\nout led\nreg lit = 0\non rise clk { lit <= !lit }\nassign led = lit\n";
+        String steady = "chip steady\nin clk\nout led\nassign led = 1\n";
+        BlockPos bat = o, clock = o.offset(3, 0, 3), chip = o.offset(7, 0, 3), led = o.offset(7, 0, 7), res = o.offset(7, 0, 8);
+        placeAt(h, p, PartPresets.stack(PartKind.BATTERY, new PartSpec("pvc", 1, 1, Map.of("chemistry", 1.0, "cells", 4.0, "capacity", 2.0))), bat, Direction.EAST);
+        // chips: placed facing north, so each runs east (to the player's right), inputs on the north side
+        p.setYRot(180);
+        clickTop(h, p, PartPresets.stack(PartKind.CHIP, new PartSpec("silicon", 1, 1, Map.of("function", 6.0, "frequency", 4.0))), clock.below());
+        clickTop(h, p, PartPresets.stack(PartKind.CHIP, new PartSpec("silicon", 1, 1, Map.of("function", (double) ChipTypes.DESIGN), blink)), chip.below());
+        placeAt(h, p, PartPresets.stack(PartKind.LED, new PartSpec("silicon", 1, 1, Map.of("wavelength", 630.0))), led, Direction.SOUTH);
+        placeAt(h, p, PartPresets.stack(PartKind.RESISTOR, new PartSpec("alumina", 1, 1, Map.of("resistance", 470.0))), res, Direction.SOUTH);
+        h.assertTrue(chipAt(h, clock) != null && chipAt(h, clock.east()) != null, "the clock went down whole");
+        h.assertTrue(chipAt(h, chip) != null && chipAt(h, chip.east()) != null, "the blinker went down whole");
+        PartSpec vdd = PartSpec.of("copper", 1, 1, "color", 1), gnd = PartSpec.of("copper", 1, 1, "color", 2),
+                clk = PartSpec.of("copper", 1, 1, "color", 3), out = PartSpec.of("copper", 1, 1, "color", 4);
+        p.setShiftKeyDown(true);
+        run(p, clk, clock, Direction.SOUTH, chip, Direction.NORTH);             // the clock's output to the chip's clk
+        run(p, out, chip, Direction.SOUTH, led, Direction.NORTH);               // its led output to the LED
+        run(p, vdd, bat, Direction.EAST, clock.east(), Direction.SOUTH);        // + to the clock's V+
+        run(p, vdd, clock.east().south(), Direction.UP, chip.east(), Direction.SOUTH); // and on to the chip's
+        run(p, gnd, bat, Direction.WEST, clock.east(), Direction.NORTH);        // − to the clock's GND
+        run(p, gnd, clock.east().north(), Direction.UP, chip.east(), Direction.NORTH); // the chip's
+        run(p, gnd, chip.east().north(), Direction.UP, res, Direction.SOUTH);   // and the resistor's foot
+        p.setShiftKeyDown(false);
+        var sim = dev.emergence.mod.sim.SimulationManager.get(h.getLevel());
+        int[] flips = {0};
+        boolean[] lastOn = {false}, steadyOn = {true};
+        long[] ledId = {-1};
+        h.onEachTick(() -> {
+            var c = sim.compiledAt(led);
+            if (c == null || !(h.getLevel().getBlockEntity(led) instanceof AssemblyBlockEntity be)) return;
+            if (ledId[0] < 0) ledId[0] = be.parts().stream().filter(q -> q.kind == PartKind.LED).findFirst().map(q -> q.id).orElse(-1L);
+            var pr = ledId[0] < 0 ? null : c.probe(ledId[0]);
+            if (pr == null) return;
+            boolean on = Math.abs(pr.current()) > 1e-3;
+            if (h.getTick() < 200) {
+                if (on != lastOn[0]) flips[0]++;
+                lastOn[0] = on;
+            } else if (h.getTick() > 300 && !on) steadyOn[0] = false;
+        });
+        h.runAtTickTime(200, () -> {
+            h.assertTrue(flips[0] >= 4, "the LED blinked (" + flips[0] + " changes)");
+            String why = ChipEdits.writeText(p, chip, chipAt(h, chip).id, steady);
+            h.assertTrue(why == null, "the new design written: " + why);
+        });
+        h.runAtTickTime(390, () -> {
+            h.assertTrue(steadyOn[0], "with the new design the LED stays lit");
+            h.succeed();
+        });
+    }
+
     /** A wire run between two resistors' ends goes round a third part rather than beside it. */
     @GameTest(template = "arena", timeoutTicks = 40, batch = "chiptools")
     public static void wireRunsAroundWhatItShouldNotTouch(GameTestHelper h) {

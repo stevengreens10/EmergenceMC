@@ -195,11 +195,45 @@ public final class SimulationManager {
         markDirty(pos);
     }
 
-    /** Whether one of two neighbouring blocks, of different scales, is a full-size ribbon cable against the other. */
-    private boolean ribbonBetween(BlockPos a, BlockPos b) {
+    /**
+     * Whether two neighbouring blocks of different scales are one machine: a full-size ribbon against the miniature
+     * block, or anything of either touching across their shared face (heat, a shaft, a pipe: see {@link #crossLinks}).
+     */
+    private boolean joinedAcross(BlockPos a, BlockPos b) {
         AssemblyBlockEntity ba = blocks.get(a), bb = blocks.get(b);
-        AssemblyBlockEntity full = ba.resolution() == AssemblyBlockEntity.BLOCK_SCALE ? ba : bb;
-        return full.resolution() == AssemblyBlockEntity.BLOCK_SCALE && full.parts().stream().anyMatch(p -> p.kind == PartKind.RIBBON);
+        boolean aFull = ba.resolution() == AssemblyBlockEntity.BLOCK_SCALE;
+        AssemblyBlockEntity full = aFull ? ba : bb, mini = aFull ? bb : ba;
+        if (full.resolution() != AssemblyBlockEntity.BLOCK_SCALE || mini.resolution() != AssemblyBlockEntity.MINIATURE) return false;
+        if (full.parts().stream().anyMatch(p -> p.kind == PartKind.RIBBON)) return true;
+        BlockPos fp = aFull ? a : b, mp = aFull ? b : a;
+        Direction d = Direction.getNearest(mp.getX() - fp.getX(), mp.getY() - fp.getY(), mp.getZ() - fp.getZ());
+        return !full.parts().isEmpty() && mini.parts().stream().anyMatch(p -> onFace(p, d.getOpposite(), mini.resolution()));
+    }
+
+    /** Whether a miniature part has a cell on its block's face in direction {@code f}. */
+    private static boolean onFace(PlacedPart p, Direction f, int res) {
+        int last = res - 1;
+        return switch (f) {
+            case EAST -> p.x1 == last;
+            case WEST -> p.x0 == 0;
+            case UP -> p.y1 == last;
+            case DOWN -> p.y0 == 0;
+            case SOUTH -> p.z1 == last;
+            case NORTH -> p.z0 == 0;
+        };
+    }
+
+    /** The links across the face between a full-size block and the miniature block next to it (core CrossScale's rules). */
+    private void crossLinks(Island isl, BlockPos fp, AssemblyBlockEntity full, Direction d, BlockPos mp, AssemblyBlockEntity mini, Assembly asm) {
+        int r = mini.resolution();
+        int[] sh = isl.shift == null ? new int[3] : isl.shift;
+        int[] origin = {mp.getX() * r, mp.getY() * r, mp.getZ() * r};
+        List<Part> miniParts = new ArrayList<>();
+        for (PlacedPart p : mini.parts()) miniParts.add(p.toCore(mp, r));
+        for (PlacedPart q : full.parts()) {
+            Part fq = q.toCore(fp, AssemblyBlockEntity.BLOCK_SCALE, sh);
+            dev.emergence.core.assembly.CrossScale.link(asm, fq, new int[]{fq.minX(), fq.minY(), fq.minZ()}, Dir.values()[d.ordinal()], miniParts, origin, r);
+        }
     }
 
     /**
@@ -232,6 +266,28 @@ public final class SimulationManager {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Cells of an island's assembly grid as world blocks. One resolution, or (a joined island) both: a cell is a
+     * full-size one when, shift taken off, it falls on or within two blocks of the island's full-size blocks (the
+     * shift puts them well clear of the miniature cells), else a miniature one.
+     */
+    record CellMap(int res, int[] shift, Set<BlockPos> full) {
+        int res(int x, int y, int z) {
+            if (shift == null) return res;
+            BlockPos b = new BlockPos(x - shift[0], y - shift[1], z - shift[2]);
+            for (BlockPos f : full) if (Math.abs(f.getX() - b.getX()) <= 2 && Math.abs(f.getY() - b.getY()) <= 2 && Math.abs(f.getZ() - b.getZ()) <= 2) {
+                return AssemblyBlockEntity.BLOCK_SCALE;
+            }
+            return AssemblyBlockEntity.MINIATURE;
+        }
+
+        BlockPos block(int x, int y, int z) {
+            int r = res(x, y, z);
+            if (shift != null && r == AssemblyBlockEntity.BLOCK_SCALE) return new BlockPos(x - shift[0], y - shift[1], z - shift[2]);
+            return new BlockPos(Math.floorDiv(x, r), Math.floorDiv(y, r), Math.floorDiv(z, r));
         }
     }
 
@@ -425,6 +481,7 @@ public final class SimulationManager {
             else farTotal += ms;
         }
         tickLoggers();
+        tickAnalyzers();
         // all islands together within the server's budget, by priority: the machine a player stands at first, then
         // those around them, then the rest — if they cost more, the further ones slow (down to nearly paused) before
         // the one being watched does
@@ -679,6 +736,122 @@ public final class SimulationManager {
     /** Common slow-motion factor applied on top of each island's own when all of them together are too costly. */
     private double watchedScale = 1, nearScale = 1, farScale = 1;
 
+    // ------------------------------------------------------------------ logic analysers
+
+    /** A player's logic analyser: its probes (parts of one machine), its ground clip, its capture. */
+    public static final class AnalyzerSession {
+        BlockPos pos;
+        final long[] probes = {-1, -1, -1, -1, -1, -1, -1, -1};
+        final String[] names = {"", "", "", "", "", "", "", ""};
+        long ground = -1;
+        final dev.emergence.core.instruments.LogicCapture cap = new dev.emergence.core.instruments.LogicCapture(131_072);
+        CompiledAssembly attachedTo;
+        boolean dirty;
+    }
+
+    private final Map<UUID, AnalyzerSession> analyzers = new HashMap<>();
+
+    /**
+     * Clips a probe onto a part: the next free channel (all used: the first is moved), or the ground lead. Probes are on
+     * one machine: clipping onto another machine's part starts afresh. Returns a status line.
+     */
+    public String clipAnalyzer(ServerPlayer player, BlockPos pos, long partId, String title, boolean ground) {
+        AnalyzerSession s = analyzers.computeIfAbsent(player.getUUID(), k -> new AnalyzerSession());
+        Island here = islandOf.get(pos), there = s.pos == null ? null : islandOf.get(s.pos);
+        if (here == null) return "That part is not in a machine yet.";
+        if (there != here) {
+            java.util.Arrays.fill(s.probes, -1);
+            java.util.Arrays.fill(s.names, "");
+            s.ground = -1;
+            s.cap.clear();
+            s.pos = pos.immutable();
+        }
+        s.dirty = true;
+        if (ground) {
+            s.ground = partId;
+            return "Ground lead on " + title;
+        }
+        int k = 0;
+        while (k < s.probes.length && s.probes[k] >= 0 && s.probes[k] != partId) k++;
+        if (k == s.probes.length) k = 0;
+        s.probes[k] = partId;
+        s.names[k] = title;
+        s.cap.unuse(k);
+        return "Probe " + (k + 1) + " on " + title + " (right-click the air to see the traces)";
+    }
+
+    /** A control from the analyser's screen. */
+    public void controlAnalyzer(ServerPlayer player, int op, int arg) {
+        AnalyzerSession s = analyzers.get(player.getUUID());
+        if (s == null) return;
+        var cap = s.cap;
+        switch (op) {
+            case dev.emergence.mod.net.AnalyzerPayloads.RUN -> cap.mode(dev.emergence.core.instruments.LogicCapture.Mode.RUN);
+            case dev.emergence.mod.net.AnalyzerPayloads.SINGLE -> {
+                cap.clear();
+                cap.mode(dev.emergence.core.instruments.LogicCapture.Mode.SINGLE);
+            }
+            case dev.emergence.mod.net.AnalyzerPayloads.HOLD -> cap.mode(dev.emergence.core.instruments.LogicCapture.Mode.HOLD);
+            case dev.emergence.mod.net.AnalyzerPayloads.CLEAR -> cap.clear();
+            case dev.emergence.mod.net.AnalyzerPayloads.TRIGGER_CHANNEL -> cap.trigger(Math.floorMod(arg, 8), cap.triggerRising(), 2.5, cap.window());
+            case dev.emergence.mod.net.AnalyzerPayloads.TRIGGER_EDGE -> cap.trigger(cap.triggerChannel(), !cap.triggerRising(), 2.5, cap.window());
+            case dev.emergence.mod.net.AnalyzerPayloads.WINDOW_US -> cap.trigger(cap.triggerChannel(), cap.triggerRising(), 2.5, Math.max(1, arg) * 1e-6);
+            case dev.emergence.mod.net.AnalyzerPayloads.REMOVE_PROBE -> {
+                if (arg >= 0 && arg < 8) {
+                    s.probes[arg] = -1;
+                    s.names[arg] = "";
+                    s.dirty = true;
+                }
+            }
+            default -> { }
+        }
+    }
+
+    /** The traces the analyser's screen asks for. */
+    public dev.emergence.mod.net.AnalyzerPayloads.Data viewAnalyzer(ServerPlayer player, double span, double back, int bins) {
+        AnalyzerSession s = analyzers.get(player.getUUID());
+        String[] names = new String[8];
+        boolean[] dig = new boolean[8];
+        float[][] mn = new float[8][], mx = new float[8][];
+        if (s == null) {
+            java.util.Arrays.fill(names, "");
+            for (int k = 0; k < 8; k++) {
+                mn[k] = new float[0];
+                mx[k] = new float[0];
+            }
+            return new dev.emergence.mod.net.AnalyzerPayloads.Data(names, dig, mn, mx, 0, span, 0, 0, false, false, 0, true, Double.NaN, 1e-3, false);
+        }
+        var cap = s.cap;
+        double ref = cap.frozen() && !Double.isNaN(cap.triggerTime()) ? cap.triggerTime() + cap.window() : cap.newest();
+        double end = ref - back;
+        for (int k = 0; k < 8; k++) {
+            names[k] = s.names[k];
+            dig[k] = cap.digital(k);
+            float[][] env = s.probes[k] >= 0 && cap.used(k) ? cap.envelope(k, end - span, end, bins) : new float[][]{new float[0], new float[0]};
+            mn[k] = env[0];
+            mx[k] = env[1];
+        }
+        return new dev.emergence.mod.net.AnalyzerPayloads.Data(names, dig, mn, mx, end, span, cap.newest(), cap.mode().ordinal(), cap.armed(),
+                cap.frozen(), cap.triggerChannel(), cap.triggerRising(), cap.triggerTime(), cap.window(), s.ground >= 0);
+    }
+
+    /** Keeps each analyser attached to its machine as it is rebuilt (and to new probes). */
+    private void tickAnalyzers() {
+        for (AnalyzerSession s : analyzers.values()) {
+            Island isl = s.pos == null ? null : islandOf.get(s.pos);
+            CompiledAssembly now = isl == null ? null : isl.compiled;
+            if (now != s.attachedTo || s.dirty) {
+                if (s.attachedTo != null) s.attachedTo.detachCapture(s.cap);
+                s.attachedTo = null;
+                if (now != null) {
+                    now.attachCapture(s.cap, s.ground, s.probes);
+                    s.attachedTo = now;
+                }
+                s.dirty = false;
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ data loggers
 
     /** Clips a player's logger onto a part (a new part starts a new record). */
@@ -903,7 +1076,7 @@ public final class SimulationManager {
                 });
                 for (Direction d : Direction.values()) {
                     BlockPos n = b.relative(d);
-                    if (blocks.containsKey(n) && blocks.get(n).resolution() != res && ribbonBetween(b, n) && visited.add(n)) {
+                    if (blocks.containsKey(n) && blocks.get(n).resolution() != res && joinedAcross(b, n) && visited.add(n)) {
                         q.add(n);
                         isl.mixed = true;
                     }
@@ -1278,7 +1451,19 @@ public final class SimulationManager {
                 if (touchesWorld(b, pp, be.resolution())) anchored.put(pp.id, null);
             }
         }
-        if (isl.mixed) bridgeRibbons(isl, asm);
+        if (isl.mixed) {
+            bridgeRibbons(isl, asm);
+            // heat, shafts and pipes across each face where a full-size block meets a miniature one
+            for (BlockPos b : isl.blocks) {
+                AssemblyBlockEntity be = be(b);
+                if (be == null || be.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
+                for (Direction d : Direction.values()) {
+                    BlockPos n = b.relative(d);
+                    AssemblyBlockEntity m = isl.blocks.contains(n) ? be(n) : null;
+                    if (m != null && m.resolution() == AssemblyBlockEntity.MINIATURE) crossLinks(isl, b, be, d, n, m, asm);
+                }
+            }
+        }
         isl.solidAround.clear();
         for (BlockPos b : isl.blocks) {
             for (Direction d : Direction.values()) {
@@ -1292,6 +1477,12 @@ public final class SimulationManager {
         asm.ambientPressure(airPressure(first));
         // open pipe ends inside world blocks are capped; ends in air (or water...) stay open
         int res = isl.resolution;
+        // a cell of the assembly's grid as a world block, and its grid's resolution (a joined island holds both: its
+        // full-size parts' cells, shifted, lie by its full-size blocks)
+        int[] shift = isl.shift;
+        Set<BlockPos> fullBlocks = new HashSet<>();
+        if (shift != null) for (BlockPos b : isl.blocks) if (be(b) != null && be(b).resolution() == AssemblyBlockEntity.BLOCK_SCALE) fullBlocks.add(b);
+        CellMap cells = new CellMap(res, shift, fullBlocks);
         // (the blocks beside it, read now: the compiler may run on another thread; a pipe's end looks one cell on)
         Set<BlockPos> own = new HashSet<>(isl.blocks), solidCells = new HashSet<>();
         for (BlockPos b : own) {
@@ -1301,7 +1492,7 @@ public final class SimulationManager {
             }
         }
         asm.solidWhen((x, y, z) -> {
-            BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
+            BlockPos bp = cells.block(x, y, z);
             return !own.contains(bp) && solidCells.contains(bp);
         });
         // still water in and over its blocks (its own waterlogged, the world's water above each and just under it),
@@ -1369,21 +1560,22 @@ public final class SimulationManager {
             height.put(b, h / n);
         }
         if (!height.isEmpty()) asm.waterTopWhen((x, y, z) -> {
-            BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
+            BlockPos bp = cells.block(x, y, z);
+            int r = cells.res(x, y, z);
             Double hb = height.get(bp);
             // the surface within its top cell: the block's own level over a finer lattice's cells
             return hb == null ? dev.emergence.core.assembly.Assembly.WATER_TOP
-                    : res == 1 ? hb : Math.max(0, Math.min(1, hb * res - Math.floorMod(y, res)));
+                    : r == 1 ? hb : Math.max(0, Math.min(1, hb * r - Math.floorMod(y, r)));
         });
-        if (!current.isEmpty()) asm.flowWhen((x, y, z) -> current.getOrDefault(
-                new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res)), dev.emergence.core.math.Vec3.ZERO));
+        if (!current.isEmpty()) asm.flowWhen((x, y, z) -> current.getOrDefault(cells.block(x, y, z), dev.emergence.core.math.Vec3.ZERO));
         if (!water.isEmpty()) {
             // a finer lattice: the top block of a column holds water only up to its surface, 8/9 of the block
-            int wet = res == 1 ? 1 : (int) Math.round(res * dev.emergence.core.assembly.Assembly.WATER_TOP);
             asm.waterWhen((x, y, z) -> {
-                BlockPos bp = new BlockPos(Math.floorDiv(x, res), Math.floorDiv(y, res), Math.floorDiv(z, res));
+                BlockPos bp = cells.block(x, y, z);
                 if (!water.contains(bp)) return false;
-                return res == 1 || water.contains(bp.above()) || Math.floorMod(y, res) < wet;
+                int r = cells.res(x, y, z);
+                int wet = r == 1 ? 1 : (int) Math.round(r * dev.emergence.core.assembly.Assembly.WATER_TOP);
+                return r == 1 || water.contains(bp.above()) || Math.floorMod(y, r) < wet;
             });
         }
         asm.anchoredWhen(p -> anchored.containsKey(p.id()));
@@ -2010,8 +2202,9 @@ public final class SimulationManager {
             double[] se = c.springEnds(id);
             if (se == null) continue;
             sIds.add(id);
-            sEnds.add((float) (se[0] * scale));
-            sEnds.add((float) (se[1] * scale));
+            float ps = 16f / resOf(isl, id); // its own grid's (a joined island holds both)
+            sEnds.add((float) (se[0] * ps));
+            sEnds.add((float) (se[1] * ps));
         }
         float[] sa = new float[sEnds.size()];
         for (int i = 0; i < sa.length; i++) sa[i] = sEnds.get(i);
@@ -2025,6 +2218,10 @@ public final class SimulationManager {
             if (rays == null) continue;
             double[] nms = c.beamWavelengths(id);
             BlockPos at = isl.partPos.get(id);
+            // its own grid's scale, and (a joined island's full-size part) its shift taken off
+            double ps = 16.0 / resOf(isl, id);
+            int[] sh = shiftOf(isl, id);
+            double ox = sh == null ? 0 : sh[0] * Part.CELL, oy = sh == null ? 0 : sh[1] * Part.CELL, oz = sh == null ? 0 : sh[2] * Part.CELL;
             bIds.add(id);
             bData.add((float) rays.size());
             for (int r = 0; r < rays.size(); r++) {
@@ -2032,9 +2229,9 @@ public final class SimulationManager {
                 bData.add((float) ray.size());
                 bData.add(nms == null ? 0f : (float) nms[r]);
                 for (var pt : ray) {
-                    bData.add((float) (pt.x() * scale - at.getX()));
-                    bData.add((float) (pt.y() * scale - at.getY()));
-                    bData.add((float) (pt.z() * scale - at.getZ()));
+                    bData.add((float) ((pt.x() - ox) * ps - at.getX()));
+                    bData.add((float) ((pt.y() - oy) * ps - at.getY()));
+                    bData.add((float) ((pt.z() - oz) * ps - at.getZ()));
                 }
             }
         }
@@ -2047,7 +2244,8 @@ public final class SimulationManager {
             double[] lp = c.linkPins(id);
             if (lp == null) continue;
             lIds.add(id);
-            for (double v : lp) lData.add((float) (v * scale));
+            float ps = 16f / resOf(isl, id);
+            for (double v : lp) lData.add((float) (v * ps));
         }
         float[] la = new float[lData.size()];
         for (int i = 0; i < la.length; i++) la[i] = lData.get(i);

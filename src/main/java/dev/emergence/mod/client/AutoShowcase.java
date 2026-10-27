@@ -577,7 +577,11 @@ public final class AutoShowcase {
                     long x = column(server, recP);
                     if (d == null || x < 8) return "no trace yet (column " + x + ")";
                     int r0 = topLit(d, 2), r1 = topLit(d, (int) x - 2);
-                    return r0 < 64 && r1 < 64 && r1 < r0 ? null : "trace rows " + r0 + " -> " + r1 + " (column " + x + ")";
+                    if (r0 < 64 && r1 < 64 && r1 < r0) return null;
+                    // a tour arriving long after the world loaded finds the vessel settled hot: the trace holds level in
+                    // the top quarter (a 58 kPa gauge pressure, a 470 K wall on their scales) — as right as a climb
+                    if (r0 < 16 && r1 < 16 && Math.abs(r1 - r0) <= 1) return null;
+                    return "trace rows " + r0 + " -> " + r1 + " (column " + x + ")";
                 };
                 STEPS.add(new Step(2400, view, shot.apply("graph"), () -> onServer(server, key + "x", () -> column(server, recP)) >= 100)
                         .check(key + " both screens are lit", () -> {
@@ -588,12 +592,61 @@ public final class AutoShowcase {
                                 1e-3 * (pressure(server, tank, PartKind.TANK) - 101325), 5))
                         .check(key + " the pressure trace climbs", () -> {
                             String why = climb.apply("P");
-                            return that(why == null, why == null ? "climbs" : why);
+                            return that(why == null, why == null ? "climbs, or holds high once settled" : why);
                         })
                         .check(key + " the temperature trace climbs", () -> {
                             String why = climb.apply("T");
-                            return that(why == null, why == null ? "climbs" : why);
+                            return that(why == null, why == null ? "climbs, or holds high once settled" : why);
                         }));
+            }
+            if (id.equals("acrossscales")) {
+                // turn the full-size crank on top of the miniature block: the miniature generator turns with it
+                var cd = e.blockParts.get(e.namedBlock.get("crank"));
+                BlockPos bigCrank = plot.offset(DemoBuilder.MINIATURE_AT).offset(cd.x0(), cd.y0(), cd.z0());
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.hold(key + " turn the full-size crank", new PlayerHand.Target(bigCrank, PartKind.CRANK), false)));
+                Sampler load = new Sampler();
+                STEPS.add(new Step(60, NOTHING, shot.apply("cranked")).sample(load, () -> Math.abs(current(server, at.apply("load"), PartKind.RESISTOR)))
+                        .check(key + " the full-size crank turns", () -> atLeast("crank speed [rad/s]", motion(server, bigCrank, PartKind.CRANK), 1))
+                        .check(key + " the miniature generator, coupled to it, drives its load", () -> atLeast("peak load current [mA]", 1e3 * load.max(), 0.1))
+                        .check(key + " one machine across the scales", () -> {
+                            CompiledAssembly a = compiled(server, at.apply("load")), b = compiled(server, bigCrank);
+                            return that(a != null && a == b, a == b ? "one machine" : "two machines");
+                        }));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+            }
+            if (id.equals("em8thermostat")) {
+                // found running: the plate held near its setpoint by the program, its heater switching
+                BlockPos plate = at.apply("plate"), heater = at.apply("heater");
+                Sampler pt = new Sampler(), hi = new Sampler();
+                STEPS.add(new Step(600, view, shot.apply("running")).sample(pt, () -> temperature(server, plate, PartKind.BLOCK))
+                        .sample(hi, () -> Math.abs(current(server, heater, PartKind.RESISTOR)))
+                        .check(key + " the program holds the plate near 45 °C", () -> that(pt.min() > 310 && pt.max() < 326,
+                                String.format("plate %.1f .. %.1f K (318 K wanted)", pt.min(), pt.max())))
+                        .check(key + " it switches the heater", () -> that(hi.max() > 0.2 && hi.min() < 0.01,
+                                String.format("heater current %.2f .. %.2f A", hi.min(), hi.max()))));
+                // the logic analyser, as a player would use it: probes clipped onto the ADC's chip select, clock and data
+                // wires and the heater's gate, then its screen opened by right-clicking the air
+                ItemStack analyser = new ItemStack(dev.emergence.mod.registry.ModRegistries.LOGIC_ANALYZER.get());
+                java.util.function.Function<String, PlayerHand.Target> wire = net -> {
+                    for (var en : e.nets.entrySet()) if (en.getValue().equals(net)) {
+                        var d = e.parts.get(en.getKey());
+                        return new PlayerHand.Target(plot.offset(d.x0(), d.y0(), d.z0()), PartKind.INSULATED_WIRE);
+                    }
+                    return new PlayerHand.Target(plot, PartKind.INSULATED_WIRE);
+                };
+                for (String net : new String[]{"cs", "sclk", "dout", "gate"})
+                    STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " clip a probe on the " + net + " wire", wire.apply(net), analyser)));
+                STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.useInAirUntil(key + " open the analyser's screen", false,
+                        () -> Minecraft.getInstance().screen instanceof AnalyzerScreen, 3)));
+                STEPS.add(new Step(60, NOTHING, shot.apply("analyser"), () -> Minecraft.getInstance().screen instanceof AnalyzerScreen a && a.switching() >= 3).keepScreen()
+                        .check(key + " the analyser shows the bus switching", () -> {
+                            var sc = Minecraft.getInstance().screen;
+                            return that(sc instanceof AnalyzerScreen a && a.switching() >= 3, sc instanceof AnalyzerScreen a ? a.summary() : "no analyser screen");
+                        }));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.named("closes the screen", m -> {
+                    m.setScreen(null);
+                    return true;
+                })));
             }
             if (id.equals("minicounter")) {
                 // the miniature: every part in one block, so each is found by its cell
@@ -692,7 +745,13 @@ public final class AutoShowcase {
                 // switch the loudspeaker on; the simulation resolves every vibration, so give the microphone time
                 BlockPos led = at.apply("lit");
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " switch the loudspeaker on", part.apply("switch", PartKind.SWITCH))));
-                STEPS.add(new Step(3000, view, shot.apply("heard"), () -> ledLit(led)).check(key + " the microphone hears it: the LED lights", () -> lit(server, led)));
+                // (the LED follows the amplified sound, so it flickers at audio rate: judged by its brightest over a second,
+                // not one instant — a check at a trough once read 2e-16 mW the tick after the step saw it lit)
+                Sampler heard = new Sampler();
+                STEPS.add(new Step(3000, view, null, () -> ledLit(led)));
+                STEPS.add(new Step(20, view, shot.apply("heard")).sample(heard, () -> light(server, led))
+                        .check(key + " the microphone hears it: the LED lights", () -> that(heard.max() > 1e-5,
+                                String.format("brightest LED light output over a second = %.3g mW, expected > 0.01 mW (lit)", 1e3 * heard.max()))));
             }
             if (id.equals("spectrometer")) {
                 // red heat, orange, white: the infrared channel lights first, then the red, then the blue

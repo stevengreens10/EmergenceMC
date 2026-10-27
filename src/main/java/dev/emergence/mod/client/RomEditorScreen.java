@@ -36,6 +36,9 @@ public final class RomEditorScreen extends Screen {
     private final String originalText;
     private final int[] original;
     private int[] bytes;
+    /** The program the ROM holds (EM-8 assembly), or null for plain bytes; and what it assembled to. */
+    private String program;
+    private int[] assembled;
     private String parseError;
     private int cursor, anchor = -1, nibble;
     private boolean bitZeroTop = true;
@@ -55,13 +58,17 @@ public final class RomEditorScreen extends Screen {
         this.originalText = text == null ? "" : text;
         int[] b;
         try {
-            b = MsiComponent.parseHex(originalText, SIZE);
+            b = dev.emergence.core.digital.ChipTypes.romImage(originalText);
         } catch (IllegalArgumentException e) {
             parseError = e.getMessage();
             b = new int[SIZE];
         }
         original = b;
         bytes = b.clone();
+        if (dev.emergence.core.digital.Em8Assembler.isProgram(originalText)) {
+            program = originalText;
+            assembled = b.clone();
+        }
     }
 
     public static RomEditorScreen forItem(Screen parent, String text, Consumer<String> onDone) {
@@ -94,7 +101,16 @@ public final class RomEditorScreen extends Screen {
 
     /** The contents as text: as they came if unchanged (their comments kept), else freshly written out. */
     String text() {
-        return parseError == null && Arrays.equals(bytes, original) ? originalText : MsiComponent.formatHex(bytes);
+        if (program != null && Arrays.equals(bytes, assembled)) return program; // a program, its bytes untouched
+        return parseError == null && Arrays.equals(bytes, original) && program == null ? originalText : MsiComponent.formatHex(bytes);
+    }
+
+    /** The program editor's result: the ROM now holds this program (assembled into its bytes). */
+    private void program(String source) {
+        push();
+        program = source;
+        assembled = dev.emergence.core.digital.ChipTypes.romImage(source);
+        bytes = assembled.clone();
     }
 
     // ------------------------------------------------------------------ layout
@@ -114,30 +130,38 @@ public final class RomEditorScreen extends Screen {
         presets.add(0, "");
         addRenderableWidget(CycleButton.<String>builder(n -> Component.literal(n.isEmpty() ? "Load ▸" : ChipLibrary.romTitle(n)))
                 .withValues(presets).withInitialValue("").displayOnlyValue()
-                .withTooltip(n -> Tooltip.create(Component.literal("ROM images that come with the mod: pick one to load it (Ctrl+Z to undo).")))
-                .create(x, bt, 84, 20, Component.literal("Load"), (b, n) -> {
-                    if (!n.isEmpty()) {
+                .withTooltip(n -> Tooltip.create(Component.literal("ROM images and programs that come with the mod: pick one to load it (Ctrl+Z to undo).")))
+                .create(x, bt, 70, 20, Component.literal("Load"), (b, n) -> {
+                    if (n.isEmpty()) return;
+                    String src = ChipLibrary.rom(n);
+                    if (dev.emergence.core.digital.Em8Assembler.isProgram(src)) program(src);
+                    else {
                         push();
-                        bytes = MsiComponent.parseHex(ChipLibrary.rom(n), SIZE);
+                        program = null;
+                        bytes = MsiComponent.parseHex(src, SIZE);
                     }
                 }));
-        x += 88;
+        x += 72;
         addRenderableWidget(Button.builder(Component.literal("Clear"), b -> {
             push();
             Arrays.fill(bytes, 0);
-        }).bounds(x, bt, 40, 20).tooltip(Tooltip.create(Component.literal("Every byte to 00 (Ctrl+Z to undo)."))).build());
-        x += 44;
+        }).bounds(x, bt, 36, 20).tooltip(Tooltip.create(Component.literal("Every byte to 00 (Ctrl+Z to undo)."))).build());
+        x += 38;
         addRenderableWidget(Button.builder(Component.literal("Copy"), b -> minecraft.keyboardHandler.setClipboard(MsiComponent.formatHex(bytes)))
-                .bounds(x, bt, 40, 20).tooltip(Tooltip.create(Component.literal("All of it to the clipboard as hex text (Ctrl+C copies the selection)."))).build());
-        x += 44;
-        addRenderableWidget(Button.builder(Component.literal("Paste"), b -> pasteAll()).bounds(x, bt, 42, 20)
+                .bounds(x, bt, 34, 20).tooltip(Tooltip.create(Component.literal("All of it to the clipboard as hex text (Ctrl+C copies the selection)."))).build());
+        x += 36;
+        addRenderableWidget(Button.builder(Component.literal("Paste"), b -> pasteAll()).bounds(x, bt, 38, 20)
                 .tooltip(Tooltip.create(Component.literal("Replace it all with hex text from the clipboard (\"@1C\" moves on to address 1C; // starts a comment). "
                         + "Ctrl+V pastes at the cursor."))).build());
-        x += 46;
-        addRenderableWidget(Button.builder(Component.literal(bitZeroTop ? "Bit 0 ↑" : "Bit 0 ↓"), b -> {
+        x += 40;
+        addRenderableWidget(Button.builder(Component.literal(bitZeroTop ? "Bit0↑" : "Bit0↓"), b -> {
             bitZeroTop = !bitZeroTop;
-            b.setMessage(Component.literal(bitZeroTop ? "Bit 0 ↑" : "Bit 0 ↓"));
-        }).bounds(x, bt, 44, 20).tooltip(Tooltip.create(Component.literal("Which way up the pixel view draws each byte's bits."))).build());
+            b.setMessage(Component.literal(bitZeroTop ? "Bit0↑" : "Bit0↓"));
+        }).bounds(x, bt, 36, 20).tooltip(Tooltip.create(Component.literal("Which way up the pixel view draws each byte's bits."))).build());
+        x += 38;
+        addRenderableWidget(Button.builder(Component.literal("Program…"), b -> minecraft.setScreen(new ProgramEditorScreen(this,
+                program, this::program))).bounds(x, bt, 56, 20)
+                .tooltip(Tooltip.create(Component.literal("Write the ROM's contents as an EM-8 program in assembly (assembled into these bytes)."))).build());
         int rx = width - 128;
         addRenderableWidget(Button.builder(Component.literal(placed() ? "Write to ROM" : "Done"), b -> done()).bounds(rx, bt, 72, 20)
                 .tooltip(Tooltip.create(Component.literal(placed() ? "Put these bytes in the ROM (Ctrl+S)." : "Back to the part editor with these bytes (Ctrl+S)."))).build());
@@ -405,6 +429,10 @@ public final class RomEditorScreen extends Screen {
         }
         // the selected byte, every way (or what went wrong)
         int v = bytes[cursor];
+        if (program != null && parseError == null) {
+            String note = Arrays.equals(bytes, assembled) ? "holds a program: Program… to edit it" : "bytes edited: it will be saved as plain hex, not the program";
+            g.drawString(font, note, gx - 20, gy - 22, Arrays.equals(bytes, assembled) ? 0xFF6BD66B : 0xFFFFC66B, false);
+        }
         if (parseError != null) {
             g.drawString(font, font.plainSubstrByWidth("✖ " + parseError, width - 16), gx - 20, by, 0xFFFF6B6B, false);
         } else {

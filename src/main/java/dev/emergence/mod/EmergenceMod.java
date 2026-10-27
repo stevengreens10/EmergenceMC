@@ -63,6 +63,7 @@ public final class EmergenceMod {
         reg.playToClient(dev.emergence.mod.net.LoggerSyncPayload.TYPE, dev.emergence.mod.net.LoggerSyncPayload.STREAM_CODEC,
                 (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.LoggerHud.apply(payload)));
         registerChipPayloads(reg);
+        registerAnalyzerPayloads(reg);
         reg.playToServer(dev.emergence.mod.net.PartSpecEditPayload.TYPE, dev.emergence.mod.net.PartSpecEditPayload.STREAM_CODEC,
                 (payload, ctx) -> ctx.enqueueWork(() -> {
                     if (!(ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
@@ -70,6 +71,23 @@ public final class EmergenceMod {
                             ? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND, payload.spec());
                     if (why != null) sp.displayClientMessage(net.minecraft.network.chat.Component.literal(why), true);
                 }));
+    }
+
+    private static void registerAnalyzerPayloads(net.neoforged.neoforge.network.registration.PayloadRegistrar reg) {
+        reg.playToServer(dev.emergence.mod.net.AnalyzerPayloads.Control.TYPE, dev.emergence.mod.net.AnalyzerPayloads.Control.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp && sp.level() instanceof ServerLevel sl) {
+                        SimulationManager.get(sl).controlAnalyzer(sp, payload.op(), payload.arg());
+                    }
+                }));
+        reg.playToServer(dev.emergence.mod.net.AnalyzerPayloads.View.TYPE, dev.emergence.mod.net.AnalyzerPayloads.View.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp && sp.level() instanceof ServerLevel sl) {
+                        ctx.reply(SimulationManager.get(sl).viewAnalyzer(sp, payload.span(), payload.back(), payload.bins()));
+                    }
+                }));
+        reg.playToClient(dev.emergence.mod.net.AnalyzerPayloads.Data.TYPE, dev.emergence.mod.net.AnalyzerPayloads.Data.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.ClientHooks.analyzerData(payload)));
     }
 
     private static void registerChipPayloads(net.neoforged.neoforge.network.registration.PayloadRegistrar reg) {

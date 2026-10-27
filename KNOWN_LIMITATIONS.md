@@ -121,7 +121,8 @@ behaviour; where physics is missing the effect is simply absent.
   or ground bounce; a digital net is ideal apart from its capacitance; outputs are 50 Ω whatever the load. A design
   can be set only through its part's text (exhibits, item data): the in-game chip designer is not written yet, and
   chips are not yet fabricated from materials (a CHIP part of silicon is enough). Display images reach clients as
-  whole frames (1 KB) at most every other tick per panel, not as compressed deltas. No radio.
+  whole frames (1 KB) at most every other tick per panel, not as compressed deltas. No radio. The display controller has one frame buffer (as an SSD1306 does): a design that redraws
+  whole frames tears for one frame's time after a change.
 * Light: LEDs, daylight and hot parts illuminate photodiodes (hot parts directly only: not by way of mirrors and
   lenses, and not lighting other parts); torches and Minecraft light do not. Tungsten does not oxidise in air (a real
   filament needs a bulb of inert gas). Diffuse

@@ -1131,3 +1131,12 @@ physics is the interesting part; where a part is only repetition, its inside is 
   parameters are a chip part's `p_<name>` parameters, so the part editor accepts any design's.
 - *The mod:* the parts, the panels' images synced and drawn, and a tour step.
 Still to come: the chip designer screen, fabrication, and radio (left out for now by the user).
+
+**A counter on a screen (2026-10-26, late).** The `counter_display` design reads four pins and draws their number as
+big decimal digits, with its binary underneath. Its font is a `mem` of 3×5 glyphs, drawn eight times their size, so
+each font row is exactly one display page. It streams whole frames in horizontal addressing mode, taking the number
+afresh at the start of each frame. In the counter display exhibit a 1 Hz crystal clocks a 74HC163 counter chip, an
+analog MSI model. Its outputs light LEDs and cross into the digital domain at the chip's thresholds. The first try
+drew 10–15 as 0–5 (the tens glyph was read from digit 0's place in the font). At 100 kHz the tour caught a torn
+frame: 11 above, 1010 below. The display has one buffer, so the clock went up to 500 kHz: a frame in 35 ms, inside
+a tick.

@@ -1,0 +1,92 @@
+// Counter display: shows a 4-bit number (0 to 15) on a 128x64 SPI display, as big decimal digits with the same
+// number in binary underneath. It redraws the whole screen over and over, taking the number afresh at the start of
+// each frame. A frame is 1024 bytes at 17 clocks each: 35 ms at 500 kHz. The display has no second buffer, so for that
+// long after a change the top of the screen shows the new number and the bottom the old: a faster clock tears less.
+//
+// Wiring: clk from a clock (500 kHz); the number on d3..d0 (d0 the least significant bit); the display's cs, d/c,
+// sclk and din to cs, dc, sclk and din (its rst tied high).
+//
+// The digits: a 3x5 font, each glyph three columns of five bits (bit 0 the top row). Drawn eight times its size, each
+// font row is exactly one page of the display (8 rows), so a page's byte is all-on or all-off.
+
+chip counter_display
+in clk
+in [3:0] d
+out cs = 1, dc, sclk, din
+
+mem [4:0] font[30] = {
+    0x1F, 0x11, 0x1F,   // 0
+    0x12, 0x1F, 0x10,   // 1
+    0x1D, 0x15, 0x17,   // 2
+    0x15, 0x15, 0x1F,   // 3
+    0x07, 0x04, 0x1F,   // 4
+    0x17, 0x15, 0x1D,   // 5
+    0x1F, 0x15, 0x1D,   // 6
+    0x01, 0x01, 0x1F,   // 7
+    0x1F, 0x15, 0x1F,   // 8
+    0x17, 0x15, 0x1F    // 9
+}
+
+reg [3:0] v = 0          // the number being drawn (taken at the start of each frame)
+reg [2:0] pg = 0         // the page being sent
+reg [6:0] col = 0        // the column being sent
+reg [3:0] st = 0         // what it is doing (see below)
+reg [3:0] ret = 0        // where to go once a byte is sent
+reg [1:0] ini = 0        // which set-up command
+reg [2:0] b = 0          // which bit of a byte
+reg [7:0] byte = 0
+reg dcb = 0
+
+// the number in decimal: the tens digit (shown only from 10 up) and the units
+wire tens = v >= 10
+wire [3:0] units = tens ? v - 10 : v
+
+// big digits on pages 1 to 5, 24 columns wide: the tens at columns 36..59, the units at 68..91
+wire inT = tens && col >= 36 && col < 60
+wire inU = col >= 68 && col < 92
+wire [1:0] cT = (col - 36) >> 3
+wire [1:0] cU = (col - 68) >> 3
+wire [4:0] gT = font[3 + cT]              // the tens digit is always a 1 (its glyph from the fourth column)
+wire [4:0] gU = font[units * 3 + cU]
+wire [2:0] row = pg - 1
+wire big = pg >= 1 && pg <= 5 && ((inT && gT[row]) || (inU && gU[row]))
+
+// the binary row on page 7: four digits, each 6 columns (font columns doubled) in a cell of 8, columns 48..79
+wire inB = pg == 7 && col >= 48 && col < 80
+wire [4:0] bx = col - 48
+wire [1:0] bi = bx >> 3                   // which bit, the most significant first
+wire [2:0] bc = bx[2:0]                   // the column within its cell
+wire bv = v[3 - bi]
+wire [4:0] gB = font[bv * 3 + (bc >> 1)]
+wire small = inB && bc < 6
+
+wire [7:0] pixels = big ? 8'hff : small ? {2'b0, gB, 1'b0} : 8'h00
+
+on rise clk {
+    case (st) {
+        // set-up: display on, horizontal addressing (the column runs on into the next page, and round)
+        0: {
+            case (ini) {
+                0: byte <= 8'haf
+                1: byte <= 8'h20
+                2: byte <= 8'h00
+            }
+            dcb <= 0  ret <= 1  st <= 10
+        }
+        1: { if (ini == 2) { pg <= 0  col <= 0  v <= d  st <= 2 } else { ini <= ini + 1  st <= 0 } }
+        // the frame: one byte per column of each page, in order
+        2: { byte <= pixels  dcb <= 1  ret <= 3  st <= 10 }
+        3: {
+            col <= col + 1
+            if (col == 127) {
+                pg <= pg + 1
+                if (pg == 7) v <= d
+            }
+            st <= 2
+        }
+        // send a byte: each bit set with the clock low, taken on its rising edge
+        10: { cs <= 0  sclk <= 0  dc <= dcb  din <= byte[7 - b]  st <= 11 }
+        11: { sclk <= 1  b <= b + 1  if (b == 7) st <= 12 else st <= 10 }
+        12: { sclk <= 0  st <= ret }
+    }
+}

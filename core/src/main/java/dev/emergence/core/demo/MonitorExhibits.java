@@ -2,6 +2,7 @@ package dev.emergence.core.demo;
 
 import dev.emergence.core.assembly.Dir;
 import dev.emergence.core.digital.ChipLibrary;
+import dev.emergence.core.sim.elements.MsiChip;
 
 import java.util.List;
 
@@ -107,5 +108,77 @@ public final class MonitorExhibits {
         }
         r.route();
         return e.view(8, 5, 22, 20);
+    }
+
+    /**
+     * Counter display: a 1 Hz crystal clocks a 4-bit counter chip (a 74HC163); its outputs light four LEDs in binary
+     * and go into a chip of the player's design that draws the count on a screen as a decimal number, with the binary
+     * underneath, from a font in its own memory.
+     */
+    public static Exhibit counterDisplay() {
+        Exhibit e = new Exhibit("counterdisplay", "Counter display",
+                List.of("COUNTER DISPLAY", "A 4-bit counter,", "its count in binary", "and on the screen"),
+                "A crystal clock ticks once a second into a 4-bit counter chip, which counts 0 to 15 and round again. "
+                        + "Its four outputs light the LEDs on the right in binary (the most significant bit on the left). "
+                        + "The same four wires go into a chip of the player's design, written in the chip language: it "
+                        + "keeps a font of the digits 0 to 9 in its own memory (three columns of five dots each), works out "
+                        + "the count's tens and units, and sends the screen's controller a whole new picture, byte by "
+                        + "byte over its serial bus, about thirty times a second — the number drawn eight times the font's "
+                        + "size, and its binary underneath. Nothing in the screen knows about numbers: it only shows the "
+                        + "dots it is sent.");
+        String si = "silicon";
+        // ---- the supply (+ on its east end) and the two clocks: 1 Hz for the counter, 500 kHz for the display chip (a frame in 35 ms, inside a tick)
+        e.name("battery", e.add(BATTERY, "pvc", 5, 1, 1, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 2));
+        e.name("tick", e.add(CHIP, si, 11, 1, 1, Dir.EAST, "function", 6, "frequency", 1));
+        e.add(CHIP, si, 12, 1, 1, Dir.EAST, "function", 6, "frequency", 1);
+        e.name("clock", e.add(CHIP, si, 8, 1, 9, Dir.EAST, "function", 6, "frequency", 500_000));
+        e.add(CHIP, si, 9, 1, 9, Dir.EAST, "function", 6, "frequency", 500_000);
+        // ---- the counter (z 5), the display chip (z 9), the display controller (z 13) and its screen (z 14)
+        e.name("counter", ComputerExhibit.chip(e, MsiChip.Type.COUNTER4, 1, 1, 5));
+        String design = ChipLibrary.source("counter_display");
+        for (int k = 0; k < 6; k++) {
+            int c = e.add(CHIP, si, 1 + k, 1, 9, Dir.EAST, "function", 5);
+            e.text(c, design);
+            if (k == 0) e.name("chip", c);
+        }
+        for (int k = 0; k < 6; k++) {
+            int d = e.add(CHIP, si, 1 + k, 1, 13, Dir.EAST, "function", 8);
+            if (k == 0) e.name("controller", d);
+        }
+        for (int y = 1; y <= 2; y++) {
+            for (int k = 0; k < 4; k++) {
+                int sc = e.add(DISPLAY, "glass", 1 + k, y, 14, Dir.SOUTH);
+                if (y == 1 && k == 0) e.name("screen", sc);
+            }
+        }
+        // ---- the LEDs, Q3 (the most significant) on the left as seen from the front
+        for (int k = 0; k < 4; k++) {
+            int x = 14 - 2 * k;
+            e.name("led" + k, e.add(LED, si, x, 1, 13, Dir.SOUTH, "wavelength", 630, "face", 1, "beam", 20));
+            e.add(RESISTOR, "alumina", x, 1, 14, Dir.SOUTH, "resistance", 470);
+        }
+        Router r = new Router(e, 0, 0, 0, 15, 4, 15);
+        r.keepClear(1, 0, 15, 4, 3, 15); // the view of the screen
+        r.pin("vdd", 6, 1, 1).pin("gnd", 4, 1, 1);
+        r.pin("vdd", 12, 1, 2).pin("gnd", 12, 1, 0);                 // the 1 Hz clock
+        r.pin("vdd", 9, 1, 10).pin("gnd", 9, 1, 8);                  // the 500 kHz clock
+        r.pin("vdd", 9, 1, 6).pin("gnd", 9, 1, 4);                   // the counter
+        r.pin("vdd", 6, 1, 4).pin("vdd", 7, 1, 4).pin("vdd", 8, 1, 4); // its CLR̄ and LOAD̄ high, EN high (P0–P3 unused)
+        r.pin("vdd", 6, 1, 10).pin("gnd", 6, 1, 8);                  // the display chip
+        r.pin("vdd", 6, 1, 14).pin("gnd", 6, 1, 12);                 // the controller
+        r.pin("vdd", 5, 1, 12);                                      // its rst, tied high
+        r.pin("tick", 11, 1, 2).pin("tick", 5, 1, 4);
+        r.pin("clk", 8, 1, 10).pin("clk", 1, 1, 8);
+        for (int k = 0; k < 4; k++) {
+            int x = 14 - 2 * k;
+            r.pin("q" + k, 1 + k, 1, 6).pin("q" + k, x, 1, 12).pin("q" + k, 2 + k, 1, 8);
+            r.pin("gnd", x, 1, 15);
+        }
+        r.pin("cs", 1, 1, 10).pin("cs", 1, 1, 12);
+        r.pin("dc", 2, 1, 10).pin("dc", 2, 1, 12);
+        r.pin("sclk", 3, 1, 10).pin("sclk", 3, 1, 12);
+        r.pin("din", 4, 1, 10).pin("din", 4, 1, 12);
+        r.route();
+        return e.view(7.5, 4, 21, 18);
     }
 }

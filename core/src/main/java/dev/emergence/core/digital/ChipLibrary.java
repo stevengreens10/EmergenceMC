@@ -13,7 +13,7 @@ import java.util.Map;
  */
 public final class ChipLibrary {
     /** The examples, in the order the designer lists them. */
-    public static final String[] NAMES = {"chart_recorder"};
+    public static final String[] NAMES = {"chart_recorder", "counter_display"};
 
     private ChipLibrary() {
     }

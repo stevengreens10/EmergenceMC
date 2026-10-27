@@ -589,6 +589,24 @@ public final class AutoShowcase {
                             return that(why == null, why == null ? "climbs" : why);
                         }));
             }
+            if (id.equals("counterdisplay")) {
+                // found counting: wait for a two-digit number, then compare the screen's number with the LEDs'
+                java.util.function.DoubleSupplier leds = () -> {
+                    int v = 0;
+                    for (int k = 0; k < 4; k++) if (Math.abs(current(server, at.apply("led" + k), PartKind.LED)) > 1e-3) v |= 1 << k;
+                    return v;
+                };
+                STEPS.add(new Step(800, view, shot.apply("count"), () -> onServer(server, key + "n", leds) >= 11)
+                        .check(key + " the screen is lit", () -> {
+                            DisplayPanel d = display(server, at.apply("screen"));
+                            return that(d != null && d.on() && d.shown() > 100, d == null ? "no screen" : d.shown() + " pixels lit");
+                        })
+                        .check(key + " the chip draws the count the LEDs show", () -> {
+                            long drawn = register(server, at.apply("chip"), "v");
+                            int shown = (int) leds.getAsDouble();
+                            return that(Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
+                        }));
+            }
             if (id.equals("loudspeaker")) {
                 // switch the loudspeaker on; the simulation resolves every vibration, so give the microphone time
                 BlockPos led = at.apply("lit");
@@ -1313,10 +1331,15 @@ public final class AutoShowcase {
 
     /** The column a chart-recorder chip (a chip of the player's design) in the block is drawing (its register x; −1 if none). */
     private static long column(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        return register(s, at, "x");
+    }
+
+    /** A register of the chip of the player's design in the block (−1 if none). */
+    private static long register(net.minecraft.server.MinecraftServer s, BlockPos at, String name) {
         PlacedPart p = any(s, at, PartKind.CHIP);
         CompiledAssembly c = compiled(s, at);
         var chip = p == null || c == null ? null : c.digitalChip(p.id);
-        return chip != null && chip.component() instanceof dev.emergence.core.digital.DesignComponent d ? d.instance().value("x") : -1;
+        return chip != null && chip.component() instanceof dev.emergence.core.digital.DesignComponent d ? d.instance().value(name) : -1;
     }
 
     /** The topmost lit row of a display's column (64 if it is dark). */

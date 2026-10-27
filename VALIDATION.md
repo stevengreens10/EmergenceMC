@@ -547,3 +547,10 @@ rotors, thermal radiation exchange between parts, long-run energy drift under BE
   of air from 293 K to 457 K (101 → 158 kPa). The pressure channel's ADC goes from code 117 to 565, the
   thermistor's from 108 to 927. The recorder draws 114 columns at 2 kHz (a sweep is 128). Both traces climb, both
   screens are on, and 15 nets are digital.
+
+## Counter display (`CounterDisplayExhibitTest`)
+A 1 Hz crystal clocks a 74HC163 counter chip in the analog circuit. Its outputs light four LEDs and feed a chip of
+the player's design (`counter_display`) across the analog–digital boundary. Once a second for 20 s, the test reads
+the screen independently. It decodes the big digits against the font and the binary row underneath, and reads the
+count off the LEDs' currents. All three agree at every reading, 1 to 15 and round to 0 again. Run at 500 kHz, it
+costs 0.23 s of CPU per simulated second.

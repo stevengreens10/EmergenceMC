@@ -279,6 +279,8 @@ thread outside the tick.
 | Held unknowns pivoted in one pass in fresh factorisations | 1.0 | the Markowitz search had scanned all 1141 columns at every pivot (a fifth of the plant thread in the in-game state) |
 | Adaptive accuracy (game, islands off the tick) | in-game state 1.2 → 1.05 | falling behind, an island relaxes its truncation tolerances up to ×3 before it slows; the station's outputs matched to three digits |
 | Diodes limit their junction voltage (SPICE pnjlim) | in-game state 1.18 → 1.02 (0.9 with adaptive accuracy ×3) | an iterate overshooting into forward bias walked back by one n·V_T an iteration: the bridge diodes' solves took 25–30 iterations, two fifths of the circuits' |
+| Warm helper threads for parallel loading (LoadTeam) | core 1.0 → 0.84; in-game state 0.9 → 0.76 (with ×3) | the common pool's wake-ups cost as much as each sub-millisecond pass |
+| Off-tick budget a whole tick (50 ms) | — | the server never waits for an island off the tick; a step that overruns makes the next cover the ticks it missed |
 | Off-tick stepping in the game (option D) | — | an island costing more than 8 ms a tick steps on a thread of its own across the server tick (paced against 45 ms, its wall-clock cap the ticks it covers), so ~0.9 s/s is real time; the world sees its results a tick later |
 
 **Tried, not kept (this round):** a minimum-degree column pre-ordering (fewer fresh-factorisation costs but more
@@ -287,7 +289,9 @@ stability margin); a quadratic Newton predictor (more iterations and failures); 
 from converging, a per-unknown two-cycle detector and early abandonment of stalled solves (the engine's valve-port
 failures are a port at a water surface switching between liquid and vapour outflow; none of these moved the time).
 
-**Where it stands:** core test ~1.0 s/s; **in the game 0.6 of real time** before the last two rows (the station's tour,
+**Where it stands (21:10):** **in the game the station keeps real time** — its headless server (`runStationServer`,
+no client) ran 98 s of it in 100 s, its time scale at 1.00 throughout, 36–44 ms of each 50 ms tick, accuracy relaxed
+as the game's controller sees fit (≤ ×3). Core test 0.84 s/s at full accuracy. Earlier: core test ~1.0 s/s; **in the game 0.6 of real time** before the last two rows (the station's tour,
 7/7 checks passing), ~1.4 s per simulated second there. Replaying the in-game state in the core (`IslandDumpReplayTest`,
 `-Ddiag.dumpProfile=true`) showed most of the gap is the state, not the client: it costs 1.28 s/s in the core too, its
 circuits taking ~6 Newton iterations a step against ~4 (the generator's coil currents and magnetisation lag). With the

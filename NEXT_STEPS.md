@@ -157,6 +157,11 @@
      brake went on: the hot well's flow into the feed pump's suction pipe); the core does not reproduce it. Dumps now
      also write the last good state (`island-failure-last-*.txt`): replay the next one from there.
 
+0a0. **The power station runs at real time in the game** (2026-10-26 21:10): its headless server ran 98 s in 100 s,
+   time scale 1.00 throughout. Still to see with a client (the station tour; the display was unavailable at 18:47,
+   20:14 and 21:10): rendering shares the cores, and the tour's samplers make the server wait on each step, so expect
+   its logged pace a little lower than the island's own scale.
+
 0a1. **The power station at real time** (asked 2026-10-26; the user chose B small shortcuts + D off-tick stepping,
    then A deep solver work; not C). Done: parallel loading, circuits sub-cycled and overlapped with the plant on two
    threads, independent plant parts, cheaper LU/Newton passes, bristle tolerance 1 %, off-tick stepping in the game

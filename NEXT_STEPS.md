@@ -173,6 +173,10 @@
    5. Mod: parts and items, the framebuffer synced to clients (compressed deltas, capped rate) and drawn on the panel.
    6. Mod: a chip designer screen (text with errors and estimates, example library, writes the design onto a chip).
    7. A "Chart recorder" exhibit with tour checks; docs.
+   Status 2026-10-26 23:00: 1–5 and 7 done. In the game the chart recorder's two screens draw the vessel's pressure
+   and temperature climbing and levelling off; the tour's 4 checks pass (screenshot showcase-79-chartrecorder-graph).
+   Next: 6, the chip designer screen. Also open: fabricating chips from materials; display sync as compressed deltas
+   instead of whole frames; wire capacitance on digital nets; a thicker trace option for distant viewing.
 
 0a0. **The power station runs at real time in the game** (2026-10-26 21:10): its headless server ran 98 s in 100 s,
    time scale 1.00 throughout. Still to see with a client (the station tour; the display was unavailable at 18:47,

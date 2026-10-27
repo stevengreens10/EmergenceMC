@@ -77,7 +77,7 @@ public final class TransientSolver implements StateView {
      * restart step is kept tiny; LTE control then grows h geometrically (×2 per step).
      */
     private double hRestart = 1e-7;
-    private int maxNewton = 40;
+    private int maxNewton = Integer.getInteger("emergence.maxNewton", 40);
     /** {@code emergence.dampNear}: past three cycles, updates are halved only while above this many tolerances (0: to the end). */
     static final double DAMP_NEAR = Double.parseDouble(System.getProperty("emergence.dampNear", "0"));
 

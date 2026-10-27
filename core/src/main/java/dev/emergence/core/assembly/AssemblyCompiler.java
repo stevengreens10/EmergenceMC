@@ -1664,23 +1664,7 @@ public final class AssemblyCompiler {
             // panels side by side in one plane, facing the same way, are one screen (tiles of it)
             List<Part> panels = new ArrayList<>();
             for (Part d : parts) if (d.kind() == PartKind.DISPLAY) panels.add(d);
-            int n = panels.size();
-            int[] group = new int[n];
-            for (int i = 0; i < n; i++) group[i] = i;
-            for (int i = 0; i < n; i++) {
-                for (int j = i + 1; j < n; j++) {
-                    Part a = panels.get(i), b = panels.get(j);
-                    if (a.axis() != b.axis() || !a.touches(b) || a.overlaps(b)) continue;
-                    int ax = a.axis().axis();
-                    int ca = ax == 0 ? a.minX() : ax == 1 ? a.minY() : a.minZ(), cb = ax == 0 ? b.minX() : ax == 1 ? b.minY() : b.minZ();
-                    if (ca != cb) continue;
-                    int gi = root(group, i), gj = root(group, j);
-                    if (gi != gj) group[Math.max(gi, gj)] = Math.min(gi, gj);
-                }
-            }
-            Map<Integer, List<Part>> screens = new LinkedHashMap<>();
-            for (int i = 0; i < n; i++) screens.computeIfAbsent(root(group, i), k -> new ArrayList<>()).add(panels.get(i));
-            for (List<Part> screen : screens.values()) {
+            for (List<Part> screen : DisplayTiles.screens(panels)) {
                 DisplayPanel found = null;
                 search:
                 for (var en : displayControllers.entrySet()) {
@@ -1693,63 +1677,14 @@ public final class AssemblyCompiler {
                         }
                     }
                 }
-                if (found == null) {
-                    c.warnings.add("Display #" + screen.get(0).id() + " has no controller chip touching it");
-                    continue;
-                }
-                // the screen's cells in its plane: right and up as its viewer sees them (up is the world's up, or north
-                // for a panel lying flat); the image letterboxed at 2:1 across them
-                Dir ax = screen.get(0).axis();
-                int[] up = ax.axis() == 1 ? new int[]{0, 0, -1} : new int[]{0, 1, 0};
-                int[] z = {ax.dx, ax.dy, ax.dz};
-                int[] right = {up[1] * z[2] - up[2] * z[1], up[2] * z[0] - up[0] * z[2], up[0] * z[1] - up[1] * z[0]};
-                int c0 = Integer.MAX_VALUE, c1 = Integer.MIN_VALUE, r0 = Integer.MAX_VALUE, r1 = Integer.MIN_VALUE;
-                for (Part d : screen) {
-                    for (int[] cell : cellsOf(d)) {
-                        int col = dot(cell, right), row = dot(cell, up);
-                        c0 = Math.min(c0, col);
-                        c1 = Math.max(c1, col);
-                        r0 = Math.min(r0, row);
-                        r1 = Math.max(r1, row);
-                    }
-                }
-                double w = c1 - c0 + 1, h = r1 - r0 + 1;
-                double iw = Math.min(0.92 * w, 2 * 0.92 * h), ih = iw / 2;
-                double ox = c0 + (w - iw) / 2, oyTop = r1 + 1 - (h - ih) / 2; // the image's left edge and top edge
-                for (Part d : screen) {
-                    c.displays.put(d.id(), found);
-                    // this panel's face as a rectangle of the screen: [col, col + cols) × [row, row + rows)
-                    int pc0 = Integer.MAX_VALUE, pc1 = Integer.MIN_VALUE, pr0 = Integer.MAX_VALUE, pr1 = Integer.MIN_VALUE;
-                    for (int[] cell : cellsOf(d)) {
-                        int col = dot(cell, right), row = dot(cell, up);
-                        pc0 = Math.min(pc0, col);
-                        pc1 = Math.max(pc1, col);
-                        pr0 = Math.min(pr0, row);
-                        pr1 = Math.max(pr1, row);
-                    }
-                    // the image's coordinates (u right, v down, 0..1) at this face's edges
-                    float uL = (float) ((pc0 - ox) / iw), uR = (float) ((pc1 + 1 - ox) / iw);
-                    float vT = (float) ((oyTop - (pr1 + 1)) / ih), vB = (float) ((oyTop - pr0) / ih);
-                    c.displayTiles.put(d.id(), new float[]{uL, vT, uR, vB});
+                // (a screen no controller here touches is dark, as a monitor with nothing plugged in, or driven from a
+                // machine at the other scale: see the game's display links)
+                if (found == null) continue;
+                for (var t : DisplayTiles.tiles(screen).entrySet()) {
+                    c.displays.put(t.getKey(), found);
+                    c.displayTiles.put(t.getKey(), t.getValue());
                 }
             }
-        }
-
-        private static int root(int[] g, int i) {
-            while (g[i] != i) i = g[i] = g[g[i]];
-            return i;
-        }
-
-        private static int dot(int[] a, int[] b) {
-            return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-        }
-
-        private static List<int[]> cellsOf(Part p) {
-            List<int[]> out = new ArrayList<>();
-            for (int x = p.minX(); x <= p.maxX(); x++)
-                for (int y = p.minY(); y <= p.maxY(); y++)
-                    for (int z = p.minZ(); z <= p.maxZ(); z++) out.add(new int[]{x, y, z});
-            return out;
         }
 
         /** A pressure transducer on the vessel or pipe at its −axis face. */

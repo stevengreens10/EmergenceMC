@@ -102,6 +102,33 @@ public final class ChipToolGameTests {
         h.succeed();
     }
 
+    /**
+     * The miniature counter display: its controller, inside a miniature block against its north face, is linked to the
+     * full-size 4 × 2 screen standing against that face (a block-scale machine of its own), and draws the count.
+     */
+    @GameTest(template = "arena", timeoutTicks = 200, batch = "displaylink")
+    public static void miniatureControllerDrivesFullSizeScreen(GameTestHelper h) {
+        var ex = dev.emergence.core.demo.MonitorExhibits.miniatureCounterDisplay();
+        BlockPos plot = h.absolutePos(new BlockPos(0, 1, 0));
+        dev.emergence.mod.demo.DemoBuilder.place(h.getLevel(), plot, ex);
+        BlockPos mini = plot.offset(dev.emergence.mod.demo.DemoBuilder.MINIATURE_AT);
+        var sim = dev.emergence.mod.sim.SimulationManager.get(h.getLevel());
+        h.runAtTickTime(120, () -> {
+            var screens = sim.linkedScreens(mini);
+            h.assertTrue(screens.size() == 1 && screens.get(0).length == 8, "one linked screen of 8 panels, got "
+                    + screens.stream().map(s -> s.length).toList());
+            var c = sim.compiledAt(mini);
+            h.assertTrue(c != null, "the miniature is simulated");
+            var d = ex.parts.get(ex.named.get("controller"));
+            PlacedPart ctl = ((AssemblyBlockEntity) h.getLevel().getBlockEntity(mini)).parts().stream()
+                    .filter(q -> q.kind == PartKind.CHIP && q.x0 == d.x0() && q.y0 == d.y0() && q.z0 == d.z0()).findFirst().orElse(null);
+            h.assertTrue(ctl != null && c.digitalChip(ctl.id) != null, "its controller is a chip");
+            var panel = (dev.emergence.core.digital.DisplayPanel) c.digitalChip(ctl.id).component();
+            h.assertTrue(panel.on() && panel.shown() > 100, "it draws: " + panel.on() + ", " + panel.shown() + " pixels");
+            h.succeed();
+        });
+    }
+
     /** A wire run between two resistors' ends goes round a third part rather than beside it. */
     @GameTest(template = "arena", timeoutTicks = 40, batch = "chiptools")
     public static void wireRunsAroundWhatItShouldNotTouch(GameTestHelper h) {

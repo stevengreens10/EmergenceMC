@@ -609,11 +609,19 @@ public final class AutoShowcase {
                     return v;
                 };
                 STEPS.add(new Step(800, view, shot.apply("count"), () -> onServer(server, key + "n", leds) >= 11)
-                        .check(key + " the tiny screen is lit", () -> {
-                            PlacedPart sp = named.apply("screen");
-                            CompiledAssembly c = compiled(server, at.apply("screen"));
-                            DisplayPanel d = sp == null || c == null ? null : c.display(sp.id);
-                            return that(d != null && d.on() && d.shown() > 100, d == null ? "no screen" : d.shown() + " pixels lit");
+                        .check(key + " its miniature controller draws", () -> {
+                            PlacedPart cp = named.apply("controller");
+                            CompiledAssembly c = compiled(server, at.apply("controller"));
+                            var chip = cp == null || c == null ? null : c.digitalChip(cp.id);
+                            DisplayPanel d = chip != null && chip.component() instanceof DisplayPanel dp ? dp : null;
+                            return that(d != null && d.on() && d.shown() > 100, d == null ? "no controller" : d.shown() + " pixels lit");
+                        })
+                        .check(key + " the full-size screen behind it shows its image", () -> {
+                            BlockPos screen = plot.offset(DemoBuilder.MINIATURE_AT).offset(e.blockParts.get(e.namedBlock.get("screen")).x0(),
+                                    e.blockParts.get(e.namedBlock.get("screen")).y0(), e.blockParts.get(e.namedBlock.get("screen")).z0());
+                            PlacedPart panel = partIn(server, screen, PartKind.DISPLAY);
+                            return that(panel != null && ClientDisplays.tile(panel.id) != null, panel == null ? "no panel there"
+                                    : ClientDisplays.tile(panel.id) == null ? "no image has reached it" : "showing it");
                         })
                         .check(key + " its chip draws the count its LEDs show", () -> {
                             PlacedPart cp = named.apply("chip");

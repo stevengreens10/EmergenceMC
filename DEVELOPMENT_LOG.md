@@ -1170,3 +1170,17 @@ is 4 × 2 panels, 25 × 12.5 mm, the size of a real 0.96-inch OLED.
   unoptimised and optimised once, and a block of more than 48 parts is shaped by its parts' cells.
 - *Tour checks.* The chart recorder's check now reads gauge pressure rather than the rise since its step began (the
   tour can arrive after the tank has heated).
+
+**Miniature circuits, full-size screens (2026-10-27).** The user wants miniature assemblies to work with full-size
+ones; first, the miniature counter display with a full-size monitor.
+- *Scale is drawing, not physics.* A cell is 6.25 cm in both kinds of machine; a block-scale build draws each cell as
+  a block. So a miniature controller driving a block-scale panel is physically sound.
+- *The link.* Islands stay one resolution each. A miniature machine's display controllers look across the block
+  faces their segments lie on, and drive the block-scale screen standing there. The screen is grouped and tiled by
+  the code the compiler uses, moved to `DisplayTiles`. The "display has no controller" warning is gone: a screen
+  driven from the other scale, or by nothing, is not an error.
+- *The exhibit.* The miniature counter display keeps all its circuitry in one block, its controller standing
+  against the block's north face, with a 4 × 2-block screen behind it facing the viewer.
+- *Text fix.* The miniature exhibits' texts gave cells as 6.25 mm; they are 6.25 cm.
+- *Tests.* A GameTest checks the link and the controller drawing in the world. A tour could not run: the display
+  disconnected again at 09:16.

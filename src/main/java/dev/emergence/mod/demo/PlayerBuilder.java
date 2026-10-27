@@ -235,6 +235,14 @@ public final class PlayerBuilder {
         }
         p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         p.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+        // its full-size parts beside it (a screen), placed as any block-scale part, from the lowest up
+        List<Exhibit.PartDef> big = new ArrayList<>(e.blockParts);
+        big.sort(java.util.Comparator.comparingInt(Exhibit.PartDef::y0));
+        for (Exhibit.PartDef d : big) {
+            Long id = place(level, p, at.offset(d.x0(), d.y0(), d.z0()), d, problems, e.id, "");
+            if (id == null) problems.add(e.id + ": nothing to click against for the full-size " + d.kind() + " at " + cell(d));
+        }
+        p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         // what came out, against the definitions
         if (level.getBlockEntity(at) instanceof AssemblyBlockEntity be) {
             List<String> want = new ArrayList<>(), got = new ArrayList<>();

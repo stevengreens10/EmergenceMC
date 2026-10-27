@@ -126,6 +126,10 @@ public final class SimulationManager {
         boolean offTick;
         /** Each display panel's image version and tick last sent to clients. */
         final Map<Long, long[]> displaySent = new HashMap<>();
+        /** Full-size screens its miniature display controllers drive across a block face (see {@link #syncDisplayLinks}). */
+        List<DisplayLink> displayLinks;
+        CompiledAssembly displayLinksFor;
+        long displayLinksAt;
         /** Its truncation-error tolerances' relaxation (1: as validated; up to {@link #MAX_RELAX}): see {@link #land}. */
         double relax = 1;
         java.util.concurrent.Future<?> step;
@@ -1707,7 +1711,110 @@ public final class SimulationManager {
      * Each display panel's image, when it has changed (at most every other tick) or every 5 s regardless (for players
      * who came since): 1 KB, as shown.
      */
+    /**
+     * A display controller in a miniature machine whose segment lies against a face of its block drives the full-size
+     * screen standing against that face — as a flex cable would run from a small board to a big panel. Panels are
+     * passive (their current is in the controller's); the screen's panels, a machine of their own at block scale,
+     * just show the controller's image. Physically consistent: a block-scale panel is the same 6.25 cm panel, drawn
+     * sixteen times larger.
+     */
+    record DisplayLink(dev.emergence.core.digital.DisplayPanel controller, long[] panels, float[][] tiles, BlockPos at, long[] sent) {}
+
+    private void syncDisplayLinks(Island isl) {
+        if (isl.resolution != AssemblyBlockEntity.MINIATURE) return;
+        if (isl.displayLinks == null || isl.displayLinksFor != isl.compiled || tickCount - isl.displayLinksAt >= 40) {
+            List<DisplayLink> old = isl.displayLinks;
+            isl.displayLinks = findDisplayLinks(isl);
+            isl.displayLinksFor = isl.compiled;
+            isl.displayLinksAt = tickCount;
+            // a link found again keeps its pace
+            if (old != null) for (int i = 0; i < isl.displayLinks.size(); i++) {
+                DisplayLink l = isl.displayLinks.get(i);
+                for (DisplayLink o : old) if (java.util.Arrays.equals(o.panels(), l.panels()) && o.controller() == l.controller()) System.arraycopy(o.sent(), 0, l.sent(), 0, 2);
+            }
+        }
+        for (DisplayLink l : isl.displayLinks) {
+            var d = l.controller();
+            boolean changed = d.version() != l.sent()[0];
+            if (!(changed && tickCount - l.sent()[1] >= 2) && tickCount - l.sent()[1] < 100) continue;
+            byte[] img = new byte[1024];
+            for (int y = 0; y < 64; y++) for (int x = 0; x < 128; x++) if (d.pixel(x, y)) img[(y >> 3) * 128 + x] |= (byte) (1 << (y & 7));
+            for (int i = 0; i < l.panels().length; i++) {
+                PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(l.at()),
+                        new dev.emergence.mod.net.DisplaySyncPayload(l.panels()[i], img, d.contrast(), l.tiles()[i]));
+            }
+            l.sent()[0] = d.version();
+            l.sent()[1] = tickCount;
+        }
+    }
+
+    /** The full-size screens the miniature machine at {@code pos} drives across its block faces: each screen's panel ids. */
+    public List<long[]> linkedScreens(BlockPos pos) {
+        Island isl = islandAt(pos);
+        if (isl == null || isl.compiled == null) return List.of();
+        List<long[]> out = new ArrayList<>();
+        for (DisplayLink l : findDisplayLinks(isl)) out.add(l.panels());
+        return out;
+    }
+
+    private List<DisplayLink> findDisplayLinks(Island isl) {
+        List<DisplayLink> out = new ArrayList<>();
+        CompiledAssembly c = isl.compiled;
+        if (c == null) return out;
+        java.util.Set<Long> linked = new java.util.HashSet<>();
+        for (var en : isl.partPos.entrySet()) {
+            var chip = c.digitalChip(en.getKey());
+            if (chip == null || !(chip.component() instanceof dev.emergence.core.digital.DisplayPanel dp)) continue;
+            BlockPos b = en.getValue();
+            AssemblyBlockEntity be = be(b);
+            PlacedPart seg = be == null ? null : be.byId(en.getKey());
+            if (seg == null) continue;
+            int last = be.resolution() - 1;
+            for (Direction dir : Direction.values()) {
+                int coord = switch (dir.getAxis()) {
+                    case X -> seg.x0;
+                    case Y -> seg.y0;
+                    case Z -> seg.z0;
+                };
+                if (coord != (dir.getAxisDirection() == Direction.AxisDirection.POSITIVE ? last : 0)) continue;
+                BlockPos n = b.relative(dir);
+                if (!(level.getBlockEntity(n) instanceof AssemblyBlockEntity nb) || nb.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
+                PlacedPart first = nb.parts().stream().filter(q -> q.kind == PartKind.DISPLAY).findFirst().orElse(null);
+                if (first == null || linked.contains(first.id)) continue;
+                // the whole screen: block-scale panels side by side with it, in its plane, facing its way
+                List<dev.emergence.core.assembly.Part> panels = new ArrayList<>();
+                Map<Long, BlockPos> where = new HashMap<>();
+                Deque<BlockPos> q = new ArrayDeque<>(List.of(n));
+                java.util.Set<BlockPos> seen = new HashSet<>(List.of(n));
+                while (!q.isEmpty() && panels.size() < 256) {
+                    BlockPos p = q.poll();
+                    if (!(level.getBlockEntity(p) instanceof AssemblyBlockEntity pb) || pb.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
+                    PlacedPart panel = pb.parts().stream().filter(x -> x.kind == PartKind.DISPLAY && x.axis == first.axis).findFirst().orElse(null);
+                    if (panel == null) continue;
+                    panels.add(panel.toCore(p, AssemblyBlockEntity.BLOCK_SCALE));
+                    where.put(panel.id, p);
+                    for (Direction e : Direction.values()) {
+                        if (e.getAxis().ordinal() == first.axis.axis()) continue; // stays in the screen's plane
+                        BlockPos m = p.relative(e);
+                        if (seen.add(m)) q.add(m);
+                    }
+                }
+                var tiles = dev.emergence.core.assembly.DisplayTiles.tiles(panels);
+                long[] ids = new long[panels.size()];
+                float[][] t = new float[panels.size()][];
+                for (int i = 0; i < ids.length; i++) {
+                    ids[i] = panels.get(i).id();
+                    t[i] = tiles.get(ids[i]);
+                    linked.add(ids[i]);
+                }
+                out.add(new DisplayLink(dp, ids, t, n, new long[]{-1, Long.MIN_VALUE / 2}));
+            }
+        }
+        return out;
+    }
+
     private void syncDisplays(Island isl, BlockPos any) {
+        syncDisplayLinks(isl);
         for (var en : isl.compiled.displays().entrySet()) {
             var d = en.getValue();
             long[] last = isl.displaySent.computeIfAbsent(en.getKey(), k -> new long[]{-1, Long.MIN_VALUE / 2});

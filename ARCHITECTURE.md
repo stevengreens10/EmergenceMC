@@ -146,3 +146,12 @@ inside is a model while its pins stay physical:
   `ChipTextPayload`.
 - `WireRouting` lays a wire run between two faces: a breadth-first search through free blocks that keeps clear of
   other parts and of wires it would join.
+
+### Across scales: display links (`SimulationManager.syncDisplayLinks`)
+A machine is built at one grid resolution: miniature (16 cells a block, true scale) or block scale (one cell a block,
+each 6.25 cm cell drawn as a block). Islands never mix the two. A cell is the same physical size in both, so they can
+be linked where the physics allows. The first link is the display: a display controller in a miniature machine whose
+segment lies against a face of its block drives the block-scale screen standing against that face. The screen's
+panels are passive; their current is the controller's. The server sends the panels the controller's image with
+tiles from `DisplayTiles`, the same code that tiles a screen within one machine. A miniature exhibit can carry
+block-scale parts beside its block (`Exhibit.blockParts`).

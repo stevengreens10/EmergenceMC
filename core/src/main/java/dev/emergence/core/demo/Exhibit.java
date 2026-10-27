@@ -99,6 +99,24 @@ public final class Exhibit {
      */
     public boolean miniature;
 
+    /**
+     * A miniature exhibit's full-size parts beside its block (a screen its miniature controller drives across the
+     * block's face, say), at block offsets from that block. They are a separate machine at block scale: the game
+     * links the two (see the display links), the core tests simulate the miniature alone.
+     */
+    public final List<PartDef> blockParts = new ArrayList<>();
+    /** Names of block parts, as {@link #named} for the miniature's own. */
+    public final Map<String, Integer> namedBlock = new LinkedHashMap<>();
+
+    /** A full-size part beside a miniature exhibit's block, {@code (dx, dy, dz)} blocks from it; returns its index there. */
+    public int blockPart(PartKind k, String material, int dx, int dy, int dz, Dir axis, Object... kv) {
+        Map<String, Double> m = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < kv.length; i += 2) m.put((String) kv[i], ((Number) kv[i + 1]).doubleValue());
+        int idx = blockParts.size();
+        blockParts.add(new PartDef(idx, k, material, dx, dy, dz, dx, dy, dz, axis, m));
+        return idx;
+    }
+
     /** Number of gallery plots this exhibit occupies along x (wide machines take two). */
     public int plots = 1;
 

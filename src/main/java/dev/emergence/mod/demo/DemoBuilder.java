@@ -258,6 +258,15 @@ public final class DemoBuilder {
 
     /** Places a miniature exhibit at true scale: all its cells inside the one block {@code at}. */
     private static void placeMiniature(ServerLevel level, BlockPos at, Exhibit e) {
+        // its full-size parts beside it (a screen), block scale
+        for (Exhibit.PartDef d : e.blockParts) {
+            BlockPos bp = at.offset(d.x0(), d.y0(), d.z0());
+            level.setBlock(bp, dev.emergence.mod.block.AssemblyBlock.stateAt(level, bp), 3);
+            AssemblyBlockEntity be = (AssemblyBlockEntity) level.getBlockEntity(bp);
+            be.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
+            be.addPart(new PlacedPart(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE), d.kind(), new PartSpec(d.material(), 1, 1, d.params()),
+                    0, 0, 0, 0, 0, 0, d.axis(), false));
+        }
         level.setBlock(at, dev.emergence.mod.block.AssemblyBlock.stateAt(level, at), 3);
         AssemblyBlockEntity be = (AssemblyBlockEntity) level.getBlockEntity(at);
         be.setResolution(AssemblyBlockEntity.MINIATURE);

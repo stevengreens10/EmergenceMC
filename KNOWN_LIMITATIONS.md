@@ -245,6 +245,10 @@ multimeter, oscilloscope/data logging.
   carries one gas flow, so two stacked vessels cannot exchange gas both ways at once (no counter-current convection
   through a wide opening); a chilled vessel above a warm one just stratifies.
 
+## Across scales
+* Miniature and block-scale machines are separate. The only link between them so far is a display controller
+  driving a screen across a block face; wires, shafts, pipes and heat do not cross between scales yet.
+
 ## Building chip circuits
 * The chip designer's text uses Minecraft's proportional font (columns do not line up exactly); it has no
   find/replace. A placed chip's live view is polled a few times a second, so fast signals are seen as samples.

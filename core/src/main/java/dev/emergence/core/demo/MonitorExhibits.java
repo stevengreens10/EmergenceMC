@@ -198,18 +198,21 @@ public final class MonitorExhibits {
     }
 
     /**
-     * The counter display at true scale, in one block (6.25 mm cells): the same circuit — 1 Hz crystal, 74HC163
-     * counter, four LEDs, the counter-display chip and its font ROM, the display controller — with a 25 × 12.5 mm
-     * screen (a 0.96-inch OLED's size) standing on the block's south face. Built with the precision tweezers.
+     * The counter display's circuit at true scale, in one block of 6.25 cm cells — 1 Hz crystal, 74HC163 counter,
+     * four LEDs, the counter-display chip and its font ROM, the display controller — driving a full-size screen of
+     * 4 × 2 block-scale panels behind it: the controller stands against the block's north face, and a display
+     * controller drives the screen across the face it lies against, whatever the scale (the game's display links).
+     * Built with the precision tweezers; the screen as any block-scale part.
      */
     public static Exhibit miniatureCounterDisplay() {
         Exhibit e = new Exhibit("minicounter", "Miniature counter display",
-                List.of("MINIATURE", "Counter display,", "true scale in one", "block (tweezers)"),
-                "The counter display at true scale, built with the precision tweezers inside a single block of 6.25 mm "
-                        + "cells: the same chips, the same design and font ROM, a 4-bit counter ticking once a second, its "
-                        + "LEDs and a screen the size of a 0.96-inch OLED (25 × 12.5 mm) on the block's south face. The "
-                        + "counter chip is 56 mm long; the display chip, eleven cells, 69 mm. Everything works exactly as in "
-                        + "the big one: the same physics at the scale the parts really have.");
+                List.of("MINIATURE", "Counter display:", "its circuit in one", "block, a big screen"),
+                "The counter display's whole circuit at true scale, built with the precision tweezers inside a single "
+                        + "block of 6.25 cm cells: the same chips, the same design and font ROM, a 4-bit counter ticking "
+                        + "once a second and its LEDs. Its display controller stands against the back of the block, and "
+                        + "drives the full-size screen behind it across that face, as a ribbon cable would: a controller "
+                        + "drives the screen it touches, whatever the scale. (A full-size part is the same 6.25 cm part as "
+                        + "a miniature one, drawn sixteen times larger: here the circuit is drawn at its true size.)");
         e.miniature = true;
         String si = "silicon";
         // ---- the back row: the supply (+ east), the 1 Hz clock, the 500 kHz clock
@@ -232,14 +235,16 @@ public final class MonitorExhibits {
             e.text(c, font);
             if (k == 0) e.name("rom", c);
         }
+        // the display controller standing upright against the block's north face (its leads east and west), and the
+        // full-size screen behind it, 4 × 2 blocks facing the viewer
         for (int k = 0; k < 6; k++) {
-            int d = e.add(CHIP, si, k, 0, 14, Dir.EAST, "function", 8);
+            int d = e.add(CHIP, si, 13, k, 0, Dir.UP, "function", 8);
             if (k == 0) e.name("controller", d);
         }
         for (int y = 0; y <= 1; y++) {
-            for (int k = 0; k < 4; k++) {
-                int sc = e.add(DISPLAY, "glass", k, y, 15, Dir.SOUTH);
-                if (y == 0 && k == 0) e.name("screen", sc);
+            for (int dx = -2; dx <= 1; dx++) {
+                int sc = e.blockPart(DISPLAY, "glass", dx, y, -1, Dir.SOUTH);
+                if (y == 0 && dx == 0) e.namedBlock.put("screen", sc);
             }
         }
         // ---- the LEDs (Q3 on the left, seen from the south) and their resistors, side by side: their leads stand up
@@ -257,8 +262,8 @@ public final class MonitorExhibits {
         r.pin("vdd", 6, 0, 3).pin("vdd", 7, 0, 3).pin("vdd", 8, 0, 3); // CLR̄, LOAD̄, EN high
         r.pin("vdd", 10, 0, 9).pin("gnd", 10, 0, 7);                 // the display chip
         r.pin("vdd", 14, 0, 13).pin("gnd", 14, 0, 11);               // the ROM
-        r.pin("vdd", 5, 0, 15).pin("gnd", 5, 0, 13);                 // the controller
-        r.pin("vdd", 4, 0, 13);                                      // its rst, tied high
+        r.pin("vdd", 14, 5, 0).pin("gnd", 12, 5, 0);                 // the controller
+        r.pin("vdd", 12, 4, 0);                                      // its rst, tied high
         r.pin("tick", 4, 0, 2).pin("tick", 5, 0, 3);
         r.pin("clk", 8, 0, 2).pin("clk", 0, 0, 7);
         for (int k = 0; k < 4; k++) {
@@ -268,8 +273,8 @@ public final class MonitorExhibits {
         }
         for (int k = 0; k < 6; k++) r.pin("a" + k, 4 + k, 0, 9).pin("a" + k, 6 + k, 0, 11);
         for (int k = 0; k < 5; k++) r.pin("f" + k, 6 + k, 0, 13).pin("f" + k, 5 + k, 0, 7);
-        for (int k = 0; k < 4; k++) r.pin(new String[]{"cs", "dc", "sclk", "din"}[k], k, 0, 9).pin(new String[]{"cs", "dc", "sclk", "din"}[k], k, 0, 13);
+        for (int k = 0; k < 4; k++) r.pin(new String[]{"cs", "dc", "sclk", "din"}[k], k, 0, 9).pin(new String[]{"cs", "dc", "sclk", "din"}[k], 12, k, 0);
         r.route();
-        return e.view(8.45, 0.62, 9.5, 40);
+        return e.view(8.0, 1.5, 11.0, 18);
     }
 }

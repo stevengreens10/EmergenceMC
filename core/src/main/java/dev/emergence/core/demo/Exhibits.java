@@ -1411,8 +1411,9 @@ public final class Exhibits {
         Exhibit e = new Exhibit("miniature", "Miniature generator",
                 List.of("MINIATURE", "True-scale hand", "generator in one", "block (tweezers)"),
                 "Everything in the gallery can also be built at true scale: with precision tweezers in the "
-                        + "off-hand, parts go into a 16×16×16 grid of 6.25 mm cells inside a single block. This "
-                        + "is the hand generator at that scale — 6 cm across. Crank it and meter the resistor.");
+                        + "off-hand, parts go into a 16×16×16 grid of 6.25 cm cells inside a single block (a metre). "
+                        + "The gallery's full-size builds draw each of those cells as a whole block; this is the hand "
+                        + "generator drawn at its true size. Crank it and meter the resistor.");
         e.miniature = true;
         String st = "steel_1045";
         e.box(BLOCK, st, 9, 0, 8, 9, 2, 8, Dir.UP);

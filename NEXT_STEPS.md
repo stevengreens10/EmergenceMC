@@ -204,6 +204,15 @@
    fifth of the plant's iterations), why the in-game state's circuits iterate ~6 times a step (vs ~4), water/steam
    property cost.
 
+0a6. **Across scales.** A miniature controller now drives a full-size screen (display links), verified in a GameTest.
+   Still to see in the game: `./gradlew runShowcaseClient -Demergence.showcaseOnly=minicounter`. The display was
+   disconnected at 09:16; the tour's checks are written. Next ways for miniature and full-size machines to work
+   together:
+   - electrical connectors across a block face, joining a miniature edge wire to the block-scale part against that
+     face, which needs the two lattices compiled into one machine;
+   - shafts across scales;
+   - heat across scales.
+
 0a5. **Scheduled tours, 2026-10-27 01:11 and 06:23: not run.** The display was disconnected: Windows shows only its "WinDisc"
    placeholder, and the tour client failed with "Failed to locate a primary monitor" (also the chip tour at 00:30,
    which was left on the error dialog and stopped at 01:11). The demo world is current (built 00:28 from the

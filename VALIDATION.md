@@ -580,3 +580,9 @@ screen every second through a full count, in decimal and binary. In the world it
 by part (0 problems, 0 differences), and the tour reads the screen as lit, its chip drawing the LEDs' count.
 On the first try, the four LEDs and resistors side by side shorted Q0–Q3 together: their leads left across the
 part, into their neighbours. Standing the leads up (`lead_axis` 1) fixed it; the model was right.
+
+## A miniature controller drives a full-size screen (`ChipToolGameTests.miniatureControllerDrivesFullSizeScreen`)
+The miniature counter display is placed in the world: its circuit in one miniature block, its 4 × 2 screen of
+block-scale panels against the block's north face. Its island links the one screen (8 panels) to its controller,
+which is on and drawing the count. The core test reads that controller's image against the LEDs through a full
+count.

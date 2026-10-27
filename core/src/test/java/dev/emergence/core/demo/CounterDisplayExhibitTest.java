@@ -61,7 +61,9 @@ class CounterDisplayExhibitTest {
         Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
         CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
         assertTrue(c.warnings().isEmpty(), "warnings: " + c.warnings());
-        DisplayPanel screen = c.display(b.id(e, "screen"));
+        // the screen's image: its own panels', or (the miniature's full-size screen, a separate machine) its controller's
+        DisplayPanel screen = e.named.containsKey("screen") ? c.display(b.id(e, "screen"))
+                : (DisplayPanel) c.digitalChip(b.id(e, "controller")).component();
         assertNotNull(screen);
         List<Integer> seen = new ArrayList<>();
         int agree = 0, checked = 0;

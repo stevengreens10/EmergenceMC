@@ -118,9 +118,9 @@ behaviour; where physics is missing the effect is simply absent.
   leakage or ESD diodes). The gate-level LOGIC parts and MSI chips (functions 0–4) still run in the analog solver;
   chips of the player's design and the library parts (functions 5–8) run by events.
 * Chips by events: a timing violation holds the registers rather than latching garbage; no glitches, metastability
-  or ground bounce; a digital net is ideal apart from its capacitance; outputs are 50 Ω whatever the load. A design
-  can be set only through its part's text (exhibits, item data): the in-game chip designer is not written yet, and
-  chips are not yet fabricated from materials (a CHIP part of silicon is enough). Display images reach clients as
+  or ground bounce; a digital net is ideal apart from its capacitance; outputs are 50 Ω whatever the load. Chips
+  are not yet fabricated from materials (a CHIP part of silicon is enough). The 256-byte ROM has no chip enable and
+  no tri-state outputs (no shared data bus). Delays do not depend on temperature or load. Display images reach clients as
   whole frames (1 KB) at most every other tick per panel, not as compressed deltas. No radio. The display controller has one frame buffer (as an SSD1306 does): a design that redraws
   whole frames tears for one frame's time after a change.
 * Light: LEDs, daylight and hot parts illuminate photodiodes (hot parts directly only: not by way of mirrors and
@@ -244,3 +244,10 @@ multimeter, oscilloscope/data logging.
   κ = k_G·A (it does not bubble through the liquid), so a tray is somewhat less than an equilibrium stage. A passage
   carries one gas flow, so two stacked vessels cannot exchange gas both ways at once (no counter-current convection
   through a wide opening); a chilled vessel above a warm one just stratifies.
+
+## Building chip circuits
+* The chip designer's text uses Minecraft's proportional font (columns do not line up exactly); it has no
+  find/replace. A placed chip's live view is polled a few times a second, so fast signals are seen as samples.
+* A miniature (tweezers) chip is still placed segment by segment; editing one cannot change its length.
+* Wire runs keep clear of every other part's block, so in a crowded build a run may need doing in pieces. The routes
+  are shortest paths, not tidy ones, and each run is one colour (pick it in the part editor).

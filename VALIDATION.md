@@ -554,3 +554,22 @@ the player's design (`counter_display`) across the analog–digital boundary. On
 the screen independently. It decodes the big digits against the font and the binary row underneath, and reads the
 count off the LEDs' currents. All three agree at every reading, 1 to 15 and round to 0 again. Run at 500 kHz, it
 costs 0.23 s of CPU per simulated second.
+
+## MSI chips by events, ROM, contention, delay (`MsiComponentTest`, `CounterDisplayExhibitTest`, `ChipToolGameTests`)
+- The counter clears, loads and counts like a 74HC163, TC at 15 with EN high. It wraps, and its state saves and
+  restores.
+- The 256-byte ROM shows the byte addressed after its access time. Its hex reads `@` addresses, comments and 0x
+  prefixes, and formats back to the same bytes. Bad hex is refused, with its line given.
+- CMOS delay is ×1 at 5 V, about ×4 at 2 V and under ×1 at 6 V.
+- Two outputs fighting over a net for 1 ms burn 0.25 mJ (5 V across 100 Ω), shared equally between them.
+- The EM-4 computer, the Geiger counter and the memory exhibit pass their core tests, now that their chips run by
+  events.
+- The counter display, with its font in an external ROM: the screen matches the LEDs through a full count.
+  Rewriting the ROM's "1" glyph draws a 7 for a count of 1.
+- In the world (GameTests):
+  - A counter chip placed by a player facing north lies as nine blocks to the east and comes out whole.
+  - A design written onto a placed chip lengthens its row to 9 blocks for 8 outputs, then shortens it back to 5.
+    The first segment keeps its id; a draft that does not compile keeps the row as it was.
+  - A wire run between two resistors goes round a third in the way, never beside it.
+- The counter display's tour opens the chip designer and the ROM editor by right-clicking the placed chips. Both show
+  the chip running (powered), and the ROM editor shows the font (byte 2D = 1F, the F's first column).

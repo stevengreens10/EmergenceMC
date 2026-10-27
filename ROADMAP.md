@@ -86,8 +86,11 @@ Status legend: ✅ done · 🟡 partial · ⬜ not started. Phases follow CLAUDE
 ✅ Monitors: crystal clock, 10-bit SPI ADC, amplified pressure transducer, 128 × 64 OLED panels tiling screens;
    a shipped chart-recorder design graphing pressure and temperature (chart recorder exhibit); a counter-display
    design drawing a 4-bit counter chip's count as decimal digits from a font in its memory (counter display exhibit)
-🟡 The chip designer screen (edit a design in game, see its errors and estimates, write it onto a chip) ⬜;
-   fabricating chips from materials ⬜; radio links ⬜
+✅ Every chip by events (the MSI chips too), with contention dissipation and supply-dependent delay; a 256 × 8 ROM
+   whose contents are text; the counter display reads its font from it
+✅ Building chip circuits in game: chips placed and removed whole, pins named on them, the chip designer (live
+   errors, estimates, pins, a placed chip running), the ROM editor (hex and pixel views), wire runs between two faces
+🟡 Fabricating chips from materials ⬜; radio links ⬜
 ⬜ A richer instruction set (load/store to RAM), more sensors and actuators
 
 ## Phase 5 — Chemistry and manufacturing

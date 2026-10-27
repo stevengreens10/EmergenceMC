@@ -177,6 +177,16 @@
    and temperature climbing and levelling off; the tour's 4 checks pass (screenshot showcase-79-chartrecorder-graph).
    Next: 6, the chip designer screen. Also open: fabricating chips from materials; display sync as compressed deltas
    instead of whole frames; wire capacitance on digital nets; a thicker trace option for distant viewing.
+   Status 2026-10-27 01:15: 6 done, and more, for the goal "build the counter display as a player would":
+   - every chip runs by events;
+   - the counter display reads its font from a 256-byte ROM chip;
+   - chips are placed and removed whole, with their pins named on top;
+   - the chip designer and the ROM editor are written;
+   - wire runs.
+   The core suite and all 20 GameTests pass. The world builds 80 exhibits by player placement with 0 problems and
+   0 differences. The counter display's tour passed with both editors open (01:00).
+   Still to see in the game: the tour of the other chip exhibits (computer, memory, geiger, chartrecorder), which
+   could not open a window at 00:30 (see 0a5).
 
 0a0. **The power station runs at real time in the game** (2026-10-26 21:10): its headless server ran 98 s in 100 s,
    time scale 1.00 throughout. Still to see with a client (the station tour; the display was unavailable at 18:47,
@@ -192,6 +202,14 @@
    not open a window at 18:47: "Failed to find a primary monitor"). Open: the engine's valve-port Newton failures (a
    fifth of the plant's iterations), why the in-game state's circuits iterate ~6 times a step (vs ~4), water/steam
    property cost.
+
+0a5. **Scheduled tour, 2026-10-27 01:11: not run.** The display was disconnected: Windows shows only its "WinDisc"
+   placeholder, and the tour client failed with "Failed to locate a primary monitor" (also the chip tour at 00:30,
+   which was left on the error dialog and stopped at 01:11). The demo world is current (built 00:28 from the
+   present code: 0 problems, 0 differences, 20/20 in-world tests). When the display is back:
+   1. `./gradlew runShowcaseClient -Demergence.showcaseOnly=computer,memory,geiger,chartrecorder,counterdisplay`
+      (the chips are now event-driven and placed whole);
+   2. the full tour.
 
 0a4. **Scheduled tour, 2026-10-26 20:14: not run.** The demo world regenerated (all 17 in-world tests pass), but the
    tour client could not open a window ("Failed to find a primary monitor"; also at 18:47, the station's tour). The

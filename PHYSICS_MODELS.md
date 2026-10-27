@@ -899,3 +899,17 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
   resistance, 1.5 mA, a smooth clamp at the ends of its range.
 * Validity: logic levels and timing of 74HC/AHC-class CMOS at 2–6 V. Not modelled inside chips: glitches,
   metastability, ground bounce, per-pin drive strength beyond 50 Ω, analog behaviour between thresholds.
+
+## MSI chips by events, the 256-byte ROM, contention, CMOS delay against supply (`MsiComponent`, `DigitalDomain`)
+* The counter (74HC163), register, adder (74HC283), 16 × 8 ROM and 16 × 4 RAM have the same logic as the analog model
+  they replace (`MsiChip`, kept for its validation tests). Supply current is the quiescent current (2 µA at 5 V) plus
+  C_pd·V² per cycle of switching, from datasheet-class power-dissipation capacitances (counter 35 pF, register 25 pF,
+  adder 80 pF, ROMs 40/60 pF, RAM 50 pF).
+* The 256 × 8 ROM (function 9; an EEPROM of the 28C family's kind): D0–D7 follow A0–A7 after its access time (120 ns
+  by default). Its contents are the part's text in hex: `@addr` sets the address; `//` and `#` start comments. No
+  chip-enable or tri-state outputs.
+* Contention: when chips' outputs on one digital net disagree, the pull-ups and pull-downs form a divider across the
+  supply. V²/(R_up + R_down) is burnt for as long as they disagree, shared among them as switching energy and heat.
+  The net's level is the last driver's (a stand-in for the undefined level in between).
+* Delay against supply: an output's delay scales as v/(v − V_T)² (long-channel square law, V_T 0.75 V), normalised
+  at 5 V. That is ×4.0 at 2 V (74HC data: 4–5×) and ×0.75 at 6 V (data: ×0.9). Not temperature-dependent.

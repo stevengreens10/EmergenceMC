@@ -1140,3 +1140,22 @@ analog MSI model. Its outputs light LEDs and cross into the digital domain at th
 drew 10–15 as 0–5 (the tens glyph was read from digit 0's place in the font). At 100 kHz the tour caught a torn
 frame: 11 above, 1010 below. The display has one buffer, so the clock went up to 500 kHz: a frame in 35 ms, inside
 a tick.
+
+**Building the counter display as a player would (2026-10-27).** The user asked for the font in an external ROM,
+done the way that suits anything a player builds, and for the whole build to be possible and easy, with good UX.
+- *Every chip by events.* The MSI chips joined the library parts and players' designs in the digital domain.
+  Fetching a font column per byte from a ROM in the analog solver would have cost a solver step at every address
+  change; now it costs events. Asked what that loses, I added the two gaps that matter: outputs fighting over a net
+  burn power, and CMOS delay grows as the supply falls.
+- *A 256 × 8 ROM* whose contents are text in hex, with a shipped 3×5 hex-digit font. The counter display fetches
+  each glyph column on demand. A test rewrites the ROM's "1" and sees a 7.
+- *UX:*
+  - chips placed and removed whole, with their pins named on top;
+  - the chip designer (code editor, live check and estimates, pins, the placed chip's registers and pin levels,
+    examples, guide);
+  - the ROM editor (hex grid, pixel view for fonts, live read address);
+  - chip presets carrying designs and ROM images;
+  - wire runs between two faces.
+- *First tours:* the harness closed every screen before photographing it (it now keeps a step's screen when that is
+  the point). At GUI scale 3 the designer's panel overflowed; it became tabs (Check, Pins, Running, Guide) scaled
+  to the window, and the ROM editor's grid scrolls on short screens.

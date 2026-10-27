@@ -127,8 +127,22 @@ inside is a model while its pins stay physical:
   rail; its inputs on analog nets cross at 0.55/0.45 of its supply, the crossing time interpolated. It powers up
   at 2 V and down below 1.5 V, and its heat goes to its package. Only output changes an analog part can see land
   solver steps.
-- Library parts implement `DigitalComponent` directly (a crystal clock, a 10-bit SPI ADC, an SSD1306-style display
-  controller); a player's design runs as `DesignComponent`. Their state is saved with the assembly.
+- Every chip runs here. `ChipTypes` is the one catalogue of chip functions (name, pins, row length, component),
+  read by the compiler and by the mod's tooltips, pin labels, placement and editors. The MSI chips (counter,
+  register, adder, ROMs, RAM) are `MsiComponent`. The library parts implement `DigitalComponent` directly (a
+  crystal clock, a 10-bit SPI ADC, an SSD1306-style display controller). A player's design runs as
+  `DesignComponent`. Their state is saved with the assembly; older saves' analog-model bits are carried over.
+- A part's text carries a design (function 5) or a 256-byte ROM's contents in hex (function 9).
 - Display panels (part DISPLAY) are grouped by the compiler into screens: each screen's panels show one controller's
   128 × 64 image, each panel its tile of it. The mod syncs each panel's image to clients when it changes (at most
   every other tick) and draws it as a texture.
+
+### Building chip circuits in the game (`mod.part.ChipRows`, `ChipEdits`, `WireRouting`; `mod.client` screens)
+- A chip is placed and removed whole: `ChipRows` finds a chip's row from any segment, as the compiler joins them.
+- `ChipEdits` (server) writes a design or ROM image onto every segment of a placed chip. It lengthens or shortens the
+  row to the new pins, and answers probes of a running chip (`ChipProbePayload`).
+- `ChipDesignerScreen` uses `CodeEditor`; `RomEditorScreen` is the hex editor. Both open on a chip in hand (from the
+  part editor) or on a placed chip (empty-hand right-click), and write back through `PartSpecEditPayload` or
+  `ChipTextPayload`.
+- `WireRouting` lays a wire run between two faces: a breadth-first search through free blocks that keeps clear of
+  other parts and of wires it would join.

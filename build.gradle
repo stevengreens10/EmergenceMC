@@ -162,6 +162,7 @@ neoForge {
             systemProperty 'emergence.gifs', System.getProperty('emergence.gifs', '')
             systemProperty 'emergence.dumpFailures', System.getProperty('emergence.dumpFailures', 'true')
             if (System.getProperty('emergence.dumpIslands')) systemProperty 'emergence.dumpIslands', System.getProperty('emergence.dumpIslands')
+            if (System.getProperty('emergence.paceDwell')) systemProperty 'emergence.paceDwell', System.getProperty('emergence.paceDwell')
             // the station is its world's only island: the whole tick budget is its own (not one island's share of many)
             systemProperty 'emergence.islandBudgetMs', '35'
         }

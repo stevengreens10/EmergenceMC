@@ -173,6 +173,10 @@ public final class AutoShowcase {
                     .act(PlayerHand.release()).caption(no, n, id, e.title, e.description));
             String key = id + ":";
             if (id.equals("station")) {
+                // -Demergence.paceDwell=<s>: first a while just watching it, nothing sampled (nothing makes the server wait
+                // on its step), its pace in the log
+                int dwell = Integer.getInteger("emergence.paceDwell", 0);
+                if (dwell > 0) STEPS.add(new Step(20 * dwell, NOTHING, null));
                 // the power station, found running: its fire, its steam, its engine, its vacuum, its electricity
                 BlockPos shaft = at.apply("shaft"), boiler = at.apply("boiler"), cnd = at.apply("condenser"), bat = at.apply("battery"),
                         box = at.apply("firebox");

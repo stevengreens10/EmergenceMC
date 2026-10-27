@@ -239,8 +239,13 @@ public final class PlayerBuilder {
         List<Exhibit.PartDef> big = new ArrayList<>(e.blockParts);
         big.sort(java.util.Comparator.comparingInt(Exhibit.PartDef::y0));
         for (Exhibit.PartDef d : big) {
-            Long id = place(level, p, at.offset(d.x0(), d.y0(), d.z0()), d, problems, e.id, "");
+            BlockPos bp = at.offset(d.x0(), d.y0(), d.z0());
+            Long id = place(level, p, bp, d, problems, e.id, "");
             if (id == null) problems.add(e.id + ": nothing to click against for the full-size " + d.kind() + " at " + cell(d));
+            // its starting temperature, as for the miniature's own parts (Exhibit.blockInitial)
+            Exhibit.Initial bin = e.blockInitial.get(d.index());
+            if (id != null && id > 0 && bin != null && !Double.isNaN(bin.temperature()) && level.getBlockEntity(bp) instanceof AssemblyBlockEntity bbe)
+                bbe.savedState().put(id, new double[]{bin.temperature(), 0, 0, 0, 0});
         }
         p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         // what came out, against the definitions

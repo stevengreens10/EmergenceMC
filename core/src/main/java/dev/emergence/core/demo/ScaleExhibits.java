@@ -54,4 +54,42 @@ public final class ScaleExhibits {
         e.blockPart(BLOCK, st, 1, 1, 0, Dir.UP);
         return e.view(8.5, 2.6, 11.5, 22);
     }
+
+    /**
+     * Air and heat across scales: a full-size tank at 3 bar, its pipe against the east face of a miniature block, where
+     * a miniature pipe from a small tank at 1 bar meets it; and a full-size copper block at 450 K resting on the block's
+     * top face, over a miniature copper cell. The tanks come to one pressure; the cell warms.
+     */
+    public static Exhibit pipesAndHeatAcrossScales() {
+        Exhibit e = new Exhibit("acrossscales2", "Pipes and heat across scales",
+                List.of("ACROSS SCALES", "Air and heat pass", "between full size", "and miniature"),
+                "The big tank holds air at 3 bar; its pipe ends against the side of a block that holds, at true size "
+                        + "(6.25 cm cells), a small tank at 1 bar and a pipe run to that same face. Pipes meeting across a "
+                        + "block's face are joined, whatever the scale: air flows until both tanks are at one pressure "
+                        + "(about 1.7 bar: the small side has its pipe to fill too). On top, a copper block that started at 450 K rests on the block's top face, "
+                        + "over a copper cell standing on a nylon post inside it: heat crosses the contact, and the two "
+                        + "coppers come to one temperature, then cool together. Meter the small tank and the cell.");
+        e.miniature = true;
+        String st = "steel_1045";
+        // air: the small tank on the block's floor, its pipe run east to the face
+        e.name("minitank", e.add(TANK, st, 9, 0, 8, Dir.UP, "pressure", 1e5));
+        // (a pipe a cell at a time, as the tweezers lay it)
+        for (int x = 10; x <= 15; x++) {
+            int pp = e.add(PIPE, "copper", x, 0, 8, Dir.EAST);
+            if (x == 15) e.name("minipipe", pp);
+        }
+        // heat: a copper cell just under the top face, on a nylon post (nylon: it keeps the heat)
+        e.box(BLOCK, "nylon_66", 8, 0, 4, 8, 14, 4, Dir.UP);
+        e.name("cell", e.add(BLOCK, "copper", 8, 15, 4, Dir.UP));
+        // full size: the big tank's pipe against the east face
+        e.namedBlock.put("bigpipe", e.blockPart(PIPE, "copper", 1, 0, 0, Dir.EAST));
+        e.namedBlock.put("bigtank", e.blockPart(TANK, st, 2, 0, 0, Dir.UP, "pressure", 3e5));
+        // on the top face a copper block at 450 K, held by a nylon pillar to the west
+        int hot = e.blockPart(BLOCK, "copper", 0, 1, 0, Dir.UP);
+        e.namedBlock.put("hot", hot);
+        e.blockInitial.put(hot, new Exhibit.Initial(450, 0, 0, 0));
+        e.blockPart(BLOCK, "nylon_66", -1, 0, 0, Dir.UP);
+        e.blockPart(BLOCK, "nylon_66", -1, 1, 0, Dir.UP);
+        return e.view(8.5, 2.2, 12.5, 22);
+    }
 }

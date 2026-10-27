@@ -167,3 +167,28 @@ A full-size ribbon cable (part RIBBON) lying against a miniature block joins the
   a ribbon between chip pins stay digital.
 - **Core tests:** they build an exhibit's full-size parts the same way: a cell a block, 48 cells off, with the same
   bridge rule (`Exhibits.build`, `Exhibit.blockParts`).
+
+### Across scales: shafts, pipes and heat (`Assembly.Link`, `CrossScale`)
+Any full-size part touching a miniature block across a face joins the two into one island, as a ribbon does
+(`SimulationManager.joinedAcross`). For each adjacency the game asks `CrossScale.link` what joins them, and the core's
+exhibits ask the same rules (`Exhibits.build`):
+- **THERMAL:** each miniature part with a cell on the face is linked to the full-size part, the contact one cell's face
+  shared among them (`thermalAcross`).
+- **SHAFT:** a full-size shaft along the face's axis and a miniature shaft running to it are coupled by a lossless
+  bevel constraint of ratio 1 (`buildScaleLinks`; `CompiledAssembly.shaftCouplings`).
+- **FLUID:** pipe or tank ends meeting at the face get a passage (a `FluidBranch`), and neither end vents (`fluidLinked`).
+World lookups in a joined island find each cell at its own scale (`CellMap`: a cell within two blocks of a full-size
+block, shift taken off, is a full-size one).
+
+### Logic analyser (`core.instruments.LogicCapture`; `mod.item.LogicAnalyzerItem`, `client.AnalyzerScreen`)
+The capture records eight channels. A probe on a net only chips touch records levels as they switch, through a watcher
+on the digital net (`DigitalDomain.Net.watch`). Any other probe records voltages after each solver step, taken against
+the ground lead, or against the datum without one. It keeps envelopes for drawing, and runs, triggers a single
+capture, or holds. Each player's session lives on the server (`SimulationManager.AnalyzerSession`), re-attached when
+the island recompiles. The screen asks for a view (span, offset, bins) and gets min/max envelopes back
+(`AnalyzerPayloads`).
+
+### Datums: where a floating circuit is grounded (`TransientSolver.updateDatums`, `Network.preferDatum`)
+Each galvanically connected circuit has one node grounded through 1 S. Every other node's relative shunt
+(10⁻¹² of its diagonal) returns through it, so the datum must be stiff. It is the first node the compiler marked as
+preferred (each battery's negative terminal), else the circuit's lowest node.

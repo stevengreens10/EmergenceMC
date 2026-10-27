@@ -27,4 +27,22 @@ class AcrossScalesExhibitTest {
         assertEquals(Math.abs(big), Math.abs(small), 0.03 * Math.abs(big), "the miniature shaft turns with it");
         assertTrue(peak > 1e-3, "the miniature generator drives its load: " + peak + " A");
     }
+
+    /** Air from the full-size tank fills the miniature one through the pipes meeting at the face; heat crosses the top. */
+    @Test
+    void airAndHeatCrossTheFaces() {
+        Exhibit e = ScaleExhibits.pipesAndHeatAcrossScales();
+        Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+        assertTrue(c.warnings().isEmpty(), "warnings: " + c.warnings());
+        assertTrue(c.vents().isEmpty(), "the pipes meeting at the face do not vent: " + c.vents().size());
+        long small = b.id(e, "minitank"), big = b.blockId(e, "bigtank"), cell = b.id(e, "cell"), hot = b.blockId(e, "hot");
+        double cell0 = c.probe(cell).temperature();
+        for (int i = 0; i < 1200; i++) c.step(0.05);
+        double ps = c.fluid(small)[0], pb = c.fluid(big)[0], tc = c.probe(cell).temperature(), th = c.probe(hot).temperature();
+        System.out.printf("across scales: tanks %.0f / %.0f Pa; copper cell %.1f K (from %.1f), full-size block %.1f K (from 450)%n", ps, pb, tc, cell0, th);
+        assertTrue(ps > 1.6e5 && Math.abs(ps - pb) < 0.05e5, "the small tank filled to the big one's pressure: " + ps + " / " + pb);
+        assertTrue(tc > cell0 + 40, "the miniature cell warmed through the top face: " + cell0 + " -> " + tc);
+        assertTrue(th < 440, "the full-size block gave its heat: " + th);
+    }
 }

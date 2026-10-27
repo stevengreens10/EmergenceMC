@@ -264,8 +264,11 @@ public final class DemoBuilder {
             level.setBlock(bp, dev.emergence.mod.block.AssemblyBlock.stateAt(level, bp), 3);
             AssemblyBlockEntity be = (AssemblyBlockEntity) level.getBlockEntity(bp);
             be.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
-            be.addPart(new PlacedPart(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE), d.kind(), new PartSpec(d.material(), 1, 1, d.params()),
-                    0, 0, 0, 0, 0, 0, d.axis(), false));
+            long bid = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
+            be.addPart(new PlacedPart(bid, d.kind(), new PartSpec(d.material(), 1, 1, d.params()), 0, 0, 0, 0, 0, 0, d.axis(), false));
+            Exhibit.Initial bin = e.blockInitial.get(d.index());
+            // (a starting temperature only: a block part's motion and charge start from rest)
+            if (bin != null && !Double.isNaN(bin.temperature())) be.savedState().put(bid, new double[]{bin.temperature(), 0, 0, 0, 0});
         }
         level.setBlock(at, dev.emergence.mod.block.AssemblyBlock.stateAt(level, at), 3);
         AssemblyBlockEntity be = (AssemblyBlockEntity) level.getBlockEntity(at);

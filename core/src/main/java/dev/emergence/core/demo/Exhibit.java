@@ -107,6 +107,8 @@ public final class Exhibit {
     public final List<PartDef> blockParts = new ArrayList<>();
     /** Names of block parts, as {@link #named} for the miniature's own. */
     public final Map<String, Integer> namedBlock = new LinkedHashMap<>();
+    /** Block parts' starting states, as {@link #initial} for the miniature's own (by block part index). */
+    public final Map<Integer, Initial> blockInitial = new LinkedHashMap<>();
 
     /** A full-size part beside a miniature exhibit's block, {@code (dx, dy, dz)} blocks from it; returns its index there. */
     public int blockPart(PartKind k, String material, int dx, int dy, int dz, Dir axis, Object... kv) {

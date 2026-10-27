@@ -55,6 +55,10 @@
    - (done: the miniature generator is built with the precision tweezers, each part clicked into its cells or onto
      its shaft, and compiles as its definition);
    - the gas engine's island runs at a fifth to a third of real time once it fires (combustion steps at 200+ rad/s);
+   - (2026-10-27 full tour, watched by the user: "the showcase just spins the crank for the gas engine for a long
+     time") the hand swung the starting handle 3 min 12 s before it fired: the island ran 0.30–0.50× real time
+     *while cranked* (45 ms ticks), and needed ~60–70 s of its own time against ~10 s in the core — find why it is
+     slow to fire in the world (mixture? the fuel valve's state? sun-warmed intake?) and why cranking is so costly;
    - the wind turbine's load check now asks only that power arrives (a lull at 30 rad/s gave 0.12 W against 0.2);
    - (done: `runWatchDemoBuild` builds the gallery where it can be watched; it found five machines held by scaffolding
      that had gone, now rebuilt when a world block beside them changes) confirm a full watched build matches its
@@ -208,12 +212,25 @@
    - a miniature controller drives a full-size screen (display links);
    - ribbon cables join miniature and full-size circuits into one machine with two grids, each colour on its own
      conductor.
-   Next across scales:
-   - shafts, through a coupling at a block face (the same joined-island machinery: a body spanning both grids);
-   - pipes;
-   - heat.
-   Open in joined islands: world-side lookups by cell (pipe-end capping, water, drawn optical beams) still use one
-   scale.
+   - (done 2026-10-27, steps 1, 2, 4 and 5 of the user's list) shafts, pipes and heat cross a block face
+     (`Assembly.Link`, `CrossScale`). The "Across scales" exhibit has a full-size crank turning the miniature
+     generator; "Pipes and heat across scales" has a 3 bar tank filling a miniature one and a hot block warming a
+     miniature cell. Both pass in core tests, a GameTest and the tour. World lookups use each cell's own scale
+     (`CellMap`), and a ribbon's conductors have resistance.
+   Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
+   miniature one); optical beams drawn in a joined island still use one scale.
+
+0a7. **The EM-8 computer and the logic analyser** (done 2026-10-27). The EM-8 runs the thermostat program from its
+   ROM in the world (plate 318.1–318.8 K). The tour opens the ROM's program in the program editor and clips the
+   analyser onto its serial bus. Next:
+   - a stack and subroutine calls, or a bigger player design: the EM-8 has 16 bytes of RAM and no calls;
+   - the analyser: decode a serial bus (SPI/UART) into bytes on the screen; export a capture as CSV;
+   - fabrication: chips made from materials (step 3 of the user's list, not yet asked for).
+
+0a8. **Full tour 2026-10-27 10:40: 167/174.** Fixed: the PWM bridge's shoot-through burnout (its control circuit
+   decoupled), the periscope's datum (`Network.preferDatum`), the loudspeaker's and chart recorder's checks. All
+   re-toured: 19/20, then the analyser check made robust, 4/4. The next full tour (the 6-hourly schedule) should
+   confirm across the whole gallery: the datum change touches every circuit (344 core tests and 24 GameTests pass).
 
 0a5. **Scheduled tours, 2026-10-27 01:11 and 06:23: not run.** The display was disconnected: Windows shows only its "WinDisc"
    placeholder, and the tour client failed with "Failed to locate a primary monitor" (also the chip tour at 00:30,

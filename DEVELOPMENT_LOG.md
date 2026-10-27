@@ -1198,3 +1198,57 @@ colours, with coloured miniature wires pulling each signal out of a full-size ri
   parts beside the miniature in the assembly and takes the shift off on the way back to the world.
 - *The exhibit.* The miniature counter display sends its count over a ribbon to four full-size LEDs. Core test,
   GameTest, world build and tour all pass.
+
+**Steps 1, 2, 4 and 5 (2026-10-27).** The user asked for four of the next steps: harden what is there (a full tour
+and its triage, joined-island gaps), shafts, pipes and heat across scales, a logic analyser, and an 8-bit computer
+running a program that controls a physical machine.
+- *Full tour, 10:40.* 167 passed, 7 failed, in 34 minutes over 81 exhibits. Each failure had a cause:
+  - *PWM burnout (a real one).* The bridge's lower-left transistor reached 448 K and was destroyed before the tour
+    arrived. On every rising edge the comparator's output took 12 ms to cross from 2.5 to 4.6 V, and both transistors
+    of the left pair conducted about 12 A for that time. The control circuit shared the battery with the bridge, so
+    the shoot-through sagged the supply. The knob's voltage, a fraction of that supply, sagged with it, which held
+    the comparator half-way across its threshold. The core reproduced it: 3.5 W on average in that transistor, 510 K
+    in 300 s. The oscillator, comparator and knob track now run from their own supply, through 100 Ω onto 470 µF,
+    as real drives decouple their control electronics. The same transistor now averages 0.17 W and reaches 305 K
+    (`PwmHeatTest`). The knob still sets the speed: 1.9 rad/s turned down, 5.0 rad/s turned up.
+  - *Periscope (a solver bug).* The receiver stayed dark although its photodiode made 3.3 µA. The solver grounds
+    each floating circuit at one node, its datum, through a 1 S shunt. Every other node has a shunt of 10⁻¹² of its
+    diagonal, about 10 nS on a wire's node, and those shunts return through the datum. The datum was each circuit's
+    lowest-numbered node. In the world part ids are random, and the photodiode's 2.2 MΩ sense line came first. The
+    shunts' return currents, microamps in all, held it at 0.38 V. The core numbers the parts differently, so the
+    datum fell on ground and nothing showed. Replaying the world's island dump in the core reproduced it, and with
+    datums off it went away. The compiler now marks each battery's negative terminal as its circuit's preferred
+    datum (`Network.preferDatum`). `DatumPlacementTest` compiles the periscope with its photodiode first, as the
+    world had it: it fails without the change and passes with it.
+  - *Loudspeaker (the check).* The LED follows the amplified sound and flickers at audio rate. One reading caught a
+    trough (2·10⁻¹⁶ mW) the tick after the step saw it lit. The check now takes the brightest reading over a second.
+  - *Chart recorder (the check).* A tour arriving 37 minutes after the world loaded finds the vessel settled hot,
+    the traces level near the top of their scales. The check accepts a climbing trace, or a level one in the top
+    quarter.
+  - *Gas engine (open).* Watching the tour, the user noted that it spun the starting handle for a long time: 3 min
+    12 s. The island ran at 0.3–0.5× real time while cranked, and needed 60–70 s of its own time to fire, against
+    about 10 s in the core. Recorded in NEXT_STEPS.
+- *Step 5: the EM-8 computer.* An 8-bit processor written in the chip language, simulated by events like any
+  player's chip: an accumulator, Z and C flags, 16 bytes of RAM, 2-byte instructions in four clocks, its program in an
+  external ROM chip. Its synthesis estimate is 1825 gates, good to 5.9 MHz. `Em8Assembler` assembles programs
+  (constants, labels, .org, .byte) and disassembles them; a ROM text starting ".asm em8" is assembled on load.
+  The thermostat program reads a thermistor over the ADC's serial bus, bit by bit, and switches a heater's MOSFET.
+  The exhibit holds the plate at 318.1–318.7 K against 318 K. Two mistakes the tests caught: names are
+  case-insensitive, so the constant HEAT clashed with the variable heat; and the LED check read the reading while
+  the program was still shifting bits into it. The ROM editor's Program… tab edits the assembly in a coloured
+  editor, with a listing and an instruction reference, and offers Done only when the program assembles.
+- *Step 4: the logic analyser.* `LogicCapture` records eight probes. Digital nets record levels as they switch, to
+  the nanosecond; analog nodes record voltages at every solver step. The item clips probes onto parts (sneak-use:
+  the ground lead), and a right-click in the air opens its screen: traces against time, zoom and pan, run, a
+  single-shot trigger and hold. The tour clips it onto the EM-8's chip select, clock, data and heater gate.
+- *Step 2: across scales.* Any full-size part touching a miniature block joins the two into one machine.
+  `CrossScale` decides what crosses: heat through the contact, shafts end to end coupled, and pipe or tank ends
+  given a passage. The "Across scales" exhibit's full-size crank turns the miniature hand generator. Core tests
+  check each link against physics: equal shaft speeds, mass conserved through a linked pipe, and the heat link's
+  time constant. A GameTest turns the crank in the world. The first heat-test threshold was wrong, not the link: two
+  copper cells through one contact equalise with τ ≈ 38 s, and 30 s left 48 K, as measured.
+- *Step 1: hardening.* The player-workflow GameTest builds a working chip circuit with the tools only. A ribbon's
+  conductors have resistance (13 mΩ a cell). World lookups in a joined island use each cell's own scale. An
+  earlier scripted edit had deleted three helpers from `SimulationManager` (the ribbon bridges, the joined
+  island's shift, and the cell map); the compiler caught it, and they were restored from the session's history.
+- *Tests.* 344 core tests and 24 GameTests pass. The demo world rebuilt 83 exhibits with no problems.

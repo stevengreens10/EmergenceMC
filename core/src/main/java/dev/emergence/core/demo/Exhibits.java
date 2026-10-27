@@ -39,7 +39,7 @@ public final class Exhibits {
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(), governedEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
                 OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ControlExhibits.flyball(), Exhibits.rectifier(), Exhibits.boost(), ControlExhibits.hBridge(), ControlExhibits.pwmMotor(), ControlExhibits.inverter(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), MechanicsExhibits.fourBar(), AeroExhibits.windTurbine(), AeroExhibits.propellerCart(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.floats(), MechanicsExhibits.waterWheel(), MechanicsExhibits.slideValve(), ControlExhibits.pressureRegulator(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.relayLatch(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
-                miniatureGenerator(), MonitorExhibits.chartRecorder(), MonitorExhibits.counterDisplay(), MonitorExhibits.miniatureCounterDisplay(), Em8Exhibits.thermostat(), ScaleExhibits.crankAcrossScales());
+                miniatureGenerator(), MonitorExhibits.chartRecorder(), MonitorExhibits.counterDisplay(), MonitorExhibits.miniatureCounterDisplay(), Em8Exhibits.thermostat(), ScaleExhibits.crankAcrossScales(), ScaleExhibits.pipesAndHeatAcrossScales());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -1535,6 +1535,9 @@ public final class Exhibits {
                         : d.y0() == -1 ? w.y0() == 0 : d.z0() == 1 ? w.z1() == 15 : w.z0() == 0;
                 if (face) a.bridge(id, ids.get(w.index()));
             }
+        }
+        for (var en : e.blockInitial.entrySet()) {
+            if (!Double.isNaN(en.getValue().temperature())) st.temperatures().put(blockIds.get(en.getKey()), en.getValue().temperature());
         }
         for (var en : e.initial.entrySet()) {
             long id = ids.get(en.getKey());

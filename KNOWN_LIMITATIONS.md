@@ -246,13 +246,16 @@ multimeter, oscilloscope/data logging.
   through a wide opening); a chilled vessel above a warm one just stratifies.
 
 ## Across scales
-* Miniature and block-scale machines join only where a full-size ribbon cable lies against a miniature block (its
-  conductors joining the miniature wires of their colours at that face). A display controller also drives a
-  full-size screen across a block face. Shafts, pipes and heat do not cross between scales.
-* In a machine joined across scales, the full-size parts are shifted in the assembly's grid. World-side lookups
-  made in cells still use the island's first block's scale: the capping of open pipe ends against world blocks,
-  still water, and optical beams drawn for the player. These can be wrong for the other scale's parts. A ribbon's
-  conductors have no resistance.
+* Miniature and block-scale machines join across a block face. A ribbon's conductors join wires of their colours.
+  Shafts end to end are coupled, and pipe and tank ends get a passage. Heat crosses the contact. A display
+  controller drives a full-size screen. Nothing else crosses: light, magnetic fields, structural joints (a
+  full-size part does not hold up a miniature one), and gears meshing across a face.
+* A shaft link couples shafts end to end only: a miniature shaft must run to the face, along the full-size shaft's
+  axis. It is rigid and lossless (no coupling's compliance or friction).
+* In a joined island, a cell's scale is found by its distance from the island's full-size blocks (`CellMap`). A
+  miniature cell within two blocks of a full-size one would be taken as full size; the shift (32 cells past the
+  miniature box) keeps them apart.
+* The optical beams drawn for the player in a joined island still use the island's first block's scale.
 
 ## Building chip circuits
 * The chip designer's text uses Minecraft's proportional font (columns do not line up exactly); it has no
@@ -260,3 +263,12 @@ multimeter, oscilloscope/data logging.
 * A miniature (tweezers) chip is still placed segment by segment; editing one cannot change its length.
 * Wire runs keep clear of every other part's block, so in a crowded build a run may need doing in pieces. The routes
   are shortest paths, not tidy ones, and each run is one colour (pick it in the part editor).
+
+## Computers and instruments
+* The EM-8 has 16 bytes of RAM, no stack or subroutine call, and one 8-bit input and one output port. Larger
+  programs need a design of the player's own. The assembler knows only the EM-8's instructions.
+* The logic analyser records at most 65 536 changes per channel; a busy bus fills it in a fraction of a second, and
+  the oldest go first. Analog channels are sampled at the solver's steps, so a fast analog edge between steps is
+  seen at the step's ends. Its screen is polled a few times a second.
+* The solver's datum preference marks battery negatives only. A circuit powered by a generator or a solar cell is
+  grounded at its lowest node, where a high-impedance node can still be disturbed by other nodes' shunts.

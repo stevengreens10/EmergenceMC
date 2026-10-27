@@ -916,8 +916,28 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
 
 ## Ribbon cable (part RIBBON)
 * Sixteen insulated conductors, colour-coded 0–15 as insulated wire is. Each conductor is one node along the cable,
-  joining the next ribbon block's same conductor and the insulated wires of its colour touching the ribbon. Its
-  resistance is left out: 28 AWG is about 0.2 Ω/m, so 13 mΩ a 6.25 cm cell. Nothing else connects to it; its
+  joining the next ribbon block's same conductor and the insulated wires of its colour touching the ribbon. Each
+  conductor in use is a resistor between adjacent ribbon blocks: ρ·L/A with copper, 6.25 cm, 0.081 mm² (28 AWG),
+  13 mΩ a cell. Nothing else connects to it; its
   insulation keeps other parts' leads off.
 * Across scales: against a miniature block, each conductor joins the miniature insulated wires of its colour that touch
   that face from inside. Physically consistent: a full-size part is the same 6.25 cm part drawn larger.
+
+## Across scales: shafts, pipes and heat (`Assembly.Link`)
+* A cell is 6.25 cm at both scales, so a miniature part and a full-size part touching across a block face are
+  physically in contact. The link is the contact model the compiler uses within one grid.
+* Shafts end to end are rigidly coupled: ω₁·a₁ = ω₂·a₂, a lossless bevel constraint of ratio 1 (μ = 0). Torque passes
+  through the constraint's reaction, and energy is conserved.
+* Pipes and tanks meeting at the face share a passage: a `FluidBranch` with the smaller end's bore. Mass is conserved
+  exactly through it (CrossScaleLinkTest: 1.02552 g before and after). Two tanks equalising end at 266 K and 322 K,
+  one gas expanding adiabatically and the other compressed, so their pressures' sum is not conserved.
+* Heat flows through G = 1/(L/2kA + L/2kA + 1/hA) with A one cell's face shared among the miniature parts on it.
+
+## The EM-8 processor (`emergence/chips/em8.chip`, `Em8Assembler`)
+* A chip design simulated by events like any other: an accumulator, Z and C flags, 16 bytes of RAM, a program
+  counter into an external 256-byte ROM, 2-byte instructions in four clocks. Its outputs are driven through the
+  chip's output pins, with the supply-dependent CMOS delay of every chip. Its synthesis estimate is 1825 gates, good
+  to about 5.9 MHz at 5 V. A faster clock is flagged as a timing violation.
+* The thermostat program: a plate (10 kΩ NTC thermistor over 5.1 kΩ) is read through the 10-bit ADC over its serial
+  bus, bit-banged by the program, and the heater's MOSFET is switched on below code 138 (318 K). The plate holds
+  318.1–318.7 K, the band set by the plate's thermal lag and the program's loop time.

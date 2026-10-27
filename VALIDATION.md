@@ -600,3 +600,32 @@ count.
   - the full-size screen shows its image;
   - the miniature and its ribbon are one machine;
   - the LEDs show the chip's count (12 = 1100).
+
+## The EM-8 computer (`Em8Test`, `Em8ThermostatExhibitTest`, tour `em8thermostat`)
+* The CPU at 250 kHz runs 3 × 7 by repeated addition (21), takes input-port branches (0x55 / 0xAA), and the
+  assembler reports undefined and duplicate names with line numbers.
+* The thermostat exhibit, 90 s from a 314 K start: the heater on, off at 318.6 K, on again at 318.1 K; the plate held
+  at 318.1–318.7 K afterwards; the LEDs equal to the program's stored reading's top bits at every sample (8, the
+  setpoint's); no timing violations.
+
+## Across scales (`CrossScaleLinkTest`, `AcrossScalesExhibitTest`, `ChipToolGameTests.aFullSizeCrankTurnsAMiniatureGenerator`)
+* A cranked shaft and one linked to it 40 cells away turn at the same speed within 2 %.
+* Tanks at 3 and 1 bar through a linked pipe come to 1.855 bar each, with no vents, and the air's mass is conserved
+  to 10⁻⁶.
+* Two copper cells at 400 K and ambient through a linked contact come within 10 K in 150 s (τ = C/2G ≈ 38 s).
+* The exhibit: the full-size crank and the miniature shaft both at 29.42 rad/s, the load at 15.5 mA peak. In the world,
+  one island, one shaft coupling, the speeds within 5 %, and the load above 1 mA.
+* Pipes and heat across scales (`AcrossScalesExhibitTest.airAndHeatCrossTheFaces`): the full-size tank at 3 bar and
+  the miniature one at 1 bar come to 1.655 bar each in 60 s, with no vents. The miniature copper cell warms from
+  293 to 354 K, and the full-size block falls from 450 to 387 K.
+
+## Logic capture (`LogicCaptureTest`)
+* On the counter display: the serial clock and data are digital channels, the 500 kHz clock recording over 10 000
+  edges in 1.5 s, microseconds apart. Q0 through its LED is analog, swinging below 0.5 V and above 4 V. A single
+  capture armed on Q0 rising triggers at the next count and holds.
+
+## Fixes found by the full tour (`PwmHeatTest`, `DatumPlacementTest`)
+* PWM: with the control circuit on its own decoupled supply, the hottest bridge transistor reaches 305 K in 120 s
+  (473 K before, shooting through).
+* Datum placement: the periscope compiled with its photodiode first lights its receiver (6.7 mA). Before, its sense
+  line was the datum and stayed at 0.38 V.

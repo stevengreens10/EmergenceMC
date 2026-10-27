@@ -614,6 +614,28 @@ public final class AutoShowcase {
                         }));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
             }
+            if (id.equals("acrossscales2")) {
+                // found settled or settling: the small tank filled from the big one through the pipes meeting at the face,
+                // the miniature copper cell warmed by the full-size block resting on the top face
+                BlockPos mini = plot.offset(DemoBuilder.MINIATURE_AT);
+                var td = e.blockParts.get(e.namedBlock.get("bigtank"));
+                BlockPos bigTank = mini.offset(td.x0(), td.y0(), td.z0());
+                STEPS.add(new Step(60, view, shot.apply("joined"))
+                        .check(key + " the small tank filled from the big one", () -> {
+                            double ps = pressure(server, mini, PartKind.TANK), pb = pressure(server, bigTank, PartKind.TANK);
+                            return that(ps > 1.4e5 && Math.abs(ps - pb) < 0.1e5, String.format("small tank %.2f bar, big tank %.2f bar (they started at 1 and 3)", ps / 1e5, pb / 1e5));
+                        })
+                        .check(key + " heat crossed the top face into the miniature cell", () -> {
+                            PlacedPart cell = cellPart(server, plot, e, "cell");
+                            CompiledAssembly c = compiled(server, mini);
+                            double t = cell == null || c == null ? Double.NaN : c.probe(cell.id).temperature();
+                            return atLeast("copper cell's temperature [K]", t, 303);
+                        })
+                        .check(key + " one machine across the scales", () -> {
+                            CompiledAssembly a = compiled(server, mini), b = compiled(server, bigTank);
+                            return that(a != null && a == b, a == b ? "one machine" : "two machines");
+                        }));
+            }
             if (id.equals("em8thermostat")) {
                 // the plate starts at 314 K: once the program has brought it to its setpoint (the heater off above 317.5 K,
                 // within two minutes), the plate held near it, its heater switching

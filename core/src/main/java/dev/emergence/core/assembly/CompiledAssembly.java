@@ -77,7 +77,6 @@ public final class CompiledAssembly {
     final Map<Long, Node[]> leadsOfPart = new HashMap<>();   // {neg, pos} or {node}
     final Map<Long, Object> deviceOfPart = new HashMap<>(); // Resistor, Diode, Switch, Capacitor, MagneticSystem.Coil
     /** Chips with registers or memory, by their first segment's part id (their bits are saved with the build). */
-    final Map<Long, dev.emergence.core.sim.elements.MsiChip> chips = new HashMap<>();
     /** The digital side: event-driven chips' insides and the nets of their pins (see DigitalDomain). */
     final dev.emergence.core.digital.DigitalDomain digital = new dev.emergence.core.digital.DigitalDomain();
     /** Event-driven chips by their first segment's part id; each segment's package; display panels' controllers. */
@@ -590,12 +589,8 @@ public final class CompiledAssembly {
 
     /** Register bits (or outputs, for chips without registers) of the chip a CHIP part belongs to, as 0..1 levels. */
     public double[] chipState(long partId) {
-        if (!(deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.MsiChip chip)) return null;
-        var t = chip.type();
-        int n = t.flipFlops > 0 ? t.flipFlops : t.outputs.length;
-        double[] out = new double[n];
-        for (int i = 0; i < n; i++) out[i] = t.flipFlops > 0 ? chip.register(solver, i) : chip.output(solver, i);
-        return out;
+        if (!(deviceOfPart.get(partId) instanceof dev.emergence.core.digital.DigitalChip chip)) return null;
+        return chip.component() instanceof dev.emergence.core.digital.MsiComponent m ? m.state() : null;
     }
 
     /** Friction torque [N·m] and power [W] a brake pad is absorbing now, or null if the part is not a brake. */
@@ -1111,12 +1106,6 @@ public final class CompiledAssembly {
             }
         }
         if (fatigue != null) for (var e : fatigue.byPart.entrySet()) if (e.getValue().damage > 0) s.damage().put(e.getKey(), e.getValue().damage);
-        for (var e : chips.entrySet()) {
-            for (int i = 0; i < e.getValue().type().flipFlops; i++) {
-                double bit = Math.max(0, Math.min(1, e.getValue().register(solver, i)));
-                s.chemistry().put(AssemblyState.registerKey(e.getKey(), i), bit);
-            }
-        }
         // event-driven chips' state (registers, memories, a display's image), each word as two 32-bit halves (doubles
         // hold them exactly)
         for (var e : digitalChips.entrySet()) {

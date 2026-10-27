@@ -25,7 +25,7 @@ import dev.emergence.core.sim.StateView;
  * saved in.
  */
 public final class DigitalChip implements Element, EventSource {
-    private static final double R_ON = 50, G_OFF = 1e-9, V_ON = 2.0, V_OFF = 1.5, TAU = 1e-3;
+    private static final double G_OFF = 1e-9, V_ON = 2.0, V_OFF = 1.5, TAU = 1e-3;
 
     private final DigitalDomain dom;
     private final int slot;
@@ -61,6 +61,14 @@ public final class DigitalChip implements Element, EventSource {
         for (int k = 0; k < out.length; k++) if (out[k] != null) dom.bindAnalogOutput(slot, k);
     }
 
+    /** Its outputs' on-resistance [Ω] (74HC: 50 Ω). */
+    private double rOn = 50;
+
+    /** Sets its outputs' on-resistance [Ω]. */
+    public void outputResistance(double r) {
+        rOn = Math.max(1e-3, r);
+    }
+
     public DigitalDomain domain() {
         return dom;
     }
@@ -86,7 +94,7 @@ public final class DigitalChip implements Element, EventSource {
             Node o = out[k];
             if (o == null) continue;
             boolean level = s.powered && s.outLevel[k];
-            double gu = s.powered && level ? 1 / R_ON : G_OFF, gd = s.powered && !level ? 1 / R_ON : G_OFF;
+            double gu = s.powered && level ? 1 / rOn : G_OFF, gd = s.powered && !level ? 1 / rOn : G_OFF;
             ctx.addFlow(vdd, o, gu * (ctx.x(vdd.index()) - ctx.x(o.index())));
             ctx.stampConductance(vdd, o, gu);
             ctx.addFlow(o, gnd, gd * (ctx.x(o.index()) - ctx.x(gnd.index())));
@@ -177,7 +185,7 @@ public final class DigitalChip implements Element, EventSource {
             Node o = out[k];
             if (o == null) continue;
             boolean level = sl.powered && sl.outLevel[k];
-            double gu = sl.powered && level ? 1 / R_ON : G_OFF, gd = sl.powered && !level ? 1 / R_ON : G_OFF;
+            double gu = sl.powered && level ? 1 / rOn : G_OFF, gd = sl.powered && !level ? 1 / rOn : G_OFF;
             double du = s.x(vdd.index()) - s.x(o.index()), dd = s.x(o.index()) - s.x(gnd.index());
             p += gu * du * du + gd * dd * dd;
         }

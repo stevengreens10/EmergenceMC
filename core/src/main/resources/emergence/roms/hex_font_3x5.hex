@@ -1,0 +1,19 @@
+// Hex digit font, 3x5: the digits 0-9 and A-F, each three bytes from address 3*digit (0 at 00, 9 at 1B, F at 2D).
+// Each byte is one column of the glyph, left to right; bit 0 is the top row, bit 4 the bottom (bits 5-7 unused).
+@00
+1F 11 1F   // 0
+12 1F 10   // 1
+1D 15 17   // 2
+15 15 1F   // 3
+07 04 1F   // 4
+17 15 1D   // 5
+1F 15 1D   // 6
+01 01 1F   // 7
+1F 15 1F   // 8
+17 15 1F   // 9
+1F 05 1F   // A
+1F 15 0A   // B
+1F 11 11   // C
+1F 11 0E   // D
+1F 15 15   // E
+1F 05 05   // F

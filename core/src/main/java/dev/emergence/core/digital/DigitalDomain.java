@@ -26,6 +26,12 @@ public final class DigitalDomain {
         long transitions;
         int lastDriver = -1;
         long contentions;
+        /** The chips driving it: their slots, the level each drives, and up to when their contention is booked. */
+        int[] drivers = new int[0];
+        boolean[] driven = new boolean[0];
+        double[] booked = new double[0];
+        /** Energy dissipated in contention so far [J]. */
+        double contentionEnergy;
 
         Net(String name) {
             this.name = name;
@@ -48,6 +54,11 @@ public final class DigitalDomain {
         public long contentions() {
             return contentions;
         }
+
+        /** Energy burnt in its drivers while they fought (one pulling up, another down) [J]. */
+        public double contentionEnergy() {
+            return contentionEnergy;
+        }
     }
 
     /** A pin's connection: a digital net, an analog node (the bridge element's), or nothing. */
@@ -62,6 +73,8 @@ public final class DigitalDomain {
         final int[] outVersion;
         /** An analog-bound output's level at the pin (what the bridge stamps). */
         final boolean[] outLevel;
+        /** Each input's level as last posted, powered or not (an analog input already high when the supply comes up). */
+        final boolean[] inSeen;
         boolean powered;
         double supply;
         double energy;
@@ -78,13 +91,14 @@ public final class DigitalDomain {
             outKind = new int[no];
             outVersion = new int[no];
             outLevel = new boolean[no];
+            inSeen = new boolean[ni];
             analog = new double[ni][];
         }
 
         @Override
         public void drive(int k, boolean level, double delay) {
             int v = ++outVersion[k];
-            double at = now + Math.max(0, delay);
+            double at = now + Math.max(0, delay) * delayFactor(supply);
             if (outKind[k] == NET) push(new Ev(at, seq++, Ev.NET, index, k, level, v));
             else if (outKind[k] == ANALOG) pushAnalog(new Ev(at, seq++, Ev.ANALOG_OUT, index, k, level, v));
         }
@@ -163,6 +177,54 @@ public final class DigitalDomain {
         s.outNet[k] = n;
         s.outKind[k] = NET;
         n.capacitance += 5e-12;
+        int m = n.drivers.length;
+        n.drivers = java.util.Arrays.copyOf(n.drivers, m + 1);
+        n.driven = java.util.Arrays.copyOf(n.driven, m + 1);
+        n.booked = java.util.Arrays.copyOf(n.booked, m + 1);
+        n.drivers[m] = slot;
+    }
+
+    /** An output's on-resistance [Ω] (a 74HC output, as the bridge's analog outputs). */
+    static final double R_OUT = 50;
+    /** CMOS threshold [V] and the supply the chips' delays are given at [V]. */
+    static final double V_T = 0.75, V_NOMINAL = 5;
+
+    /**
+     * How much slower a CMOS chip switches at supply v than at 5 V. Its transistors' current goes as (v − V_T)²
+     * (long-channel square law), the charge to swing as v: delay ∝ v/(v − V_T)², about 4× slower at 2 V (74HC data:
+     * 4–5×), a third faster at 6 V.
+     */
+    static double delayFactor(double v) {
+        if (!(v > V_T + 0.05)) v = V_T + 0.05;
+        double nominal = V_NOMINAL / ((V_NOMINAL - V_T) * (V_NOMINAL - V_T));
+        return v / ((v - V_T) * (v - V_T)) / nominal;
+    }
+
+    /**
+     * Books the contention on net n up to t: while its powered drivers disagree, those pulling up and those pulling
+     * down form a divider across the supply, V²/(R_up + R_down) burnt in their output transistors, shared among them.
+     */
+    private void bookContention(Net n, double t) {
+        int up = 0, down = 0;
+        double v = 0;
+        for (int j = 0; j < n.drivers.length; j++) {
+            Slot d = slots.get(n.drivers[j]);
+            if (!d.powered) continue;
+            if (n.driven[j]) up++;
+            else down++;
+            v = Math.max(v, d.supply);
+        }
+        if (up > 0 && down > 0) {
+            double p = v * v / (R_OUT / up + R_OUT / down), share = p / (up + down);
+            for (int j = 0; j < n.drivers.length; j++) {
+                Slot d = slots.get(n.drivers[j]);
+                if (!d.powered || t <= n.booked[j]) continue;
+                double e = share * (t - n.booked[j]);
+                d.energy += e;
+                n.contentionEnergy += e;
+            }
+        }
+        for (int j = 0; j < n.drivers.length; j++) n.booked[j] = Math.max(n.booked[j], t);
     }
 
     /** Pin k (input or output) is on an analog net: the bridge element does its physics. */
@@ -223,6 +285,8 @@ public final class DigitalDomain {
             case Ev.NET -> {
                 if (e.version() != s.outVersion[e.pin()] || !s.powered) return;
                 Net n = s.outNet[e.pin()];
+                bookContention(n, e.time());
+                for (int j = 0; j < n.drivers.length; j++) if (n.drivers[j] == s.index) n.driven[j] = e.level();
                 if (n.lastDriver >= 0 && n.lastDriver != s.index && n.level != e.level()) n.contentions++;
                 n.lastDriver = s.index;
                 if (n.level == e.level()) return;
@@ -244,12 +308,14 @@ public final class DigitalDomain {
             case Ev.INPUT -> deliver(s, e.pin(), e.level(), e.time());
             case Ev.POWER -> {
                 if (e.level() == s.powered) return;
+                // contention on its nets booked up to now, before it joins or leaves them
+                for (int k = 0; k < s.outNet.length; k++) if (s.outKind[k] == NET) bookContention(s.outNet[k], e.time());
                 s.powered = e.level();
                 if (s.powered) {
                     s.c.powerUp(e.time(), s);
                     // its inputs as they stand now
                     for (int k = 0; k < s.inNet.length; k++) {
-                        if (s.inKind[k] == NET && s.inNet[k].level) s.c.input(k, true, e.time(), s);
+                        if (s.inKind[k] == NET ? s.inNet[k].level : s.inSeen[k]) s.c.input(k, true, e.time(), s);
                     }
                 } else {
                     for (int k = 0; k < s.outLevel.length; k++) {
@@ -270,6 +336,7 @@ public final class DigitalDomain {
     }
 
     private void deliver(Slot s, int k, boolean level, double t) {
+        s.inSeen[k] = level;
         if (!s.powered) return;
         s.c.input(k, level, t, s);
         s.energy += s.c.inputEnergy(k, level, s.supply);
@@ -300,6 +367,7 @@ public final class DigitalDomain {
     /** The energy a chip has switched since last asked [J]. */
     double takeEnergy(int slot) {
         Slot s = slots.get(slot);
+        for (int k = 0; k < s.outNet.length; k++) if (s.outKind[k] == NET) bookContention(s.outNet[k], now);
         double e = s.energy;
         s.energy = 0;
         return e;

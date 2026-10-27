@@ -7,14 +7,12 @@ import dev.emergence.core.materials.Material;
 import dev.emergence.core.materials.MaterialDatabase;
 import dev.emergence.core.materials.MaterialProperty;
 import dev.emergence.core.math.Vec3;
-import dev.emergence.core.digital.ChipDesign;
-import dev.emergence.core.digital.ClockOscillator;
-import dev.emergence.core.digital.DesignComponent;
+import dev.emergence.core.digital.ChipTypes;
 import dev.emergence.core.digital.DigitalChip;
 import dev.emergence.core.digital.DigitalComponent;
 import dev.emergence.core.digital.DigitalDomain;
 import dev.emergence.core.digital.DisplayPanel;
-import dev.emergence.core.digital.SpiAdc;
+import dev.emergence.core.digital.MsiComponent;
 import dev.emergence.core.sim.Domain;
 import dev.emergence.core.sim.Node;
 import dev.emergence.core.sim.TransientSolver;
@@ -1569,63 +1567,30 @@ public final class AssemblyCompiler {
         final Map<String, DigitalDomain.Net> digitalNetOfRoot = new HashMap<>(), digitalNetsByGroup = new HashMap<>();
         final Set<String> connectedRoots = new HashSet<>();
 
-        /** Compiled designs, by their source (the same design on many chips, and on every rebuild, compiled once). */
-        static final Map<String, Object> DESIGNS = new java.util.concurrent.ConcurrentHashMap<>();
-
-        static Object design(String source) {
-            return DESIGNS.computeIfAbsent(source, src -> {
-                try {
-                    return ChipDesign.compile(src);
-                } catch (ChipDesign.ChipError e) {
-                    return e;
-                }
-            });
-        }
-
         /** The packages of event-driven chips, each with its component, and their signal pins' keys. */
         void prepareDigitalPackages() {
             if (!digitalPackages.isEmpty()) return;
             for (Part p : parts) {
                 if (p.kind() != PartKind.CHIP || chipNeighbour(p, -1) != null) continue;
                 int fn = (int) Math.round(p.param("function", 0));
-                if (fn < 5 || fn > 8) continue;
                 List<Part> seg = new ArrayList<>();
                 for (Part q = p; q != null && seg.size() < 128; q = chipNeighbour(q, 1)) seg.add(q);
-                DigitalComponent comp;
-                String label;
-                switch (fn) {
-                    case 5 -> {
-                        if (p.text() == null || p.text().isBlank()) {
-                            c.warnings.add("Chip #" + p.id() + " has no design");
-                            continue;
-                        }
-                        Object d = design(p.text());
-                        if (d instanceof ChipDesign.ChipError e) {
-                            c.warnings.add("Chip #" + p.id() + ": its design does not compile: " + e.getMessage());
-                            continue;
-                        }
-                        ChipDesign cd = (ChipDesign) d;
-                        Map<String, Double> overrides = new HashMap<>();
-                        for (var en : p.params().entrySet()) {
-                            if (en.getKey().startsWith(PartParameters.DESIGN_PARAM)) overrides.put(en.getKey().substring(PartParameters.DESIGN_PARAM.length()), en.getValue());
-                        }
-                        comp = new DesignComponent(cd, overrides);
-                        label = cd.name();
-                    }
-                    case 6 -> {
-                        comp = new ClockOscillator(p.param("frequency", 10_000), p.param("ppm", 0));
-                        label = "clock";
-                    }
-                    case 7 -> {
-                        comp = new SpiAdc(10);
-                        label = "adc";
-                    }
-                    default -> {
-                        comp = new DisplayPanel();
-                        label = "display controller";
-                    }
+                // a design or a ROM image is the first segment's text (or any segment's, if that one has none)
+                String text = p.text();
+                if (text == null || text.isBlank()) for (Part q : seg) if (q.text() != null && !q.text().isBlank()) text = q.text();
+                ChipTypes.Pins pins = ChipTypes.pins(fn, text);
+                if (pins.error() != null) {
+                    c.warnings.add("Chip #" + p.id() + " (" + pins.label() + "): " + pins.error());
+                    continue;
                 }
-                int ni = comp.inputs().size(), no = comp.outputs().size(), need = Math.max(ni, no) + 1;
+                String label = pins.label();
+                if (fn == ChipTypes.ROM256 && ChipTypes.romError(text) != null) {
+                    c.warnings.add("Chip #" + p.id() + " (" + label + "): its contents are not hex, " + ChipTypes.romError(text));
+                }
+                int[] rom16 = new int[16];
+                for (Part q : seg) for (int w = 0; w < 16; w++) if (q.params().containsKey("w" + w)) rom16[w] = (int) Math.round(q.param("w" + w, 0));
+                DigitalComponent comp = ChipTypes.create(fn, p.params(), text, rom16);
+                int ni = comp.inputs().size(), no = comp.outputs().size(), need = pins.segments();
                 if (seg.size() != need) {
                     c.warnings.add("Chip #" + p.id() + " (" + label + ") needs " + need + " segments in a row, has " + seg.size());
                     continue;
@@ -1671,8 +1636,14 @@ public final class AssemblyCompiler {
                     st[i] = (lo & 0xffffffffL) | (hi << 32);
                 }
                 comp.restore(st);
+            } else if (comp instanceof MsiComponent m && prev.chemistry().containsKey(AssemblyState.registerKey(p.id(), 0))) {
+                // saved by the analog model of the MSI chips (bit i of its registers, or of its RAM)
+                double[] bits = new double[64];
+                for (int i = 0; i < 64; i++) bits[i] = prev.chemistry().getOrDefault(AssemblyState.registerKey(p.id(), i), 0.0);
+                m.restoreBits(bits);
             }
             DigitalChip chip = c.network.add(new DigitalChip(c.digital, slot, vdd, gnd, in, out, th, pk.label()));
+            if (p.params().containsKey("output_resistance")) chip.outputResistance(p.param("output_resistance", 50));
             c.digitalChips.put(p.id(), chip);
             for (int k = 0; k < seg.size(); k++) {
                 Part q = seg.get(k);
@@ -1813,46 +1784,6 @@ public final class AssemblyCompiler {
                         && Math.round(q.param("function", 0)) == Math.round(p.param("function", 0))) return q;
             }
             return null;
-        }
-
-        /**
-         * Builds the chip whose first segment (the −axis end of a row of matching CHIP segments) is p. Segment k
-         * carries input k (−lead side) and output k (+lead side); the last carries GND and V_DD.
-         */
-        void buildChip(Part p, Node th) {
-            if (chipNeighbour(p, -1) != null) return; // not the first segment: built with its package
-            List<Part> seg = new ArrayList<>();
-            for (Part q = p; q != null && seg.size() < 64; q = chipNeighbour(q, 1)) seg.add(q);
-            int fn = (int) Math.round(p.param("function", 0));
-            var types = dev.emergence.core.sim.elements.MsiChip.Type.values();
-            if (fn < 0 || fn >= types.length) {
-                c.warnings.add("Chip #" + p.id() + ": unknown function " + fn);
-                return;
-            }
-            var type = types[fn];
-            if (seg.size() != type.length()) {
-                c.warnings.add("Chip #" + p.id() + " (" + type + ") needs " + type.length() + " segments in a row, has " + seg.size());
-                return;
-            }
-            Node[] in = new Node[type.inputs.length], out = new Node[type.outputs.length];
-            for (int k = 0; k < in.length; k++) in[k] = enode("p" + seg.get(k).id() + "i");
-            for (int k = 0; k < out.length; k++) out[k] = enode("p" + seg.get(k).id() + "o");
-            Part last = seg.get(seg.size() - 1);
-            Node gnd = enode("p" + last.id() + "i"), vdd = enode("p" + last.id() + "o");
-            int[] rom = new int[16];
-            for (Part q : seg) for (int w = 0; w < 16; w++) if (q.params().containsKey("w" + w)) rom[w] = (int) Math.round(q.param("w" + w, 0));
-            var chip = c.network.add(new dev.emergence.core.sim.elements.MsiChip(type, in, out, vdd, gnd, rom,
-                    p.param("delay", 10e-9), p.param("output_resistance", 50), th));
-            if (type.flipFlops > 0) c.chips.put(p.id(), chip);
-            for (int k = 0; k < seg.size(); k++) {
-                Part q = seg.get(k);
-                c.deviceOfPart.put(q.id(), chip);
-                Node a = k < in.length ? in[k] : q == last ? gnd : null, b = k < out.length ? out[k] : q == last ? vdd : null;
-                c.leadsOfPart.put(q.id(), new Node[]{a != null ? a : gnd, b != null ? b : gnd});
-            }
-            // CMOS input capacitance and the supply bypass capacitor beside every chip
-            for (Node n : in) c.network.add(Capacitor.parasitic(n, gnd, 5e-12));
-            c.network.add(new Capacitor(vdd, gnd, 100e-9));
         }
 
         /** Leads are at the transverse centre cell of each end face. */
@@ -2081,8 +2012,8 @@ public final class AssemblyCompiler {
                         c.network.add(Capacitor.parasitic(l[0], l[1], 20e-12));
                     }
                     case CHIP -> {
+                        // every chip runs by events; a package that could not be made was warned about
                         if (digitalPackages.containsKey(p.id())) buildDigitalChip(p, th);
-                        else buildChip(p, th);
                     }
                     case PRESSURE_SENSOR -> buildPressureSensor(p);
                     case POTENTIOMETER -> {
@@ -3970,14 +3901,6 @@ public final class AssemblyCompiler {
         }
 
         void applyPreviousElectricalState() {
-            // chips keep what they stored: counters, registers, memory
-            for (var e : c.chips.entrySet()) {
-                for (int i = 0; i < e.getValue().type().flipFlops; i++) {
-                    Double bit = prev.chemistry().get(AssemblyState.registerKey(e.getKey(), i));
-                    if (bit == null) continue;
-                    for (int idx : e.getValue().latchIndices(i)) c.network.setInitial(idx, bit);
-                }
-            }
             for (var e : c.deviceOfPart.entrySet()) {
                 if (e.getValue() instanceof MagneticSystem.Coil coil) {
                     Double i = prev.coilCurrents().get(e.getKey());

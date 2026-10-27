@@ -12,8 +12,15 @@ import java.util.Map;
 public final class PartCatalog {
     private PartCatalog() {}
 
-    /** A named stock part: its kind, material, length in cells (a shaft or rack) and parameters. */
-    public record Preset(PartKind kind, String name, String material, int length, Map<String, Double> params) {}
+    /**
+     * A named stock part: its kind, material, length in cells (a shaft or rack) and parameters, and the text it carries
+     * (a chip's design or a ROM's contents; empty for most).
+     */
+    public record Preset(PartKind kind, String name, String material, int length, Map<String, Double> params, String text) {
+        public Preset(PartKind kind, String name, String material, int length, Map<String, Double> params) {
+            this(kind, name, material, length, params, "");
+        }
+    }
 
     private static final List<Preset> ALL = new ArrayList<>();
 
@@ -146,8 +153,17 @@ public final class PartCatalog {
         String[] gates = {"Buffer", "NOT gate", "NAND gate", "NOR gate", "AND gate", "OR gate", "XOR gate", "Schmitt inverter", "D flip-flop"};
         for (int fn = 0; fn < gates.length; fn++) add(PartKind.LOGIC, gates[fn], "silicon", "function", fn);
         String[] chips = {"4-bit counter", "4-bit register", "4-bit adder", "16 × 8 ROM", "16 × 4 RAM", "Custom chip (your design)",
-                "Crystal clock", "10-bit SPI ADC", "Display controller"};
+                "Crystal clock", "10-bit SPI ADC", "Display controller", "256 × 8 ROM"};
         for (int fn = 0; fn < chips.length; fn++) add(PartKind.CHIP, chips[fn], "silicon", "function", fn);
+        // shipped designs and ROM images, ready to place (and to open in the chip designer or the ROM editor)
+        for (String n : dev.emergence.core.digital.ChipLibrary.NAMES) {
+            ALL.add(new Preset(PartKind.CHIP, dev.emergence.core.digital.ChipLibrary.title(n) + " (design)", "silicon", 1,
+                    Map.of("function", (double) dev.emergence.core.digital.ChipTypes.DESIGN), dev.emergence.core.digital.ChipLibrary.source(n)));
+        }
+        for (String n : dev.emergence.core.digital.ChipLibrary.ROMS) {
+            ALL.add(new Preset(PartKind.CHIP, dev.emergence.core.digital.ChipLibrary.romTitle(n) + " (256 × 8 ROM)", "silicon", 1,
+                    Map.of("function", (double) dev.emergence.core.digital.ChipTypes.ROM256), dev.emergence.core.digital.ChipLibrary.rom(n)));
+        }
         add(PartKind.CHIP, "Crystal clock, 100 kHz", "silicon", "function", 6, "frequency", 100_000);
         add(PartKind.DISPLAY, "128 × 64 OLED display", "glass");
         add(PartKind.PRESSURE_SENSOR, "Pressure transducer, 0–10 bar", "stainless_304", "pmin", 0, "pmax", 10e5);

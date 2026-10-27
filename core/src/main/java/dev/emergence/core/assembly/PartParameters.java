@@ -119,7 +119,7 @@ public final class PartParameters {
      * The prefix of a chip part's design parameters: "p_lo" overrides the {@code param lo} of the design written on it.
      * Which there are depends on the design, so the schema takes any.
      */
-    public static final String DESIGN_PARAM = "p_";
+    public static final String DESIGN_PARAM = dev.emergence.core.digital.ChipTypes.DESIGN_PARAM;
 
     /** Null if the value is allowed for the parameter, else why not. */
     public static String checkValue(Param p, double v) {
@@ -494,12 +494,14 @@ public final class PartParameters {
         new B(PartKind.CHIP).made("silicon", SEMICONDUCTOR)
                 .choice("function", "Chip", 0, List.of(new Choice(0, "4-bit counter"), new Choice(1, "4-bit register"), new Choice(2, "4-bit adder"),
                         new Choice(3, "16 × 8 ROM"), new Choice(4, "16 × 4 RAM"), new Choice(5, "your design (chip designer)"),
-                        new Choice(6, "crystal clock"), new Choice(7, "10-bit SPI ADC"), new Choice(8, "128 × 64 display controller")),
+                        new Choice(6, "crystal clock"), new Choice(7, "10-bit SPI ADC"), new Choice(8, "128 × 64 display controller"),
+                        new Choice(9, "256 × 8 ROM (contents in the ROM editor)")),
                         "Which chip this segment row belongs to. A design of your own is written in the chip designer.")
                 .when(is("function", 0, 6)).log().real("frequency", "Frequency", "Hz", 1, 1e8, 10_000, "The crystal's frequency: the square wave on its output.")
                 .when(is("function", 0, 6)).adv().real("ppm", "Crystal error", "ppm", -500, 500, 0, "How far off nominal this crystal runs, parts per million.")
                 .when(is("function", 0, 0, 1, 2, 3, 4)).adv().log().real("delay", "Propagation delay", "s", 1e-10, 1e-3, 10e-9, "How long its outputs take to follow.")
-                .when(is("function", 0, 0, 1, 2, 3, 4)).adv().log().real("output_resistance", "Output resistance", "Ω", 1, 10_000, 50, "How stiffly its outputs hold their level.")
+                .when(is("function", 0, 9)).adv().log().real("access_time", "Access time", "s", 1e-9, 1e-5, 120e-9, "How long after its address changes its data follows.")
+                .adv().log().real("output_resistance", "Output resistance", "Ω", 1, 10_000, 50, "How stiffly its outputs hold their level.")
                 .family("w", "ROM contents", romWords(), "The ROM's sixteen bytes.", is("function", 0, 3))
                 .component(0.002, Double.NaN).build();
         new B(PartKind.PHOTODIODE).made("silicon", SEMICONDUCTOR)

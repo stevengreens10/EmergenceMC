@@ -37,6 +37,38 @@ public final class ChipLibrary {
         return m;
     }
 
+    /** ROM images that come with the mod (resources {@code emergence/roms/<name>.hex}), for the 256 × 8 ROM. */
+    public static final String[] ROMS = {"hex_font_3x5"};
+
+    /** A ROM image's text (hex, with comments), or null. */
+    public static String rom(String name) {
+        try (InputStream in = ChipLibrary.class.getResourceAsStream("/emergence/roms/" + name + ".hex")) {
+            return in == null ? null : new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /** An example's title: its first comment line up to the colon ("Chart recorder"). */
+    public static String title(String name) {
+        return titleOf(source(name), name);
+    }
+
+    public static String romTitle(String name) {
+        return titleOf(rom(name), name);
+    }
+
+    private static String titleOf(String text, String name) {
+        if (text != null && text.startsWith("//")) {
+            int end = text.indexOf('\n');
+            String line = text.substring(2, end < 0 ? text.length() : end).trim();
+            int c = line.indexOf(':');
+            if (c < 0) c = line.indexOf(',');
+            return (c > 0 ? line.substring(0, c) : line).trim();
+        }
+        return name.replace('_', ' ');
+    }
+
     /** An example compiled (it is the mod's own: an error in it is a bug). */
     public static ChipDesign compile(String name) {
         String s = source(name);

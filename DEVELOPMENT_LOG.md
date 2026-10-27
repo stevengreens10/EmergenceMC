@@ -1159,3 +1159,14 @@ done the way that suits anything a player builds, and for the whole build to be 
 - *First tours:* the harness closed every screen before photographing it (it now keeps a step's screen when that is
   the point). At GUI scale 3 the designer's panel overflowed; it became tabs (Check, Pins, Running, Guide) scaled
   to the window, and the ROM editor's grid scrolls on short screens.
+
+**A miniature counter display (2026-10-27, morning).** The user asked for a miniature copy of the counter display.
+The same circuit fits one block at true scale. The chips are rows of cells (the counter 56 mm long), and the screen
+is 4 × 2 panels, 25 × 12.5 mm, the size of a real 0.96-inch OLED.
+- *Side leads.* Two findings came of it. The LEDs and resistors side by side joined through their side leads (the
+  physics was right; they now stand up).
+- *Collision shapes.* A block's shape was the union of its parts' boxes, optimised after every join. For the
+  miniature's 250-odd parts, rebuilt after each one placed, that stalled the world build. Now the boxes are joined
+  unoptimised and optimised once, and a block of more than 48 parts is shaped by its parts' cells.
+- *Tour checks.* The chart recorder's check now reads gauge pressure rather than the rise since its step began (the
+  tour can arrive after the tank has heated).

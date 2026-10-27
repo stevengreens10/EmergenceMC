@@ -185,8 +185,9 @@
    - wire runs.
    The core suite and all 20 GameTests pass. The world builds 80 exhibits by player placement with 0 problems and
    0 differences. The counter display's tour passed with both editors open (01:00).
-   Still to see in the game: the tour of the other chip exhibits (computer, memory, geiger, chartrecorder), which
-   could not open a window at 00:30 (see 0a5).
+   08:12: the chip exhibits' tour ran once the display was back. Computer, memory, geiger and counterdisplay all
+   pass. The chart recorder's pressure check was fragile (fixed: gauge pressure). The full tour was stopped at
+   exhibit 27 on the user's word. A miniature counter display (one block, true scale) was added and passes its tour.
 
 0a0. **The power station runs at real time in the game** (2026-10-26 21:10): its headless server ran 98 s in 100 s,
    time scale 1.00 throughout. Still to see with a client (the station tour; the display was unavailable at 18:47,

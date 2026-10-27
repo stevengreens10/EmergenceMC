@@ -573,3 +573,10 @@ costs 0.23 s of CPU per simulated second.
   - A wire run between two resistors goes round a third in the way, never beside it.
 - The counter display's tour opens the chip designer and the ROM editor by right-clicking the placed chips. Both show
   the chip running (powered), and the ROM editor shows the font (byte 2D = 1F, the F's first column).
+
+## Miniature counter display (`CounterDisplayExhibitTest.theMiniatureCountsOnItsScreenToo`, tour `minicounter`)
+The whole counter display at true scale, in one block of 6.25 mm cells. It shows the LEDs' count on its 25 × 12.5 mm
+screen every second through a full count, in decimal and binary. In the world it is built with the tweezers part
+by part (0 problems, 0 differences), and the tour reads the screen as lit, its chip drawing the LEDs' count.
+On the first try, the four LEDs and resistors side by side shorted Q0–Q3 together: their leads left across the
+part, into their neighbours. Standing the leads up (`lead_axis` 1) fixed it; the model was right.

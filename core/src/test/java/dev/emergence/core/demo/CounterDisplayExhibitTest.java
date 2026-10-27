@@ -48,7 +48,16 @@ class CounterDisplayExhibitTest {
 
     @Test
     void screenShowsTheCountInDecimalAndBinaryAsTheLedsDo() {
-        Exhibit e = MonitorExhibits.counterDisplay();
+        countsOnScreen(MonitorExhibits.counterDisplay());
+    }
+
+    /** The same at true scale, in one block. */
+    @Test
+    void theMiniatureCountsOnItsScreenToo() {
+        countsOnScreen(MonitorExhibits.miniatureCounterDisplay());
+    }
+
+    static void countsOnScreen(Exhibit e) {
         Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
         CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
         assertTrue(c.warnings().isEmpty(), "warnings: " + c.warnings());

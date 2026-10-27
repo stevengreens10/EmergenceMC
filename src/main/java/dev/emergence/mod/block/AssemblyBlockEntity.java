@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -180,18 +181,29 @@ public final class AssemblyBlockEntity extends BlockEntity {
      */
     public VoxelShape shape() {
         if (shape == null) {
-            List<VoxelShape> boxes = new ArrayList<>();
+            // a crowded block (a circuit built in miniature: hundreds of parts) is shaped by its parts' whole cells — on
+            // the 1/16 grid every union stays small — rather than by each part's drawn geometry
+            boolean coarse = parts.size() > DENSE;
+            List<AABB> boxes = new ArrayList<>();
             for (PlacedPart p : parts) {
-                for (AABB b : dev.emergence.mod.part.PartShapes.boxes(this, p)) {
-                    boxes.add(Shapes.box(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ));
-                }
+                if (coarse) boxes.add(p.localBox(resolution));
+                else boxes.addAll(dev.emergence.mod.part.PartShapes.boxes(this, p));
             }
-            VoxelShape s = boxes.isEmpty() ? (parts.isEmpty() ? Shapes.empty() : Shapes.box(0.4, 0.4, 0.4, 0.6, 0.6, 0.6))
-                    : Shapes.or(boxes.get(0), boxes.subList(1, boxes.size()).toArray(new VoxelShape[0]));
-            shape = s.optimize();
+            if (boxes.isEmpty()) {
+                shape = parts.isEmpty() ? Shapes.empty() : Shapes.box(0.4, 0.4, 0.4, 0.6, 0.6, 0.6);
+            } else {
+                // joined unoptimised and optimised once (optimising after every join made a big block's shape cost the
+                // cube of its parts)
+                VoxelShape s = Shapes.empty();
+                for (AABB b : boxes) s = Shapes.joinUnoptimized(s, Shapes.box(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ), BooleanOp.OR);
+                shape = s.optimize();
+            }
         }
         return shape;
     }
+
+    /** More parts than this in one block, and its shape is its parts' cells (see {@link #shape}). */
+    static final int DENSE = 48;
 
     /** Forget this block's shape and its neighbours' (wires, pipes and plates are shaped by what they meet). */
     private void reshape() {

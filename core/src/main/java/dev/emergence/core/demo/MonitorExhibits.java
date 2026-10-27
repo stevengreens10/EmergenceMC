@@ -196,4 +196,80 @@ public final class MonitorExhibits {
         r.route();
         return e.view(11, 5, 22, 22);
     }
+
+    /**
+     * The counter display at true scale, in one block (6.25 mm cells): the same circuit — 1 Hz crystal, 74HC163
+     * counter, four LEDs, the counter-display chip and its font ROM, the display controller — with a 25 × 12.5 mm
+     * screen (a 0.96-inch OLED's size) standing on the block's south face. Built with the precision tweezers.
+     */
+    public static Exhibit miniatureCounterDisplay() {
+        Exhibit e = new Exhibit("minicounter", "Miniature counter display",
+                List.of("MINIATURE", "Counter display,", "true scale in one", "block (tweezers)"),
+                "The counter display at true scale, built with the precision tweezers inside a single block of 6.25 mm "
+                        + "cells: the same chips, the same design and font ROM, a 4-bit counter ticking once a second, its "
+                        + "LEDs and a screen the size of a 0.96-inch OLED (25 × 12.5 mm) on the block's south face. The "
+                        + "counter chip is 56 mm long; the display chip, eleven cells, 69 mm. Everything works exactly as in "
+                        + "the big one: the same physics at the scale the parts really have.");
+        e.miniature = true;
+        String si = "silicon";
+        // ---- the back row: the supply (+ east), the 1 Hz clock, the 500 kHz clock
+        e.name("battery", e.add(BATTERY, "pvc", 1, 0, 1, Dir.EAST, "chemistry", 1, "cells", 4, "capacity", 0.3));
+        e.name("tick", e.add(CHIP, si, 4, 0, 1, Dir.EAST, "function", 6, "frequency", 1));
+        e.add(CHIP, si, 5, 0, 1, Dir.EAST, "function", 6, "frequency", 1);
+        e.name("clock", e.add(CHIP, si, 8, 0, 1, Dir.EAST, "function", 6, "frequency", 500_000));
+        e.add(CHIP, si, 9, 0, 1, Dir.EAST, "function", 6, "frequency", 500_000);
+        // ---- the counter (z 4), the display chip (z 8), the ROM (z 12), the controller (z 14) and the screen (z 15)
+        e.name("counter", ComputerExhibit.chip(e, MsiChip.Type.COUNTER4, 1, 0, 4));
+        String design = ChipLibrary.source("counter_display");
+        for (int k = 0; k < 11; k++) {
+            int c = e.add(CHIP, si, k, 0, 8, Dir.EAST, "function", ChipTypes.DESIGN);
+            e.text(c, design);
+            if (k == 0) e.name("chip", c);
+        }
+        String font = ChipLibrary.rom("hex_font_3x5");
+        for (int k = 0; k < 9; k++) {
+            int c = e.add(CHIP, si, 6 + k, 0, 12, Dir.EAST, "function", ChipTypes.ROM256);
+            e.text(c, font);
+            if (k == 0) e.name("rom", c);
+        }
+        for (int k = 0; k < 6; k++) {
+            int d = e.add(CHIP, si, k, 0, 14, Dir.EAST, "function", 8);
+            if (k == 0) e.name("controller", d);
+        }
+        for (int y = 0; y <= 1; y++) {
+            for (int k = 0; k < 4; k++) {
+                int sc = e.add(DISPLAY, "glass", k, y, 15, Dir.SOUTH);
+                if (y == 0 && k == 0) e.name("screen", sc);
+            }
+        }
+        // ---- the LEDs (Q3 on the left, seen from the south) and their resistors, side by side: their leads stand up
+        // (the default, across the part, would join each to its neighbour)
+        for (int k = 0; k < 4; k++) {
+            int x = 15 - k;
+            e.name("led" + k, e.add(LED, si, x, 0, 7, Dir.SOUTH, "wavelength", 630, "face", 1, "beam", 20, "lead_axis", 1));
+            e.add(RESISTOR, "alumina", x, 0, 8, Dir.SOUTH, "resistance", 470, "lead_axis", 1);
+        }
+        Router r = new Router(e, 0, 0, 0, 15, 6, 15);
+        r.pin("vdd", 2, 0, 1).pin("gnd", 0, 0, 1);
+        r.pin("vdd", 5, 0, 2).pin("gnd", 5, 0, 0);                   // the 1 Hz clock
+        r.pin("vdd", 9, 0, 2).pin("gnd", 9, 0, 0);                   // the 500 kHz clock
+        r.pin("vdd", 9, 0, 5).pin("gnd", 9, 0, 3);                   // the counter
+        r.pin("vdd", 6, 0, 3).pin("vdd", 7, 0, 3).pin("vdd", 8, 0, 3); // CLR̄, LOAD̄, EN high
+        r.pin("vdd", 10, 0, 9).pin("gnd", 10, 0, 7);                 // the display chip
+        r.pin("vdd", 14, 0, 13).pin("gnd", 14, 0, 11);               // the ROM
+        r.pin("vdd", 5, 0, 15).pin("gnd", 5, 0, 13);                 // the controller
+        r.pin("vdd", 4, 0, 13);                                      // its rst, tied high
+        r.pin("tick", 4, 0, 2).pin("tick", 5, 0, 3);
+        r.pin("clk", 8, 0, 2).pin("clk", 0, 0, 7);
+        for (int k = 0; k < 4; k++) {
+            int x = 15 - k;
+            r.pin("q" + k, 1 + k, 0, 5).pin("q" + k, x, 0, 6).pin("q" + k, 1 + k, 0, 7);
+            r.pin("gnd", x, 0, 9);
+        }
+        for (int k = 0; k < 6; k++) r.pin("a" + k, 4 + k, 0, 9).pin("a" + k, 6 + k, 0, 11);
+        for (int k = 0; k < 5; k++) r.pin("f" + k, 6 + k, 0, 13).pin("f" + k, 5 + k, 0, 7);
+        for (int k = 0; k < 4; k++) r.pin(new String[]{"cs", "dc", "sclk", "din"}[k], k, 0, 9).pin(new String[]{"cs", "dc", "sclk", "din"}[k], k, 0, 13);
+        r.route();
+        return e.view(8.45, 0.62, 9.5, 40);
+    }
 }

@@ -572,8 +572,6 @@ public final class AutoShowcase {
             if (id.equals("chartrecorder")) {
                 // found running: wait until the recorders have drawn most of a sweep, then read the screens
                 BlockPos tank = at.apply("tank"), recP = at.apply("recorderP");
-                double[] p0 = {Double.NaN};
-                STEPS.add(new Step(0, () -> p0[0] = pressure(server, tank, PartKind.TANK), null));
                 java.util.function.Function<String, String> climb = ch -> {
                     DisplayPanel d = display(server, at.apply("screen" + ch));
                     long x = column(server, recP);
@@ -586,8 +584,8 @@ public final class AutoShowcase {
                             DisplayPanel a = display(server, at.apply("screenP")), b = display(server, at.apply("screenT"));
                             return that(a != null && b != null && a.on() && b.on(), "screens " + (a == null ? "missing" : a.on()) + ", " + (b == null ? "missing" : b.on()));
                         })
-                        .check(key + " the hot block presses up the vessel", () -> atLeast("tank pressure rise [kPa]",
-                                1e-3 * (pressure(server, tank, PartKind.TANK) - p0[0]), 5))
+                        .check(key + " the hot block presses up the vessel", () -> atLeast("tank gauge pressure [kPa]",
+                                1e-3 * (pressure(server, tank, PartKind.TANK) - 101325), 5))
                         .check(key + " the pressure trace climbs", () -> {
                             String why = climb.apply("P");
                             return that(why == null, why == null ? "climbs" : why);
@@ -595,6 +593,35 @@ public final class AutoShowcase {
                         .check(key + " the temperature trace climbs", () -> {
                             String why = climb.apply("T");
                             return that(why == null, why == null ? "climbs" : why);
+                        }));
+            }
+            if (id.equals("minicounter")) {
+                // the miniature: every part in one block, so each is found by its cell
+                java.util.function.Function<String, PlacedPart> named = nm -> cellPart(server, plot, e, nm);
+                java.util.function.DoubleSupplier leds = () -> {
+                    int v = 0;
+                    for (int k = 0; k < 4; k++) {
+                        PlacedPart led = named.apply("led" + k);
+                        CompiledAssembly c = compiled(server, at.apply("led" + k));
+                        Probe pr = led == null || c == null ? null : c.probe(led.id);
+                        if (pr != null && Math.abs(pr.current()) > 1e-3) v |= 1 << k;
+                    }
+                    return v;
+                };
+                STEPS.add(new Step(800, view, shot.apply("count"), () -> onServer(server, key + "n", leds) >= 11)
+                        .check(key + " the tiny screen is lit", () -> {
+                            PlacedPart sp = named.apply("screen");
+                            CompiledAssembly c = compiled(server, at.apply("screen"));
+                            DisplayPanel d = sp == null || c == null ? null : c.display(sp.id);
+                            return that(d != null && d.on() && d.shown() > 100, d == null ? "no screen" : d.shown() + " pixels lit");
+                        })
+                        .check(key + " its chip draws the count its LEDs show", () -> {
+                            PlacedPart cp = named.apply("chip");
+                            CompiledAssembly c = compiled(server, at.apply("chip"));
+                            var chip = cp == null || c == null ? null : c.digitalChip(cp.id);
+                            long drawn = chip != null && chip.component() instanceof dev.emergence.core.digital.DesignComponent dc ? dc.instance().value("v") : -1;
+                            int shown = (int) leds.getAsDouble();
+                            return that(drawn >= 0 && Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
                         }));
             }
             if (id.equals("counterdisplay")) {
@@ -1363,6 +1390,16 @@ public final class AutoShowcase {
         if (b == null) return "none";
         return String.format("at %.5f m moving %.5f m/s, stops %.5f…%.5f, %.3f kg%s", c.angle(b), c.angularVelocity(b), b.strokeLo(), b.strokeHi(), b.mass(),
                 b.isStatic() ? " (static!)" : "");
+    }
+
+    /** A miniature exhibit's named part: the one in its block at the cell the exhibit puts it (null if none). */
+    private static PlacedPart cellPart(net.minecraft.server.MinecraftServer s, BlockPos plot, dev.emergence.core.demo.Exhibit e, String name) {
+        Integer idx = e.named.get(name);
+        if (idx == null) return null;
+        var d = e.parts.get(idx);
+        if (!(s.overworld().getBlockEntity(DemoBuilder.partBlock(plot, e, name)) instanceof AssemblyBlockEntity be)) return null;
+        for (PlacedPart p : be.parts()) if (p.x0 == d.x0() && p.y0 == d.y0() && p.z0 == d.z0() && p.kind == d.kind()) return p;
+        return null;
     }
 
     /** The display panel in the block (null if there is none or it is not simulated). */

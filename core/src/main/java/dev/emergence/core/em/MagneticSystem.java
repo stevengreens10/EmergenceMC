@@ -1002,8 +1002,11 @@ public final class MagneticSystem implements Element {
      * towards the current and the remanence leak away) and joined to the lines d ∓ w by quadratics over ±2 % of w (C¹):
      * [g(d), g'(d)].
      */
+    /** The play's corners' rounding, a fraction of its half-width either side ({@code diag.playRound}). */
+    static final double PLAY_ROUND = Double.parseDouble(System.getProperty("diag.playRound", "0.02"));
+
     static double[] deadZone(double d, double w) {
-        double e = 0.02 * w, a = Math.abs(d), sg = Math.signum(d);
+        double e = PLAY_ROUND * w, a = Math.abs(d), sg = Math.signum(d);
         if (a <= w - e) return new double[]{0, 0};
         if (a >= w + e) return new double[]{sg * (a - w), 1};
         double x = a - (w - e);

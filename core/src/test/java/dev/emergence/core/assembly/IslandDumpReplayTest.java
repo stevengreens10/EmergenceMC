@@ -89,6 +89,21 @@ class IslandDumpReplayTest {
             // -Ddiag.dumpProfile=true: every 5 s, the wall time it took and the solver's phases
             if (Boolean.getBoolean("diag.dumpProfile") && i > 0 && i % 100 == 0) {
                 System.out.printf("profile t=%.1f: %.1f s of wall time for 5 s; %s%n", c.time(), (System.nanoTime() - wall0) / 1e9, c.solver().phaseCounts());
+                System.out.println("   matrices: " + c.solver().phaseMatrices());
+                if (dev.emergence.core.sim.TransientSolver.TIMELINE != null && !dev.emergence.core.sim.TransientSolver.TIMELINE.isEmpty()) {
+                    dev.emergence.core.sim.TransientSolver.TIMELINE.forEach(l -> System.out.println("   TL " + l));
+                    dev.emergence.core.sim.TransientSolver.TIMELINE.clear();
+                }
+                if (dev.emergence.core.sim.TransientSolver.SYNC_STATS != null) {
+                    var ss = new java.util.ArrayList<>(dev.emergence.core.sim.TransientSolver.SYNC_STATS.entrySet());
+                    ss.sort((p1, p2) -> p2.getValue() - p1.getValue());
+                    System.out.println("   syncs set by: " + ss.subList(0, Math.min(8, ss.size())));
+                    dev.emergence.core.sim.TransientSolver.SYNC_STATS.clear();
+                }
+                System.out.printf("   factorisations: %d fresh (pattern), %d fresh (unstable pivot), %d reused%n",
+                        dev.emergence.core.math.SparseLinearSystem.FULL_PATTERN.sumThenReset(),
+                        dev.emergence.core.math.SparseLinearSystem.FULL_UNSTABLE.sumThenReset(),
+                        dev.emergence.core.math.SparseLinearSystem.REFACTORS.sumThenReset());
                 if (Boolean.getBoolean("diag.newtonLaggards")) {
                     var lag = new java.util.ArrayList<>(c.solver().newtonLaggards().entrySet());
                     lag.sort((p1, p2) -> p2.getValue() - p1.getValue());

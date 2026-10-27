@@ -78,11 +78,15 @@ public final class TransientSolver implements StateView {
      */
     private double hRestart = 1e-7;
     private int maxNewton = 40;
+    /** {@code emergence.dampNear}: past three cycles, updates are halved only while above this many tolerances (0: to the end). */
+    static final double DAMP_NEAR = Double.parseDouble(System.getProperty("emergence.dampNear", "0"));
 
     // energy ledger
     private double storedInitial, externalIn, untrackedOut, lastPext, lastPloss;
     /** The circuits' share of the ledger (kept apart: they may step on their own thread). */
     private double emExternalIn, emUntrackedOut;
+    /** The plant's independent parts' share (they may step on a thread of their own). */
+    private double partExternalIn, partUntrackedOut;
     /**
      * Whether the stored energy is to be summed again: it is summed when asked for, not at every step (summed over
      * every element at each of a machine's thousands of steps a second, it was a twentieth of a circuit's time).
@@ -116,6 +120,12 @@ public final class TransientSolver implements StateView {
         int[] free, held;
         /** Diagnostics: Newton iterations, accepted and rejected steps, Newton failures, restarts by discontinuities. */
         long nNewton, nAccepted, nRejected, nFailed, nRestarts;
+        /** Diagnostics: wall time in its loads, its linear solves, and its whole tryStep calls [ns]. */
+        long loadNs, solveNs, stepNs;
+        /** The matrix's entry count when the datums last looked at it (−1: never). */
+        int datumNnz = -1;
+        /** Diagnostics: how many iterations its converged solves took (index = iterations − 1). */
+        long[] itHist = Boolean.getBoolean("diag.itHist") ? new long[41] : null;
         boolean[] freeOf;
         /** Heat [W] delivered into each unknown's row from the other partition (slow phase only), or null. */
         double[] heatIn;
@@ -184,7 +194,7 @@ public final class TransientSolver implements StateView {
     /** ∫ heat delivered into each slow row by the fast partition since the last synchronisation [J], and its rate [W]. */
     private double[] heatAccum, heatRate;
     /** The circuits' share of {@link #heatAccum} (kept apart: they may step on their own thread). */
-    private double[] emHeat;
+    private double[] emHeat, partHeat;
     /** Per slow row: heat capacity [J/K] and the fast side's latest ∂(heat in)/∂T [W/K] (the coupling's stiffness). */
     private double[] capacity, coupling;
     private long slowSteps;
@@ -224,6 +234,7 @@ public final class TransientSolver implements StateView {
     private double[] emMeanLast;
     private double emMidLast = Double.NaN, emMidPrev = Double.NaN;
     /** Plant steps overlapped with the circuits, and times the circuits were brought level (diagnostics). */
+    private volatile long taskDelay, taskRun, plantSpin, circuitsSpin;
     private long overlaps, drains, overlapBusy, overlapWait, partsNanos, syncNanos, drainNanos, lonePlantNanos;
     private boolean emMeanValid;
     private double emT0;
@@ -504,6 +515,37 @@ public final class TransientSolver implements StateView {
      * the interval stays below half the shortest C/G, G the fast side's ∂(heat in)/∂T at a node (a filament whose
      * resistance rises with its temperature). Off by default; a no-op where either partition would be empty.
      */
+    /** Thermal nodes kept in the fast partition for their tight coupling (found as they tighten; kept). */
+    private boolean[] tightNodes;
+    private boolean repartitioning, tightFound;
+
+    /** Marks the slow rows whose C/G is now under TIGHT_S; true if any is new. */
+    private boolean findTight() {
+        boolean any = false;
+        for (int i : slowRows) {
+            double g = Math.abs(couplingAt(i));
+            if (g > 0 && capacity[i] > 0 && capacity[i] / g < TIGHT_S) {
+                if (tightNodes == null || tightNodes.length != n) tightNodes = new boolean[n];
+                if (!tightNodes[i]) any = true;
+                tightNodes[i] = true;
+            }
+        }
+        return any;
+    }
+
+    /** The partition done again (the tight nodes in the fast one), from the state as it is now. */
+    private TransientSolver repartition() {
+        repartitioning = true;
+        try {
+            return multirate(true);
+        } finally {
+            repartitioning = false;
+            tightFound = false;
+        }
+    }
+    /** {@code emergence.tightThermalS}: below this C/G [s] a thermal node steps with the fast side (0: never). */
+    static final double TIGHT_S = Double.parseDouble(System.getProperty("emergence.tightThermalS", "0"));
+
     public TransientSolver multirate(boolean on) {
         multirate = false;
         active = all;
@@ -588,6 +630,7 @@ public final class TransientSolver implements StateView {
                 }
                 if (any && allCand) slowNode[i] = true;
             }
+            if (tightNodes != null) for (int i = 0; i < n; i++) if (tightNodes[i]) slowNode[i] = false;
             for (int k = 0; k < ne; k++) {
                 if (!cand[k]) continue;
                 for (int i = 0; i < n; i++) {
@@ -660,6 +703,7 @@ public final class TransientSolver implements StateView {
         if (INDEPENDENT) splitIndependent(rows, cols, slotsOf);
         heatAccum = new double[n];
         emHeat = new double[n];
+        partHeat = new double[n];
         heatRate = new double[n];
         coupling = new double[n];
         // heat capacities: the slow elements' ∂F/∂T with α = 1 less that with α = 0
@@ -682,6 +726,10 @@ public final class TransientSolver implements StateView {
         ctx.frozen = active.frozen;
         multirate = true;
         resetPhases();
+        // a part's heat held so tightly to the fast side that its time constant C/G is under TIGHT_S (a small valve body
+        // under condensing steam) would force a synchronisation every few milliseconds: it steps with the fast side
+        // instead, one unknown more there (the partition done again with it so)
+        if (!repartitioning && TIGHT_S > 0 && findTight()) return repartition();
         return this;
     }
 
@@ -1002,7 +1050,7 @@ public final class TransientSolver implements StateView {
                 if (h >= end - p.t || end - p.t - h < 0.25 * h) h = end - p.t;
                 stepAdaptive(p, h);
             }
-            if (exactly) p.t = end;
+            if (exactly && p.t < end) p.t = end;
             if (DBG_PARTS) System.out.printf("part t=%.4f end=%.4f exactly=%b accepted=%d hNext=%.3g free=%d%n", p.t, end, exactly, p.nAccepted, p.hNext, p.free == null ? -1 : p.free.length);
         }
         t = tSaved;
@@ -1094,6 +1142,7 @@ public final class TransientSolver implements StateView {
         if (multirate) {
             Arrays.fill(heatAccum, 0);
         Arrays.fill(emHeat, 0);
+        Arrays.fill(partHeat, 0);
             fastHeatRate();
             fast.lastPext = power(fast, true);
             fast.lastPloss = power(fast, false);
@@ -1199,7 +1248,7 @@ public final class TransientSolver implements StateView {
         stepParts(end, true);
         double span = end - slow.t;
         if (span <= 1e-15 * Math.max(1, Math.abs(end))) return;
-        for (int i : slowRows) slow.heatIn[i] = (heatAccum[i] + emHeat[i]) / span;
+        for (int i : slowRows) slow.heatIn[i] = (heatAccum[i] + emHeat[i] + partHeat[i]) / span;
         // its input steps here: start afresh (backward Euler), not carrying the old input's derivative across
         slow.restart = true;
         active = slow;
@@ -1213,6 +1262,7 @@ public final class TransientSolver implements StateView {
         active = fast;
         Arrays.fill(heatAccum, 0);
         Arrays.fill(emHeat, 0);
+        Arrays.fill(partHeat, 0);
         storedStale = true;
     }
 
@@ -1220,10 +1270,16 @@ public final class TransientSolver implements StateView {
     /** The interval after which the thermal network is brought up to date: its error control, the coupling's stability. */
     private double syncInterval() {
         double lim = Math.max(slow.hNext, fast.hPrev);
+        int by = -1;
         for (int i : slowRows) {
             double g = Math.abs(couplingAt(i));
-            if (g > 0 && capacity[i] > 0) lim = Math.min(lim, 0.5 * capacity[i] / g);
+            if (g > 0 && capacity[i] > 0 && 0.5 * capacity[i] / g < lim) {
+                lim = 0.5 * capacity[i] / g;
+                by = i;
+            }
         }
+        if (SYNC_STATS != null) SYNC_STATS.merge(by < 0 ? "thermal step " : net.unknownName(by), 1, Integer::sum);
+        if (by >= 0 && TIGHT_S > 0 && capacity[by] / Math.abs(couplingAt(by)) < TIGHT_S) tightFound = true;
         return Math.max(lim, fast.hPrev);
     }
 
@@ -1295,8 +1351,8 @@ public final class TransientSolver implements StateView {
         storedStale = true;
         // (the phases start with nothing in transit but the coupling's balance, which carries on)
         storedInitial = totalStored() + (multirate && em != null ? couplingTransit + plantTransit : 0);
-        externalIn = emExternalIn = 0;
-        untrackedOut = emUntrackedOut = 0;
+        externalIn = emExternalIn = partExternalIn = 0;
+        untrackedOut = emUntrackedOut = partUntrackedOut = 0;
         lastPext = totalExternalPower();
         lastPloss = totalUntrackedLoss();
         all.lastPext = lastPext;
@@ -1360,7 +1416,9 @@ public final class TransientSolver implements StateView {
             else if (remaining - h < 0.25 * h) h = 0.5 * remaining;
             // land exactly on the next event
             double te = nextEventTime();
-            if (em != null) {
+            if (overlap && PIPELINE) {
+                steps += Math.max(0, pipeline(tEnd, maxSteps - steps, deadlineNanos) - 1);
+            } else if (em != null) {
                 plantThenCircuits(h);
             } else {
                 if (te > t && te - t < h) h = Math.max(te - t, hMin * 2);
@@ -1377,6 +1435,12 @@ public final class TransientSolver implements StateView {
                 long st0 = System.nanoTime();
                 synchronise();
                 syncNanos += System.nanoTime() - st0;
+                // a thermal node tightened past TIGHT_S: the partition again, with it on the fast side
+                if (tightFound && !pending && findTight()) {
+                    repartition();
+                    ph = fast;
+                }
+                tightFound = false;
             }
         }
         long dt0 = System.nanoTime();
@@ -1465,7 +1529,13 @@ public final class TransientSolver implements StateView {
         double t0 = fast.t;
         inFlight = true;
         overlaps++;
-        java.util.concurrent.ForkJoinTask<?> task = java.util.concurrent.ForkJoinPool.commonPool().submit(() -> stepAdaptive(fast, h));
+        final long sub0 = System.nanoTime();
+        java.util.concurrent.ForkJoinTask<?> task = java.util.concurrent.ForkJoinPool.commonPool().submit(() -> {
+            long st = System.nanoTime();
+            taskDelay += st - sub0;
+            stepAdaptive(fast, h);
+            taskRun += System.nanoTime() - st;
+        });
         long c0 = System.nanoTime(), c1 = c0;
         try {
             crossCircuits(pendT0, pendT1);
@@ -1499,6 +1569,11 @@ public final class TransientSolver implements StateView {
 
     /** The circuits across [t0, t1] in steps of their own, the plant's rows between its snapshots; then their mean. */
     private void crossCircuits(double t0, double t1) {
+        crossCircuits(t0, t1, null);
+    }
+
+    /** As {@link #crossCircuits(double, double)}; with {@code out}, the interval's means go there, the history untouched. */
+    private void crossCircuits(double t0, double t1, double[] out) {
         emT0 = t0;
         emT1 = t1;
         double span = t1 - t0;
@@ -1513,6 +1588,13 @@ public final class TransientSolver implements StateView {
         }
         em.t = t1;
         t = t1;
+        if (out != null) {
+            for (int i : plantInRows) {
+                out[i] = span > 0 ? emAccum[i] / span : 0;
+                emAccum[i] = 0;
+            }
+            return;
+        }
         for (int i : plantInRows) {
             double mean = span > 0 ? emAccum[i] / span : 0;
             emMeanPrev[i] = emMeanLast[i];
@@ -1521,6 +1603,224 @@ public final class TransientSolver implements StateView {
         }
         emMidPrev = emMidLast;
         emMidLast = 0.5 * (t0 + t1);
+    }
+
+    /**
+     * {@code emergence.pipeDepth}: how many intervals the plant may run ahead of the circuits when they overlap. Its
+     * step k takes the circuits' means up to interval k − depth (and holds their rows as that interval left them),
+     * so what it sees is fixed by the step's index, not by the threads' timing: the results are deterministic.
+     */
+    /** Diagnostics ({@code diag.timeline=<t>}): the pipeline's plant steps and circuit intervals around simulated time t. */
+    public static final java.util.List<String> TIMELINE = System.getProperty("diag.timeline") != null
+            ? java.util.Collections.synchronizedList(new java.util.ArrayList<>()) : null;
+    static final double TIMELINE_AT = Double.parseDouble(System.getProperty("diag.timeline", "-1"));
+    /**
+     * {@code emergence.pipeline} (off: experimental): the free-running overlap below instead of lockstep. It broke two
+     * exhibits' checks (an energy ledger, a contact governor) and gained nothing measurable on the power station's
+     * in-game state (5.9 against 6.0 s per 5 s): the plant's Newton failures and the circuits' long intervals set it.
+     */
+    static final boolean PIPELINE = Boolean.getBoolean("emergence.pipeline");
+    static final int PIPE_DEPTH = Math.max(1, Integer.getInteger("emergence.pipeDepth", 3));
+    private double[][] ringEnd, ringMean, ringEm;
+    private double[] ringT0, ringT1;
+    private volatile int plantDone, circuitsDone;
+    private volatile boolean plantStopped, pipeAbort;
+    /** A part met from the circuits' side during a run (applied when it ends: the plant's own decides when it stops). */
+    private boolean partsMetLater;
+
+    private int ring(int k) {
+        int r = ringT0.length;
+        return ((k % r) + r) % r;
+    }
+
+    /**
+     * Overlapped, free-running: the plant steps on the common pool, as far as the next synchronisation with the
+     * thermal network (or the end), each step k as soon as the circuits have crossed interval k − depth; the circuits
+     * cross each interval here as soon as the plant has taken it, the plant's independent parts after them. In
+     * lockstep — one plant step against the circuits' interval before it — each pair waited for the slower of the two,
+     * and their costs vary against each other: the circuits waited for the plant two fifths of the time, though over a
+     * second the plant needed less than they did. Returns the plant steps taken.
+     */
+    private int pipeline(double tEnd, int maxSteps, long deadlineNanos) {
+        int depth = PIPE_DEPTH, r = depth + 3;
+        if (ringT0 == null || ringT0.length != r || ringEnd[0].length != n) {
+            ringEnd = new double[r][n];
+            ringMean = new double[r][n];
+            ringEm = new double[r][n];
+            ringT0 = new double[r];
+            ringT1 = new double[r];
+        }
+        if (em.free == null || em.freeOf != em.frozen) splitRows(em);
+        double eps = 1e-12 * Math.max(1.0, Math.abs(tEnd));
+        // interval 0: where both stand now
+        ringT0[ring(0)] = ringT1[ring(0)] = fast.t;
+        for (int i : plantRows) ringEnd[ring(0)][i] = x[i];
+        for (int i : em.free) ringEm[ring(0)][i] = x[i];
+        final double si = syncInterval(), slowT = slow.t;
+        plantDone = 0;
+        circuitsDone = 0;
+        plantStopped = false;
+        pipeAbort = false;
+        inFlight = true;
+        overlaps++;
+        long c0 = System.nanoTime();
+        java.util.concurrent.ForkJoinTask<?> task = java.util.concurrent.ForkJoinPool.commonPool().submit(() -> {
+            long st = System.nanoTime();
+            try {
+                int k = 0;
+                while (true) {
+                    if (fast.t >= tEnd - eps || k >= maxSteps || partsMet || pipeAbort) break;
+                    if (k > 0 && (fast.t - slowT >= si || deadlineNanos != 0 && System.nanoTime() - deadlineNanos > 0)) break;
+                    int need = k + 1 - depth;
+                    if (circuitsDone < need) {
+                        long w0 = System.nanoTime();
+                        while (circuitsDone < need && !pipeAbort) Thread.onSpinWait();
+                        plantSpin += System.nanoTime() - w0;
+                    }
+                    if (pipeAbort) break;
+                    double h = Math.min(fast.hNext, hMax), remaining = tEnd - fast.t;
+                    if (h >= remaining * 0.99) h = remaining;
+                    else if (remaining - h < 0.25 * h) h = 0.5 * remaining;
+                    plantInput(need, fast.t + 0.5 * h);
+                    double[] held = ringEm[ring(Math.max(0, need))];
+                    for (int i : em.free) emHeld[i] = held[i];
+                    double t0 = fast.t;
+                    long ps0 = System.nanoTime();
+                    stepAdaptive(fast, h);
+                    if (TIMELINE != null && t > TIMELINE_AT && t < TIMELINE_AT + 0.05)
+                        TIMELINE.add(String.format("P%d %.3f-%.3f ms (h %.2e)", k + 1, (ps0 - c0) / 1e6, (System.nanoTime() - c0) / 1e6, h));
+                    if (fast.t == t0) break; // (its parts met: not stepped)
+                    k++;
+                    int sl = ring(k);
+                    ringT0[sl] = t0;
+                    ringT1[sl] = fast.t;
+                    double[] e = ringEnd[sl];
+                    for (int i : plantRows) e[i] = x[i];
+                    plantDone = k;
+                }
+            } finally {
+                taskRun += System.nanoTime() - st;
+                plantStopped = true;
+            }
+        });
+        // the plant's independent parts on a thread of their own, as far as the plant is going (to the synchronisation or
+        // the end, a fixed time: what they do does not depend on the threads)
+        final double partsEnd = Math.min(tEnd, slowT + si);
+        java.util.concurrent.ForkJoinTask<?> partsTask = parts.length == 0 ? null
+                : java.util.concurrent.ForkJoinPool.commonPool().submit(() -> stepPartsAlone(partsEnd));
+        int j = 0;
+        try {
+            while (true) {
+                int next = j + 1;
+                if (plantDone < next && !plantStopped) {
+                    long w0 = System.nanoTime();
+                    while (plantDone < next && !plantStopped) Thread.onSpinWait();
+                    circuitsSpin += System.nanoTime() - w0;
+                }
+                if (plantDone < next) break;
+                j = next;
+                int sl = ring(j);
+                plantStart = ringEnd[ring(j - 1)];
+                plantEnd = ringEnd[sl];
+                long cs0 = System.nanoTime();
+                crossCircuits(ringT0[sl], ringT1[sl], ringMean[sl]);
+                long cs1 = System.nanoTime();
+                if (TIMELINE != null && t > TIMELINE_AT && t < TIMELINE_AT + 0.05)
+                    TIMELINE.add(String.format("C%d %.3f-%.3f ms, parts to %.3f ms", j, (cs0 - c0) / 1e6, (cs1 - c0) / 1e6, (System.nanoTime() - c0) / 1e6));
+                double[] e = ringEm[sl];
+                for (int i : em.free) e[i] = x[i];
+                circuitsDone = j;
+            }
+        } catch (RuntimeException | Error ex) {
+            pipeAbort = true;
+            throw ex;
+        } finally {
+            try {
+                task.join();
+                if (partsTask != null) partsTask.join();
+            } finally {
+                inFlight = false;
+                overlapBusy += System.nanoTime() - c0;
+            }
+        }
+        // the history the next run starts from: the last two intervals' means and middles
+        if (j >= 1) {
+            double[] last = ringMean[ring(j)];
+            double midLast = 0.5 * (ringT0[ring(j)] + ringT1[ring(j)]);
+            if (j >= 2) {
+                double[] prev = ringMean[ring(j - 1)];
+                for (int i : plantInRows) emMeanPrev[i] = prev[i];
+                emMidPrev = 0.5 * (ringT0[ring(j - 1)] + ringT1[ring(j - 1)]);
+            } else {
+                for (int i : plantInRows) emMeanPrev[i] = emMeanLast[i];
+                emMidPrev = emMidLast;
+            }
+            for (int i : plantInRows) emMeanLast[i] = last[i];
+            emMidLast = midLast;
+        }
+        plantStart = new double[n];
+        plantEnd = new double[n];
+        if (discontinuityLater) {
+            discontinuityLater = false;
+            markDiscontinuity();
+        }
+        if (partsMetLater) {
+            partsMetLater = false;
+            partsMet = true;
+        }
+        return j;
+    }
+
+    /** The parts stepped to {@code end} exactly, on the calling thread, touching neither the solver's time nor its active phase. */
+    private void stepPartsAlone(double end) {
+        double eps = 1e-12 * Math.max(1, Math.abs(end));
+        for (Phase p : parts) {
+            while (p.t < end - eps) {
+                double h = Math.min(p.hNext, hMax);
+                if (h >= end - p.t || end - p.t - h < 0.25 * h) h = end - p.t;
+                stepAdaptive(p, h);
+            }
+            p.t = Math.max(p.t, end);
+        }
+    }
+
+    /**
+     * The plant's input for a step with middle {@code mid}: the circuits' means over intervals {@code j} and j − 1
+     * carried on linearly (intervals 0 and −1 are the history from before the run).
+     */
+    private void plantInput(int j, double mid) {
+        double[] a, b;
+        double ma, mb;
+        if (j >= 1) {
+            a = ringMean[ring(j)];
+            ma = 0.5 * (ringT0[ring(j)] + ringT1[ring(j)]);
+        } else if (j == 0) {
+            a = emMeanLast;
+            ma = emMidLast;
+        } else {
+            a = emMeanPrev;
+            ma = emMidPrev;
+        }
+        if (j >= 2) {
+            b = ringMean[ring(j - 1)];
+            mb = 0.5 * (ringT0[ring(j - 1)] + ringT1[ring(j - 1)]);
+        } else if (j == 1) {
+            b = emMeanLast;
+            mb = emMidLast;
+        } else if (j == 0) {
+            b = emMeanPrev;
+            mb = emMidPrev;
+        } else {
+            b = null;
+            mb = Double.NaN;
+        }
+        if (Double.isNaN(ma)) return;
+        if (b != null && !Double.isNaN(mb) && ma > mb) {
+            double rr = (mid - ma) / (ma - mb);
+            for (int i : plantInRows) fast.heatIn[i] = a[i] + rr * (a[i] - b[i]);
+        } else {
+            for (int i : plantInRows) fast.heatIn[i] = a[i];
+        }
     }
 
     /** The circuits brought level with the plant (before the solver's state is looked at, or the thermal network synchronised). */
@@ -1549,13 +1849,20 @@ public final class TransientSolver implements StateView {
         for (int i = 0; i < phs.size(); i++) {
             Phase ph = phs.get(i);
             if (ph == null || ph.nNewton == 0) continue;
-            sb.append(String.format("%s %d steps (+%d rejected, %d failed), %d Newton, %d restarts; ", names.get(i), ph.nAccepted,
-                    ph.nRejected, ph.nFailed, ph.nNewton, ph.nRestarts));
+            sb.append(String.format("%s %d steps (+%d rejected, %d failed), %d Newton, %d restarts [per Newton: load %.0f µs, solve %.0f µs, all %.0f µs]; ",
+                    names.get(i), ph.nAccepted, ph.nRejected, ph.nFailed, ph.nNewton, ph.nRestarts,
+                    ph.loadNs / 1e3 / Math.max(1, ph.nNewton), ph.solveNs / 1e3 / Math.max(1, ph.nNewton), ph.stepNs / 1e3 / Math.max(1, ph.nNewton)));
             ph.nAccepted = ph.nRejected = ph.nFailed = ph.nNewton = ph.nRestarts = 0;
+            ph.loadNs = ph.solveNs = ph.stepNs = 0;
+            if (ph.itHist != null) {
+                sb.append("iterations ").append(Arrays.toString(ph.itHist)).append("; ");
+                Arrays.fill(ph.itHist, 0);
+            }
         }
         if (overlap) sb.append(String.format("overlapped %d, drained %d; circuits busy %.1f s, waiting for the plant %.1f s; "
-                        + "parts %.1f s, syncs %.1f s, drains %.1f s, lone plant steps %.1f s; ",
-                overlaps, drains, overlapBusy / 1e9, overlapWait / 1e9, partsNanos / 1e9, syncNanos / 1e9, drainNanos / 1e9, lonePlantNanos / 1e9));
+                        + "parts %.1f s, syncs %.1f s, drains %.1f s, lone plant steps %.1f s; plant task: %.1f s waiting to start, %.1f s running; spinning: plant %.1f s, circuits %.1f s; ",
+                overlaps, drains, overlapBusy / 1e9, overlapWait / 1e9, partsNanos / 1e9, syncNanos / 1e9, drainNanos / 1e9, lonePlantNanos / 1e9, taskDelay / 1e9, taskRun / 1e9, plantSpin / 1e9, circuitsSpin / 1e9));
+        taskDelay = taskRun = plantSpin = circuitsSpin = 0;
         overlaps = drains = overlapBusy = overlapWait = partsNanos = syncNanos = drainNanos = lonePlantNanos = 0;
         return sb.toString();
     }
@@ -1647,7 +1954,7 @@ public final class TransientSolver implements StateView {
     }
 
     private void stepAdaptive0(Phase ph, double hTry) {
-        if (!(inFlight && ph == fast)) active = ph;
+        if (!inFlight || ph == em) active = ph;
         double h = hTry;
         while (true) {
             if (h < hMin) {
@@ -1672,7 +1979,9 @@ public final class TransientSolver implements StateView {
                         "Time step underflow at t=%.6g s (h=%.3g s)%s. %s", ph.t, h, ph == slow ? " in the thermal network" : "",
                         worstNewtonDiagnostic()));
             }
+            long ts0 = System.nanoTime();
             int r = tryStep(ph, h);
+            ph.stepNs += System.nanoTime() - ts0;
             if (r == 0 || r == 3) return;
             if (r == 1) { // Newton failure
                 newtonFailures.increment();
@@ -1724,6 +2033,8 @@ public final class TransientSolver implements StateView {
     }
 
     private static final boolean NEWTON_LAGGARDS = Boolean.getBoolean("diag.newtonLaggards");
+    /** Diagnostics ({@code diag.syncStats=true}): what set each synchronisation interval (a node's C/G, or the thermal step). */
+    public static final java.util.Map<String, Integer> SYNC_STATS = Boolean.getBoolean("diag.syncStats") ? new java.util.concurrent.ConcurrentHashMap<>() : null;
     /** Diagnostics ({@code diag.failureCauses=true}): Newton failures by phase and the unknown last seen not converging. */
     public static final java.util.Map<String, Integer> FAILURE_CAUSES = Boolean.getBoolean("diag.failureCauses")
             ? new java.util.concurrent.ConcurrentHashMap<>() : null;
@@ -1878,17 +2189,25 @@ public final class TransientSolver implements StateView {
         for (int it = 0; it < maxNewton; it++) {
             newtonIterations.increment();
             ph.nNewton++;
+            long ln0 = System.nanoTime();
             Arrays.fill(f, 0.0);
             jac.clear();
             loadAll(ph);
+            ph.loadNs += System.nanoTime() - ln0;
             if (ctx.crossed) {
                 // two parts of the plant met: they are joined before the plant's next step; the plant's own step is
                 // not taken until then (a part's, already behind the plant, goes on without the meeting for this step)
                 ctx.crossed = false;
-                partsMet = true;
+                if (inFlight && ph != fast) partsMetLater = true;
+                else partsMet = true;
                 if (ph == fast) return 3;
             }
-            if (circuitOf != null) updateDatums(jac);
+            // (only when the matrix has entries the datums have not seen: checked without the lock, which the circuits
+            // and the plant, stepping side by side, had taken in turns at every iteration — each stalling the other)
+            if (circuitOf != null && !(jac instanceof dev.emergence.core.math.SparseLinearSystem sp && sp.nonZeros() == ph.datumNnz)) {
+                updateDatums(jac);
+                if (jac instanceof dev.emergence.core.math.SparseLinearSystem sp2) ph.datumNnz = sp2.nonZeros();
+            }
             if (ph.heatIn != null) for (int i : ph.inRows) f[i] -= ph.heatIn[i];
             // held unknowns: their rows (stamped with nothing else) say "do not move"; these stamps, and the diagonals
             // below, are a segment of their own, past the elements' (replayed, not looked up: hashed, they were a
@@ -1913,8 +2232,10 @@ public final class TransientSolver implements StateView {
             jac.beginSegment(-1);
             if (CHECK_JACOBIAN && it == 8 && jac instanceof dev.emergence.core.math.DenseLinearSystem dj) checkJacobian(dj);
             for (int i = 0; i < n; i++) dx[i] = -f[i];
+            long sn0 = System.nanoTime();
             try {
                 jac.solve(dx);
+                ph.solveNs += System.nanoTime() - sn0;
             } catch (SingularMatrixException e) {
                 lastBadUnknown = "singular in column of " + net.unknownName(Math.min(e.row(), n - 1));
                 lastBadIndex = -1;
@@ -1931,7 +2252,10 @@ public final class TransientSolver implements StateView {
             // more iterations to settle. A bounce that recurs (a third time) is a cycle, not a single overshoot: from then on
             // every update is halved, as before (a PWM comparator's op-amp at its rail, its supply's current ±0.2 A and
             // its state ±0.3 V an iteration, to the iteration cap at every step size)
-            damped = bounces >= 3;
+            // Once it has cycled three times, halved while the update is still far above its tolerances (DAMP_NEAR of them),
+            // full steps near the end: halved to the last, a cycle broken early converged at a rate of ½ to the end — two
+            // fifths of a power station's circuit iterations went into solves of 26–30 iterations
+            damped = bounces >= 3 && DAMP_NEAR <= 0;
             if (it >= 3 && !damped) {
                 double dot = 0, n1 = 0, n2 = 0, far = 0;
                 for (int i : free) {
@@ -1940,8 +2264,9 @@ public final class TransientSolver implements StateView {
                     n2 += dxPrev[i] * dxPrev[i];
                     far = Math.max(far, Math.abs(dx[i]) / (relTol * Math.abs(xTrial[i]) + absTol[i]));
                 }
-                damped = far > 1e3 && dot < -0.9 * Math.sqrt(n1 * n2);
-                if (damped) bounces++;
+                boolean bounce = far > 1e3 && dot < -0.9 * Math.sqrt(n1 * n2);
+                if (bounce && bounces < 3) bounces++;
+                damped = bounce || bounces >= 3 && far > DAMP_NEAR;
             }
             System.arraycopy(dx, 0, dxPrev, 0, n);
             double scale = damped ? 0.5 : 1.0;
@@ -1987,6 +2312,7 @@ public final class TransientSolver implements StateView {
             }
             if (small && !limited) {
                 converged = true;
+                if (ph.itHist != null) ph.itHist[Math.min(it, ph.itHist.length - 1)]++;
                 break;
             }
             if (NEWTON_LAGGARDS && it >= 2 && lastBadIndex >= 0) newtonLaggards.merge(net.unknownName(lastBadIndex), 1, Integer::sum);
@@ -2136,7 +2462,7 @@ public final class TransientSolver implements StateView {
             // the converged point: −heat in), and the coupling's stiffness there
             boolean beq = m == IntegrationMethod.BACKWARD_EULER;
             // (the circuits and the plant's parts step on the calling thread, the plant perhaps on another meanwhile)
-            double[] acc = ph == em || isPart(ph) ? emHeat : heatAccum;
+            double[] acc = ph == em ? emHeat : isPart(ph) ? partHeat : heatAccum;
             for (int i : slowRows) {
                 double rate = -f[i];
                 // the quadrature of the step taken: the end point after backward Euler, else the trapezoid
@@ -2160,7 +2486,7 @@ public final class TransientSolver implements StateView {
                 for (int i : plantInRows) plantTransit -= fast.heatIn[i] * 0.5 * (xPrev[i] + x[i]) * h * powerSign(i);
             }
         }
-        if (ph != fast || em == null) {
+        if ((ph != fast || em == null) && !(inFlight && isPart(ph))) {
             t = ph.t;
             hPrev = h;
         }
@@ -2228,9 +2554,12 @@ public final class TransientSolver implements StateView {
         double pLoss = power(ph, false, sv);
         boolean be = m == IntegrationMethod.BACKWARD_EULER;
         double in = (be ? pExt : 0.5 * (pExt + ph.lastPext)) * h, out = (be ? pLoss : 0.5 * (pLoss + ph.lastPloss)) * h;
-        if (ph == em || isPart(ph)) {
+        if (ph == em) {
             emExternalIn += in;
             emUntrackedOut += out;
+        } else if (isPart(ph)) {
+            partExternalIn += in;
+            partUntrackedOut += out;
         } else {
             externalIn += in;
             untrackedOut += out;
@@ -2248,7 +2577,7 @@ public final class TransientSolver implements StateView {
         // it the thermal network has still to take in)
         if (multirate) {
             if (active == slow) for (int i : slowRows) e += slow.heatIn[i] * (t - slow.t);
-            else for (int i : slowRows) e += heatAccum[i] + emHeat[i];
+            else for (int i : slowRows) e += heatAccum[i] + emHeat[i] + partHeat[i];
             if (em != null) e += couplingTransit + plantTransit;
         }
         storedStale = false;
@@ -2311,11 +2640,11 @@ public final class TransientSolver implements StateView {
     }
 
     public double externalEnergyIn() {
-        return externalIn + emExternalIn;
+        return externalIn + emExternalIn + partExternalIn;
     }
 
     public double untrackedEnergyOut() {
-        return untrackedOut + emUntrackedOut;
+        return untrackedOut + emUntrackedOut + partUntrackedOut;
     }
 
     /**
@@ -2323,7 +2652,7 @@ public final class TransientSolver implements StateView {
      * Zero for an exact integration; its magnitude measures numerical energy drift.
      */
     public double energyError() {
-        return (storedNow() - storedInitial) - (externalIn + emExternalIn - untrackedOut - emUntrackedOut);
+        return (storedNow() - storedInitial) - (externalEnergyIn() - untrackedEnergyOut());
     }
 
     public long acceptedSteps() {

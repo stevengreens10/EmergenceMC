@@ -224,7 +224,7 @@
    electronics wherever possible). Six screens in front of the station show fuel, boiler pressure, engine speed,
    condenser pressure, generator current and battery voltage. Each is drawn by a gauge of miniature electronics
    in the block behind it. In the core each agrees with the simulation (DashboardTest). In the station world
-   (18:44) it builds with 0 problems, and the station's GameTest passes with the dashboard drawing on its battery:
+   (17:44) it builds with 0 problems, and the station's GameTest passes with the dashboard drawing on its battery:
    0.121 mA·h charged, the governor holding, the counter counting. The station tour of 16:29 found all six screens
    drawn and every gauge right, but that world's battery discharging; fixed since (the regulator's reference
    shorted by a tap).

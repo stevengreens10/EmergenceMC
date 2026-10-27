@@ -216,7 +216,9 @@ public final class AutoShowcase {
                 // the dashboard: six full-size screens, each drawn by a gauge of miniature electronics in the block behind
                 // it, reading the station's sensors over a ribbon cable — each gauge's value against the world's own
                 if (!e.embedded.isEmpty()) {
-                    Runnable front = () -> look(server, plot.getX() + 31, plot.getY() + 2.6, plot.getZ() + 33, 180, 6);
+                    // (from the south-west, looking north-north-east: the row of screens in the right of the picture, clear of
+                    // the tour's notes on the left)
+                    Runnable front = () -> look(server, plot.getX() + 12, plot.getY() + 2.4, plot.getZ() + 32, 205.5f, 6);
                     java.util.function.BiFunction<BlockPos, PartKind, Double> pressureAt = (pos, kind) -> {
                         PlacedPart pp = partIn(server, pos, kind);
                         CompiledAssembly c = compiled(server, pos);
@@ -256,6 +258,9 @@ public final class AutoShowcase {
                                 CompiledAssembly c = compiled(server, at.apply("battery"));
                                 return gauge(gaugeValue(server, plot, e, 5), bp == null || c == null ? Double.NaN : 100 * c.probe(bp.id).voltage(), 8, "0.01 V");
                             }));
+                    // a close look at one card (the boiler's), right of the notes
+                    STEPS.add(new Step(40, () -> look(server, plot.getX() + 23.5, plot.getY() + 1.1, plot.getZ() + 24.5, 153.5f, 0),
+                            shot.apply("dashboard-boiler")));
                 }
                 // a load put on it by hand: the governor holds its speed
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake on", part.apply("brake", PartKind.BRAKE))));

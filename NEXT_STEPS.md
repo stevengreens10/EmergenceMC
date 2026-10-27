@@ -167,6 +167,22 @@
    fifth of the plant's iterations), why the in-game state's circuits iterate ~6 times a step (vs ~4), water/steam
    property cost.
 
+0a4. **Scheduled tour, 2026-10-26 20:14: not run.** The demo world regenerated (all 17 in-world tests pass), but the
+   tour client could not open a window ("Failed to find a primary monitor"; also at 18:47, the station's tour). The
+   display was off or locked. The next scheduled tour should cover today's solver changes (circuits overlapped
+   with the plant, independent plant parts, off-tick stepping, adaptive accuracy) across every exhibit.
+
+0a5. **Real-time findings, evening** (in-game state replayed: `IslandDumpReplayTest -Ddiag.dump=run/island-dump-1793054186346.txt
+   -Ddiag.dumpProfile=true`, ~1.2 s/s): a timeline (`-Ddiag.timeline=<t>`) shows two kinds of stall. (1) The plant's
+   Newton failures: ~110 per 5 s, each 40 iterations at ~220 µs (8–17 ms), at the engine's valve ports. Converged plant
+   solves take 2–3 iterations, and only ~1 % take more than 12, so a lower cap for such phases or an early abandon is
+   worth trying again with the timeline as the measure. (2) The circuits' switching intervals of 7–13 ms. Their solves
+   form a second cluster at 26–30 iterations (two fifths of their iterations), not from the damping, and not changed by
+   rounding the hysteresis play's corners wider. Find what converges linearly there (an inexact Jacobian?). Flagged
+   off: `emergence.pipeline` (free-running overlap: broke a four-bar's energy ledger and the contact governor) and
+   `emergence.tightThermalS` (tightly coupled thermal nodes moved to the fast side at runtime: broke a filament's energy
+   balance; it would remove the 22 ms synchronisations a small valve body under condensing steam forces).
+
 0a2. **Tour triage, 2026-10-26** (full tour: 152 passed, 2 failed — both the PWM exhibit's hand, its checks passing):
    - the PWM hand again, 33rd of 75: the client had no block entity at the transistor's block for the whole 30 s the
      hand waits (it passes alone, 3 of 3). The hand's failure now says what the client holds there (block state,

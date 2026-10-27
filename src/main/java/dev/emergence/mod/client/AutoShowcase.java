@@ -615,10 +615,13 @@ public final class AutoShowcase {
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
             }
             if (id.equals("em8thermostat")) {
-                // found running: the plate held near its setpoint by the program, its heater switching
+                // the plate starts at 314 K: once the program has brought it to its setpoint (the heater off above 317.5 K,
+                // within two minutes), the plate held near it, its heater switching
                 BlockPos plate = at.apply("plate"), heater = at.apply("heater");
                 Sampler pt = new Sampler(), hi = new Sampler();
-                STEPS.add(new Step(600, view, shot.apply("running")).sample(pt, () -> temperature(server, plate, PartKind.BLOCK))
+                STEPS.add(new Step(2400, view, null, () -> onServer(server, key + "warm", () -> temperature(server, plate, PartKind.BLOCK) > 317.5
+                        && Math.abs(current(server, heater, PartKind.RESISTOR)) < 0.01 ? 1 : 0) > 0.5));
+                STEPS.add(new Step(800, view, shot.apply("running")).sample(pt, () -> temperature(server, plate, PartKind.BLOCK))
                         .sample(hi, () -> Math.abs(current(server, heater, PartKind.RESISTOR)))
                         .check(key + " the program holds the plate near 45 °C", () -> that(pt.min() > 310 && pt.max() < 326,
                                 String.format("plate %.1f .. %.1f K (318 K wanted)", pt.min(), pt.max())))
@@ -638,10 +641,16 @@ public final class AutoShowcase {
                     STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " clip a probe on the " + net + " wire", wire.apply(net), analyser)));
                 STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.useInAirUntil(key + " open the analyser's screen", false,
                         () -> Minecraft.getInstance().screen instanceof AnalyzerScreen, 3)));
-                STEPS.add(new Step(60, NOTHING, shot.apply("analyser"), () -> Minecraft.getInstance().screen instanceof AnalyzerScreen a && a.switching() >= 3).keepScreen()
-                        .check(key + " the analyser shows the bus switching", () -> {
+                // (its first view spans 1 ms: the clock switches within it, the data with each bit that differs from the last,
+                // chip select once a reading, ~2.5 ms, and the heater's gate every few seconds — so the most channels seen
+                // switching over three seconds of views)
+                Sampler busy = new Sampler();
+                STEPS.add(new Step(60, NOTHING, shot.apply("analyser")).keepScreen()
+                        .sample(busy, () -> Minecraft.getInstance().screen instanceof AnalyzerScreen a ? a.switching() : -1)
+                        .check(key + " the analyser shows the bus's clock and data switching", () -> {
                             var sc = Minecraft.getInstance().screen;
-                            return that(sc instanceof AnalyzerScreen a && a.switching() >= 3, sc instanceof AnalyzerScreen a ? a.summary() : "no analyser screen");
+                            return that(sc instanceof AnalyzerScreen a && busy.max() >= 2 && a.probes() == 4 && a.digitalProbes() == 3,
+                                    sc instanceof AnalyzerScreen a ? String.format("most switching at once %.0f; ", busy.max()) + a.summary() : "no analyser screen");
                         }));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.named("closes the screen", m -> {
                     m.setScreen(null);

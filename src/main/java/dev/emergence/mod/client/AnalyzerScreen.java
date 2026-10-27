@@ -16,7 +16,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * rolls; Single arms the trigger (channel and edge chosen beside it) and holds what follows; Hold freezes.
  */
 public final class AnalyzerScreen extends Screen {
-    private static final int LABEL_W = 92, LANE_H = 24, TOP = 30;
+    private static final int LABEL_W = 92, TOP = 30;
     private static final double[] SPANS = {10e-6, 20e-6, 50e-6, 100e-6, 200e-6, 500e-6, 1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 0.1, 0.2, 0.5, 1, 2, 5};
     private static final int[] COLOURS = {0xFFFFD25A, 0xFF5AD2FF, 0xFF7CFF7C, 0xFFFF7CB4, 0xFFC08CFF, 0xFFFF9B5C, 0xFF5CFFD2, 0xFFE0E0E0};
 
@@ -47,6 +47,19 @@ public final class AnalyzerScreen extends Screen {
         return n;
     }
 
+    /** How many channels have a probe, and how many of those record levels (a net only chips touch). */
+    int probes() {
+        int n = 0;
+        if (data != null) for (String s : data.names()) if (!s.isEmpty()) n++;
+        return n;
+    }
+
+    int digitalProbes() {
+        int n = 0;
+        if (data != null) for (int k = 0; k < data.names().length; k++) if (!data.names()[k].isEmpty() && data.digital()[k]) n++;
+        return n;
+    }
+
     /** What each probe shows, for the tour's report. */
     String summary() {
         if (data == null) return "no data yet";
@@ -63,6 +76,11 @@ public final class AnalyzerScreen extends Screen {
         for (float v : data.min()[k]) if (!Float.isNaN(v)) lo = Math.min(lo, v);
         for (float v : data.max()[k]) if (!Float.isNaN(v)) hi = Math.max(hi, v);
         return hi >= lo ? hi - lo : 0;
+    }
+
+    /** The lanes' height: eight between the buttons and the two footer lines, at most 24 (fits a small window). */
+    private int laneH() {
+        return Math.max(12, Math.min(24, (height - TOP - 30) / 8));
     }
 
     private int plotX0() {
@@ -138,7 +156,7 @@ public final class AnalyzerScreen extends Screen {
         if (super.mouseClicked(mx, my, button)) return true;
         // a probe's label, right-clicked: unclip it
         if (button == 1 && mx < plotX0() && my >= TOP) {
-            int k = (int) ((my - TOP) / LANE_H);
+            int k = (int) ((my - TOP) / laneH());
             if (k >= 0 && k < 8) send(AnalyzerPayloads.REMOVE_PROBE, k);
             return true;
         }
@@ -168,7 +186,8 @@ public final class AnalyzerScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         super.render(g, mx, my, pt);
-        int x0 = plotX0(), x1 = plotX1(), w = x1 - x0, bottom = TOP + 8 * LANE_H;
+        int lane = laneH();
+        int x0 = plotX0(), x1 = plotX1(), w = x1 - x0, bottom = TOP + 8 * lane;
         g.fill(x0, TOP, x1, bottom, 0xF0080A0C);
         // grid: ten divisions
         for (int i = 0; i <= 10; i++) {
@@ -182,16 +201,22 @@ public final class AnalyzerScreen extends Screen {
         else state = "RUN";
         g.drawString(font, state, width - 8 - font.width(state), 12, data != null && data.armed() ? 0xFFFFC66B : 0xFF9AA6B2, false);
         for (int k = 0; k < 8; k++) {
-            int ly = TOP + k * LANE_H;
-            g.fill(8, ly, x0 - 2, ly + LANE_H - 1, 0xC0101418);
+            int ly = TOP + k * lane;
+            g.fill(8, ly, x0 - 2, ly + lane - 1, 0xC0101418);
             String name = data == null || data.names()[k].isEmpty() ? "—" : data.names()[k];
-            g.drawString(font, "CH" + (k + 1), 11, ly + 3, COLOURS[k], false);
-            g.drawString(font, font.plainSubstrByWidth(name, LABEL_W - 12), 11, ly + 13, 0xFF7A8794, false);
+            if (lane >= 22) {
+                g.drawString(font, "CH" + (k + 1), 11, ly + 3, COLOURS[k], false);
+                g.drawString(font, font.plainSubstrByWidth(name, LABEL_W - 12), 11, ly + 13, 0xFF7A8794, false);
+            } else {
+                // a short lane: channel and probe on one line
+                g.drawString(font, "CH" + (k + 1), 11, ly + (lane - 8) / 2, COLOURS[k], false);
+                g.drawString(font, font.plainSubstrByWidth(name, LABEL_W - 34), 33, ly + (lane - 8) / 2, 0xFF7A8794, false);
+            }
             if (data == null || data.min()[k].length == 0) continue;
             float[] mn = data.min()[k], mx2 = data.max()[k];
             int n = mn.length;
             if (data.digital()[k]) {
-                int hi = ly + 4, lo = ly + LANE_H - 5;
+                int hi = ly + 3, lo = ly + lane - 4;
                 for (int i = 0; i < n; i++) {
                     if (Float.isNaN(mn[i])) continue;
                     int px = x0 + i * w / n, px1 = x0 + (i + 1) * w / n;
@@ -216,7 +241,7 @@ public final class AnalyzerScreen extends Screen {
                     hi += 0.05f;
                     lo -= 0.05f;
                 }
-                int top = ly + 3, bot = ly + LANE_H - 4;
+                int top = ly + 2, bot = ly + lane - 3;
                 for (int i = 0; i < n; i++) {
                     if (Float.isNaN(mn[i])) continue;
                     int px = x0 + i * w / n;
@@ -224,7 +249,7 @@ public final class AnalyzerScreen extends Screen {
                     g.fill(px, ya, px + 1, Math.max(ya + 1, yb + 1), COLOURS[k]);
                 }
                 g.drawString(font, String.format("%.2f V", hi), x1 - 44, ly + 2, 0x80FFFFFF, false);
-                g.drawString(font, String.format("%.2f V", lo), x1 - 44, ly + LANE_H - 10, 0x80FFFFFF, false);
+                if (lane >= 20) g.drawString(font, String.format("%.2f V", lo), x1 - 44, ly + lane - 10, 0x80FFFFFF, false);
             }
         }
         // the time axis, and the cursor's readout
@@ -232,14 +257,16 @@ public final class AnalyzerScreen extends Screen {
         g.drawString(font, spanTxt, x0, bottom + 4, 0xFF9AA6B2, false);
         String endTxt = back == 0 ? "newest at right" : Units.formatSI(back, "s") + " before the newest";
         g.drawString(font, endTxt, x1 - font.width(endTxt), bottom + 4, 0xFF9AA6B2, false);
-        if (data != null && !data.grounded()) g.drawString(font, "no ground lead: voltages against the circuit's reference (sneak-clip one)", x0, bottom + 16, 0xFF7A8794, false);
-        if (mx >= x0 && mx < x1 && my >= TOP && my < bottom && data != null) {
+        boolean cursor = mx >= x0 && mx < x1 && my >= TOP && my < bottom && data != null;
+        // (the note gives way to the cursor's readout on the line they share)
+        if (data != null && !data.grounded() && !cursor)
+            g.drawString(font, font.plainSubstrByWidth("No ground lead: volts against the circuit's reference (sneak-clip one)", w), x0, bottom + 16, 0xFF7A8794, false);
+        if (cursor) {
             g.fill(mx, TOP, mx + 1, bottom, 0x80FFFFFF);
             double tAt = data.end() - span() + (mx - x0) / (double) w * span();
             String rel = !Double.isNaN(data.trigTime()) && data.frozen() ? "t = " + Units.formatSI(tAt - data.trigTime(), "s") + " from the trigger"
                     : "t = −" + Units.formatSI(Math.max(0, data.newest() - tAt), "s");
             g.drawString(font, rel, Math.min(mx + 4, x1 - font.width(rel)), bottom + 16, 0xFFFFFFFF, false);
         }
-        g.drawString(font, "Logic analyser", 8, TOP - 9, 0xFFFFFFFF, true);
     }
 }

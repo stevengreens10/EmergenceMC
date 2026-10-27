@@ -26,6 +26,10 @@ import java.util.List;
  * zoom and pan, a trigger for a single capture, cursors.
  */
 public final class LogicAnalyzerItem extends Item {
+    /** Insulation colours by "color" 0–15, as drawn (AssemblyRenderer.INSULATION). */
+    private static final String[] COLOURS = {"Blue", "Red", "Black", "Yellow", "Green", "White", "Orange", "Purple", "Brown",
+            "Cyan", "Pink", "Grey", "Lime", "Navy", "Dark red", "Olive"};
+
     public LogicAnalyzerItem(Properties props) {
         super(props);
     }
@@ -42,6 +46,11 @@ public final class LogicAnalyzerItem extends Item {
         if (part == null) return InteractionResult.PASS;
         if (ctx.getLevel() instanceof ServerLevel sl && ctx.getPlayer() instanceof ServerPlayer sp) {
             String title = Component.translatable("item.emergence." + part.kind.name().toLowerCase()).getString();
+            // an insulated wire by its colour: what tells one probed wire from another
+            if (part.kind == dev.emergence.core.assembly.PartKind.INSULATED_WIRE || part.kind == dev.emergence.core.assembly.PartKind.RIBBON) {
+                int k = (int) Math.round(part.spec.params().getOrDefault("color", 0.0));
+                title = COLOURS[Math.floorMod(k, COLOURS.length)] + " wire";
+            }
             String msg = SimulationManager.get(sl).clipAnalyzer(sp, ctx.getClickedPos(), part.id, title, sp.isShiftKeyDown());
             sp.displayClientMessage(Component.literal(msg).withStyle(ChatFormatting.AQUA), true);
         }

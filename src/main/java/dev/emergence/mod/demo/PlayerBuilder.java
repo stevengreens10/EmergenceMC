@@ -114,6 +114,15 @@ public final class PlayerBuilder {
             return false;
         }
 
+        /** Whether a segment of the same chip lies just before d along its axis (d is not the chip's first). */
+        private boolean chipBefore(Exhibit.PartDef d) {
+            for (Exhibit.PartDef q : e.parts) {
+                if (q.kind() == PartKind.CHIP && q.axis() == d.axis() && q.x0() == d.x0() - d.axis().dx && q.y0() == d.y0() - d.axis().dy
+                        && q.z0() == d.z0() - d.axis().dz && java.util.Objects.equals(q.params().get("function"), d.params().get("function"))) return true;
+            }
+            return false;
+        }
+
         /** One part placed or one scaffold put up; false once there is nothing more to place. */
         private boolean placeNext() {
             if (pending.isEmpty()) return false;
@@ -127,6 +136,12 @@ public final class PlayerBuilder {
                 // a shaft goes in before what is mounted on it (whose orientation it would otherwise follow)
                 if (d.kind() != PartKind.SHAFT && mountable(d.kind()) && pending.stream().anyMatch(q -> q != d && q.kind() == PartKind.SHAFT
                         && q.x0() == d.x0() && q.y0() == d.y0() && q.z0() == d.z0())) continue;
+                // a chip goes down whole from its first segment: the rest of its row comes with it
+                if (d.kind() == PartKind.CHIP && chipBefore(d)) {
+                    pass.remove();
+                    progress = true;
+                    continue;
+                }
                 Long id = place(level, p, at, d, problems, e.id, e.texts.getOrDefault(d.index(), ""));
                 if (id == null) continue;
                 placedId.put(d.index(), id);
@@ -316,8 +331,10 @@ public final class PlayerBuilder {
             return -1L;
         }
         stack = p.getMainHandItem();
-        // sneaking, looking along the part's axis: its orientation (and no switch or valve clicked against is worked)
-        p.setShiftKeyDown(true);
+        // sneaking, looking along the part's axis: its orientation (and no switch or valve clicked against is worked);
+        // a wire block is placed plainly (sneaking with wire runs a whole wire: WireRouting), its axis meaningless
+        boolean wire = d.kind() == PartKind.WIRE || d.kind() == PartKind.INSULATED_WIRE;
+        p.setShiftKeyDown(!wire);
         look(p, d.axis());
         Set<Long> before = ids(level, at);
         BlockHitResult hit = null;
@@ -337,6 +354,9 @@ public final class PlayerBuilder {
                 // a mountable clicked against a shaft's side would go onto that shaft, not here
                 if (mountable(d.kind()) && level.getBlockEntity(n) instanceof AssemblyBlockEntity nbe
                         && nbe.parts().stream().anyMatch(q -> q.kind == PartKind.SHAFT && q.axis.axis() != f.getAxis().ordinal())) continue;
+                // a wire, placed without sneaking, must not be clicked against something a click works (a switch, a valve)
+                if (wire && level.getBlockEntity(n) instanceof AssemblyBlockEntity wbe && wbe.parts().stream().anyMatch(q -> q.kind == PartKind.SWITCH
+                        || q.kind == PartKind.VALVE || q.kind == PartKind.BRAKE || q.kind == PartKind.CRANK || q.kind == PartKind.CHIP)) continue;
                 hit = new BlockHitResult(Vec3.atCenterOf(n).add(f.getStepX() * 0.5, f.getStepY() * 0.5, f.getStepZ() * 0.5), f, n, false);
                 break;
             }
@@ -358,7 +378,7 @@ public final class PlayerBuilder {
         }
         long id = after.iterator().next();
         PlacedPart got = ((AssemblyBlockEntity) level.getBlockEntity(at)).byId(id);
-        if (got.kind != d.kind() || got.axis != d.axis() || !got.spec.material().equals(d.material()) || !got.spec.params().equals(spec.params())) {
+        if (got.kind != d.kind() || (got.axis != d.axis() && !wire) || !got.spec.material().equals(d.material()) || !got.spec.params().equals(spec.params())) {
             problems.add(exhibit + ": the " + d.kind() + " at " + cell(d) + " came out as " + got.kind + " along " + got.axis
                     + " (wanted along " + d.axis() + ")");
         }

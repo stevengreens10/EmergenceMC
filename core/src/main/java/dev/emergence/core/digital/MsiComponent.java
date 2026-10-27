@@ -166,6 +166,11 @@ public final class MsiComponent implements DigitalComponent {
     }
 
     @Override
+    public boolean inputLevel(int k) {
+        return in[k];
+    }
+
+    @Override
     public double energyPerEdge(double v) {
         return 0.5 * type.cpd * v * v;
     }

@@ -40,6 +40,11 @@ public interface DigitalComponent {
     /** Output pin k's level as the component holds it (before the delay to the pin). */
     boolean output(int k);
 
+    /** Input pin k's level as the component last saw it (for probes; false where it does not keep them). */
+    default boolean inputLevel(int k) {
+        return false;
+    }
+
     /** Energy the inside switches per clock edge at supply v [J]. */
     double energyPerEdge(double v);
 

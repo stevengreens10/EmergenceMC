@@ -53,8 +53,8 @@ public final class PartEditorScreen extends Screen {
     private final List<Object[]> labels = new ArrayList<>();
     private int listTop, listBottom, rowsTotal;
 
-    /** The part's text (a chip's design), kept as it is: the chip designer edits it, not this form. */
-    private final String text;
+    /** The part's text (a chip's design, a ROM's contents): the chip designer and the ROM editor edit it, not this form. */
+    private String text;
 
     public PartEditorScreen(PartKind kind, boolean offhand, PartSpec spec) {
         super(Component.translatable("item.emergence." + kind.name().toLowerCase()));
@@ -128,7 +128,7 @@ public final class PartEditorScreen extends Screen {
         labels.add(new Object[]{"Material", y, "What it is made of (only materials this part can sensibly be made of)."});
         y += ROW + 6;
         listTop = y;
-        listBottom = height - 46;
+        listBottom = height - (kind == PartKind.CHIP ? 70 : 46); // a chip's editor button above the footer
         // the parameter rows
         List<Runnable> rows = new ArrayList<>();
         List<String[]> rowLabels = new ArrayList<>();
@@ -208,6 +208,20 @@ public final class PartEditorScreen extends Screen {
             material = schema.defaultMaterial();
             changed(true);
         }).bounds(width / 2 - 154, height - 28, 96, 20).tooltip(Tooltip.create(Component.literal("Back to the plain default part"))).build());
+        // a chip that carries a design or a ROM image: its editor
+        int fn = (int) Math.round(values.getOrDefault("function", 0.0));
+        if (kind == PartKind.CHIP && dev.emergence.core.digital.ChipTypes.hasText(fn)) {
+            var pins = dev.emergence.core.digital.ChipTypes.pins(fn, text);
+            boolean design = fn == dev.emergence.core.digital.ChipTypes.DESIGN;
+            String what = design ? (pins.error() == null ? "Chip designer: " + pins.label() + ", " + pins.segments() + " blocks long" : "Chip designer: write its design")
+                    : "ROM editor: " + (text.isBlank() ? "empty" : "edit its contents");
+            addRenderableWidget(Button.builder(Component.literal("✎ " + what), b -> minecraft.setScreen(design
+                            ? ChipDesignerScreen.forItem(this, text, t -> text = t)
+                            : RomEditorScreen.forItem(this, text, t -> text = t)))
+                    .bounds(width / 2 - 154, height - 52, 308, 20)
+                    .tooltip(Tooltip.create(Component.literal(design ? "Write or change what this chip does, in the chip language." : "See and change the ROM's 256 bytes.")))
+                    .build());
+        }
         done = addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> done()).bounds(width / 2 - 52, height - 28, 100, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), b -> onClose()).bounds(width / 2 + 54, height - 28, 100, 20).build());
         validate();
@@ -367,7 +381,10 @@ public final class PartEditorScreen extends Screen {
     }
 
     private Object matchingPreset() {
-        for (var p : presets) if (p.material().equals(material) && p.params().equals(values) && (p.length() == length || !(kind == PartKind.SHAFT || kind == PartKind.RACK))) return p;
+        for (var p : presets) {
+            if (p.material().equals(material) && p.params().equals(values) && (p.length() == length || !(kind == PartKind.SHAFT || kind == PartKind.RACK))
+                    && (kind != PartKind.CHIP || p.text().equals(text))) return p;
+        }
         return "custom";
     }
 
@@ -376,6 +393,7 @@ public final class PartEditorScreen extends Screen {
         values.clear();
         values.putAll(p.params());
         if (kind == PartKind.SHAFT || kind == PartKind.RACK) length = p.length();
+        if (kind == PartKind.CHIP) text = p.text();
         changed(true);
     }
 

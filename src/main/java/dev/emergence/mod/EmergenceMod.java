@@ -62,6 +62,7 @@ public final class EmergenceMod {
                 (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.ClientDisplays.apply(payload)));
         reg.playToClient(dev.emergence.mod.net.LoggerSyncPayload.TYPE, dev.emergence.mod.net.LoggerSyncPayload.STREAM_CODEC,
                 (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.LoggerHud.apply(payload)));
+        registerChipPayloads(reg);
         reg.playToServer(dev.emergence.mod.net.PartSpecEditPayload.TYPE, dev.emergence.mod.net.PartSpecEditPayload.STREAM_CODEC,
                 (payload, ctx) -> ctx.enqueueWork(() -> {
                     if (!(ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
@@ -69,6 +70,23 @@ public final class EmergenceMod {
                             ? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND, payload.spec());
                     if (why != null) sp.displayClientMessage(net.minecraft.network.chat.Component.literal(why), true);
                 }));
+    }
+
+    private static void registerChipPayloads(net.neoforged.neoforge.network.registration.PayloadRegistrar reg) {
+        reg.playToServer(dev.emergence.mod.net.ChipTextPayload.TYPE, dev.emergence.mod.net.ChipTextPayload.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    if (!(ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
+                    String why = dev.emergence.mod.part.ChipEdits.writeText(sp, payload.pos(), payload.partId(), payload.text());
+                    sp.displayClientMessage(net.minecraft.network.chat.Component.literal(why != null ? why : "Written to the chip."), true);
+                }));
+        reg.playToServer(dev.emergence.mod.net.ChipProbePayload.Request.TYPE, dev.emergence.mod.net.ChipProbePayload.Request.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp) {
+                        ctx.reply(dev.emergence.mod.part.ChipEdits.probe(sp, payload.pos(), payload.partId()));
+                    }
+                }));
+        reg.playToClient(dev.emergence.mod.net.ChipProbePayload.TYPE, dev.emergence.mod.net.ChipProbePayload.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.ClientHooks.chipProbe(payload)));
     }
 
     private static void handleSync(IslandSyncPayload payload, IPayloadContext ctx) {

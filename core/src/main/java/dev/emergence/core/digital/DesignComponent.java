@@ -68,6 +68,11 @@ public final class DesignComponent implements DigitalComponent {
     }
 
     @Override
+    public boolean inputLevel(int k) {
+        return inst.input(k);
+    }
+
+    @Override
     public double energyPerEdge(double v) {
         return design.estimate().energyPerEdge(v);
     }

@@ -156,6 +156,19 @@ public final class ChipDesign {
         return estimate;
     }
 
+    /** Its registers (and outputs written in on blocks), in declaration order: what a probe of a running chip shows. */
+    public List<String> registers() {
+        List<String> out = new ArrayList<>();
+        for (Signal s : signals) if (s.kind == Kind.REG || s.kind == Kind.OUTPUT && s.registered) out.add(s.name);
+        return out;
+    }
+
+    /** A signal's width in bits (0 if there is none by that name). */
+    public int width(String name) {
+        Signal s = byName.get(name);
+        return s == null ? 0 : s.width;
+    }
+
     /** A running copy of the design: its registers, memories and pins. */
     public Instance instantiate(Map<String, Double> params) {
         return new Instance(params);

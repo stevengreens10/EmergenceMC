@@ -179,6 +179,73 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 ps.popPose();
             }
         }
+        // chips' pins named on their tops, for wiring (near enough to read)
+        if (res == AssemblyBlockEntity.BLOCK_SCALE && net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
+                .distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) < LABEL_RANGE * LABEL_RANGE) {
+            for (PlacedPart p : be.parts()) if (p.kind == PartKind.CHIP && p.axis.axis() != 1) drawChipLabels(level, be, p, ps, buffers);
+        }
+    }
+
+    /** How near a chip its pin labels are drawn [blocks]. */
+    private static final double LABEL_RANGE = 14;
+
+    /**
+     * A chip segment's pins written on its top: the input's name on its input side, the output's on its output side
+     * (the last segment: GND and V+), the chip's name along its first segment; read from the output side.
+     */
+    private void drawChipLabels(Level level, AssemblyBlockEntity be, PlacedPart p, PoseStack ps, MultiBufferSource buffers) {
+        var pins = dev.emergence.mod.part.ChipRows.pins(p.spec);
+        var row = dev.emergence.mod.part.ChipRows.row(level, be.getBlockPos(), p);
+        int k = dev.emergence.mod.part.ChipRows.index(row, p);
+        int a = p.axis.axis(), def = a == 0 ? 2 : 0;
+        int l = (int) Math.round(p.spec.params().getOrDefault("lead_axis", (double) def));
+        if (l == a || l < 0 || l > 2) l = def;
+        Vector3f lead = new Vector3f(l == 0 ? 1 : 0, l == 1 ? 1 : 0, l == 2 ? 1 : 0), up = new Vector3f(0, 1, 0);
+        // text: its "up" towards the inputs (−lead), so it reads from the output side; its right = up × normal
+        Vector3f right = new Vector3f(lead).negate().cross(up);
+        String in, out;
+        int inColour = 0xFF9FD3FF, outColour = 0xFFFFC36B;
+        if (pins.error() != null) {
+            in = k == 0 ? "?" : "";
+            out = "";
+        } else if (k == pins.segments() - 1) {
+            in = "GND";
+            out = "V+";
+            inColour = 0xFFB0B0B0;
+            outColour = 0xFFFF7070;
+        } else {
+            String[] at = pins.at(Math.max(0, k));
+            in = at[0] == null ? "" : at[0];
+            out = at[1] == null ? "" : at[1];
+        }
+        float top = 0.5f - 0.18f + 0.004f;
+        // on the package's top (it spans ±0.3 across), clear of the leads and of the name along the middle
+        label(ps, buffers, in, new Vector3f(0.5f, top, 0.5f).add(new Vector3f(lead).mul(-0.2f)), right, lead, 1 / 72f, inColour);
+        label(ps, buffers, out, new Vector3f(0.5f, top, 0.5f).add(new Vector3f(lead).mul(0.2f)), right, lead, 1 / 72f, outColour);
+        if (k == 0) {
+            String name = pins.error() != null ? pins.label() + ": " + pins.error() : pins.label();
+            // along the row from the first segment's end
+            Vector3f along = new Vector3f(p.axis.dx, p.axis.dy, p.axis.dz);
+            float sign = along.dot(right) >= 0 ? 1 : -1;
+            Vector3f start = new Vector3f(0.5f, top, 0.5f).add(new Vector3f(along).mul(-0.45f));
+            float w = net.minecraft.client.Minecraft.getInstance().font.width(name) / 128f;
+            Vector3f centre = new Vector3f(start).add(new Vector3f(right).mul(sign > 0 ? w / 2 : -w / 2));
+            label(ps, buffers, name, centre, right, lead, 1 / 128f, pins.error() != null ? 0xFFFF6B6B : 0xFFE8E8E8);
+        }
+    }
+
+    /** Text lying on a surface, centred on {@code at} (block-local), running along {@code right}, its top towards −{@code down}. */
+    private static void label(PoseStack ps, MultiBufferSource buffers, String s, Vector3f at, Vector3f right, Vector3f down, float scale, int colour) {
+        if (s.isEmpty()) return;
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        Vector3f x = new Vector3f(right).mul(scale), y = new Vector3f(down).mul(scale), z = new Vector3f(right).cross(down).mul(scale);
+        Matrix4f m = new Matrix4f(ps.last().pose()).translate(at).mul(new Matrix4f(
+                x.x, x.y, x.z, 0,
+                y.x, y.y, y.z, 0,
+                z.x, z.y, z.z, 0,
+                0, 0, 0, 1));
+        font.drawInBatch(s, -font.width(s) / 2f, -4, colour, false, m, buffers, net.minecraft.client.gui.Font.DisplayMode.POLYGON_OFFSET, 0,
+                LightTexture.FULL_BRIGHT);
     }
 
     /** Orthonormal part frame: columns X (reference/lead axis), Y = Z × X, Z (signed part axis). */

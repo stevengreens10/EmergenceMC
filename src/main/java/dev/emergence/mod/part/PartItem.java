@@ -128,18 +128,21 @@ public final class PartItem extends Item {
             case BLADE -> String.format(", pitch %.0f°", p.getOrDefault("pitch", 0.0));
             case PRISM -> String.format(", apex %.0f°", p.getOrDefault("apex", 60.0))
                     + (p.containsKey("face") ? " pointing " + dev.emergence.core.assembly.Dir.values()[(int) Math.round(p.get("face"))].name().toLowerCase() : "");
-            case CHIP -> ", " + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.RAM16X4 ? "RAM 16×4"
-                    : chipType(p).name().toLowerCase().replace("rom16x8", "ROM 16×8").replace("4", " 4-bit"))
-                    + (chipType(p) == dev.emergence.core.sim.elements.MsiChip.Type.ROM16X8 && p.containsKey("w0") ? ", programmed" : "");
+            case CHIP -> chipDetail(s);
             case LOGIC -> ", " + new String[]{"buffer", "NOT", "NAND", "NOR", "AND", "OR", "XOR", "Schmitt NOT", "D flip-flop"}[
                     (int) Math.max(0, Math.min(8, Math.round(p.getOrDefault("function", 2.0))))];
             default -> "";
         };
     }
 
-    static dev.emergence.core.sim.elements.MsiChip.Type chipType(java.util.Map<String, Double> p) {
-        var types = dev.emergence.core.sim.elements.MsiChip.Type.values();
-        return types[(int) Math.max(0, Math.min(types.length - 1, Math.round(p.getOrDefault("function", 0.0))))];
+    private static String chipDetail(PartSpec s) {
+        var pins = ChipRows.pins(s);
+        int fn = ChipRows.function(s);
+        String what = fn == dev.emergence.core.digital.ChipTypes.DESIGN ? (pins.error() == null ? "\u201c" + pins.label() + "\u201d" : "no design yet")
+                : pins.label();
+        if (fn == 6) what += ", " + Units.formatSI(s.params().getOrDefault("frequency", 10_000.0), "Hz");
+        if (fn == 3 && s.params().containsKey("w0") || fn == dev.emergence.core.digital.ChipTypes.ROM256 && !s.text().isBlank()) what += ", programmed";
+        return ", " + what;
     }
 
     private static String fluidLabel(java.util.Map<String, Double> p) {
@@ -163,9 +166,18 @@ public final class PartItem extends Item {
         Material m = s.resolveMaterial();
         tooltip.add(Component.translatable("tooltip.emergence." + kind.name().toLowerCase()).withStyle(ChatFormatting.GRAY));
         if (kind == PartKind.CHIP) {
-            var t = chipType(s.params());
-            tooltip.add(Component.literal(t.length() + " segments in a row. Inputs (−side): " + String.join(" ", t.inputs)).withStyle(ChatFormatting.DARK_AQUA));
-            tooltip.add(Component.literal("Outputs (+side): " + String.join(" ", t.outputs) + "; last segment: GND / V_DD").withStyle(ChatFormatting.DARK_AQUA));
+            var pins = ChipRows.pins(s);
+            if (pins.error() != null) {
+                tooltip.add(Component.literal("Cannot be made: " + pins.error()).withStyle(ChatFormatting.RED));
+            } else {
+                tooltip.add(Component.literal(pins.segments() + " blocks long, placed whole. Inputs: " + (pins.inputs().isEmpty() ? "none" : String.join(" ", pins.inputs())))
+                        .withStyle(ChatFormatting.DARK_AQUA));
+                tooltip.add(Component.literal("Outputs: " + (pins.outputs().isEmpty() ? "none" : String.join(" ", pins.outputs())) + "; last block: GND / V_DD")
+                        .withStyle(ChatFormatting.DARK_AQUA));
+            }
+            int fn = ChipRows.function(s);
+            if (fn == dev.emergence.core.digital.ChipTypes.DESIGN) tooltip.add(Component.literal("Right-click the air (or the placed chip) to open the chip designer").withStyle(ChatFormatting.YELLOW));
+            if (fn == dev.emergence.core.digital.ChipTypes.ROM256) tooltip.add(Component.literal("Right-click the air (or the placed chip) to open the ROM editor").withStyle(ChatFormatting.YELLOW));
         }
         tooltip.add(Component.literal(m.name()).withStyle(ChatFormatting.DARK_AQUA));
         if (m.has(MaterialProperty.ELECTRICAL_RESISTIVITY))
@@ -207,6 +219,11 @@ public final class PartItem extends Item {
         BlockPos clicked = ctx.getClickedPos();
 
         boolean miniature = player != null && player.getOffhandItem().is(ModRegistries.TWEEZERS.get());
+        // wire, sneaking: a run from one face to another (see WireRouting)
+        if (!miniature && player != null && player.isShiftKeyDown() && (kind == PartKind.WIRE || kind == PartKind.INSULATED_WIRE)) {
+            if (player instanceof net.minecraft.server.level.ServerPlayer sp) WireRouting.click(sp, stack, kind, spec, clicked, face);
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         if (!miniature) return placeBlockScale(ctx, level, player, stack, spec, clicked, face);
 
         BlockPos pos;
@@ -294,9 +311,57 @@ public final class PartItem extends Item {
                 || kind == PartKind.LINEAR_BEARING || kind == PartKind.NUT || kind == PartKind.COIL;
     }
 
+    /**
+     * A chip goes down whole: its row of segments, one per block, from the block clicked against onward — to the
+     * player's right (so it reads left to right in front of them), or, sneaking, the way they look. Its pins: inputs
+     * along one side of the row, outputs along the other, the last segment's sides GND and V_DD (labelled on the
+     * chip in the world).
+     */
+    private InteractionResult placeChip(Level level, Player player, ItemStack stack, PartSpec spec, BlockPos clicked, Direction face) {
+        var pins = ChipRows.pins(spec);
+        if (pins.error() != null) {
+            return failText(player, "This " + pins.label() + " cannot be made: " + pins.error()
+                    + (dev.emergence.core.digital.ChipTypes.hasText(ChipRows.function(spec)) ? ". Right-click the air with it to open its editor." : "."));
+        }
+        int n = pins.segments();
+        BlockPos start = level.getBlockState(clicked).canBeReplaced() && !(level.getBlockEntity(clicked) instanceof AssemblyBlockEntity)
+                ? clicked : clicked.relative(face);
+        Direction along;
+        if (player != null && player.isShiftKeyDown()) {
+            along = Direction.getNearest(player.getLookAngle().x, player.getLookAngle().y, player.getLookAngle().z);
+        } else {
+            along = (player != null ? player.getDirection() : Direction.NORTH).getClockWise();
+        }
+        for (int k = 0; k < n; k++) {
+            BlockPos p = start.relative(along, k);
+            if (!level.getBlockState(p).canBeReplaced() || level.getBlockEntity(p) != null) {
+                return failText(player, "The " + pins.label() + " is " + n + " blocks long: it needs " + n + " free blocks in a row"
+                        + (player != null && player.isShiftKeyDown() ? " the way you look." : " to your right (sneak: the way you look)."));
+            }
+        }
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        Dir axis = Dir.values()[along.ordinal()];
+        for (int k = 0; k < n; k++) {
+            BlockPos p = start.relative(along, k);
+            level.setBlock(p, dev.emergence.mod.block.AssemblyBlock.stateAt(level, p), 3);
+            if (!(level.getBlockEntity(p) instanceof AssemblyBlockEntity be)) return InteractionResult.FAIL;
+            be.setResolution(AssemblyBlockEntity.BLOCK_SCALE);
+            be.addPart(new PlacedPart(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE), kind, spec, 0, 0, 0, 0, 0, 0, axis, false));
+        }
+        level.playSound(null, start, SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 0.7f, 1.2f);
+        if (player == null || !player.getAbilities().instabuild) stack.shrink(1);
+        return InteractionResult.CONSUME;
+    }
+
+    private static InteractionResult failText(Player player, String text) {
+        if (player != null && player.level().isClientSide) player.displayClientMessage(Component.literal(text), true);
+        return InteractionResult.FAIL;
+    }
+
     /** Block-scale placement: one part per block. */
     private InteractionResult placeBlockScale(UseOnContext ctx, Level level, Player player, ItemStack stack, PartSpec spec,
                                               BlockPos clicked, Direction face) {
+        if (kind == PartKind.CHIP) return placeChip(level, player, stack, spec, clicked, face);
         Dir axis = player != null && player.isShiftKeyDown()
                 ? Dir.values()[Direction.getNearest(player.getLookAngle().x, player.getLookAngle().y, player.getLookAngle().z).ordinal()]
                 : Dir.values()[face.ordinal()];

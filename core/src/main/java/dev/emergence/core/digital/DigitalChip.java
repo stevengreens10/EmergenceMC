@@ -82,6 +82,11 @@ public final class DigitalChip implements Element, EventSource {
         return dom.slot(slot).powered;
     }
 
+    /** The supply across it at the last step [V]. */
+    public double supply() {
+        return dom.slot(slot).supply;
+    }
+
     @Override
     public void load(LoadContext ctx) {
         double v = ctx.x(vdd.index()) - ctx.x(gnd.index());

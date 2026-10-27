@@ -97,6 +97,14 @@ public final class AutoShowcase {
             return this;
         }
 
+        /** The step opens a screen (a chip's editor) and photographs it: it is not closed. */
+        boolean keepScreen;
+
+        Step keepScreen() {
+            keepScreen = true;
+            return this;
+        }
+
         /** Show the data logger's screen in the screenshot. */
         Step show() {
             return show(true);
@@ -606,6 +614,38 @@ public final class AutoShowcase {
                             int shown = (int) leds.getAsDouble();
                             return that(Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
                         }));
+                // the tools, as a player opens them: right-click the display chip, then the font ROM, with an empty hand
+                PlayerHand.Act close = PlayerHand.named("closes the screen", m -> {
+                    m.setScreen(null);
+                    return true;
+                });
+                STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.clickWith(key + " right-click the display chip: its design",
+                        part.apply("chip", PartKind.CHIP), ItemStack.EMPTY)));
+                STEPS.add(new Step(60, NOTHING, shot.apply("designer"), () -> Minecraft.getInstance().screen instanceof ChipDesignerScreen d && d.livePowered()).keepScreen()
+                        .check(key + " the chip designer opens on it, the chip running", () -> {
+                            var s = Minecraft.getInstance().screen;
+                            return that(s instanceof ChipDesignerScreen d && d.livePowered(), s == null ? "no screen" : s.getClass().getSimpleName()
+                                    + (s instanceof ChipDesignerScreen d ? (d.livePowered() ? ", powered" : ", not seen running") : ""));
+                        }));
+                for (int t = 1; t <= 2; t++) {
+                    int tt = t;
+                    STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.named("opens the " + (t == 1 ? "Pins" : "Running") + " tab", m -> {
+                        if (m.screen instanceof ChipDesignerScreen d) d.tab(tt);
+                        return true;
+                    })));
+                    STEPS.add(new Step(20, NOTHING, shot.apply(t == 1 ? "designer-pins" : "designer-running")).keepScreen());
+                }
+                STEPS.add(new Step(0, NOTHING, null).act(close));
+                STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.clickWith(key + " right-click the font ROM: its contents",
+                        part.apply("rom", PartKind.CHIP), ItemStack.EMPTY)));
+                STEPS.add(new Step(60, NOTHING, shot.apply("rom"), () -> Minecraft.getInstance().screen instanceof RomEditorScreen r && r.livePowered()).keepScreen()
+                        .check(key + " the ROM editor opens on it, showing the font", () -> {
+                            var s = Minecraft.getInstance().screen;
+                            return that(s instanceof RomEditorScreen r && r.byteAt(0x2D) == 0x1F && r.livePowered(),
+                                    s == null ? "no screen" : s.getClass().getSimpleName() + (s instanceof RomEditorScreen r
+                                            ? String.format(", byte 2D = %02X%s", r.byteAt(0x2D), r.livePowered() ? ", powered" : ", not seen running") : ""));
+                        }));
+                STEPS.add(new Step(0, NOTHING, null).act(close));
             }
             if (id.equals("loudspeaker")) {
                 // switch the loudspeaker on; the simulation resolves every vibration, so give the microphone time
@@ -1925,13 +1965,13 @@ public final class AutoShowcase {
         } else if (Flight.busy()) {
             // on the way to the step's viewpoint (or a hand's spot): its wait and condition start on landing
         } else if (!actDone) {
-            if (mc.screen != null) mc.setScreen(null); // a player's clicks go to the world, not a menu
+            if (mc.screen != null && !s.keepScreen) mc.setScreen(null); // a player's clicks go to the world, not a menu
             actDone = s.act.tick(mc);
             if (actDone && s.show) LoggerHud.showcase = true;
         } else if (s.ready != null && wait > 2 && wait < s.delayTicks - 1 && s.ready.getAsBoolean()) {
             wait = 2; // condition met: grab after a couple of frames have rendered the new state
         } else if (wait-- <= 0) {
-            if (mc.screen != null) mc.setScreen(null); // never photograph a menu
+            if (mc.screen != null && !s.keepScreen) mc.setScreen(null); // never photograph a menu (but a chip's editor, when that is the point)
             ShowcaseHud.pending(List.of());
             if (s.shot != null) {
                 String at = String.format("%.1f %.1f %.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ());

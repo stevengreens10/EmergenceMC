@@ -144,6 +144,17 @@ public final class AssemblyBlockEntity extends BlockEntity {
         changed();
     }
 
+    /** Gives a part new settings in place (the same part: its id, cells and state kept). */
+    public void replaceSpec(long id, dev.emergence.mod.part.PartSpec spec) {
+        for (int i = 0; i < parts.size(); i++) {
+            PlacedPart p = parts.get(i);
+            if (p.id != id) continue;
+            parts.set(i, new PlacedPart(p.id, p.kind, spec, p.x0, p.y0, p.z0, p.x1, p.y1, p.z1, p.axis, p.closed));
+            changed();
+            return;
+        }
+    }
+
     public PlacedPart removePart(long id) {
         PlacedPart p = byId(id);
         if (p != null) {

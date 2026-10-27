@@ -117,6 +117,12 @@ public final class AssemblyBlock extends BaseEntityBlock implements SimpleWaterl
         // with an empty hand, a part on a slide is pushed along its guide, a part on a turning body turns it (sneak:
         // the other way); with something in hand the click is the item's (a logger clipped on, a meter's probe)
         boolean bare = player.getMainHandItem().isEmpty();
+        // a chip, with an empty hand: its editor (a design in the chip designer, a ROM's contents in the ROM editor),
+        // or what is on its pins
+        if (bare && part.kind == PartKind.CHIP) {
+            if (level.isClientSide) dev.emergence.mod.client.ClientHooks.openPlacedChip(pos, part);
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         if (bare && level instanceof ServerLevel sl0 && SimulationManager.get(sl0).pushSlider(pos, part.id, player)) {
             return InteractionResult.SUCCESS;
         }
@@ -165,6 +171,15 @@ public final class AssemblyBlock extends BaseEntityBlock implements SimpleWaterl
         PlacedPart part = be.partHit(bhr.getLocation(), bhr.getDirection());
         if (part == null) return false;
         if (Boolean.getBoolean("emergence.autoShowcase")) dev.emergence.mod.EmergenceMod.LOG.info("{} took the {} out of {}", player.getName().getString(), part.kind, pos);
+        if (part.kind == PartKind.CHIP) {
+            // a chip comes out whole, as it went in: every segment of its row, one chip back
+            dev.emergence.mod.part.ChipRows.removeWhole(level, pos, part);
+            if (!player.getAbilities().instabuild) {
+                ItemStack drop = PartPresets.stack(part.kind, part.spec);
+                if (!player.getInventory().add(drop)) Block.popResource(level, pos, drop);
+            }
+            return true;
+        }
         be.removePart(part.id);
         if (!player.getAbilities().instabuild) {
             ItemStack drop = PartPresets.stack(part.kind, part.spec);

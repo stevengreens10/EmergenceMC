@@ -23,7 +23,17 @@ public final class PartPresets {
      */
     public static List<ItemStack> all() {
         List<ItemStack> l = new ArrayList<>();
-        for (PartKind k : PartKind.values()) l.add(stack(k, PartItem.defaultSpec(k)));
+        for (PartKind k : PartKind.values()) {
+            l.add(stack(k, PartItem.defaultSpec(k)));
+            // chips are many different things: each stock chip, design and ROM image ready to place
+            if (k == PartKind.CHIP) {
+                var chips = dev.emergence.core.assembly.PartCatalog.of(k);
+                for (int i = 1; i < chips.size(); i++) {
+                    var p = chips.get(i);
+                    l.add(stack(k, new PartSpec(p.material(), p.length(), 1, p.params(), p.text())));
+                }
+            }
+        }
         return l;
     }
 }

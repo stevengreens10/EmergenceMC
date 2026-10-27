@@ -95,6 +95,16 @@ public final class ProgramEditorScreen extends Screen {
         addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), b -> onClose()).bounds(panelX + w1 + 4, by, panelW - w1 - 4, 20).build());
     }
 
+    /** The program's size in bytes once assembled, or −1 while it does not assemble. */
+    int assembledBytes() {
+        return program == null ? -1 : program.bytes().length;
+    }
+
+    /** Whether the program's text holds {@code s}. */
+    boolean shows(String s) {
+        return text.contains(s);
+    }
+
     private void done() {
         if (error != null) return; // only a program that assembles goes into a ROM
         onDone.accept(text);

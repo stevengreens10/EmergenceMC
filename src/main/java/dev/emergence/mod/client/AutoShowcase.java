@@ -656,6 +656,25 @@ public final class AutoShowcase {
                     m.setScreen(null);
                     return true;
                 })));
+                // its program: right-click the ROM chip with an empty hand, then Program… — the thermostat's assembly
+                STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.clickWith(key + " right-click the ROM: its contents",
+                        part.apply("rom", PartKind.CHIP), ItemStack.EMPTY)));
+                STEPS.add(new Step(60, NOTHING, null, () -> Minecraft.getInstance().screen instanceof RomEditorScreen).keepScreen());
+                STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.named(key + " clicks Program…", m -> {
+                    if (m.screen instanceof RomEditorScreen r) r.openProgram();
+                    return true;
+                })));
+                STEPS.add(new Step(20, NOTHING, shot.apply("program"), () -> Minecraft.getInstance().screen instanceof ProgramEditorScreen).keepScreen()
+                        .check(key + " the ROM's program opens in the program editor, and assembles", () -> {
+                            var sc = Minecraft.getInstance().screen;
+                            return that(sc instanceof ProgramEditorScreen p && p.assembledBytes() > 0 && p.shows("SET = 138"),
+                                    sc instanceof ProgramEditorScreen p ? (p.assembledBytes() + " bytes" + (p.shows("SET = 138") ? ", the thermostat's" : ", another program"))
+                                            : sc == null ? "no screen" : sc.getClass().getSimpleName());
+                        }));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.named("closes the screen", m -> {
+                    m.setScreen(null);
+                    return true;
+                })));
             }
             if (id.equals("minicounter")) {
                 // the miniature: every part in one block, so each is found by its cell

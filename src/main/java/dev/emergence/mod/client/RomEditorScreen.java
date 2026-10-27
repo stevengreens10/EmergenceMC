@@ -159,8 +159,7 @@ public final class RomEditorScreen extends Screen {
             b.setMessage(Component.literal(bitZeroTop ? "Bit0↑" : "Bit0↓"));
         }).bounds(x, bt, 36, 20).tooltip(Tooltip.create(Component.literal("Which way up the pixel view draws each byte's bits."))).build());
         x += 38;
-        addRenderableWidget(Button.builder(Component.literal("Program…"), b -> minecraft.setScreen(new ProgramEditorScreen(this,
-                program, this::program))).bounds(x, bt, 56, 20)
+        addRenderableWidget(Button.builder(Component.literal("Program…"), b -> openProgram()).bounds(x, bt, 56, 20)
                 .tooltip(Tooltip.create(Component.literal("Write the ROM's contents as an EM-8 program in assembly (assembled into these bytes)."))).build());
         int rx = width - 128;
         addRenderableWidget(Button.builder(Component.literal(placed() ? "Write to ROM" : "Done"), b -> done()).bounds(rx, bt, 72, 20)
@@ -461,5 +460,10 @@ public final class RomEditorScreen extends Screen {
             }
             if (a % 16 == 0) g.fill(x, y0 - 2, x + 1, y0, 0xFF5C6773);
         }
+    }
+
+    /** Opens the program editor on the ROM's program (the Program… button). */
+    void openProgram() {
+        minecraft.setScreen(new ProgramEditorScreen(this, program, this::program));
     }
 }

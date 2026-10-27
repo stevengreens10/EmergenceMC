@@ -203,13 +203,16 @@
    fifth of the plant's iterations), why the in-game state's circuits iterate ~6 times a step (vs ~4), water/steam
    property cost.
 
-0a5. **Scheduled tour, 2026-10-27 01:11: not run.** The display was disconnected: Windows shows only its "WinDisc"
+0a5. **Scheduled tours, 2026-10-27 01:11 and 06:23: not run.** The display was disconnected: Windows shows only its "WinDisc"
    placeholder, and the tour client failed with "Failed to locate a primary monitor" (also the chip tour at 00:30,
    which was left on the error dialog and stopped at 01:11). The demo world is current (built 00:28 from the
    present code: 0 problems, 0 differences, 20/20 in-world tests). When the display is back:
    1. `./gradlew runShowcaseClient -Demergence.showcaseOnly=computer,memory,geiger,chartrecorder,counterdisplay`
       (the chips are now event-driven and placed whole);
    2. the full tour.
+   One launcher (`build/scratch/when-display.sh`, started 01:15) polls every minute for a display and then runs both
+   (logs `build/scratch/tour-chips2.log` and `tour-full-0127.log`; reports copied beside them). At 06:23 it was still
+   waiting. The 06:23 slot was folded into it rather than queuing a second client.
 
 0a4. **Scheduled tour, 2026-10-26 20:14: not run.** The demo world regenerated (all 17 in-world tests pass), but the
    tour client could not open a window ("Failed to find a primary monitor"; also at 18:47, the station's tour). The

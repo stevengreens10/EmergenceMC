@@ -1443,9 +1443,19 @@ public final class Exhibits {
     // ------------------------------------------------------------------ conversion for tests/tools
 
     /** A built assembly plus its initial state and the part-id mapping. */
-    public record Built(Assembly assembly, AssemblyState state, Map<Integer, Long> ids, Map<Integer, Long> blockIds) {
+    public record Built(Assembly assembly, AssemblyState state, Map<Integer, Long> ids, Map<Integer, Long> blockIds,
+                        List<Map<Integer, Long>> embeddedIds) {
         public Built(Assembly assembly, AssemblyState state, Map<Integer, Long> ids) {
-            this(assembly, state, ids, Map.of());
+            this(assembly, state, ids, Map.of(), List.of());
+        }
+
+        public Built(Assembly assembly, AssemblyState state, Map<Integer, Long> ids, Map<Integer, Long> blockIds) {
+            this(assembly, state, ids, blockIds, List.of());
+        }
+
+        /** A named part of the exhibit's {@code k}th embedded miniature block (see {@link Exhibit#embedded}). */
+        public long embeddedId(Exhibit e, int k, String name) {
+            return embeddedIds.get(k).get(e.embedded.get(k).mini().named.get(name));
         }
 
         public long id(Exhibit e, String name) {
@@ -1539,6 +1549,7 @@ public final class Exhibits {
         for (var en : e.blockInitial.entrySet()) {
             if (!Double.isNaN(en.getValue().temperature())) st.temperatures().put(blockIds.get(en.getKey()), en.getValue().temperature());
         }
+        List<Map<Integer, Long>> embeddedIds = embed(e, a, st, ids);
         for (var en : e.initial.entrySet()) {
             long id = ids.get(en.getKey());
             Exhibit.Initial in = en.getValue();
@@ -1546,6 +1557,68 @@ public final class Exhibits {
             if (in.omega() != 0 || in.angle() != 0) st.bodyMotion().put(id, new double[]{in.omega(), in.angle()});
             if (in.capacitorVoltage() != 0) st.capacitorVoltages().put(id, in.capacitorVoltage());
         }
-        return new Built(a, st, ids, blockIds);
+        return new Built(a, st, ids, blockIds, embeddedIds);
+    }
+
+    /**
+     * A block-scale exhibit's miniature blocks: each one's cells in a region of the grid of its own, past the exhibit's
+     * parts (in the world the two are separate grids; one assembly holds both, apart), and the joins across scales from
+     * every full-size part beside the block — CrossScale's links, and a ribbon's conductors to the miniature insulated
+     * wires of their colours on that face (the rules the game's machines use).
+     */
+    static List<Map<Integer, Long>> embed(Exhibit e, Assembly a, AssemblyState st, Map<Integer, Long> ids) {
+        List<Map<Integer, Long>> out = new java.util.ArrayList<>();
+        if (e.embedded.isEmpty()) return out;
+        int maxX = 0;
+        for (Exhibit.PartDef d : e.parts) maxX = Math.max(maxX, d.x1());
+        dev.emergence.core.assembly.Dir[] dirs = dev.emergence.core.assembly.Dir.values();
+        for (int k = 0; k < e.embedded.size(); k++) {
+            Exhibit.Embedded em = e.embedded.get(k);
+            Exhibit m = em.mini();
+            int[] origin = {maxX + 32 + 20 * k, 16 * em.y(), 0};
+            Map<Integer, Long> mids = new HashMap<>();
+            List<Part> miniParts = new java.util.ArrayList<>();
+            for (Exhibit.PartDef d : m.parts) {
+                long id = 2_000_000_000L + 100_000L * k + d.index();
+                mids.put(d.index(), id);
+                Part part = new Part(id, d.kind(), MaterialDatabase.standard().get(d.material()), origin[0] + d.x0(), origin[1] + d.y0(),
+                        origin[2] + d.z0(), origin[0] + d.x1(), origin[1] + d.y1(), origin[2] + d.z1(), d.axis(), d.params(), m.texts.get(d.index()));
+                if (m.latched.contains(d.index())) part.setSwitchClosed(true);
+                a.add(part);
+                miniParts.add(part);
+            }
+            for (var en : m.initial.entrySet()) {
+                long id = mids.get(en.getKey());
+                Exhibit.Initial in = en.getValue();
+                if (!Double.isNaN(in.temperature())) st.temperatures().put(id, in.temperature());
+                if (in.omega() != 0 || in.angle() != 0) st.bodyMotion().put(id, new double[]{in.omega(), in.angle()});
+                if (in.capacitorVoltage() != 0) st.capacitorVoltages().put(id, in.capacitorVoltage());
+            }
+            // the full-size parts beside the block, by the face they touch
+            for (Exhibit.PartDef d : e.parts) {
+                for (dev.emergence.core.assembly.Dir f : dirs) {
+                    int nx = em.x() + f.dx, ny = em.y() + f.dy, nz = em.z() + f.dz;
+                    if (nx < d.x0() || nx > d.x1() || ny < d.y0() || ny > d.y1() || nz < d.z0() || nz > d.z1()) continue;
+                    Part full = a.get(ids.get(d.index()));
+                    // (the full-size part's cell on that face, and the direction from it to the block)
+                    dev.emergence.core.assembly.CrossScale.link(a, full, new int[]{nx, ny, nz}, f.opposite(), miniParts, origin, 16);
+                    if (d.kind() != dev.emergence.core.assembly.PartKind.RIBBON) continue;
+                    for (Exhibit.PartDef w : m.parts) {
+                        if (w.kind() != dev.emergence.core.assembly.PartKind.INSULATED_WIRE) continue;
+                        boolean onFace = switch (f) {
+                            case EAST -> w.x1() == 15;
+                            case WEST -> w.x0() == 0;
+                            case UP -> w.y1() == 15;
+                            case DOWN -> w.y0() == 0;
+                            case SOUTH -> w.z1() == 15;
+                            case NORTH -> w.z0() == 0;
+                        };
+                        if (onFace) a.bridge(full.id(), mids.get(w.index()));
+                    }
+                }
+            }
+            out.add(mids);
+        }
+        return out;
     }
 }

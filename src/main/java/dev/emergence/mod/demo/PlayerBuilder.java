@@ -49,7 +49,10 @@ public final class PlayerBuilder {
     public static List<String> build(ServerLevel level, BlockPos plot, Exhibit e) {
         Job j = new Job(level, plot, e);
         while (j.step()) {}
-        return j.problems();
+        List<String> problems = new ArrayList<>(j.problems());
+        // its miniature blocks, each built with the tweezers once the full-size parts round it are in
+        for (Exhibit.Embedded em : e.embedded) problems.addAll(buildMiniature(level, plot.offset(em.x(), em.y(), em.z()), em.mini()));
+        return problems;
     }
 
     /**

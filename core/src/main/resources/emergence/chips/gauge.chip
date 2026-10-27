@@ -1,0 +1,200 @@
+// Gauge: a dashboard card for one measurement on a 128x64 SPI display — its label, its value in big digits with its
+// unit, a bar against its full scale, a blinking mark at each new reading, and a trend of its last 128 readings
+// along the bottom. It reads a 10-bit SPI ADC (eight readings averaged) or times a pulse train, and takes its font,
+// label and unit from a ROM chip beside it.
+//
+// (The ROM's buses come first, so that the chip's address and data pins line up with a ROM placed beside it.)
+// Wiring: clk from a clock (10 kHz: a new reading and its frame every 2 s or so); the ADC's cs, sclk and dout to acs,
+// asclk and miso; a pulse train (a pulse per event: a turn of a shaft) to pulse; a7..a0 to a 256-byte ROM's A7..A0 and
+// its D7..D0 to f7..f0; the display's cs, d/c, sclk and din to cs, dc, sclk and din (its rst tied high).
+//
+// The ROM: the 5x7 font, glyph g's five columns at 5g, bit 0 the top row (0-9 the digits, 10-35 A-Z, 36 '.', 37 '%',
+// 38 '/', 39 '-', 40 a space: nothing drawn); the label's glyphs (up to 19) at C8, the unit's (up to 5) at E0.
+//
+// The value: mode 0, a linear reading: ((code - lo) * gain >> 8) + off, code the mean of eight ADC readings;
+// mode 1, a reciprocal reading: k / code (a fixed reference read against the supply measures the supply);
+// mode 2, a rate: k / the clocks between pulses (k = 60 x the clock's frequency gives turns a minute).
+// Shown with dp decimal places (0-2), up to 9999. The bar: (value - blo) * bgain >> 8 pixels of 120.
+
+chip gauge
+in [7:0] f
+in clk, miso, pulse
+out [7:0] a
+out acs = 1, asclk
+out cs = 1, dc, sclk, din
+param mode = 0, lo = 0, gain = 256, off = 0, k = 0, dp = 0, blo = 0, bgain = 64
+
+reg [4:0] st = 0         // what it is doing (see below)
+reg [4:0] ret = 0        // where to go once a byte is sent
+reg [3:0] ini = 0        // which set-up command
+reg [2:0] b = 0          // which bit of a byte
+reg [7:0] byte = 0
+reg dcb = 0
+reg first = 1            // the first frame draws the label too
+reg live = 0             // the mark, toggled at each reading
+// reading the ADC: eight readings summed
+reg [9:0] sh = 0
+reg [3:0] n = 0
+reg [3:0] ns = 0
+reg [12:0] sum = 0
+// timing pulses: clocks since the last, and between the last two
+reg [19:0] cnt = 0
+reg [19:0] ticks = 0
+reg p1 = 0
+reg p2 = 0
+// the value, by repeated subtraction where it is a quotient, and its decimal digits
+reg [23:0] num = 0
+reg [19:0] den = 0
+reg [13:0] q = 0
+reg [13:0] v = 0
+reg [13:0] rem = 0
+reg [3:0] d3 = 0
+reg [3:0] d2 = 0
+reg [3:0] d1 = 0
+reg [3:0] d0 = 0
+reg [6:0] px = 0         // the bar's length
+reg [6:0] wr = 0         // where the next reading goes in the history
+mem [3:0] hist[128]
+// drawing: the page and column of the byte being sent, the glyph code read for it
+reg [2:0] pg = 0
+reg [6:0] col = 0
+reg [5:0] cc = 0
+
+// the linear reading, clamped to what four digits show
+wire [9:0] code = sum >> 3
+wire [23:0] lin = (code < lo ? 24'd0 : ((code - lo) * gain) >> 8) + off
+wire [13:0] linv = lin > 9999 ? 14'd9999 : lin
+// the bar, and the trend's height (0-15) for the history
+wire [23:0] bar = v < blo ? 24'd0 : ((v - blo) * bgain) >> 8
+wire [6:0] pxw = bar > 120 ? 7'd120 : bar
+
+// the value's five glyph cells: leading zeros blank, the point where dp puts it
+wire z3 = d3 == 0
+wire z2 = z3 && d2 == 0
+wire z1 = z2 && d1 == 0
+wire [5:0] c0 = dp == 0 ? 6'd40 : z3 ? 6'd40 : d3
+wire [5:0] c1 = dp == 0 ? (z3 ? 6'd40 : d3) : dp == 1 ? (z2 ? 6'd40 : d2) : d2
+wire [5:0] c2 = dp == 0 ? (z2 ? 6'd40 : d2) : dp == 1 ? d1 : 6'd36
+wire [5:0] c3 = dp == 0 ? (z1 ? 6'd40 : d1) : dp == 1 ? 6'd36 : d1
+wire [5:0] c4 = d0
+
+// where the byte falls: the label (page 0, six columns a glyph from column 2), the big value (pages 2-4, eighteen
+// columns a glyph from column 4, each font column drawn three wide and each row three high), the unit (page 4, from
+// column 98)
+wire [6:0] lc = col - 2
+wire [4:0] li = lc / 6
+wire [2:0] lsc = lc % 6
+wire inLabel = pg == 0 && col >= 2 && li < 19
+wire [6:0] bc = col - 4
+wire [2:0] vi = bc / 18
+wire [4:0] vsub = bc % 18
+wire [2:0] vgc = vsub / 3
+wire inBig = pg >= 2 && pg <= 4 && col >= 4 && col < 94
+wire [6:0] uc = col - 98
+wire [2:0] ui = uc / 6
+wire [2:0] usc = uc % 6
+wire inUnit = pg == 4 && col >= 98
+wire [5:0] bigc = vi == 0 ? c0 : vi == 1 ? c1 : vi == 2 ? c2 : vi == 3 ? c3 : c4
+wire [2:0] sub = inLabel ? lsc : inBig ? vgc : usc
+wire [7:0] codeAt = inLabel ? 8'hc8 + li : 8'he0 + ui
+
+// a byte drawn from the glyph column the ROM gives on f (the glyph's code in cc)
+wire blank = cc == 40 || sub > 4
+wire [7:0] big = pg == 2 ? {f[2], f[2], f[1], f[1], f[1], f[0], f[0], f[0]}
+    : pg == 3 ? {f[5], f[4], f[4], f[4], f[3], f[3], f[3], f[2]}
+    : {3'd0, f[6], f[6], f[6], f[5], f[5]}
+wire [7:0] drawn = blank ? 8'd0 : inLabel ? {f[6:0], 1'b0} : inBig ? big : {1'b0, f[6:0]}
+
+// the bytes drawn from nothing: the mark and a dotted rule (page 1), the bar (page 5), the trend (pages 6 and 7: the
+// oldest reading at the left, each a point with a chequered fill below it)
+wire mark = live && col >= 121 && col <= 124
+wire rule = !col[0] && col >= 2 && col < 116
+wire [7:0] p1b = (mark ? 8'h0f : 8'd0) | (rule ? 8'h20 : 8'd0)
+wire [7:0] p5b = col == 2 || col == 125 ? 8'h7e : col > 2 && col < 125 ? (col - 3 < px ? 8'h7e : 8'h42) : 8'd0
+wire [6:0] hidx = wr + col
+wire [3:0] hv = hist[hidx]
+wire [3:0] t = 15 - hv
+wire [7:0] chk = col[0] ? 8'h55 : 8'haa
+wire [7:0] p6b = t < 8 ? ((8'd1 << t) | ((8'hff << t) & chk)) : 8'd0
+wire [7:0] p7b = t >= 8 ? ((8'd1 << (t - 8)) | ((8'hff << (t - 8)) & chk)) : chk
+wire [7:0] plain = pg == 1 ? p1b : pg == 5 ? p5b : pg == 6 ? p6b : pg == 7 ? p7b : 8'd0
+
+on rise clk {
+    // pulses: each rising edge (taken through two flip-flops) ends a period
+    p1 <= pulse
+    p2 <= p1
+    if (p1 && !p2) {
+        ticks <= cnt
+        cnt <= 0
+    } else if (cnt != 20'hfffff) {
+        cnt <= cnt + 1
+    }
+    case (st) {
+        // a frame's set-up: display on, horizontal addressing, all the columns, the pages to draw (from 0 the
+        // first time, then from 1: the label stays)
+        0: {
+            case (ini) {
+                0: byte <= 8'haf
+                1: byte <= 8'h20
+                2: byte <= 8'h00
+                3: byte <= 8'h21
+                4: byte <= 8'h00
+                5: byte <= 8'h7f
+                6: byte <= 8'h22
+                7: byte <= first ? 8'h00 : 8'h01
+                8: byte <= 8'h07
+            }
+            dcb <= 0  ret <= 1  st <= 28
+        }
+        1: {
+            if (ini == 8) {
+                ini <= 0  col <= 0  st <= 17
+                if (first) pg <= 0 else pg <= 1
+            } else { ini <= ini + 1  st <= 0 }
+        }
+        // a reading: eight from the ADC (select, ten bits on rising edges, deselect), or the pulses' period
+        2: { if (mode == 2) st <= 6 else { sum <= 0  ns <= 0  st <= 3 } }
+        3: { acs <= 0  n <= 0  sh <= 0  st <= 4 }
+        4: { asclk <= 1  sh <= {sh[8:0], miso}  st <= 5 }
+        5: { asclk <= 0  n <= n + 1  if (n == 9) st <= 7 else st <= 4 }
+        7: { acs <= 1  sum <= sum + sh  ns <= ns + 1  if (ns == 7) st <= 6 else st <= 3 }
+        // the value: at once if linear, else the quotient by subtraction (a stopped pulse train's rate falls as
+        // its period lengthens)
+        6: {
+            if (mode == 0) { v <= linv  st <= 9 }
+            else {
+                num <= k  q <= 0  st <= 8
+                if (mode == 1) den <= code else if (cnt > ticks) den <= cnt else den <= ticks
+            }
+        }
+        8: {
+            if (den == 0) { v <= 0  st <= 9 }
+            else if (num >= den && q < 9999) { num <= num - den  q <= q + 1 }
+            else { v <= q  st <= 9 }
+        }
+        // its digits, the bar, the history, the mark
+        9: { rem <= v  d3 <= 0  d2 <= 0  d1 <= 0  st <= 12 }
+        12: { if (rem >= 1000) { rem <= rem - 1000  d3 <= d3 + 1 } else st <= 13 }
+        13: { if (rem >= 100) { rem <= rem - 100  d2 <= d2 + 1 } else st <= 14 }
+        14: { if (rem >= 10) { rem <= rem - 10  d1 <= d1 + 1 } else { d0 <= rem  st <= 15 } }
+        15: { px <= pxw  hist[wr] <= pxw >> 3  wr <= wr + 1  live <= !live  st <= 0 }
+        // each byte of the frame: a glyph's code from the ROM if it is text, then the glyph's column, then the byte
+        17: {
+            if (inLabel || inUnit) { a <= codeAt  st <= 18 }
+            else if (inBig) { cc <= bigc  a <= bigc * 5 + sub  st <= 19 }
+            else { byte <= plain  dcb <= 1  ret <= 20  st <= 28 }
+        }
+        18: { cc <= f  a <= f * 5 + sub  st <= 19 }
+        19: { byte <= drawn  dcb <= 1  ret <= 20  st <= 28 }
+        20: {
+            col <= col + 1  st <= 17
+            if (col == 127) {
+                if (pg == 7) { first <= 0  st <= 2 } else pg <= pg + 1
+            }
+        }
+        // send a byte: each bit set with the clock low, taken on its rising edge
+        28: { cs <= 0  sclk <= 0  dc <= dcb  din <= byte[7 - b]  st <= 29 }
+        29: { sclk <= 1  b <= b + 1  if (b == 7) st <= 30 else st <= 28 }
+        30: { sclk <= 0  st <= ret }
+    }
+}

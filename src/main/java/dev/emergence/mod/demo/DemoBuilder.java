@@ -233,6 +233,8 @@ public final class DemoBuilder {
                 be.savedState().put(id, new double[]{t, in.omega(), in.angle(), 0, in.capacitorVoltage()});
             }
         }
+        // its miniature blocks
+        for (Exhibit.Embedded em : e.embedded) placeMiniature(level, plot.offset(em.x(), em.y(), em.z()), em.mini());
     }
 
     /** Adds one block-scale part to the world at plot-relative cell (x, y, z) — a load placed on an exhibit. */

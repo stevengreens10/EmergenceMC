@@ -110,6 +110,24 @@ public final class Exhibit {
     /** Block parts' starting states, as {@link #initial} for the miniature's own (by block part index). */
     public final Map<Integer, Initial> blockInitial = new LinkedHashMap<>();
 
+    /** A miniature block inside a block-scale exhibit: the block at (x, y, z) holds {@code mini}'s parts at true scale. */
+    public record Embedded(int x, int y, int z, Exhibit mini) {
+    }
+
+    /**
+     * Miniature blocks inside this (block-scale) exhibit, each a miniature exhibit of its own placed in one block — a
+     * circuit at true scale among full-size machinery, joined to it across the block's faces as the game joins them
+     * (ribbon conductors to the miniature wires of their colours, shafts, pipes, heat; a controller to the screen it
+     * touches).
+     */
+    public final List<Embedded> embedded = new ArrayList<>();
+
+    /** Puts miniature exhibit {@code mini} in the block at (x, y, z) (the builder's origin applied); returns its index. */
+    public int embed(int x, int y, int z, Exhibit mini) {
+        embedded.add(new Embedded(x + ox, y + oy, z + oz, mini));
+        return embedded.size() - 1;
+    }
+
     /** A full-size part beside a miniature exhibit's block, {@code (dx, dy, dz)} blocks from it; returns its index there. */
     public int blockPart(PartKind k, String material, int dx, int dy, int dz, Dir axis, Object... kv) {
         Map<String, Double> m = new LinkedHashMap<>();

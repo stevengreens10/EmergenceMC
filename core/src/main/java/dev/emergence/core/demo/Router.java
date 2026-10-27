@@ -103,6 +103,8 @@ public final class Router {
     }
 
     private final Map<Long, String> escape = new HashMap<>();
+    /** The pin the last failed attempt could not reach (for the error). */
+    private String lastUnreached = "?";
 
     private boolean isLeadedPart(int x, int y, int z) {
         for (Exhibit.PartDef d : e.parts) {
@@ -114,6 +116,18 @@ public final class Router {
 
     private boolean inBox(int x, int y, int z) {
         return x >= x0 && x <= x1 && y >= y0 && y <= y1 && z >= z0 && z <= z1;
+    }
+
+    /** (Debugging) why a cell is not free for a net, or null. */
+    String whyNot(int x, int y, int z, String net) {
+        long k = key(x + ox, y + oy, z + oz);
+        if (!inBox(x + ox, y + oy, z + oz)) return "outside";
+        if (blocked.contains(k)) return "blocked";
+        if (wireNet.get(k) != null && !wireNet.get(k).equals(net)) return "wire of " + wireNet.get(k);
+        if (pinNet.get(k) != null && !pinNet.get(k).equals(net)) return "pin of " + pinNet.get(k);
+        if (escape.get(k) != null && !escape.get(k).equals(net)) return "escape of " + escape.get(k);
+        if (nearLeads.contains(k) && !net.equals(pinNet.get(k))) return "near leads";
+        return null;
     }
 
     private boolean free(long k, String net) {
@@ -140,7 +154,17 @@ public final class Router {
             order.remove(failed);
             order.add(0, failed);
         }
-        if (failed != null) throw new IllegalStateException("cannot route " + failed);
+        if (failed != null && Boolean.getBoolean("diag.routeMap")) {
+            for (int y = 0; y <= 2; y++) for (int z = z0; z <= Math.min(z1, z0 + 15); z++) {
+                StringBuilder sb = new StringBuilder("y" + y + " z" + z + ": ");
+                for (int x = x0; x <= Math.min(x1, x0 + 15); x++) {
+                    String w = whyNot(x - ox, y - oy + y0, z - oz, failed);
+                    sb.append(w == null ? '.' : w.charAt(0) == 'w' ? 'w' : w.charAt(0));
+                }
+                System.out.println(sb);
+            }
+        }
+        if (failed != null) throw new IllegalStateException("cannot route " + failed + " (its pin at " + lastUnreached + " out of reach)");
         colourAndAdd();
     }
 
@@ -153,7 +177,11 @@ public final class Router {
             wireNet.put(ps.get(0), net);
             for (int i = 1; i < ps.size(); i++) {
                 List<Long> path = bfs(ps.get(i), tree, net);
-                if (path == null) return net;
+                if (path == null) {
+                    int[] c = cell(ps.get(i));
+                    lastUnreached = c[0] + "," + c[1] + "," + c[2];
+                    return net;
+                }
                 for (long k : path) {
                     tree.add(k);
                     wireNet.put(k, net);

@@ -1,0 +1,72 @@
+// Chart recorder: samples a 10-bit SPI ADC and sweeps its reading across a 128x64 SPI display, one column per
+// sample, joining each point to the one before with a vertical stroke and clearing the column ahead of the trace.
+//
+// Wiring: clk from a clock (10 kHz sweeps the screen in about 9 s); the ADC's cs, sclk and dout to acs, asclk and
+// miso; the display's cs, d/c, sclk and din to cs, dc, sclk and din (its rst tied high).
+// Scaling: the graph's bottom is ADC code lo; it climbs gain/256 rows per code (16: the full 0..1023 fills the 64 rows).
+
+chip chart_recorder
+in clk, miso
+out acs = 1, asclk
+out cs = 1, dc, sclk, din
+param lo = 0, gain = 16
+
+reg [6:0] x = 0          // the column being drawn
+reg [5:0] y = 63         // the newest point's row (0 at the top)
+reg [5:0] yp = 63        // the point before it
+reg [9:0] code = 0
+reg [9:0] sh = 0
+reg [3:0] n = 0          // bits read from the ADC
+reg [3:0] st = 0         // what it is doing (see below)
+reg [3:0] ret = 0        // where to go once a byte is sent
+reg [2:0] page = 0
+reg [2:0] k = 0          // which byte of a page's update
+reg [2:0] b = 0          // which bit of a byte
+reg [7:0] byte = 0
+reg dcb = 0
+
+// the reading as a row: above the bottom, scaled, from the top
+wire [9:0] above = code < lo ? 10'd0 : code - lo
+wire [17:0] scaled = (above * gain) >> 8
+wire [5:0] row = scaled > 63 ? 6'd0 : 63 - scaled
+
+// the stroke from the point before to this one, as the byte of 8 rows in this page
+wire [5:0] r0 = yp < y ? yp : y
+wire [5:0] r1 = yp < y ? y : yp
+wire [5:0] pb = {page, 3'd0}
+wire [7:0] stroke = (r1 < pb || r0 > pb + 7) ? 8'd0
+    : (8'hff << (r0 > pb ? r0 - pb : 0)) & (8'hff >> (7 - (r1 < pb + 7 ? r1 - pb : 7)))
+
+on rise clk {
+    case (st) {
+        // power-up: display on
+        0: { byte <= 8'haf  dcb <= 0  ret <= 1  st <= 10 }
+        // read the ADC: select (it samples), ten bits on rising edges, deselect
+        1: { acs <= 0  n <= 0  sh <= 0  st <= 2 }
+        2: { asclk <= 1  sh <= {sh[8:0], miso}  st <= 3 }
+        3: { asclk <= 0  n <= n + 1  if (n == 9) st <= 4 else st <= 2 }
+        4: { acs <= 1  code <= sh  st <= 5 }
+        5: { yp <= y  y <= row  page <= 0  k <= 0  st <= 6 }
+        // each page: its address, the column, the stroke, and a clear byte for the column ahead
+        6: {
+            case (k) {
+                0: { byte <= {5'b10110, page}  dcb <= 0 }
+                1: { byte <= {4'd0, x[3:0]}  dcb <= 0 }
+                2: { byte <= {5'b00010, x[6:4]}  dcb <= 0 }
+                3: { byte <= stroke  dcb <= 1 }
+                4: { byte <= 0  dcb <= 1 }
+            }
+            ret <= 7  st <= 10
+        }
+        7: {
+            if (k == 4) {
+                k <= 0
+                if (page == 7) { x <= x + 1  st <= 1 } else { page <= page + 1  st <= 6 }
+            } else { k <= k + 1  st <= 6 }
+        }
+        // send a byte: each bit set with the clock low, taken on its rising edge
+        10: { cs <= 0  sclk <= 0  dc <= dcb  din <= byte[7 - b]  st <= 11 }
+        11: { sclk <= 1  b <= b + 1  if (b == 7) st <= 12 else st <= 10 }
+        12: { sclk <= 0  st <= ret }
+    }
+}

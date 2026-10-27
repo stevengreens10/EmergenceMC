@@ -569,20 +569,28 @@ public final class ControlExhibits {
             e.name("pot", e.add(POTENTIOMETER, "nylon_66", 31, ky, kz, Dir.EAST, "lead_axis", 1, "resistance", 10_000));
             e.fill(BLOCK, st, 31, 0, kz + 1, 31, ky, kz + 1, Dir.UP);
             e.name("crank", e.add(CRANK, st, 33, ky, kz, Dir.EAST, "radius", 0.06));
+            // the control circuit's own supply, through 100 Ω onto 470 µF (τ 47 ms): without it the bridge's switching
+            // current sags the battery, the knob's voltage (a fraction of the supply) sags with it, and the comparator
+            // is held half-way across its threshold — both transistors of the left pair conducting at once, ~12 A,
+            // for milliseconds every edge, until the lower one cooks (it did, in the world, at 448 K). Decoupling
+            // the control electronics from the power stage is how real drives avoid it
+            e.add(RESISTOR, "alumina", 22, f, 1, Dir.EAST, "resistance", 100);
+            e.name("decoupling", e.add(CAPACITOR, "alumina", 26, f, 1, Dir.EAST, "capacitance", 470e-6));
         }
         Router r = new Router(e, 0, 0, 0, 35, 18, 15);
         r.pin("vdd", 17, f, 2).pin("vdd", 19, f, 5).pin("vdd", 25, f, 5).pin("vdd", 23, f, 13);
         r.pin("gnd", 15, f, 2).pin("gnd", 21, f, 8).pin("gnd", 27, f, 8).pin("gnd", 17, f, 11).pin("gnd", 23, f, 11);
         r.pin("inA", 20, f, 4).pin("inA", 22, f, 7).pin("inA", 19, f, 11);
         if (pwm) {
-            r.pin("vdd", 32, f, 5).pin("gnd", 32, f, 3);                       // the Schmitt's supply
+            r.pin("vdd", 21, f, 1).pin("vctl", 23, f, 1).pin("vctl", 25, f, 1).pin("gnd", 27, f, 1); // the filter
+            r.pin("vctl", 32, f, 5).pin("gnd", 32, f, 3);                      // the Schmitt's supply
             r.pin("ct", 31, f, 4).pin("ct", 31, f, 1).pin("ct", 34, f, 6).pin("ct", 32, 0, 11);
             r.pin("osc", 33, f, 4).pin("osc", 33, f, 1);
             r.pin("gnd", 34, f, 8);
-            r.pin("vdd", 32, f, 12).pin("gnd", 32, f, 10);                     // the op-amp's supply
+            r.pin("vctl", 32, f, 12).pin("gnd", 32, f, 10);                    // the op-amp's supply
             r.pin("knob", 31, f, 11).pin("knob", 31, 3, 13);                  // wiper → in+
             r.pin("inA", 33, f, 11);
-            r.pin("trackP", 31, 4, 14).pin("trackP", 33, f, 13).pin("vdd", 35, f, 13);
+            r.pin("trackP", 31, 4, 14).pin("trackP", 33, f, 13).pin("vctl", 35, f, 13);
             r.pin("trackN", 31, 2, 14).pin("trackN", 33, f, 15).pin("gnd", 35, f, 15);
             r.keepClear(32, 2, 13, 33, 4, 15); // the knob's crank turns there
         } else {

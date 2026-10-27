@@ -228,11 +228,13 @@
    0.121 mA·h charged, the governor holding, the counter counting. The station tour of 16:29 found all six screens
    drawn and every gauge right, but that world's battery discharging; fixed since (the regulator's reference
    shorted by a tap).
-   **Open:** the station tour on the present world. The display is disconnected ("WinDisc"). One launcher
-   (`build/scratch/when-display.sh`) waits for it, then runs the station's tour (log `tour-station4.log`, report
-   `report-station4.txt`; the dashboard's screenshots to review) and the scheduled full tour of 18:20 (log
-   `tour-full-1820.log`, report `report-full-1820.txt`). The demo world was rebuilt for it at 18:24: 84 exhibits,
-   0 problems, 0 differences, 24/24 in-world tests.
+   **Station tour 19:07 on the present world: 14/14**: all six screens drawn and every gauge agreeing with the
+   simulation (fuel 180.8 bar against 180.76, boiler 3.70 against 3.756, engine 139 rpm against 138.6, condenser
+   55.7 kPa against 55.4, generator 67 mA, battery 5.60 V against 5.620), the battery charging, the governor
+   holding. The station world installed in run/saves at 19:13 (the old one kept as "Emergence Station
+   (2026-10-25)"); the user opened it.
+   **Open:** the scheduled full tour (18:20 slot), held while the user is in the station's client; to run when they
+   close it (the demo world is current: rebuilt 18:24).
    Next for the dashboard:
    - a seventh screen for the engine's power (current × voltage: a gauge reading two ADCs);
    - alarm limits that invert a gauge's card;

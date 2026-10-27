@@ -68,12 +68,41 @@ public final class Diode implements Element {
         return new double[]{is * (e - 1), is * de};
     }
 
+    /** The junction voltage Newton's last iterate was evaluated at (SPICE's limiting state); NaN before the first. */
+    private double vLast = Double.NaN;
+    /** {@code emergence.diodeLimit} (on by default): SPICE p-n junction limiting. */
+    private static final boolean LIMIT = !"false".equals(System.getProperty("emergence.diodeLimit"));
+
+    /**
+     * SPICE's p-n junction limiting (pnjlim): a forward step above the critical voltage grows only logarithmically.
+     * Unlimited, an iterate that overshot into strong forward bias walked back down by one n·V_T an iteration — the
+     * exponential's Newton step — and a power station's bridge diodes took 25–30 iterations a solve, a fifth of its
+     * circuits' time.
+     */
+    private double limit(double vnew, double T) {
+        if (!LIMIT || Double.isNaN(vLast)) return vnew;
+        double nvt = n * PhysicalConstants.K_OVER_Q * T, is = isat(T);
+        double vcrit = nvt * Math.log(nvt / (Math.sqrt(2) * is));
+        if (vnew > vcrit && Math.abs(vnew - vLast) > 2 * nvt) {
+            if (vLast > 0) {
+                double arg = 1 + (vnew - vLast) / nvt;
+                return arg > 0 ? vLast + nvt * Math.log(arg) : vcrit;
+            }
+            return nvt * Math.log(vnew / nvt);
+        }
+        return vnew;
+    }
+
     @Override
     public void load(LoadContext ctx) {
         double T = temp(ctx);
         double v = ctx.x(a.index()) - ctx.x(k.index());
-        double[] r = iv(v, T);
-        double i = r[0], g = r[1];
+        // evaluated at the limited junction voltage and continued linearly from there to the iterate (exact once
+        // Newton's steps are small: the limit is then inactive)
+        double vl = limit(v, T);
+        if (!ctx.isInitializing()) vLast = vl;
+        double[] r = iv(vl, T);
+        double g = r[1], i = r[0] + g * (v - vl);
         ctx.addFlow(a, k, i);
         ctx.stampConductance(a, k, g);
         if (thermal != null) {

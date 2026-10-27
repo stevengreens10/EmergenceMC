@@ -34,9 +34,9 @@ public final class DashboardExhibits {
         /** Two silicon diodes fed through 1 kΩ from the supply: a fixed voltage read against the supply measures it. */
         REFERENCE,
         /**
-         * A 0.5 Ω shunt from the signal to ground, carrying the current to be measured (it comes in on the ribbon and
-         * goes back on its ground), and an inverting amplifier across it (gain 50, a 0.2 s low-pass): the shunt's
-         * voltage measured where it is, none of the ribbon's in it.
+         * An inverting amplifier (gain 50, a 0.2 s low-pass) on a 0.5 Ω shunt's voltage, sensed on two conductors of
+         * its own (the signal: the shunt's far end; the second: its ground end), which carry no current — so neither
+         * the ribbon's nor the ground's voltage drops enter the reading (Kelvin sensing).
          */
         CURRENT,
         /** A pulse train into the gauge chip's timer. */
@@ -131,7 +131,8 @@ public final class DashboardExhibits {
         int[] entries = {6, 8, 10, 12};
         int[] colours = {GND, VDD, g.signal(), g.signal2()};
         String[] nets = {"gnd", "vdd", "sig", "sig2"};
-        int used = g.frontEnd() == FrontEnd.REFERENCE ? 2 : 3; // (the reference measures the supply itself)
+        // (the reference measures the supply itself; the current amplifier takes two sense lines)
+        int used = g.frontEnd() == FrontEnd.REFERENCE ? 2 : g.frontEnd() == FrontEnd.CURRENT ? 4 : 3;
         for (int x = 0; x <= 15; x++) {
             boolean entry = false;
             for (int k = 0; k < used; k++) if (entries[k] == x) entry = true;
@@ -195,17 +196,15 @@ public final class DashboardExhibits {
                 r.keepClear(10, 1, 4, 10, 6, 4);
             }
             case CURRENT -> {
-                // the shunt, and an inverting amplifier: the op-amp's + input on ground (the shunt's lower end), its −
-                // input through 2 kΩ from the shunt's other end and through 100 kΩ (with 2 µF across it) from its output
-                e.name("shunt", e.add(RESISTOR, "alumina", 5, 0, 2, Dir.EAST, "resistance", 0.5, "surface_area", 0.001));
-                r.pin("gnd", 4, 0, 2).pin("sig", 6, 0, 2);
+                // an inverting amplifier: the op-amp's + input on the shunt's ground end, its − input through 2 kΩ from
+                // the shunt's other end and through 100 kΩ (with 2 µF across it) from its output
                 e.name("amp", e.add(OPAMP, "silicon", 9, 1, 3, Dir.EAST));
                 e.add(RESISTOR, "alumina", 7, 0, 5, Dir.EAST, "resistance", 2_000);
                 e.add(RESISTOR, "alumina", 11, 0, 4, Dir.EAST, "resistance", 100_000);
                 // (a row clear of the 100 kΩ: single-cell parts also bring their leads out on their side faces, and side by
                 // side the two were joined end to end, the amplifier's feedback shorted)
                 e.add(CAPACITOR, "alumina", 11, 0, 6, Dir.EAST, "capacitance", 2e-6);
-                r.pin("gnd", 8, 1, 3);                                   // + input (west)
+                r.pin("sig2", 8, 1, 3);                                  // + input (west): the shunt's ground end
                 r.pin("inm", 9, 0, 3).pin("inm", 8, 0, 5).pin("inm", 10, 0, 4).pin("inm", 10, 0, 6);
                 r.pin("sig", 6, 0, 5);                                    // the shunt's far end, into 2 kΩ
                 r.pin("aout", 10, 1, 3).pin("aout", 12, 0, 4).pin("aout", 12, 0, 6);

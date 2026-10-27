@@ -98,11 +98,14 @@ public final class StationGameTests {
         }
     }
 
-    /** The id of the island's first part of that kind in the block {@code at} (world-island coordinates are block coordinates). */
+    /**
+     * The id of the first part of that kind in the block {@code at}, from the block itself (an island joined across
+     * scales holds its full-size parts shifted in its grid: island coordinates are not block coordinates).
+     */
     private static long id(CompiledAssembly c, BlockPos at, PartKind kind) {
-        for (var p : c.assembly().parts())
-            if (p.kind() == kind && p.minX() <= at.getX() && at.getX() <= p.maxX() && p.minY() <= at.getY() && at.getY() <= p.maxY()
-                    && p.minZ() <= at.getZ() && at.getZ() <= p.maxZ()) return p.id();
+        var level = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer().overworld();
+        if (level.getBlockEntity(at) instanceof dev.emergence.mod.block.AssemblyBlockEntity be)
+            for (var p : be.parts()) if (p.kind == kind && c.assembly().get(p.id) != null) return p.id;
         throw new net.minecraft.gametest.framework.GameTestAssertException("no " + kind + " in the station's island at " + at.toShortString());
     }
 }

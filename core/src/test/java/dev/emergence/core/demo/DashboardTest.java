@@ -25,8 +25,8 @@ class DashboardTest {
         for (int k = 0; k < n; k++) chip[k] = (DesignComponent) c.digitalChip(b.embeddedId(e, k, "gauge")).component();
         double pa = b.assembly().ambientPressure();
         long fuel = b.id(e, "fuel"), boiler = b.id(e, "boiler"), shaft = b.id(e, "shaft"), cond = b.id(e, "condenser"),
-                bat = b.id(e, "battery"), shunt = b.embeddedId(e, 4, "shunt");
-        double t0 = c.time();
+                bat = b.id(e, "battery"), shunt = b.id(e, "genShunt");
+        double t0 = c.time(), q0 = c.batteryChargeDelivered(bat);
         long wall0 = System.nanoTime();
         double seconds = Double.parseDouble(System.getProperty("diag.dashRun", "30"));
         for (int i = 0; i < Math.round(seconds / 0.05); i++) {
@@ -40,6 +40,11 @@ class DashboardTest {
             q1 += -c.probe(shunt).current() * 0.001;
         }
         double wall = (System.nanoTime() - wall0) / 1e9;
+        // the station's own electricity unharmed: its battery still charges, its regulator not dumping (with the
+        // generator's return led to the dashboard and back, its current through the station's ground wiring shifted the
+        // regulator's sense and it dumped 550 mA into its load)
+        double charged = -(c.batteryChargeDelivered(bat) - q0) / 3.6, dump = Math.abs(c.probe(b.id(e, "dump")).current());
+        System.out.printf("  battery: %.3f mA·h taken in; the regulator's dump load %.1f mA%n", charged, 1e3 * dump);
         double meanCurrent = q1 / 1.0;
         double[] truth = {
                 (c.pressure(fuel) - pa) / 1e5 * 10,                                 // bar, 1 place
@@ -72,6 +77,8 @@ class DashboardTest {
         System.out.println(GaugeTest.render(screen));
         for (int k = 0; k < n; k++) assertEquals(0, chip[k].instance().violations(), StationExhibit.GAUGES[k].label() + ": timing");
         assertTrue(ok, "every gauge shows its quantity within its accuracy");
+        assertTrue(charged > 0, "the battery still charges: " + charged + " mA·h");
+        assertTrue(dump < 0.01, "the regulator is not dumping: " + dump + " A");
     }
 
     static String shown(long v, int dp) {

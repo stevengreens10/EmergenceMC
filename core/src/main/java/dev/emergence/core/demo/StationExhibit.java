@@ -370,8 +370,14 @@ public final class StationExhibit {
         r.pin("ac1", 15, y + 2, 4).pin("ac1", 16, 1, 9).pin("ac1", 18, 1, 13);       // → D1 anode, D3 cathode
         r.pin("ac2", 15, y - 2, 4).pin("ac2", 16, 1, 11).pin("ac2", 18, 1, 15);      // → D2 anode, D4 cathode
         r.pin("vdd", 18, 1, 9).pin("vdd", 18, 1, 11).pin("vdd", 19, 1, 7);           // D1, D2 cathodes → battery +
-        // (D3, D4 anodes: the bridge's return, through the generator gauge's shunt on the dashboard back to ground)
-        r.pin("ret", 16, 1, 13).pin("ret", 16, 1, 15).pin("gnd", 19, 1, 5);          // D3, D4 anodes; battery −
+        // (D3, D4 anodes: the bridge's return, through a 0.5 Ω shunt beside them to ground — the generator gauge on the
+        // dashboard senses its two ends; the current itself stays here, its path as short as before. Its ground end is
+        // a bare copper junction, which joins the ground's wire and the gauge's sense wire of another colour)
+        e.name("genShunt", e.add(RESISTOR, "alumina", 14, 1, 15, Dir.EAST, "resistance", 0.5, "surface_area", 0.002));
+        e.add(WIRE, "copper", 13, 1, 15, Dir.UP);
+        r.keepClear(12, 1, 15, 12, 1, 15).keepClear(13, 0, 15, 13, 0, 15);
+        r.pin("ret", 16, 1, 13).pin("ret", 16, 1, 15).pin("ret", 15, 1, 15).pin("gnd", 19, 1, 5);   // D3, D4 anodes, the shunt; battery −
+        r.pin("gnd", 13, 1, 14).pin("rref", 13, 2, 15);                                               // at the junction
         r.pin("vdd", 20, 1, 10).pin("vdd", 20, 1, 14).pin("vdd", 23, 1, 9).pin("vdd", 23, 1, 4).pin("vdd", 26, 1, 2)
                 .pin("vdd", 20, 1, 1).pin("vdd", 9, 5, 10).pin("vdd", 34, 1, 3);
         r.pin("gnd", 22, 1, 12).pin("gnd", 23, 1, 7).pin("gnd", 28, 1, 9).pin("gnd", 32, 1, 14)
@@ -400,14 +406,20 @@ public final class StationExhibit {
         // the dashboard's taps (see dashboard): the supply, ground, the bridge's return and the counter's pulses, each
         // to the south edge on its ribbon colour, then down onto the trunk
         r.colour("vdd", DashboardExhibits.VDD).colour("gnd", DashboardExhibits.GND).colour("ret", DashboardExhibits.RETURN)
-                .colour("clk0", DashboardExhibits.PULSE);
-        int[][] taps = {{20, DashboardExhibits.VDD}, {24, DashboardExhibits.GND}, {28, DashboardExhibits.RETURN}, {32, DashboardExhibits.PULSE}};
-        String[] tapNets = {"vdd", "gnd", "ret", "clk0"};
+                .colour("rref", DashboardExhibits.RETURN_REF).colour("clk0", DashboardExhibits.PULSE);
+        // (each at a cell beside no component: single-cell parts bring their leads out on their sides too, and a tap at
+        // x 28 touched the regulator's second reference diode, shorting its reference to the bridge's return)
+        int[][] taps = {{20, DashboardExhibits.VDD}, {24, DashboardExhibits.GND}, {26, DashboardExhibits.RETURN_REF}, {30, DashboardExhibits.RETURN},
+                {32, DashboardExhibits.PULSE}};
+        String[] tapNets = {"vdd", "gnd", "rref", "ret", "clk0"};
         for (int k = 0; k < taps.length; k++) r.pin(tapNets[k], taps[k][0], 1, 15);
         r.route();
+        // (over the top, clear of the routed wiring: insulated wires of one colour side by side splice, and a net the
+        // router coloured alike lay at the south edge — a drop beside it shorted it to the tap, the regulator's sense to
+        // the supply, and the regulator dumped)
         for (int[] t : taps) {
             e.add(INSULATED_WIRE, "copper", t[0], 1, 16, Dir.UP, "color", t[1]);
-            e.add(INSULATED_WIRE, "copper", t[0], 0, 16, Dir.UP, "color", t[1]);
+            e.add(INSULATED_WIRE, "copper", t[0], 1, 17, Dir.UP, "color", t[1]);
             e.add(INSULATED_WIRE, "copper", t[0], 0, 17, Dir.UP, "color", t[1]);
         }
     }
@@ -429,7 +441,7 @@ public final class StationExhibit {
             new DashboardExhibits.Gauge("condenser", "CONDENSER", "KPA", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.CONDENSER, 0,
                     0, 102, 313, 28, 0, 1, 0, 31),
             // the generator's current: 0.5 Ω, gain 50 (40 mA a volt), on a 5.6 V supply: 0.219 mA a code
-            new DashboardExhibits.Gauge("generator", "GENERATOR", "MA", DashboardExhibits.FrontEnd.CURRENT, DashboardExhibits.RETURN, 0,
+            new DashboardExhibits.Gauge("generator", "GENERATOR", "MA", DashboardExhibits.FrontEnd.CURRENT, DashboardExhibits.RETURN, DashboardExhibits.RETURN_REF,
                     0, 0, 56, 0, 0, 0, 0, 307),
             // the battery's voltage: two diodes' 1.24 V read against it, k = 1.24 V × 1023 × 100
             new DashboardExhibits.Gauge("battery", "BATTERY", "V", DashboardExhibits.FrontEnd.REFERENCE, DashboardExhibits.VDD, 0,

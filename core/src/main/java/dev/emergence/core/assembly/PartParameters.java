@@ -592,7 +592,7 @@ public final class PartParameters {
         new B(PartKind.RIBBON).made("copper", CONDUCTOR).build();
         new B(PartKind.PRESSURE_SENSOR).made("stainless_304", VESSEL)
                 .shown("bar", 1e-5).real("pmin", "Range from", "Pa", -1e5, 1e8, 0, "Gauge pressure at which its output is 10 % of its supply.")
-                .shown("bar", 1e-5).real("pmax", "Range to", "Pa", 1e3, 1e8, 10e5, "Gauge pressure at which its output is 90 % of its supply.")
+                .shown("bar", 1e-5).real("pmax", "Range to", "Pa", -9.9e4, 1e8, 10e5, "Gauge pressure at which its output is 90 % of its supply (at or below 0: a vacuum gauge's).")
                 .component(0.03, 400).build();
         for (PartKind k : PartKind.values()) if (!SCHEMAS.containsKey(k)) throw new IllegalStateException("no parameter schema for " + k);
     }

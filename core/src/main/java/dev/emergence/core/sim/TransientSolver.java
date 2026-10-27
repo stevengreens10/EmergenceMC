@@ -149,6 +149,7 @@ public final class TransientSolver implements StateView {
         LoadContext ctx;
         double[] f, dx, dxPrev, xTrial;
         LoadContext[] workers;
+        LoadTeam team;
         dev.emergence.core.math.SparseLinearSystem.Sink[] sinks;
         LinearSystem sinksOf;
         Tuning tuning;
@@ -336,24 +337,47 @@ public final class TransientSolver implements StateView {
                 && jac instanceof dev.emergence.core.math.SparseLinearSystem;
     }
 
+    /**
+     * {@code emergence.loadTeam} (on by default): a phase's parallel passes go to a few helper threads of its own, kept
+     * warm between passes (see LoadTeam), {@code emergence.teamWays} ways — not to the common pool, whose wake-ups cost
+     * as much as the passes they shared out.
+     */
+    static final boolean LOAD_TEAM = !"false".equals(System.getProperty("emergence.loadTeam"));
+    static final int TEAM_WAYS = Math.max(2, Integer.getInteger("emergence.teamWays",
+            Math.min(6, Runtime.getRuntime().availableProcessors() / 2)));
+
+    /** Runs share 0 here and the others side by side, returning when all are done. */
+    private void runShares(Phase ph, Runnable[] shares) {
+        if (LOAD_TEAM) {
+            if (ph.team == null || ph.team.ways() != shares.length) ph.team = new LoadTeam(shares.length - 1);
+            ph.team.run(shares);
+            return;
+        }
+        java.util.concurrent.ForkJoinTask<?>[] tasks = new java.util.concurrent.ForkJoinTask<?>[shares.length];
+        for (int w = 0; w < shares.length; w++) tasks[w] = java.util.concurrent.ForkJoinTask.adapt(shares[w]);
+        for (int w = 1; w < shares.length; w++) tasks[w].fork();
+        tasks[0].invoke();
+        for (int w = 1; w < shares.length; w++) tasks[w].join();
+    }
+
     /** Loads the phase's elements in parallel; false if the caller should load them serially. */
     private boolean loadParallel(Phase ph, LinearSystem jac, int[] el) {
         LoadContext ctx = ph.ctx;
         int count = el == null ? elements.size() : el.length;
         var sp = (dev.emergence.core.math.SparseLinearSystem) jac;
-        int ways = PARALLEL_WAYS;
-        if (ph.sinks == null || ph.sinksOf != jac) {
+        int ways = LOAD_TEAM ? TEAM_WAYS : PARALLEL_WAYS;
+        if (ph.sinks == null || ph.sinksOf != jac || ph.sinks.length != ways) {
             ph.sinks = new dev.emergence.core.math.SparseLinearSystem.Sink[ways];
             for (int i = 0; i < ways; i++) ph.sinks[i] = sp.newSink();
             ph.sinksOf = jac;
         }
         var sk = ph.sinks;
-        if (ph.workers == null) {
+        if (ph.workers == null || ph.workers.length != ways) {
             ph.workers = new LoadContext[ways];
             for (int i = 0; i < ways; i++) ph.workers[i] = new LoadContext();
         }
         LoadContext[] workers = ph.workers;
-        java.util.concurrent.ForkJoinTask<?>[] tasks = new java.util.concurrent.ForkJoinTask<?>[ways];
+        Runnable[] tasks = new Runnable[ways];
         for (int w = 0; w < ways; w++) {
             LoadContext c = workers[w];
             c.x = ctx.x;
@@ -378,7 +402,7 @@ public final class TransientSolver implements StateView {
             final var sink = sk[w];
             c.jac = sink;
             final int first = w;
-            tasks[w] = java.util.concurrent.ForkJoinTask.adapt(() -> {
+            tasks[w] = () -> {
                 // (each worker clears its own accumulators: cleared here, serially, they were a tenth of a pass)
                 if (c.f == null || c.f.length != n) c.f = new double[n];
                 else Arrays.fill(c.f, 0.0);
@@ -396,11 +420,9 @@ public final class TransientSolver implements StateView {
                     elements.get(k).load(c);
                 }
                 c.jac.beginSegment(-1);
-            });
+            };
         }
-        for (int w = 1; w < ways; w++) tasks[w].fork();
-        tasks[0].invoke();
-        for (int w = 1; w < ways; w++) tasks[w].join();
+        runShares(ph, tasks);
         for (LoadContext c : workers) ctx.crossed |= c.crossed;
         for (var s : sk) {
             if (s.missed()) {
@@ -415,7 +437,7 @@ public final class TransientSolver implements StateView {
         for (int w = 0; w < ways; w++) {
             final int r0 = (int) ((long) n * w / ways), r1 = (int) ((long) n * (w + 1) / ways);
             final int e0 = (int) ((long) nnz * w / ways), e1 = (int) ((long) nnz * (w + 1) / ways);
-            tasks[w] = java.util.concurrent.ForkJoinTask.adapt(() -> {
+            tasks[w] = () -> {
                 for (LoadContext c : workers) {
                     for (int i = r0; i < r1; i++) {
                         ctx.f[i] += c.f[i];
@@ -424,11 +446,9 @@ public final class TransientSolver implements StateView {
                     if (c.frozenDiag != null && ctx.frozenDiag != null) for (int i = r0; i < r1; i++) ctx.frozenDiag[i] += c.frozenDiag[i];
                 }
                 sp.merge(sk, e0, e1);
-            });
+            };
         }
-        for (int w = 1; w < ways; w++) tasks[w].fork();
-        tasks[0].invoke();
-        for (int w = 1; w < ways; w++) tasks[w].join();
+        runShares(ph, tasks);
         parallelPasses.increment();
         return true;
     }
@@ -474,6 +494,14 @@ public final class TransientSolver implements StateView {
             for (int k = 0; k < elements.size(); k++) {
                 jac.beginSegment(k);
                 elements.get(k).load(ctx);
+            }
+        } else if (ELEMENT_COST != null) {
+            for (int k : el) {
+                jac.beginSegment(k);
+                long e0 = System.nanoTime();
+                elements.get(k).load(ctx);
+                ELEMENT_COST.merge((ph == fast ? "plant " : ph == em ? "circuits " : isPart(ph) ? "part " : "other ") + elements.get(k).getClass().getSimpleName(),
+                        System.nanoTime() - e0, Long::sum);
             }
         } else {
             for (int k : el) {
@@ -1620,7 +1648,9 @@ public final class TransientSolver implements StateView {
      * in-game state (5.9 against 6.0 s per 5 s): the plant's Newton failures and the circuits' long intervals set it.
      */
     static final boolean PIPELINE = Boolean.getBoolean("emergence.pipeline");
-    static final int PIPE_DEPTH = Math.max(1, Integer.getInteger("emergence.pipeDepth", 3));
+    /** {@code emergence.partsThread}: the parts on a thread of their own in the pipeline (else on the plant's, after each step). */
+    static final boolean PARTS_THREAD = Boolean.getBoolean("emergence.partsThread");
+    static final int PIPE_DEPTH = Math.max(1, Integer.getInteger("emergence.pipeDepth", 2));
     private double[][] ringEnd, ringMean, ringEm;
     private double[] ringT0, ringT1;
     private volatile int plantDone, circuitsDone;
@@ -1696,7 +1726,11 @@ public final class TransientSolver implements StateView {
                     ringT1[sl] = fast.t;
                     double[] e = ringEnd[sl];
                     for (int i : plantRows) e[i] = x[i];
+                    // the plant's independent parts, after each of its steps and on its thread: if one meets the
+                    // plant (or another), the plant stops here, at a point fixed by the steps, not by the threads
+                    if (parts.length > 0 && !PARTS_THREAD) partsWhole(fast.t);
                     plantDone = k;
+                    if (partsMet || partsMetLater) break;
                 }
             } finally {
                 taskRun += System.nanoTime() - st;
@@ -1706,7 +1740,7 @@ public final class TransientSolver implements StateView {
         // the plant's independent parts on a thread of their own, as far as the plant is going (to the synchronisation or
         // the end, a fixed time: what they do does not depend on the threads)
         final double partsEnd = Math.min(tEnd, slowT + si);
-        java.util.concurrent.ForkJoinTask<?> partsTask = parts.length == 0 ? null
+        java.util.concurrent.ForkJoinTask<?> partsTask = parts.length == 0 || !PARTS_THREAD ? null
                 : java.util.concurrent.ForkJoinPool.commonPool().submit(() -> stepPartsAlone(partsEnd));
         int j = 0;
         try {
@@ -1769,6 +1803,19 @@ public final class TransientSolver implements StateView {
             partsMet = true;
         }
         return j;
+    }
+
+    /** The parts in whole steps of their own up to {@code end}, touching neither the solver's time nor its active phase. */
+    private void partsWhole(double end) {
+        double eps = 1e-12 * Math.max(1, Math.abs(end));
+        for (Phase p : parts) {
+            while (p.t < end - eps) {
+                double h = Math.min(p.hNext, hMax);
+                if (p.t + h > end + eps) break;
+                if (end - p.t - h < 0.25 * h) h = end - p.t;
+                stepAdaptive(p, h);
+            }
+        }
     }
 
     /** The parts stepped to {@code end} exactly, on the calling thread, touching neither the solver's time nor its active phase. */
@@ -2034,6 +2081,8 @@ public final class TransientSolver implements StateView {
 
     private static final boolean NEWTON_LAGGARDS = Boolean.getBoolean("diag.newtonLaggards");
     /** Diagnostics ({@code diag.syncStats=true}): what set each synchronisation interval (a node's C/G, or the thermal step). */
+    /** Diagnostics ({@code diag.elementCost=true}, with parallel loading off): load time by phase and element class [ns]. */
+    public static final java.util.Map<String, Long> ELEMENT_COST = Boolean.getBoolean("diag.elementCost") ? new java.util.concurrent.ConcurrentHashMap<>() : null;
     public static final java.util.Map<String, Integer> SYNC_STATS = Boolean.getBoolean("diag.syncStats") ? new java.util.concurrent.ConcurrentHashMap<>() : null;
     /** Diagnostics ({@code diag.failureCauses=true}): Newton failures by phase and the unknown last seen not converging. */
     public static final java.util.Map<String, Integer> FAILURE_CAUSES = Boolean.getBoolean("diag.failureCauses")
@@ -2198,7 +2247,9 @@ public final class TransientSolver implements StateView {
                 // two parts of the plant met: they are joined before the plant's next step; the plant's own step is
                 // not taken until then (a part's, already behind the plant, goes on without the meeting for this step)
                 ctx.crossed = false;
-                if (inFlight && ph != fast) partsMetLater = true;
+                if (inFlight && ph != fast && ph != em && !isPart(ph)) partsMetLater = true;
+                else if (inFlight && isPart(ph) && !PARTS_THREAD && PIPELINE) partsMet = true;
+                else if (inFlight && ph != fast) partsMetLater = true;
                 else partsMet = true;
                 if (ph == fast) return 3;
             }

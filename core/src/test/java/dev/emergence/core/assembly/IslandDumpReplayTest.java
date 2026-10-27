@@ -90,6 +90,14 @@ class IslandDumpReplayTest {
             if (Boolean.getBoolean("diag.dumpProfile") && i > 0 && i % 100 == 0) {
                 System.out.printf("profile t=%.1f: %.1f s of wall time for 5 s; %s%n", c.time(), (System.nanoTime() - wall0) / 1e9, c.solver().phaseCounts());
                 System.out.println("   matrices: " + c.solver().phaseMatrices());
+                if (dev.emergence.core.sim.TransientSolver.ELEMENT_COST != null) {
+                    var ec = new java.util.ArrayList<>(dev.emergence.core.sim.TransientSolver.ELEMENT_COST.entrySet());
+                    ec.sort((p1, p2) -> Long.compare(p2.getValue(), p1.getValue()));
+                    StringBuilder sb = new StringBuilder("   load time: ");
+                    for (var en : ec.subList(0, Math.min(16, ec.size()))) sb.append(String.format("%s %.2f s; ", en.getKey(), en.getValue() / 1e9));
+                    System.out.println(sb);
+                    dev.emergence.core.sim.TransientSolver.ELEMENT_COST.clear();
+                }
                 if (dev.emergence.core.sim.TransientSolver.TIMELINE != null && !dev.emergence.core.sim.TransientSolver.TIMELINE.isEmpty()) {
                     dev.emergence.core.sim.TransientSolver.TIMELINE.forEach(l -> System.out.println("   TL " + l));
                     dev.emergence.core.sim.TransientSolver.TIMELINE.clear();

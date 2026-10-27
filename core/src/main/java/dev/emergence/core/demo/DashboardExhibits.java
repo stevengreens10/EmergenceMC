@@ -31,7 +31,7 @@ public final class DashboardExhibits {
     public enum FrontEnd {
         /** The signal straight into the ADC (an amplified transducer, ratiometric to the supply). */
         DIRECT,
-        /** Two silicon diodes fed through 1 kΩ from the supply: a fixed voltage read against the supply measures it. */
+        /** Two silicon diodes fed through 10 kΩ from the supply: a fixed voltage read against the supply measures it. */
         REFERENCE,
         /**
          * An inverting amplifier (gain 50, a 0.2 s low-pass) on a 0.5 Ω shunt's voltage, sensed on two conductors of
@@ -139,7 +139,7 @@ public final class DashboardExhibits {
             r.keepClear(x, entry ? 1 : 0, 0, x, 6, 0);
         }
         // (each entry's cell inward too: its only way in, which another net's wire must not take)
-        for (int k = 0; k < used; k++) r.pin(nets[k], entries[k], 0, 0).pin(nets[k], entries[k], 0, 1).colour(nets[k], colours[k]);
+        for (int k = 0; k < used; k++) r.freePin(nets[k], entries[k], 0, 0).freePin(nets[k], entries[k], 0, 1).colour(nets[k], colours[k]);
         // ---- the clock, the ADC, the gauge chip, its ROM, and the controller against the south face
         Map<String, int[]> clock = chip(e, 6, null, 13, 0, 2, false, "frequency", Integer.getInteger("diag.gaugeClock", 10_000));
         Map<String, int[]> adc = chip(e, 7, null, 1, 0, 4, false);
@@ -186,8 +186,8 @@ public final class DashboardExhibits {
                 pin(r, "gnd", adc.get("vin")); // (the ADC unused: its input grounded)
             }
             case REFERENCE -> {
-                // 1 kΩ from the supply into two diodes in series to ground; their top is the reference
-                e.add(RESISTOR, "alumina", 7, 0, 2, Dir.EAST, "resistance", 1_000);
+                // 10 kΩ from the supply into two diodes in series to ground (0.4 mA); their top is the reference
+                e.add(RESISTOR, "alumina", 7, 0, 2, Dir.EAST, "resistance", 10_000);
                 e.add(DIODE, "silicon", 9, 0, 4, Dir.EAST);
                 e.add(DIODE, "silicon", 11, 0, 4, Dir.EAST);
                 e.add(INSULATED_WIRE, "copper", 10, 0, 4, Dir.UP, "color", 9); // between the diodes

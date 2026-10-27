@@ -192,3 +192,15 @@ the island recompiles. The screen asks for a view (span, offset, bins) and gets 
 Each galvanically connected circuit has one node grounded through 1 S. Every other node's relative shunt
 (10⁻¹² of its diagonal) returns through it, so the datum must be stiff. It is the first node the compiler marked as
 preferred (each battery's negative terminal), else the circuit's lowest node.
+
+### Miniature blocks inside block-scale machines (`Exhibit.embed`)
+A block-scale exhibit can hold miniature blocks, each a miniature exhibit of its own (the station's six gauges). The
+core build gives each block's cells a region of the grid past the exhibit's parts and joins them to the full-size
+parts around it by the game's rules (`CrossScale`, ribbon bridges). Both world builders place them after the
+full-size parts, so the game joins them into one island as it does any miniature block beside full-size parts.
+
+### Passive readers under multirate (`PassiveReader`, `LoadContext.addJRead`)
+The plant phase splits into parts stepped independently (the firebox's gas chemistry apart from the engine), and a
+part whose unknowns the circuits read stays with the plant phase. A passive reader (a pressure transducer, whose
+diaphragm takes nothing from its vessel) is exempt: the circuits read its part's latest step, and its derivative on
+a held unknown is dropped without counting as the parts meeting.

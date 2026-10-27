@@ -1252,3 +1252,35 @@ running a program that controls a physical machine.
   earlier scripted edit had deleted three helpers from `SimulationManager` (the ribbon bridges, the joined
   island's shift, and the cell map); the compiler caught it, and they were restored from the session's history.
 - *Tests.* 344 core tests and 24 GameTests pass. The demo world rebuilt 83 exhibits with no problems.
+
+**The station's dashboard (2026-10-27).** The user asked for a dashboard of displays with live metrics relevant to
+the station's operation, with a nice UI, using miniature electronics wherever possible (excluding monitors).
+- *The gauge chip.* A design in the chip language draws a card on a 128 × 64 screen:
+  - the label;
+  - the value in triple-size digits with its unit;
+  - a bar against full scale;
+  - a mark that blinks at each reading;
+  - a trend of the last 128 readings.
+  Its font, label and unit come from a ROM chip, generated per gauge. Its ROM buses come first in its pin list, so
+  they line up with the ROM's pins and the wires run straight. Placed the other way, the router walled the wires in.
+- *Each gauge is one miniature block.* The block holds a crystal, the ADC, the front end, the gauge chip, its ROM
+  and the display controller against the screen. A full-size ribbon trunk behind the blocks carries the station's
+  supply, the sensors' outputs, the rev counter's pulses and the generator's return. Block-scale exhibits can now
+  hold miniature blocks (`Exhibit.embed`).
+- *Six metrics:* fuel, boiler pressure, engine speed, condenser pressure, generator current and battery voltage.
+  In the core each agrees with the simulation within its accuracy.
+- *Three bugs found by the core test.*
+  - The amplifier read 4 mA against 87. Its capacitor sat beside its feedback resistor, and single-cell parts bring
+    their leads out on their side faces too, so the feedback was shorted. The capacitor now sits a row away.
+  - The battery gauge's diodes drop 1.41 V, not the 1.24 V assumed; its constant was recalibrated.
+  - The fuel transducer reads a gas mixture, which only fluid volumes supported. The compiler now reads gas
+    vessels' pressure as well.
+- *The station world found one more.* There the battery stopped charging: the charge regulator dumped 550 mA at
+  5.59 V. The dashboard's tap for the bridge's return sat beside the regulator's second reference diode. Single-cell
+  parts bring their leads out on their sides too, so the tap shorted the reference chain to the return, leaving
+  1.41 V where there should be 2.1 V. The tap moved to a cell beside no component. The generator's current now stays
+  in the station, through a full-size shunt beside the bridge, its two ends sensed on conductors of their own. The
+  dashboard test now checks that the battery charges and the regulator is quiet.
+- *Cost.* The dashboard first made the station 50 % slower. The fuel transducer kept the firebox's gas chemistry in
+  the engine's fast steps. Passive readers no longer hold their part to the plant's steps, and the dashboard now
+  costs 16 %.

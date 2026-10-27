@@ -941,3 +941,20 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
 * The thermostat program: a plate (10 kΩ NTC thermistor over 5.1 kΩ) is read through the 10-bit ADC over its serial
   bus, bit-banged by the program, and the heater's MOSFET is switched on below code 138 (318 K). The plate holds
   318.1–318.7 K, the band set by the plate's thermal lag and the program's loop time.
+
+## The station's dashboard (`DashboardExhibits`, `gauge.chip`)
+* Each gauge is a measurement chain of parts: a sensor, a front end, a 10-bit SPI ADC on the gauge's supply, and the
+  gauge chip, which averages eight readings and scales them in integer arithmetic.
+  * **Pressures.** Amplified transducers (10–90 % of their supply over their range) read by the ADC on the same
+    supply are ratiometric: the supply's level cancels.
+  * **Battery voltage.** Two silicon diodes fed through 1 kΩ, read against the supply: V = k / code, with
+    k = V_ref·1023·100 (V_ref = 1.41 V at the diodes' 4 mA).
+  * **Generator current.** It flows through a full-size 0.5 Ω shunt beside the station's bridge. Its two ends are
+    sensed on ribbon conductors of their own, which carry no current (Kelvin sensing), into an inverting amplifier in
+    the gauge's block (gain 50, 0.2 s low-pass): 40 mA a volt. The ADC's reference is the supply, so this one scales
+    with it (set for 5.6 V).
+  * **Engine speed.** The gauge counts its 10 kHz clock between the rev counter's pulses: rpm = 600 000 / count.
+  * **Condenser pressure.** Shown absolute: its transducer's gauge reading plus a fixed 2.8 kPa (the world's air,
+    102.8 kPa, less the 100 kPa of its range).
+* Division (k / x) is done by repeated subtraction over clocks, and decimal digits likewise. A reading and its frame
+  take about 2 s at 10 kHz. The trend holds the last 128 readings (about 4 minutes).

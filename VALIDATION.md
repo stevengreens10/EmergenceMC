@@ -629,3 +629,11 @@ count.
   (473 K before, shooting through).
 * Datum placement: the periscope compiled with its photodiode first lights its receiver (6.7 mA). Before, its sense
   line was the datum and stayed at 0.38 V.
+
+## The station's dashboard (`GaugeTest`, `DashboardTest`, `EmbeddedMiniatureTest`, station tour)
+* One gauge block fed over a ribbon: its value is the formula of its ADC's reading. Its label's first glyph, its
+  units digit's top rows and its bar's fill and frame are drawn where the design puts them.
+* The whole station, 30 s, each gauge against the simulation: fuel 189.0 bar (189.2), boiler 4.14 bar (4.141),
+  engine 137 rpm (137.7), condenser 43.3 kPa (42.5), generator 63 mA (70.5 mean over the last second), battery
+  5.59 V (5.573). There are no timing violations.
+* A ribbon from a full-size battery lights an LED in an embedded miniature block (15.3 mA).

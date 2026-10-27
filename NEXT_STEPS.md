@@ -220,6 +220,22 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0a9. **The station's dashboard** (done 2026-10-27, asked by the user: live metrics on displays, a nice UI, miniature
+   electronics wherever possible). Six screens in front of the station show fuel, boiler pressure, engine speed,
+   condenser pressure, generator current and battery voltage. Each is drawn by a gauge of miniature electronics
+   in the block behind it. In the core each agrees with the simulation (DashboardTest). In the station world
+   (18:44) it builds with 0 problems, and the station's GameTest passes with the dashboard drawing on its battery:
+   0.121 mA·h charged, the governor holding, the counter counting. The station tour of 16:29 found all six screens
+   drawn and every gauge right, but that world's battery discharging; fixed since (the regulator's reference
+   shorted by a tap).
+   **Open:** the station tour on the present world. The display is disconnected ("WinDisc"); a launcher
+   (`build/scratch/when-display-station.sh`) waits for it and then runs the tour (log `tour-station4.log`,
+   report `report-station4.txt`). Screenshots of the dashboard to review there.
+   Next for the dashboard:
+   - a seventh screen for the engine's power (current × voltage: a gauge reading two ADCs);
+   - alarm limits that invert a gauge's card;
+   - the trend's time scale chosen per gauge.
+
 0a7. **The EM-8 computer and the logic analyser** (done 2026-10-27). The EM-8 runs the thermostat program from its
    ROM in the world (plate 318.1–318.8 K). The tour opens the ROM's program in the program editor and clips the
    analyser onto its serial bus. Next:

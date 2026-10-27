@@ -54,6 +54,9 @@ class GaugeTest {
         long t0 = System.nanoTime();
         for (int i = 0; i < 120; i++) c.step(0.05);
         double wall = (System.nanoTime() - t0) / 1e9;
+        // (looked at once this frame has drawn the value's pages: between frames the chip takes its next reading, and
+        // its digits may be new before they are drawn)
+        for (int i = 0; i < 200 && !(chip.instance().value("st") >= 17 && chip.instance().value("pg") >= 5); i++) c.step(0.01);
         long v = chip.instance().value("v"), code = adc.lastCode();
         System.out.printf("gauge: ADC %d, value %d (%s), %d edges, violations %d; 6 s in %.2f s of wall time%n", code, v,
                 String.format("%d.%02d", v / 100, v % 100), chip.instance().edges(), chip.instance().violations(), wall);
@@ -66,13 +69,13 @@ class GaugeTest {
         int[] bGlyph = DashboardExhibits.FONT[11];
         for (int i = 0; i < 5; i++) assertEquals((bGlyph[i] << 1) & 0xff, m[2 + i] & 0xff, "label column " + i);
         // the big digits: the units digit's first column, three wide, its top rows on page 2
-        int d0 = (int) (v % 10), col = 4 + 4 * 18;
+        int d0 = (int) chip.instance().value("d0"), col = 4 + 4 * 18;
         int f = DashboardExhibits.FONT[d0][0];
         int top = (bit(f, 2) << 7) | (bit(f, 2) << 6) | (bit(f, 1) << 5) | (bit(f, 1) << 4) | (bit(f, 1) << 3) | (bit(f, 0) << 2) | (bit(f, 0) << 1) | bit(f, 0);
         for (int dx = 0; dx < 3; dx++) assertEquals(top, m[2 * 128 + col + dx] & 0xff, "units digit's top, column " + dx);
         // the bar: filled to its length, then its frame
-        int px = (int) Math.min(120, v * 51 >> 8);
-        assertEquals(0x7e, m[5 * 128 + 3] & 0xff, "the bar starts filled");
+        int px = (int) chip.instance().value("px");
+        assertEquals(0x56, m[5 * 128 + 3] & 0xff, "the bar starts filled (hatched)");
         assertEquals(0x42, m[5 * 128 + 3 + px + 2] & 0xff, "past its length, the frame");
     }
 

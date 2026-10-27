@@ -105,12 +105,13 @@ wire [7:0] big = pg == 2 ? {f[2], f[2], f[1], f[1], f[1], f[0], f[0], f[0]}
     : {3'd0, f[6], f[6], f[6], f[5], f[5]}
 wire [7:0] drawn = blank ? 8'd0 : inLabel ? {f[6:0], 1'b0} : inBig ? big : {1'b0, f[6:0]}
 
-// the bytes drawn from nothing: the mark and a dotted rule (page 1), the bar (page 5), the trend (pages 6 and 7: the
-// oldest reading at the left, each a point with a chequered fill below it)
+// the bytes drawn from nothing: the mark and a dotted rule (page 1), the bar (page 5: its frame, filled with hatching
+// to its length — half the pixels of a solid fill, and so half the current), the trend (pages 6 and 7: the oldest
+// reading at the left, each a point with a chequered fill below it)
 wire mark = live && col >= 121 && col <= 124
 wire rule = !col[0] && col >= 2 && col < 116
 wire [7:0] p1b = (mark ? 8'h0f : 8'd0) | (rule ? 8'h20 : 8'd0)
-wire [7:0] p5b = col == 2 || col == 125 ? 8'h7e : col > 2 && col < 125 ? (col - 3 < px ? 8'h7e : 8'h42) : 8'd0
+wire [7:0] p5b = col == 2 || col == 125 ? 8'h7e : col > 2 && col < 125 ? (col - 3 < px ? (col[0] ? 8'h56 : 8'h6a) : 8'h42) : 8'd0
 wire [6:0] hidx = wr + col
 wire [3:0] hv = hist[hidx]
 wire [3:0] t = 15 - hv
@@ -130,24 +131,27 @@ on rise clk {
         cnt <= cnt + 1
     }
     case (st) {
-        // a frame's set-up: display on, horizontal addressing, all the columns, the pages to draw (from 0 the
+        // a frame's set-up: display on, a quarter of full contrast (a panel's current is in proportion: a dashboard
+        // runs on the station's own battery), horizontal addressing, all the columns, the pages to draw (from 0 the
         // first time, then from 1: the label stays)
         0: {
             case (ini) {
                 0: byte <= 8'haf
-                1: byte <= 8'h20
-                2: byte <= 8'h00
-                3: byte <= 8'h21
+                1: byte <= 8'h81
+                2: byte <= 8'h40
+                3: byte <= 8'h20
                 4: byte <= 8'h00
-                5: byte <= 8'h7f
-                6: byte <= 8'h22
-                7: byte <= first ? 8'h00 : 8'h01
-                8: byte <= 8'h07
+                5: byte <= 8'h21
+                6: byte <= 8'h00
+                7: byte <= 8'h7f
+                8: byte <= 8'h22
+                9: byte <= first ? 8'h00 : 8'h01
+                10: byte <= 8'h07
             }
             dcb <= 0  ret <= 1  st <= 28
         }
         1: {
-            if (ini == 8) {
+            if (ini == 10) {
                 ini <= 0  col <= 0  st <= 17
                 if (first) pg <= 0 else pg <= 1
             } else { ini <= ini + 1  st <= 0 }

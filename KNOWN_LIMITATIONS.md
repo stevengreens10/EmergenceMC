@@ -272,3 +272,14 @@ multimeter, oscilloscope/data logging.
   seen at the step's ends. Its screen is polled a few times a second.
 * The solver's datum preference marks battery negatives only. A circuit powered by a generator or a solar cell is
   grounded at its lowest node, where a high-impedance node can still be disturbed by other nodes' shunts.
+
+## The station's dashboard
+* The gauges show positive values up to 9999 with up to two decimal places; there are no negative numbers.
+* The condenser gauge's offset assumes the world's air pressure (102.8 kPa); elsewhere it reads off by the
+  difference. The generator gauge's scale assumes a 5.6 V supply, and the battery gauge's constant assumes its
+  diodes' drop at room temperature.
+* The engine gauge's speed is the last turn's: it ripples with the speed within a turn.
+* A passive reader's part of the plant is read a plant step late by the circuits.
+* The router checks that a pin cell touches one component, not which face it touches: a pin beside a single-cell
+  part's side, along its lead axis, joins that part's lead. Twice this joined what should not have been (the
+  gauge's amplifier, the station's regulator). Each was found by its test and the part moved.

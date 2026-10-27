@@ -306,3 +306,8 @@ failures (a port at a water surface switching between liquid and vapour outflow;
 opening made them worse), cheaper water/steam properties (an eighth of all solver time), the circuits' in-game Newton
 count.
 
+## The station's dashboard (2026-10-27)
+Six gauges of miniature electronics (about 2700 parts) cost the station about 16 % in the core: 15.8 s of wall
+time per 10 s, against 13.6 s without. Their chips at 10 kHz cost little (about 3 s of a 30 s run); the circuits'
+analog nodes cost the rest. At first they cost 50 %: the fuel bottle's transducer held the firebox's gas chemistry to
+the engine's steps, until passive readers no longer did (see ARCHITECTURE, "Passive readers").

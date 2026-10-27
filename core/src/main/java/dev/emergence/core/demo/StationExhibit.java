@@ -412,7 +412,7 @@ public final class StationExhibit {
         int[][] taps = {{20, DashboardExhibits.VDD}, {24, DashboardExhibits.GND}, {26, DashboardExhibits.RETURN_REF}, {30, DashboardExhibits.RETURN},
                 {32, DashboardExhibits.PULSE}};
         String[] tapNets = {"vdd", "gnd", "rref", "ret", "clk0"};
-        for (int k = 0; k < taps.length; k++) r.pin(tapNets[k], taps[k][0], 1, 15);
+        for (int k = 0; k < taps.length; k++) r.freePin(tapNets[k], taps[k][0], 1, 15);
         r.route();
         // (over the top, clear of the routed wiring: insulated wires of one colour side by side splice, and a net the
         // router coloured alike lay at the south edge — a drop beside it shorted it to the tap, the regulator's sense to
@@ -425,7 +425,7 @@ public final class StationExhibit {
     }
 
     /** The battery gauge's constant: its diode reference's voltage × 1023 × 100 (see DashboardTest). */
-    static final int BATTERY_K = 144_400;
+    static final int BATTERY_K = 132_230;
     /** The dashboard's gauges, west to east (see {@link #dashboard}). */
     static final DashboardExhibits.Gauge[] GAUGES = {
             // the bottles' gauge pressure: 0–250 bar on 10–90 % of the supply
@@ -476,7 +476,7 @@ public final class StationExhibit {
         r.pin("vdd2", 8, 7, 9).pin("gnd2", 6, 7, 9).pin("pC", 7, 7, 10);         // the condenser's
         r.pin("vdd2", 12, 2, 16).pin("gnd2", 12, 2, 14).pin("pF", 11, 2, 15);    // the fuel bottle's
         // onto the trunk, each against it from the north on its colour
-        r.pin("vdd2", 19, 0, 17).pin("gnd2", 21, 0, 17).pin("pB", 23, 0, 17).pin("pC", 25, 0, 17).pin("pF", 27, 0, 17);
+        r.freePin("vdd2", 19, 0, 17).freePin("gnd2", 21, 0, 17).freePin("pB", 23, 0, 17).freePin("pC", 25, 0, 17).freePin("pF", 27, 0, 17);
         r.colour("vdd2", DashboardExhibits.VDD).colour("gnd2", DashboardExhibits.GND).colour("pB", DashboardExhibits.BOILER)
                 .colour("pC", DashboardExhibits.CONDENSER).colour("pF", DashboardExhibits.FUEL);
         r.route();

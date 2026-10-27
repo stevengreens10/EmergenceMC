@@ -81,6 +81,17 @@ public final class Router {
         return pin(net, x, y, z, false);
     }
 
+    /**
+     * A pin cell that must touch no component: a tap, a wire's way out of a block. (Beside a single-cell part's side
+     * it would join that part's lead: such parts bring their leads out on their sides too.)
+     */
+    public Router freePin(String net, int x, int y, int z) {
+        for (Dir dir : Dir.values())
+            if (isLeadedPart(x + ox + dir.dx, y + oy + dir.dy, z + oz + dir.dz))
+                throw new IllegalStateException("tap cell " + (x + ox) + "," + (y + oy) + "," + (z + oz) + " of " + net + " touches a component");
+        return pin(net, x, y, z, false);
+    }
+
     /** A pin cell that deliberately touches several components' terminals (a star point joining them). */
     public Router pinShared(String net, int x, int y, int z) {
         return pin(net, x, y, z, true);

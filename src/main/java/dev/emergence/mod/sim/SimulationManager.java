@@ -441,7 +441,12 @@ public final class SimulationManager {
      * water and fuel as they were to three digits.
      */
     static final double MAX_RELAX = Double.parseDouble(System.getProperty("emergence.maxRelax", "3"));
-    static final double OFF_TICK_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.offTickBudgetMs", "45"));
+    /**
+     * An island off the tick may take a whole tick's wall time per tick of simulation: the server never waits for it,
+     * and a step that runs over makes the next one cover the ticks it missed, so it keeps real time while its step
+     * costs less than the time it simulates. (At 45 ms the power station, costing ~48, sat at 0.8 of real time.)
+     */
+    static final double OFF_TICK_BUDGET_MS = Double.parseDouble(System.getProperty("emergence.offTickBudgetMs", "50"));
     private static final java.util.concurrent.ExecutorService OFF_TICK_POOL = java.util.concurrent.Executors.newFixedThreadPool(
             Math.max(1, Math.min(8, Runtime.getRuntime().availableProcessors() - 1)), r -> {
                 Thread t = new Thread(r, "Emergence off-tick simulation");

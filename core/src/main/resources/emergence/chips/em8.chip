@@ -1,0 +1,84 @@
+// EM-8 processor: an 8-bit computer on one chip, its program in a ROM beside it.
+//
+// It fetches two bytes for every instruction — the opcode, then its operand — from the ROM on its address bus a7..a0
+// and data bus d7..d0, and executes it: four clocks an instruction. An accumulator, a zero and a carry flag, sixteen
+// bytes of memory inside, a 4-bit input port i3..i0 and an 8-bit output port o7..o0. rst high holds it at the start.
+//
+// Wiring: clk from a clock; rst low to run (high holds it reset); a7..a0 to a 256-byte ROM's A7..A0 and its D7..D0 to
+// d7..d0; the ports to what it reads and drives. Programs are written in its assembly language in the ROM editor
+// (".asm em8" at the top of the ROM's text): see the instruction table there.
+//
+// Instructions (operand n: a number, r: a memory address 0-15, a: a program address):
+//   00 NOP         01 LDI n  A=n      02 LD r   A=mem[r]   03 ST r   mem[r]=A
+//   04 ADD r       05 ADDI n          06 SUB r             07 SUBI n          (carry: carry out / borrow)
+//   08 AND r       09 ANDI n          0A OR r              0B ORI n
+//   0C XOR r       0D XORI n          0E SHL  A<<1, C=bit7 0F SHR  A>>1, C=bit0
+//   10 JMP a       11 JZ a            12 JNZ a             13 JC a            14 JNC a
+//   15 IN    A=i   16 OUT   o=A       17 OUTI n  o=n       18 CMP r           19 CMPI n  (flags of A-x)
+//   1A INC r       1B DEC r           (mem[r]+-1, Z)       FF HLT  (stops)
+
+chip em8
+in clk, rst
+in [7:0] d
+in [3:0] i
+out [7:0] a
+out [7:0] o
+
+reg [7:0] pc = 0         // the next instruction's address
+reg [7:0] acc = 0        // the accumulator
+reg [7:0] op = 0         // the instruction being executed
+reg [7:0] arg = 0        // its operand
+reg [7:0] outp = 0       // the output port's latch
+reg z = 0                // zero flag
+reg cy = 0               // carry flag
+reg [1:0] st = 0         // fetch opcode, fetch operand, execute
+mem [7:0] ram[16]
+
+assign o = outp
+
+// the operand as a value: immediate (odd opcodes 05..19) or from memory (even)
+wire [7:0] m = ram[arg[3:0]]
+wire [7:0] val = op[0] ? arg : m
+wire [8:0] sum = {1'b0, acc} + {1'b0, val}
+wire [8:0] dif = {1'b0, acc} - {1'b0, val}
+wire [7:0] inc = m + 1
+wire [7:0] dec = m - 1
+
+on rise clk {
+    if (rst) {
+        pc <= 0  acc <= 0  outp <= 0  z <= 0  cy <= 0  st <= 0  a <= 0
+    } else {
+        case (st) {
+            0: { a <= pc  st <= 1 }
+            1: { op <= d  a <= pc + 1  st <= 2 }
+            2: { arg <= d  pc <= pc + 2  st <= 3 }
+            3: {
+                st <= 0
+                case (op) {
+                    1: { acc <= arg  z <= arg == 0 }
+                    2: { acc <= m  z <= m == 0 }
+                    3: { ram[arg[3:0]] <= acc }
+                    4, 5: { acc <= sum[7:0]  cy <= sum[8]  z <= sum[7:0] == 0 }
+                    6, 7: { acc <= dif[7:0]  cy <= dif[8]  z <= dif[7:0] == 0 }
+                    8, 9: { acc <= acc & val  z <= (acc & val) == 0 }
+                    10, 11: { acc <= acc | val  z <= (acc | val) == 0 }
+                    12, 13: { acc <= acc ^ val  z <= (acc ^ val) == 0 }
+                    14: { acc <= {acc[6:0], 1'b0}  cy <= acc[7]  z <= acc[6:0] == 0 }
+                    15: { acc <= {1'b0, acc[7:1]}  cy <= acc[0]  z <= acc[7:1] == 0 }
+                    16: { pc <= arg }
+                    17: { if (z) pc <= arg }
+                    18: { if (!z) pc <= arg }
+                    19: { if (cy) pc <= arg }
+                    20: { if (!cy) pc <= arg }
+                    21: { acc <= {4'd0, i}  z <= i == 0 }
+                    22: { outp <= acc }
+                    23: { outp <= arg }
+                    24, 25: { cy <= dif[8]  z <= dif[7:0] == 0 }
+                    26: { ram[arg[3:0]] <= inc  z <= inc == 0 }
+                    27: { ram[arg[3:0]] <= dec  z <= dec == 0 }
+                    255: { st <= 3 }
+                }
+            }
+        }
+    }
+}

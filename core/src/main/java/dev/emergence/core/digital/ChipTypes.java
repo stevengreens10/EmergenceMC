@@ -120,7 +120,7 @@ public final class ChipTypes {
             case 9 -> {
                 int[] image;
                 try {
-                    image = MsiComponent.parseHex(text, 256);
+                    image = romImage(text);
                 } catch (IllegalArgumentException e) {
                     image = new int[256];
                 }
@@ -130,10 +130,25 @@ public final class ChipTypes {
         };
     }
 
-    /** Why a 256-byte ROM's text is not a ROM image, or null if it is. */
+    /**
+     * A 256-byte ROM's bytes from its text: hex, or an EM-8 program (".asm em8" first) assembled. Throws
+     * IllegalArgumentException saying what is wrong.
+     */
+    public static int[] romImage(String text) {
+        if (Em8Assembler.isProgram(text)) {
+            try {
+                return Em8Assembler.assemble(text).bytes();
+            } catch (Em8Assembler.AsmError e) {
+                throw new IllegalArgumentException("its program does not assemble: " + e.getMessage());
+            }
+        }
+        return MsiComponent.parseHex(text, 256);
+    }
+
+    /** Why a 256-byte ROM's text is neither hex nor a program that assembles, or null if it is fine. */
     public static String romError(String text) {
         try {
-            MsiComponent.parseHex(text, 256);
+            romImage(text);
             return null;
         } catch (IllegalArgumentException e) {
             return e.getMessage();

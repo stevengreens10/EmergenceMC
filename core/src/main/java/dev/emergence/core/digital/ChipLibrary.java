@@ -13,7 +13,7 @@ import java.util.Map;
  */
 public final class ChipLibrary {
     /** The examples, in the order the designer lists them. */
-    public static final String[] NAMES = {"chart_recorder", "counter_display"};
+    public static final String[] NAMES = {"chart_recorder", "counter_display", "em8"};
 
     private ChipLibrary() {
     }
@@ -38,15 +38,18 @@ public final class ChipLibrary {
     }
 
     /** ROM images that come with the mod (resources {@code emergence/roms/<name>.hex}), for the 256 × 8 ROM. */
-    public static final String[] ROMS = {"hex_font_3x5"};
+    public static final String[] ROMS = {"hex_font_3x5", "thermostat"};
 
-    /** A ROM image's text (hex, with comments), or null. */
+    /** A ROM image's text (hex with comments, or an EM-8 program: {@code <name>.asm}), or null. */
     public static String rom(String name) {
-        try (InputStream in = ChipLibrary.class.getResourceAsStream("/emergence/roms/" + name + ".hex")) {
-            return in == null ? null : new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return null;
+        for (String ext : new String[]{".hex", ".asm"}) {
+            try (InputStream in = ChipLibrary.class.getResourceAsStream("/emergence/roms/" + name + ext)) {
+                if (in != null) return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                return null;
+            }
         }
+        return null;
     }
 
     /** An example's title: its first comment line up to the colon ("Chart recorder"). */
@@ -59,9 +62,9 @@ public final class ChipLibrary {
     }
 
     private static String titleOf(String text, String name) {
-        if (text != null && text.startsWith("//")) {
+        if (text != null && (text.startsWith("//") || text.startsWith(";"))) {
             int end = text.indexOf('\n');
-            String line = text.substring(2, end < 0 ? text.length() : end).trim();
+            String line = text.substring(text.startsWith("//") ? 2 : 1, end < 0 ? text.length() : end).trim();
             int c = line.indexOf(':');
             if (c < 0) c = line.indexOf(',');
             return (c > 0 ? line.substring(0, c) : line).trim();

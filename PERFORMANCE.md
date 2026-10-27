@@ -278,6 +278,7 @@ thread outside the tick.
 | The plant's parts step while the plant does; convection properties memoised | 1.04 (1.0 from t = 40 s) | the gas network steps on the calling thread while it waits for the plant |
 | Held unknowns pivoted in one pass in fresh factorisations | 1.0 | the Markowitz search had scanned all 1141 columns at every pivot (a fifth of the plant thread in the in-game state) |
 | Adaptive accuracy (game, islands off the tick) | in-game state 1.2 → 1.05 | falling behind, an island relaxes its truncation tolerances up to ×3 before it slows; the station's outputs matched to three digits |
+| Diodes limit their junction voltage (SPICE pnjlim) | in-game state 1.18 → 1.02 (0.9 with adaptive accuracy ×3) | an iterate overshooting into forward bias walked back by one n·V_T an iteration: the bridge diodes' solves took 25–30 iterations, two fifths of the circuits' |
 | Off-tick stepping in the game (option D) | — | an island costing more than 8 ms a tick steps on a thread of its own across the server tick (paced against 45 ms, its wall-clock cap the ticks it covers), so ~0.9 s/s is real time; the world sees its results a tick later |
 
 **Tried, not kept (this round):** a minimum-degree column pre-ordering (fewer fresh-factorisation costs but more

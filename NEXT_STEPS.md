@@ -176,9 +176,9 @@
    -Ddiag.dumpProfile=true`, ~1.2 s/s): a timeline (`-Ddiag.timeline=<t>`) shows two kinds of stall. (1) The plant's
    Newton failures: ~110 per 5 s, each 40 iterations at ~220 µs (8–17 ms), at the engine's valve ports. Converged plant
    solves take 2–3 iterations, and only ~1 % take more than 12, so a lower cap for such phases or an early abandon is
-   worth trying again with the timeline as the measure. (2) The circuits' switching intervals of 7–13 ms. Their solves
-   form a second cluster at 26–30 iterations (two fifths of their iterations), not from the damping, and not changed by
-   rounding the hysteresis play's corners wider. Find what converges linearly there (an inexact Jacobian?). Flagged
+   worth trying again with the timeline as the measure. (2) The circuits' switching intervals of 7–13 ms. Their 26–30-iteration solves were the
+   bridge diodes walking back from forward-bias overshoot by n·V_T an iteration: fixed with SPICE junction limiting
+   (in-game state replayed 1.18 → 1.02 s/s; ~0.9 with the game's adaptive accuracy). To be measured in the game. Flagged
    off: `emergence.pipeline` (free-running overlap: broke a four-bar's energy ledger and the contact governor) and
    `emergence.tightThermalS` (tightly coupled thermal nodes moved to the fast side at runtime: broke a filament's energy
    balance; it would remove the 22 ms synchronisations a small valve body under condensing steam forces).

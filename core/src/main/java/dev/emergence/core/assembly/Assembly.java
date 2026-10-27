@@ -54,6 +54,36 @@ public final class Assembly {
         return java.util.Collections.unmodifiableList(bridges);
     }
 
+    /** What a link across scales joins. */
+    public enum LinkKind {
+        /** Two shafts end to end across the face: they turn together (a coupling). */
+        SHAFT,
+        /** Two fluid parts' ports facing across the face: a passage between them (their ends do not vent). */
+        FLUID,
+        /** Two parts touching across the face: heat conducts through the contact ({@code share} of one cell's face). */
+        THERMAL
+    }
+
+    /**
+     * A join between parts that touch in the world but lie in separate grids — a miniature part against a full-size
+     * part across a block's face. {@code cellA}/{@code faceA}: part a's cell at the face and the face's direction from
+     * it (likewise b); {@code share}: the part of one cell's face area the contact has (a full-size part is one cell,
+     * however many miniature parts touch it).
+     */
+    public record Link(LinkKind kind, long a, int[] cellA, Dir faceA, long b, int[] cellB, Dir faceB, double share) {
+    }
+
+    private final List<Link> links = new ArrayList<>();
+
+    public Assembly link(Link l) {
+        links.add(l);
+        return this;
+    }
+
+    public List<Link> links() {
+        return java.util.Collections.unmodifiableList(links);
+    }
+
     public Assembly add(Part p) {
         parts.put(p.id(), p);
         for (int x = p.minX(); x <= p.maxX(); x++)

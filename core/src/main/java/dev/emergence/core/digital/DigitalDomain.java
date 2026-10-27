@@ -32,6 +32,17 @@ public final class DigitalDomain {
         double[] booked = new double[0];
         /** Energy dissipated in contention so far [J]. */
         double contentionEnergy;
+        /** Instruments watching its level (a logic analyser's probe), told of each change with its time. */
+        final List<java.util.function.ObjDoubleConsumer<Boolean>> watchers = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        /** Tells {@code w} of each change of level, with the time it changed [s]. */
+        public void watch(java.util.function.ObjDoubleConsumer<Boolean> w) {
+            watchers.add(w);
+        }
+
+        public void unwatch(java.util.function.ObjDoubleConsumer<Boolean> w) {
+            watchers.remove(w);
+        }
 
         Net(String name) {
             this.name = name;
@@ -292,6 +303,7 @@ public final class DigitalDomain {
                 if (n.level == e.level()) return;
                 n.level = e.level();
                 n.transitions++;
+                for (var w : n.watchers) w.accept(n.level, e.time());
                 s.energy += 0.5 * n.capacitance * s.supply * s.supply;
                 for (int[] r : n.readers) deliver(slots.get(r[0]), r[1], n.level, e.time());
             }
@@ -326,6 +338,7 @@ public final class DigitalDomain {
                             Net n = s.outNet[k];
                             n.level = false;
                             n.transitions++;
+                            for (var w : n.watchers) w.accept(false, e.time());
                             for (int[] r : n.readers) deliver(slots.get(r[0]), r[1], false, e.time());
                         }
                     }

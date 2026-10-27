@@ -136,6 +136,7 @@ public final class AssemblyCompiler {
             buildThermal();
             checkpoint();
             buildMechanics();
+            buildScaleLinks();
             buildAero();
             buildBrakes();
             checkpoint();
@@ -741,6 +742,53 @@ public final class AssemblyCompiler {
         double nodeToFace(Part p) {
             WireRun run = runOf.get(p.id());
             return run != null ? run.parts.size() * CELL / 2 : halfLength(p);
+        }
+
+        /**
+         * Heat across a contact between scales (Assembly.Link THERMAL): each side conducts over half a cell of its own
+         * material to the contact, of {@code share} of a cell's face; the contact's own conductance as any.
+         */
+        void thermalAcross(Part p, Part q, double share) {
+            Node tp = c.thermalOfPart.get(p.id()), tq = c.thermalOfPart.get(q.id());
+            if (tp == null || tq == null) return;
+            double area = CELL * CELL * Math.max(1e-3, Math.min(1, share));
+            double kp = p.material().get(MaterialProperty.THERMAL_CONDUCTIVITY, 1), kq = q.material().get(MaterialProperty.THERMAL_CONDUCTIVITY, 1);
+            double r = (CELL / 2) / (kp * area) + (CELL / 2) / (kq * area) + 1 / (CONTACT_H * area);
+            c.network.add(new ThermalConductance(tp, tq, 1 / r));
+        }
+
+        /** The links across scales: heat through contacts, shafts coupled (fluid passages are made with the fluids). */
+        void buildScaleLinks() {
+            for (Assembly.Link l : a.links()) {
+                Part p = partById(l.a()), q = partById(l.b());
+                if (p == null || q == null) continue;
+                switch (l.kind()) {
+                    case THERMAL -> thermalAcross(p, q, l.share());
+                    case SHAFT -> {
+                        CompiledAssembly.Body bp = c.bodyOfPart.get(p.id()), bq = c.bodyOfPart.get(q.id());
+                        if (bp == null || bq == null || bp == bq || bp.isStatic && bq.isStatic || bp.slider || bq.slider) continue;
+                        Vec3 ap = bp.isStatic ? p.axis().vec() : bp.axis, aq = bq.isStatic ? q.axis().vec() : bq.axis;
+                        // they turn together: ω_p·a_p = ω_q·a_q, i.e. r·ω_p + s·r·ω_q = 0 with s = −(a_p·a_q)
+                        double s = -Math.signum(ap.dot(aq));
+                        if (s == 0) continue;
+                        double r = Math.max(PartGeometry.shaftDiameter(p), PartGeometry.shaftDiameter(q)) / 2;
+                        Node na = bp.isStatic ? refR : bp.node, nb = bq.isStatic ? refR : bq.node;
+                        c.network.add(GearMesh.bevel(na, nb, r, r, 1, 1, s, 0, c.thermalOfPart.get(p.id())));
+                        c.shaftCouplings++;
+                    }
+                    default -> { }
+                }
+            }
+        }
+
+        /** Whether part p's cell (x, y, z), facing d, is the end of a fluid link across scales (so it does not vent). */
+        boolean fluidLinked(Part p, int x, int y, int z, Dir d) {
+            for (Assembly.Link l : a.links()) {
+                if (l.kind() != Assembly.LinkKind.FLUID) continue;
+                if (l.a() == p.id() && l.faceA() == d && l.cellA()[0] == x && l.cellA()[1] == y && l.cellA()[2] == z) return true;
+                if (l.b() == p.id() && l.faceB() == d && l.cellB()[0] == x && l.cellB()[1] == y && l.cellB()[2] == z) return true;
+            }
+            return false;
         }
 
         void thermalLink(Part p, Part q) {
@@ -1455,12 +1503,55 @@ public final class AssemblyCompiler {
          */
         void ribbonJoin(Part p, Part q) {
             if (p.kind() == PartKind.RIBBON && q.kind() == PartKind.RIBBON) {
-                for (int k = 0; k < 16; k++) emerge("p" + p.id() + "c" + k, "p" + q.id() + "c" + k);
+                long a = Math.min(p.id(), q.id()), b = Math.max(p.id(), q.id());
+                for (long[] l : ribbonLinks) if (l[0] == a && l[1] == b) return;
+                ribbonLinks.add(new long[]{a, b});
                 return;
             }
             Part r = p.kind() == PartKind.RIBBON ? p : q, w = r == p ? q : p;
             if (w.kind() != PartKind.INSULATED_WIRE) return;
-            emerge("p" + r.id() + "c" + Math.round(w.param("color", 0)), "p" + w.id());
+            long k = Math.round(w.param("color", 0));
+            emerge("p" + r.id() + "c" + k, "p" + w.id());
+            ribbonUsed.add(new long[]{r.id(), k});
+        }
+
+        /** Ribbon blocks side by side, and the (ribbon, conductor) pairs a wire joins (see buildRibbonConductors). */
+        final List<long[]> ribbonLinks = new ArrayList<>(), ribbonUsed = new ArrayList<>();
+
+        /** Copper's cross-section in a 16-way ribbon's conductor [m²] (28 AWG, 7 × 0.127 mm). */
+        static final double RIBBON_CONDUCTOR_AREA = 0.081e-6;
+
+        /**
+         * A ribbon's conductors along it: between each block and the next, for every conductor some wire joins somewhere
+         * along that run of ribbon, its copper's resistance from centre to centre (heating the ribbon). Conductors
+         * nothing joins make no nodes.
+         */
+        void buildRibbonConductors() {
+            if (ribbonLinks.isEmpty()) return;
+            Map<Long, Long> parent = new HashMap<>();
+            java.util.function.LongUnaryOperator find = new java.util.function.LongUnaryOperator() {
+                public long applyAsLong(long x) {
+                    long r = x;
+                    while (parent.getOrDefault(r, r) != r) r = parent.get(r);
+                    parent.put(x, r);
+                    return r;
+                }
+            };
+            for (long[] l : ribbonLinks) {
+                long ra = find.applyAsLong(l[0]), rb = find.applyAsLong(l[1]);
+                if (ra != rb) parent.put(ra, rb);
+            }
+            Map<Long, Set<Long>> used = new HashMap<>();
+            for (long[] u : ribbonUsed) used.computeIfAbsent(find.applyAsLong(u[0]), k -> new HashSet<>()).add(u[1]);
+            Material cu = MaterialDatabase.standard().get("copper");
+            for (long[] l : ribbonLinks) {
+                Part a = partById(l[0]);
+                if (a == null) continue;
+                double r = cu.resistivity(ambientT) * CELL / RIBBON_CONDUCTOR_AREA;
+                for (long k : used.getOrDefault(find.applyAsLong(l[0]), Set.of())) {
+                    c.network.add(new Resistor(enode("p" + l[0] + "c" + k), enode("p" + l[1] + "c" + k), r, c.thermalOfPart.get(a.id())));
+                }
+            }
         }
 
         Part partById(long id) {
@@ -1871,6 +1962,8 @@ public final class AssemblyCompiler {
                     if (!ra.equals(rb)) uf.put(ra, rb);
                 }
                 for (Part p : parts) if (runOf.containsKey(p.id())) keyPart.put("p" + p.id(), p);
+                // a net through a ribbon's conductor has its copper's resistance in it: analog
+                for (long[] u : ribbonUsed) keyPart.put("p" + u[0] + "c" + u[1], partById(u[0]));
                 Map<String, List<String>> members = new HashMap<>();
                 for (String key : keyPart.keySet()) members.computeIfAbsent(find.apply(eroot(key)), r -> new ArrayList<>()).add(key);
                 for (var en : members.entrySet()) {
@@ -1883,6 +1976,10 @@ public final class AssemblyCompiler {
                     DigitalDomain.Net net = c.digital.net(en.getKey());
                     for (String key : en.getValue()) digitalNetOfRoot.put(eroot(key), net);
                     digitalNetsByGroup.put(en.getKey(), net);
+                    for (String key : en.getValue()) {
+                        Part kp = keyPart.get(key);
+                        if (kp != null && isWire(kp)) c.digitalNetOfPart.put(kp.id(), net);
+                    }
                 }
                 for (Contact k : contacts) {
                     connectedRoots.add(eroot(k.pk));
@@ -1897,6 +1994,7 @@ public final class AssemblyCompiler {
                                 + k.q.kind() + "@" + k.q.minX() + "," + k.q.minY() + "," + k.q.minZ() + " [" + k.qk + "] sliding " + k.sliding + " slide " + (k.slide != null));
                 }
             }
+            buildRibbonConductors();
             // ---- conductors between contacts
             for (Contact k : contacts) {
                 Part p = k.p, q = k.q;
@@ -3312,8 +3410,9 @@ public final class AssemblyCompiler {
                                 for (Part o : a.at(nx, ny, nz)) if (o.kind().holdsFluid() && o != p) q = o;
                                 if (q == null) {
                                     // an open end: along the axis of a tube-like part, into a cell that is neither
-                                    // occupied by a part nor solid surroundings
+                                    // occupied by a part nor solid surroundings — nor joined across scales to another
                                     if (!axial || p.kind() == PartKind.TANK || !a.at(nx, ny, nz).isEmpty() || a.isSolidCell(nx, ny, nz)) continue;
+                                    if (fluidLinked(p, x, y, z, d)) continue;
                                     if (p.kind() == PartKind.CYLINDER && d == p.axis()) continue; // the rod side is open crankcase
                                     addVent(p, new int[]{x, y, z}, d, atm, pAtm, through);
                                     continue;
@@ -3389,6 +3488,27 @@ public final class AssemblyCompiler {
                                     through.computeIfAbsent((rq != null ? rq.rep : q).id(), kk -> new ArrayList<>()).add(b);
                                 }
                             }
+            }
+            // passages across scales: a miniature pipe's end against a full-size pipe's port (Assembly.Link FLUID)
+            for (Assembly.Link l : a.links()) {
+                if (l.kind() != Assembly.LinkKind.FLUID) continue;
+                Part p = partById(l.a()), q = partById(l.b());
+                FluidVolume va = p == null ? null : c.fluidOfPart.get(p.id()), vb = q == null ? null : c.fluidOfPart.get(q.id());
+                if (va == null || vb == null || va == vb) continue;
+                if (va.fluid() != vb.fluid()) {
+                    c.warnings.add("Parts #" + p.id() + " and #" + q.id() + " hold different fluids and are not connected");
+                    continue;
+                }
+                double ap = PartGeometry.passageArea(p), aq = PartGeometry.passageArea(q);
+                double amin = Math.min(ap, aq), sigma = amin / Math.max(ap, aq);
+                double k = 0.5 * (1 - sigma) + (1 - sigma) * (1 - sigma);
+                double len = halfExtent(p, l.faceA()) + halfExtent(q, l.faceB());
+                FluidBranch b = new FluidBranch(va.pressureNode(), va.temperatureNode(), vb.pressureNode(), vb.temperatureNode(), va.fluid(),
+                        len, equivalentDiameter(amin), Math.max(roughness(p), roughness(q)), k, 0).withTag(p.kind() + "#" + p.id() + "->" + q.kind() + "#" + q.id() + " (across scales)");
+                c.network.add(b);
+                Run rp = runOf.get(p.id()), rq = runOf.get(q.id());
+                through.computeIfAbsent((rp != null ? rp.rep : p).id(), kk -> new ArrayList<>()).add(b);
+                through.computeIfAbsent((rq != null ? rq.rep : q).id(), kk -> new ArrayList<>()).add(b);
             }
             // heat exchange between each fluid volume and its own wall (boiling and condensation for water)
             for (Part p : fluids) {

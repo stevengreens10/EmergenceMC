@@ -39,7 +39,7 @@ public final class Exhibits {
                 daniellCell(), plating(), galvanicCorrosion(), airTurbine(), fanCoupling(), heatedVessel(), stirlingEngine(), steamEngine(), condensingEngine(), governedEngine(),
                 transistorSwitch(), nandGate(), binaryCounter(), thermostat(), ComputerExhibit.build(), shelves(), OpticsExhibits.lightBarrier(),
                 OpticsExhibits.solarPanel(), ControlExhibits.servo(), ControlExhibits.governor(), ControlExhibits.contactGovernor(), ControlExhibits.flyball(), Exhibits.rectifier(), Exhibits.boost(), ControlExhibits.hBridge(), ControlExhibits.pwmMotor(), ControlExhibits.inverter(), ChemistryExhibits.brownGas(), ChemistryExhibits.thermalExplosion(), ChemistryExhibits.gasBurner(), ChemistryExhibits.still(), ChemistryExhibits.column(), ThermoExhibits.thermocouple(), ThermoExhibits.fanCooling(), RadiationExhibits.geigerCounter(), MechanicsExhibits.springMass(), MechanicsExhibits.unbalance(), MechanicsExhibits.spinningWeights(), MechanicsExhibits.fourBar(), AeroExhibits.windTurbine(), AeroExhibits.propellerCart(), MechanicsExhibits.harvester(), MechanicsExhibits.hydraulicPress(), MechanicsExhibits.hydraulicJack(), MechanicsExhibits.floats(), MechanicsExhibits.waterWheel(), MechanicsExhibits.slideValve(), ControlExhibits.pressureRegulator(), MechanicsExhibits.rackAndPinion(), MechanicsExhibits.screwJacks(), ThermoExhibits.burstTest(), Exhibits.faradayRing(), Exhibits.buckling(), Exhibits.fatigue(), Exhibits.eddyBrake(), Exhibits.magnetPull(), Exhibits.relay(), Exhibits.relayLatch(), Exhibits.trembler(), EngineExhibits.gasEngine(), OpticsExhibits.periscope(), OpticsExhibits.lens(), OpticsExhibits.solarFurnace(), OpticsExhibits.lamp(), OpticsExhibits.prism(), OpticsExhibits.spectrometer(), OpticsExhibits.optocoupler(), OpticsExhibits.colourFilters(), ComputerExhibit.memory(), AcousticsExhibits.loudspeaker(),
-                miniatureGenerator(), MonitorExhibits.chartRecorder(), MonitorExhibits.counterDisplay(), MonitorExhibits.miniatureCounterDisplay());
+                miniatureGenerator(), MonitorExhibits.chartRecorder(), MonitorExhibits.counterDisplay(), MonitorExhibits.miniatureCounterDisplay(), Em8Exhibits.thermostat(), ScaleExhibits.crankAcrossScales());
     }
 
     /** Hand-cranked axial-flux generator feeding a resistor through insulated wiring. */
@@ -1522,7 +1522,13 @@ public final class Exhibits {
             int o = BLOCK_PART_OFFSET;
             a.add(new Part(id, d.kind(), MaterialDatabase.standard().get(d.material()), o + d.x0(), d.y0(), o + d.z0(),
                     o + d.x1(), d.y1(), o + d.z1(), d.axis(), d.params(), null));
-            if (d.kind() != dev.emergence.core.assembly.PartKind.RIBBON || Math.abs(d.x0()) + Math.abs(d.y0()) + Math.abs(d.z0()) != 1) continue;
+            if (Math.abs(d.x0()) + Math.abs(d.y0()) + Math.abs(d.z0()) != 1) continue;
+            // heat, shafts and pipes across the face (the rules the game's machines use)
+            dev.emergence.core.assembly.Dir toMini = dev.emergence.core.assembly.Dir.values()[
+                    d.x0() == 1 ? 4 : d.x0() == -1 ? 5 : d.y0() == 1 ? 0 : d.y0() == -1 ? 1 : d.z0() == 1 ? 2 : 3];
+            dev.emergence.core.assembly.CrossScale.link(a, a.get(id), new int[]{o + d.x0(), d.y0(), o + d.z0()}, toMini,
+                    a.parts().stream().filter(q -> q.id() < 1_000_000_000L).toList(), new int[]{0, 0, 0}, 16);
+            if (d.kind() != dev.emergence.core.assembly.PartKind.RIBBON) continue;
             for (Exhibit.PartDef w : e.parts) {
                 if (w.kind() != dev.emergence.core.assembly.PartKind.INSULATED_WIRE) continue;
                 boolean face = d.x0() == 1 ? w.x1() == 15 : d.x0() == -1 ? w.x0() == 0 : d.y0() == 1 ? w.y1() == 15

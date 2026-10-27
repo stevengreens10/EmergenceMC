@@ -82,6 +82,8 @@ public final class CompiledAssembly {
     /** Event-driven chips by their first segment's part id; each segment's package; display panels' controllers. */
     final Map<Long, dev.emergence.core.digital.DigitalChip> digitalChips = new java.util.LinkedHashMap<>();
     final Map<Long, Long> packageOfPart = new HashMap<>();
+    /** The digital net a wire part is on (a net joining chip pins only), for instruments. */
+    final Map<Long, dev.emergence.core.digital.DigitalDomain.Net> digitalNetOfPart = new HashMap<>();
     final Map<Long, dev.emergence.core.digital.DisplayPanel> displays = new java.util.LinkedHashMap<>();
     /**
      * Each display part's share of its screen's image: {u at its left edge, v at its top, u at its right, v at its
@@ -269,6 +271,12 @@ public final class CompiledAssembly {
     final List<String> warnings = new ArrayList<>();
     /** Bevel gear pairs meshed (gears on crossing axes). */
     int bevels;
+    /** Shafts coupled across scales (Assembly.Link SHAFT). */
+    int shaftCouplings;
+
+    public int shaftCouplings() {
+        return shaftCouplings;
+    }
 
     public int bevelMeshes() {
         return bevels;
@@ -988,6 +996,60 @@ public final class CompiledAssembly {
     /** A logger for {@link #LOGGER_CHANNELS} sampling every {@code interval} seconds, holding {@code capacity} samples. */
     public static dev.emergence.core.instruments.DataLogger newLogger(double interval, int capacity) {
         return new dev.emergence.core.instruments.DataLogger(LOGGER_CHANNELS, interval, capacity);
+    }
+
+    private final Map<dev.emergence.core.instruments.LogicCapture, Runnable> captures = new HashMap<>();
+
+    /**
+     * Connects a logic analyser's probes: channel k to part {@code probes[k]} (−1: none), voltages against part
+     * {@code ground}'s (−1: the circuit's reference). A probe on a digital net records its level as it changes, at
+     * the time it changes; on an analog node, its voltage after every accepted solver step.
+     */
+    public void attachCapture(dev.emergence.core.instruments.LogicCapture cap, long ground, long[] probes) {
+        detachCapture(cap);
+        List<Runnable> undo = new ArrayList<>();
+        Node ref = ground >= 0 && leadsOfPart.get(ground) != null ? leadsOfPart.get(ground)[0] : null;
+        List<Node> analog = new ArrayList<>();
+        List<Integer> analogCh = new ArrayList<>();
+        for (int k = 0; k < probes.length && k < dev.emergence.core.instruments.LogicCapture.CHANNELS; k++) {
+            if (probes[k] < 0 || assembly.get(probes[k]) == null) {
+                cap.unuse(k);
+                continue;
+            }
+            var net = digitalNetOfPart.get(probes[k]);
+            if (net != null) {
+                cap.configure(k, true);
+                int ch = k;
+                cap.record(ch, solver.time(), net.level() ? 1 : 0);
+                java.util.function.ObjDoubleConsumer<Boolean> w = (level, time) -> cap.record(ch, time, level ? 1 : 0);
+                net.watch(w);
+                undo.add(() -> net.unwatch(w));
+                continue;
+            }
+            Node[] l = leadsOfPart.get(probes[k]);
+            if (l == null || l.length == 0 || l[0].index() < 0) {
+                cap.unuse(k);
+                continue;
+            }
+            cap.configure(k, false);
+            analog.add(l[0]);
+            analogCh.add(k);
+        }
+        if (!analog.isEmpty()) {
+            java.util.function.Consumer<TransientSolver> sl = s -> {
+                double r = ref != null && ref.index() >= 0 ? s.x(ref.index()) : 0;
+                for (int i = 0; i < analog.size(); i++) cap.record(analogCh.get(i), s.time(), s.x(analog.get(i).index()) - r);
+            };
+            sl.accept(solver);
+            solver.addStepListener(sl);
+            undo.add(() -> solver.removeStepListener(sl));
+        }
+        captures.put(cap, () -> undo.forEach(Runnable::run));
+    }
+
+    public void detachCapture(dev.emergence.core.instruments.LogicCapture cap) {
+        Runnable u = captures.remove(cap);
+        if (u != null) u.run();
     }
 
     /** Connects a data logger to a part: it is fed the part's quantities after every accepted solver step. */

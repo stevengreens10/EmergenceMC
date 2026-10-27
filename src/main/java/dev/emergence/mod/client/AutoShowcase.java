@@ -243,9 +243,12 @@ public final class AutoShowcase {
                 if (id.equals("dcmotor")) nudge(key, part.apply("rotor", PartKind.SHAFT), false);
                 Step s = new Step(id.equals("corrosion") ? 60 : 30, view, shot.apply("on"));
                 if (id.equals("dcmotor")) {
-                    s.check(key + " the motor turns", () -> atLeast("rotor speed [rad/s]", motion(server, at.apply("rotor"), PartKind.SHAFT), 2))
-                            .check(key + " it draws current from its battery",
-                                    () -> atLeast("battery current [A]", Math.abs(current(server, at.apply("battery"), null)), 0.02));
+                    // (its current pulses as the brushes cross the commutator's gaps: one instant read 12 mA against 8 A
+                    // in the tour before, the rotor at the same speed — so its peak over the step's 1.5 s)
+                    Sampler drawn = new Sampler();
+                    s.sample(drawn, () -> Math.abs(current(server, at.apply("battery"), null)))
+                            .check(key + " the motor turns", () -> atLeast("rotor speed [rad/s]", motion(server, at.apply("rotor"), PartKind.SHAFT), 2))
+                            .check(key + " it draws current from its battery", () -> atLeast("peak battery current [A]", drawn.max(), 0.02));
                 } else {
                     s.check(key + " joined to copper, the zinc corrodes faster: a current flows between them",
                             () -> atLeast("current through the switch [mA]", 1e3 * Math.abs(current(server, at.apply("switch"), PartKind.SWITCH)), 0.01));

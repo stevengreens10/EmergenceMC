@@ -229,8 +229,12 @@
 
 0a8. **Full tour 2026-10-27 10:40: 167/174.** Fixed: the PWM bridge's shoot-through burnout (its control circuit
    decoupled), the periscope's datum (`Network.preferDatum`), the loudspeaker's and chart recorder's checks. All
-   re-toured: 19/20, then the analyser check made robust, 4/4. The next full tour (the 6-hourly schedule) should
-   confirm across the whole gallery: the datum change touches every circuit (344 core tests and 24 GameTests pass).
+   re-toured: 19/20, then the analyser check made robust, 4/4.
+   **Full tour 2026-10-27 13:00 (scheduled): 181/182 over 84 exhibits, no hand failures**, so the datum change holds
+   across the gallery. The one failure: the DC motor's battery current read at one instant (12 mA against 8 A the
+   tour before, the rotor at the same speed): its current pulses across the commutator's gaps. Now its peak over
+   the step: 8.65 A, passing. Still open: the gas engine took 214 s again (see 0, "the hand swung the starting
+   handle 3 min 12 s").
 
 0a5. **Scheduled tours, 2026-10-27 01:11 and 06:23: not run.** The display was disconnected: Windows shows only its "WinDisc"
    placeholder, and the tour client failed with "Failed to locate a primary monitor" (also the chip tour at 00:30,

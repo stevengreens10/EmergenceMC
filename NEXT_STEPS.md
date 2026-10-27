@@ -228,9 +228,11 @@
    0.121 mA·h charged, the governor holding, the counter counting. The station tour of 16:29 found all six screens
    drawn and every gauge right, but that world's battery discharging; fixed since (the regulator's reference
    shorted by a tap).
-   **Open:** the station tour on the present world. The display is disconnected ("WinDisc"); a launcher
-   (`build/scratch/when-display-station.sh`) waits for it and then runs the tour (log `tour-station4.log`,
-   report `report-station4.txt`). Screenshots of the dashboard to review there.
+   **Open:** the station tour on the present world. The display is disconnected ("WinDisc"). One launcher
+   (`build/scratch/when-display.sh`) waits for it, then runs the station's tour (log `tour-station4.log`, report
+   `report-station4.txt`; the dashboard's screenshots to review) and the scheduled full tour of 18:20 (log
+   `tour-full-1820.log`, report `report-full-1820.txt`). The demo world was rebuilt for it at 18:24: 84 exhibits,
+   0 problems, 0 differences, 24/24 in-world tests.
    Next for the dashboard:
    - a seventh screen for the engine's power (current × voltage: a gauge reading two ADCs);
    - alarm limits that invert a gauge's card;

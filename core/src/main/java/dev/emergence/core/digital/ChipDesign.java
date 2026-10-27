@@ -131,6 +131,20 @@ public final class ChipDesign {
         return java.util.Collections.unmodifiableList(outputPins);
     }
 
+    /** Whether a change of input pin k to {@code level} is an edge some on block runs on. */
+    public boolean clocks(int k, boolean level) {
+        Signal s = signals.get(inPort[k]);
+        if (s.width != 1) return false;
+        for (Process p : processes) if (p.clock == s && p.rising == level) return true;
+        return false;
+    }
+
+    /** Whether output pin k comes from a register (it changes a clock-to-output after an edge) rather than logic. */
+    public boolean outputRegistered(int k) {
+        Signal s = signals.get(outPort[k]);
+        return s.registered;
+    }
+
     /** The parameters a chip part may set, with their defaults. */
     public Map<String, Long> parameters() {
         Map<String, Long> m = new LinkedHashMap<>();

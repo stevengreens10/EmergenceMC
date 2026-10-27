@@ -77,4 +77,20 @@ class CounterDisplayExhibitTest {
         assertTrue(seen.contains(15) && seen.contains(9) && seen.contains(10), "two-digit numbers too: " + seen);
         assertTrue(seen.lastIndexOf(0) > seen.indexOf(15), "and it wraps from 15 to 0: " + seen);
     }
+
+    /** The digits' shapes are the ROM's: give the "1" the "7"'s columns, and a count of 1 is drawn as a 7. */
+    @Test
+    void theShapesComeFromTheRom() {
+        Exhibit e = MonitorExhibits.counterDisplay();
+        String font = dev.emergence.core.digital.ChipLibrary.rom("hex_font_3x5");
+        String changed = font.replace("12 1F 10   // 1", "01 01 1F   // 1 drawn as a 7");
+        assertNotEquals(font, changed);
+        e.texts.replaceAll((k, v) -> v.equals(font) ? changed : v);
+        Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+        assertTrue(c.warnings().isEmpty(), "warnings: " + c.warnings());
+        DisplayPanel screen = c.display(b.id(e, "screen"));
+        for (int i = 0; i < 10; i++) c.step(0.05); // 0.5 s: the count is 1 (its first tick comes as the clock starts)
+        assertEquals(7, bigDigit(screen, 68), "the units digit, drawn from the ROM's columns at address 3");
+    }
 }

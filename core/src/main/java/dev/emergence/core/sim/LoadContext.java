@@ -80,6 +80,21 @@ public final class LoadContext implements StateView {
     }
 
     /** Adds ∂F_row/∂x_col. Entries touching reference nodes are ignored. */
+    /**
+     * As {@link #addJ}, for a derivative on a value read passively (see PassiveReader): where that value is held in this
+     * phase the entry is dropped, without the parts it joins counting as having met.
+     */
+    public void addJRead(int row, int col, double v) {
+        if (frozen != null && col >= 0 && frozen[col]) return;
+        addJ(row, col, v);
+    }
+
+    /** As {@link #addFlowJ}, for a derivative on a value read passively (see {@link #addJRead}). */
+    public void addFlowJRead(Node a, Node b, int col, double d) {
+        addJRead(a.index, col, d);
+        addJRead(b.index, col, -d);
+    }
+
     public void addJ(int row, int col, double v) {
         if (touched != null && row >= 0) touched[row] = true;
         if (touchedCols != null && col >= 0) touchedCols[col] = true;

@@ -33,7 +33,11 @@ public final class DashboardExhibits {
         DIRECT,
         /** Two silicon diodes fed through 1 kΩ from the supply: a fixed voltage read against the supply measures it. */
         REFERENCE,
-        /** An inverting amplifier (gain 50, 0.2 s low-pass) on a shunt's voltage below its reference end. */
+        /**
+         * A 0.5 Ω shunt from the signal to ground, carrying the current to be measured (it comes in on the ribbon and
+         * goes back on its ground), and an inverting amplifier across it (gain 50, a 0.2 s low-pass): the shunt's
+         * voltage measured where it is, none of the ribbon's in it.
+         */
         CURRENT,
         /** A pulse train into the gauge chip's timer. */
         PULSE
@@ -127,7 +131,7 @@ public final class DashboardExhibits {
         int[] entries = {6, 8, 10, 12};
         int[] colours = {GND, VDD, g.signal(), g.signal2()};
         String[] nets = {"gnd", "vdd", "sig", "sig2"};
-        int used = g.frontEnd() == FrontEnd.CURRENT ? 4 : 3;
+        int used = g.frontEnd() == FrontEnd.REFERENCE ? 2 : 3; // (the reference measures the supply itself)
         for (int x = 0; x <= 15; x++) {
             boolean entry = false;
             for (int k = 0; k < used; k++) if (entries[k] == x) entry = true;
@@ -136,7 +140,7 @@ public final class DashboardExhibits {
         // (each entry's cell inward too: its only way in, which another net's wire must not take)
         for (int k = 0; k < used; k++) r.pin(nets[k], entries[k], 0, 0).pin(nets[k], entries[k], 0, 1).colour(nets[k], colours[k]);
         // ---- the clock, the ADC, the gauge chip, its ROM, and the controller against the south face
-        Map<String, int[]> clock = chip(e, 6, null, 13, 0, 2, false, "frequency", 10_000);
+        Map<String, int[]> clock = chip(e, 6, null, 13, 0, 2, false, "frequency", Integer.getInteger("diag.gaugeClock", 10_000));
         Map<String, int[]> adc = chip(e, 7, null, 1, 0, 4, false);
         Map<String, int[]> chip = chip(e, ChipTypes.DESIGN, design, 0, 0, 8, false,
                 "p_mode", g.mode(), "p_lo", g.lo(), "p_gain", g.gain(), "p_off", g.off(), "p_k", g.k(), "p_dp", g.dp(),
@@ -191,16 +195,20 @@ public final class DashboardExhibits {
                 r.keepClear(10, 1, 4, 10, 6, 4);
             }
             case CURRENT -> {
-                // an inverting amplifier: the op-amp's + input on the shunt's reference end, its − input through 2 kΩ
-                // from the shunt's other end and through 100 kΩ (with 2 µF across it) from its output
+                // the shunt, and an inverting amplifier: the op-amp's + input on ground (the shunt's lower end), its −
+                // input through 2 kΩ from the shunt's other end and through 100 kΩ (with 2 µF across it) from its output
+                e.name("shunt", e.add(RESISTOR, "alumina", 5, 0, 2, Dir.EAST, "resistance", 0.5, "surface_area", 0.001));
+                r.pin("gnd", 4, 0, 2).pin("sig", 6, 0, 2);
                 e.name("amp", e.add(OPAMP, "silicon", 9, 1, 3, Dir.EAST));
                 e.add(RESISTOR, "alumina", 7, 0, 5, Dir.EAST, "resistance", 2_000);
                 e.add(RESISTOR, "alumina", 11, 0, 4, Dir.EAST, "resistance", 100_000);
-                e.add(CAPACITOR, "alumina", 11, 0, 5, Dir.EAST, "capacitance", 2e-6);
-                r.pin("sig2", 8, 1, 3);                                  // + input (west)
-                r.pin("inm", 9, 0, 3).pin("inm", 8, 0, 5).pin("inm", 10, 0, 4).pin("inm", 10, 0, 5);
+                // (a row clear of the 100 kΩ: single-cell parts also bring their leads out on their side faces, and side by
+                // side the two were joined end to end, the amplifier's feedback shorted)
+                e.add(CAPACITOR, "alumina", 11, 0, 6, Dir.EAST, "capacitance", 2e-6);
+                r.pin("gnd", 8, 1, 3);                                   // + input (west)
+                r.pin("inm", 9, 0, 3).pin("inm", 8, 0, 5).pin("inm", 10, 0, 4).pin("inm", 10, 0, 6);
                 r.pin("sig", 6, 0, 5);                                    // the shunt's far end, into 2 kΩ
-                r.pin("aout", 10, 1, 3).pin("aout", 12, 0, 4).pin("aout", 12, 0, 5);
+                r.pin("aout", 10, 1, 3).pin("aout", 12, 0, 4).pin("aout", 12, 0, 6);
                 r.pin("vdd", 9, 1, 4).pin("gnd", 9, 1, 2);
                 pin(r, "aout", adc.get("vin"));
             }

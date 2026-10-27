@@ -45,11 +45,15 @@ public final class StationExhibit {
                         + "near-boiling water does not flash in it) pumps it back into the boiler, an overflow at the "
                         + "water line keeping its level. A generator geared off the crankshaft charges a 5 V battery "
                         + "through a diode bridge; an op-amp regulator dumps what a full battery cannot take into a lamp; "
-                        + "and an infrared beam cut by a vane on the crankshaft counts its turns in binary on three LEDs.");
+                        + "and an infrared beam cut by a vane on the crankshaft counts its turns in binary on three LEDs. "
+                        + "In front, a dashboard of six screens, each driven by a gauge built of miniature electronics in the "
+                        + "block behind it, shows the fuel left, the boiler's pressure, the engine's speed, the condenser's "
+                        + "pressure, the generator's current and the battery's voltage, live, with their trends.");
         e.plots = 4;
         e.origin(PLANT[0], PLANT[1], PLANT[2]);
         plant(e, electrics);
         e.origin(0, 0, 0);
+        if (electrics && !Boolean.getBoolean("diag.noDashboard")) dashboard(e);
         return e.view(30, 16, 34, 28);
     }
 
@@ -366,7 +370,8 @@ public final class StationExhibit {
         r.pin("ac1", 15, y + 2, 4).pin("ac1", 16, 1, 9).pin("ac1", 18, 1, 13);       // → D1 anode, D3 cathode
         r.pin("ac2", 15, y - 2, 4).pin("ac2", 16, 1, 11).pin("ac2", 18, 1, 15);      // → D2 anode, D4 cathode
         r.pin("vdd", 18, 1, 9).pin("vdd", 18, 1, 11).pin("vdd", 19, 1, 7);           // D1, D2 cathodes → battery +
-        r.pin("gnd", 16, 1, 13).pin("gnd", 16, 1, 15).pin("gnd", 19, 1, 5);          // D3, D4 anodes ← battery −
+        // (D3, D4 anodes: the bridge's return, through the generator gauge's shunt on the dashboard back to ground)
+        r.pin("ret", 16, 1, 13).pin("ret", 16, 1, 15).pin("gnd", 19, 1, 5);          // D3, D4 anodes; battery −
         r.pin("vdd", 20, 1, 10).pin("vdd", 20, 1, 14).pin("vdd", 23, 1, 9).pin("vdd", 23, 1, 4).pin("vdd", 26, 1, 2)
                 .pin("vdd", 20, 1, 1).pin("vdd", 9, 5, 10).pin("vdd", 34, 1, 3);
         r.pin("gnd", 22, 1, 12).pin("gnd", 23, 1, 7).pin("gnd", 28, 1, 9).pin("gnd", 32, 1, 14)
@@ -392,6 +397,87 @@ public final class StationExhibit {
             r.pin("ledK" + k, x + 1, 1, 6).pin("ledK" + k, x - 1, 1, 8);
             r.pin("gnd", x + 1, 1, 8);
         }
+        // the dashboard's taps (see dashboard): the supply, ground, the bridge's return and the counter's pulses, each
+        // to the south edge on its ribbon colour, then down onto the trunk
+        r.colour("vdd", DashboardExhibits.VDD).colour("gnd", DashboardExhibits.GND).colour("ret", DashboardExhibits.RETURN)
+                .colour("clk0", DashboardExhibits.PULSE);
+        int[][] taps = {{20, DashboardExhibits.VDD}, {24, DashboardExhibits.GND}, {28, DashboardExhibits.RETURN}, {32, DashboardExhibits.PULSE}};
+        String[] tapNets = {"vdd", "gnd", "ret", "clk0"};
+        for (int k = 0; k < taps.length; k++) r.pin(tapNets[k], taps[k][0], 1, 15);
         r.route();
+        for (int[] t : taps) {
+            e.add(INSULATED_WIRE, "copper", t[0], 1, 16, Dir.UP, "color", t[1]);
+            e.add(INSULATED_WIRE, "copper", t[0], 0, 16, Dir.UP, "color", t[1]);
+            e.add(INSULATED_WIRE, "copper", t[0], 0, 17, Dir.UP, "color", t[1]);
+        }
+    }
+
+    /** The battery gauge's constant: its diode reference's voltage × 1023 × 100 (see DashboardTest). */
+    static final int BATTERY_K = 144_400;
+    /** The dashboard's gauges, west to east (see {@link #dashboard}). */
+    static final DashboardExhibits.Gauge[] GAUGES = {
+            // the bottles' gauge pressure: 0–250 bar on 10–90 % of the supply
+            new DashboardExhibits.Gauge("fuel", "FUEL BOTTLES", "BAR", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.FUEL, 0,
+                    0, 102, 782, 0, 0, 1, 0, 12),
+            // the boiler's gauge pressure: 0–6 bar
+            new DashboardExhibits.Gauge("boiler", "BOILER PRESSURE", "BAR", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.BOILER, 0,
+                    0, 102, 188, 0, 0, 2, 0, 51),
+            // turns a minute from the counter's pulses, one a turn: 60 × 10 kHz / clocks between them
+            new DashboardExhibits.Gauge("engine", "ENGINE SPEED", "RPM", DashboardExhibits.FrontEnd.PULSE, DashboardExhibits.PULSE, 0,
+                    2, 0, 0, 0, 600_000, 0, 0, 154),
+            // the condenser's absolute pressure: gauge −100–0 kPa, plus the world's air pressure above 100 kPa (2.8 kPa)
+            new DashboardExhibits.Gauge("condenser", "CONDENSER", "KPA", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.CONDENSER, 0,
+                    0, 102, 313, 28, 0, 1, 0, 31),
+            // the generator's current: 0.5 Ω, gain 50 (40 mA a volt), on a 5.6 V supply: 0.219 mA a code
+            new DashboardExhibits.Gauge("generator", "GENERATOR", "MA", DashboardExhibits.FrontEnd.CURRENT, DashboardExhibits.RETURN, 0,
+                    0, 0, 56, 0, 0, 0, 0, 307),
+            // the battery's voltage: two diodes' 1.24 V read against it, k = 1.24 V × 1023 × 100
+            new DashboardExhibits.Gauge("battery", "BATTERY", "V", DashboardExhibits.FrontEnd.REFERENCE, DashboardExhibits.VDD, 0,
+                    1, 0, 0, 0, BATTERY_K, 2, 400, 154)};
+    /**
+     * The gauge blocks' x (each at z 19, its screen at x − 2…x + 1, z 20): a block apart, so that each screen is its own
+     * (panels side by side make one screen).
+     */
+    static final int[] GAUGE_X = {18, 23, 28, 33, 38, 43};
+
+    /**
+     * The dashboard (station coordinates), south of the plant: six full-size screens of 4 × 2 blocks facing south, and
+     * behind each, in one block, a gauge of miniature electronics (DashboardExhibits.gaugeBlock) driving it across the
+     * block's face. Behind the gauges a full-size ribbon cable runs east–west at z 18, and each gauge takes from its
+     * north face the conductors it needs, by colour: the station's supply and ground, the counter's pulses and the
+     * generator's return (tapped from the electronics), and three pressure transducers' outputs — on the boiler, on
+     * the condenser and on a fuel bottle — wired to it here, each transducer powered from the ribbon.
+     */
+    static void dashboard(Exhibit e) {
+        for (int x = 16; x <= 46; x++) {
+            int rb = e.add(RIBBON, "copper", x, 0, 18, Dir.EAST);
+            if (x == 16) e.name("trunk", rb);
+        }
+        String ss = "stainless_304";
+        e.name("boilerSensor", e.add(PRESSURE_SENSOR, ss, 16, 4, 15, Dir.EAST, "pmin", 0, "pmax", 6e5, "lead_axis", 1));
+        e.name("condenserSensor", e.add(PRESSURE_SENSOR, ss, 7, 7, 9, Dir.SOUTH, "pmin", -1e5, "pmax", 0, "lead_axis", 0));
+        e.name("fuelSensor", e.add(PRESSURE_SENSOR, ss, 12, 2, 15, Dir.WEST, "pmin", 0, "pmax", 250e5, "lead_axis", 2));
+        Router r = new Router(e, 0, 0, 7, 45, 9, 17);
+        r.keepClear(17, 0, 0, 30, 9, 13);   // the engine, governor and generator: what turns
+        r.keepClear(8, 0, 16, 8, 1, 16);    // the station's sign
+        r.pin("vdd2", 16, 5, 15).pin("gnd2", 16, 3, 15).pin("pB", 17, 4, 15);   // the boiler's transducer
+        r.pin("vdd2", 8, 7, 9).pin("gnd2", 6, 7, 9).pin("pC", 7, 7, 10);         // the condenser's
+        r.pin("vdd2", 12, 2, 16).pin("gnd2", 12, 2, 14).pin("pF", 11, 2, 15);    // the fuel bottle's
+        // onto the trunk, each against it from the north on its colour
+        r.pin("vdd2", 19, 0, 17).pin("gnd2", 21, 0, 17).pin("pB", 23, 0, 17).pin("pC", 25, 0, 17).pin("pF", 27, 0, 17);
+        r.colour("vdd2", DashboardExhibits.VDD).colour("gnd2", DashboardExhibits.GND).colour("pB", DashboardExhibits.BOILER)
+                .colour("pC", DashboardExhibits.CONDENSER).colour("pF", DashboardExhibits.FUEL);
+        r.route();
+        // the gauges and their screens
+        for (int k = 0; k < GAUGES.length; k++) {
+            int x = GAUGE_X[k];
+            e.embed(x, 0, 19, DashboardExhibits.gaugeBlock(GAUGES[k]));
+            for (int y = 0; y <= 1; y++) {
+                for (int dx = -2; dx <= 1; dx++) {
+                    int sc = e.add(DISPLAY, "glass", x + dx, y, 20, Dir.SOUTH);
+                    if (y == 0 && dx == 0) e.name("screen" + k, sc);
+                }
+            }
+        }
     }
 }

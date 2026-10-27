@@ -982,7 +982,12 @@ public final class TransientSolver implements StateView {
         boolean[] primary = new boolean[m];
         boolean[] emReads = new boolean[n];
         if (em != null) {
-            for (int k : em.elems) for (int i = 0; i < n; i++) if (cols[k][i] || rows[k][i]) emReads[i] = true;
+            // (what a passive reader reads — a transducer's vessel — does not hold its part to the plant's steps: the
+            // circuits read that part's latest step)
+            for (int k : em.elems) {
+                boolean passive = elements.get(k) instanceof PassiveReader;
+                for (int i = 0; i < n; i++) if (rows[k][i] || cols[k][i] && !passive) emReads[i] = true;
+            }
         }
         for (int a = 0; a < m; a++) {
             int k = el[a];

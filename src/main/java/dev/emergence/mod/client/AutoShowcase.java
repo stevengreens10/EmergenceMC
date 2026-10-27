@@ -213,6 +213,50 @@ public final class AutoShowcase {
                         .check(key + " its generator charges its battery", () -> atLeast("charge taken in [mA·h]", -q.change() / 3.6, 0.001))
                         .check(key + " its counter counts the engine's turns", () -> atLeast("counter states seen", counts.size(), 2))
                         .after(() -> dumpIf(server, key, shaft)));
+                // the dashboard: six full-size screens, each drawn by a gauge of miniature electronics in the block behind
+                // it, reading the station's sensors over a ribbon cable — each gauge's value against the world's own
+                if (!e.embedded.isEmpty()) {
+                    Runnable front = () -> look(server, plot.getX() + 31, plot.getY() + 2.6, plot.getZ() + 33, 180, 6);
+                    java.util.function.BiFunction<BlockPos, PartKind, Double> pressureAt = (pos, kind) -> {
+                        PlacedPart pp = partIn(server, pos, kind);
+                        CompiledAssembly c = compiled(server, pos);
+                        return pp == null || c == null ? Double.NaN : c.pressure(pp.id);
+                    };
+                    java.util.function.DoubleSupplier ambient = () -> {
+                        CompiledAssembly c = compiled(server, at.apply("boiler"));
+                        return c == null ? 101325 : c.assembly().ambientPressure();
+                    };
+                    STEPS.add(new Step(600, front, shot.apply("dashboard"), () -> onServer(server, key + "g", () -> {
+                        int ready = 0;
+                        for (int k = 0; k < e.embedded.size(); k++) if (gaugeValue(server, plot, e, k) > 0) ready++;
+                        return ready;
+                    }) >= e.embedded.size())
+                            .check(key + " the dashboard's screens show their gauges", () -> {
+                                int shown = 0;
+                                for (int k = 0; k < e.embedded.size(); k++) {
+                                    PlacedPart panel = partIn(server, at.apply("screen" + k), PartKind.DISPLAY);
+                                    if (panel != null && ClientDisplays.tile(panel.id) != null) shown++;
+                                }
+                                return that(shown == e.embedded.size(), shown + " of " + e.embedded.size() + " screens drawn");
+                            })
+                            .check(key + " fuel gauge: the bottles' pressure", () -> gauge(gaugeValue(server, plot, e, 0),
+                                    (pressureAt.apply(at.apply("fuel"), PartKind.TANK) - ambient.getAsDouble()) / 1e5 * 10, 20, "0.1 bar"))
+                            .check(key + " boiler gauge: its pressure", () -> gauge(gaugeValue(server, plot, e, 1),
+                                    (pressureAt.apply(at.apply("boiler"), PartKind.TANK) - ambient.getAsDouble()) / 1e5 * 100, 15, "0.01 bar"))
+                            .check(key + " engine gauge: its speed", () -> gauge(gaugeValue(server, plot, e, 2),
+                                    Math.abs(motion(server, at.apply("shaft"), PartKind.SHAFT)) * 60 / (2 * Math.PI), 10, "rpm"))
+                            .check(key + " condenser gauge: its absolute pressure", () -> gauge(gaugeValue(server, plot, e, 3),
+                                    pressureAt.apply(at.apply("condenser"), PartKind.TANK) / 1e3 * 10, 30, "0.1 kPa"))
+                            .check(key + " generator gauge: a charging current", () -> {
+                                long v = gaugeValue(server, plot, e, 4);
+                                return that(v >= 10 && v <= 400, v + " mA, expected a charging current (10 to 400 mA)");
+                            })
+                            .check(key + " battery gauge: its voltage", () -> {
+                                PlacedPart bp = partIn(server, at.apply("battery"), PartKind.BATTERY);
+                                CompiledAssembly c = compiled(server, at.apply("battery"));
+                                return gauge(gaugeValue(server, plot, e, 5), bp == null || c == null ? Double.NaN : 100 * c.probe(bp.id).voltage(), 8, "0.01 V");
+                            }));
+                }
                 // a load put on it by hand: the governor holds its speed
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " put the brake on", part.apply("brake", PartKind.BRAKE))));
                 double[] on = {Double.NaN};
@@ -1526,6 +1570,25 @@ public final class AutoShowcase {
     }
 
     /** The display panel in the block (null if there is none or it is not simulated). */
+    /** A dashboard gauge's shown value (its chip's register v; −1 if not found or not running): the k-th miniature block's. */
+    private static long gaugeValue(net.minecraft.server.MinecraftServer s, BlockPos plot, dev.emergence.core.demo.Exhibit e, int k) {
+        var em = e.embedded.get(k);
+        var mini = em.mini();
+        BlockPos b = plot.offset(em.x(), em.y(), em.z());
+        var d = mini.parts.get(mini.named.get("gauge"));
+        PlacedPart p = null;
+        if (s.overworld().getBlockEntity(b) instanceof AssemblyBlockEntity be)
+            for (PlacedPart q : be.parts()) if (q.x0 == d.x0() && q.y0 == d.y0() && q.z0 == d.z0() && q.kind == d.kind()) p = q;
+        CompiledAssembly c = compiled(s, b);
+        var chip = p == null || c == null ? null : c.digitalChip(p.id);
+        return chip != null && chip.component() instanceof dev.emergence.core.digital.DesignComponent dc ? dc.instance().value("v") : -1;
+    }
+
+    /** A gauge's value against the truth, in its display's units (within {@code tol} of them). */
+    private static Verdict gauge(long shown, double truth, double tol, String unit) {
+        return new Verdict(shown >= 0 && Math.abs(shown - truth) <= tol, String.format("shows %d, the simulation holds %.1f (×%s; within %.0f)", shown, truth, unit, tol));
+    }
+
     private static DisplayPanel display(net.minecraft.server.MinecraftServer s, BlockPos at) {
         PlacedPart p = any(s, at, PartKind.DISPLAY);
         CompiledAssembly c = compiled(s, at);

@@ -14,7 +14,7 @@ import dev.emergence.core.sim.StateView;
  * supply, and its output current from it too; all of it is lost as heat (to the ambient: the housing has no part of
  * its own to warm). The diaphragm's volume is negligible beside any vessel's: it takes nothing from the fluid.
  */
-public final class PressureTransducer implements Element {
+public final class PressureTransducer implements Element, dev.emergence.core.sim.PassiveReader {
     private static final double R_OUT = 100, I_Q = 1.5e-3, V_NOM = 5;
     private final Node p, vdd, gnd, out;
     private final double pRef, pMin, pMax;
@@ -53,7 +53,7 @@ public final class PressureTransducer implements Element {
         ctx.addFlowJ(vdd, out, out.index(), -1 / R_OUT);
         ctx.addFlowJ(vdd, out, vdd.index(), fr[0] / R_OUT);
         ctx.addFlowJ(vdd, out, gnd.index(), (1 - fr[0]) / R_OUT);
-        ctx.addFlowJ(vdd, out, p.index(), fr[1] * vs / R_OUT);
+        ctx.addFlowJRead(vdd, out, p.index(), fr[1] * vs / R_OUT); // (the vessel's pressure, read passively)
         // the quiescent draw, as a conductance (it falls with the supply)
         double gq = I_Q / V_NOM;
         ctx.addFlow(vdd, gnd, gq * vs);

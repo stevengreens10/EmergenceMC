@@ -1804,23 +1804,26 @@ public final class AssemblyCompiler {
         /** A pressure transducer on the vessel or pipe at its −axis face. */
         void buildPressureSensor(Part p) {
             Dir ax = p.axis();
-            FluidVolume v = null;
+            Node pressure = null;
             for (Part q : parts) {
                 if (!q.kind().holdsFluid() || !q.touches(p) || q.overlaps(p)) continue;
                 // on the port side: the part's centre lies behind the sensor's −axis face
                 double along = (q.center().x() - p.center().x()) * ax.dx + (q.center().y() - p.center().y()) * ax.dy
                         + (q.center().z() - p.center().z()) * ax.dz;
                 if (along >= 0) continue;
-                v = c.fluidOfPart.get(q.id());
-                if (v != null) break;
+                // a water/steam (or other single-fluid) volume's pressure, or a gas mixture's (a fuel bottle's)
+                FluidVolume v = c.fluidOfPart.get(q.id());
+                var g = c.gasOfPart.get(q.id());
+                pressure = v != null ? v.pressureNode() : g != null ? g.pressureNode() : null;
+                if (pressure != null) break;
             }
             Node out = enode("p" + p.id() + "o"), gnd = enode("p" + p.id() + "n"), vdd = enode("p" + p.id() + "v");
             c.leadsOfPart.put(p.id(), new Node[]{gnd, out});
-            if (v == null) {
+            if (pressure == null) {
                 c.warnings.add("Pressure sensor #" + p.id() + " has no vessel or pipe on its port (its −axis face)");
                 return;
             }
-            c.deviceOfPart.put(p.id(), c.network.add(new dev.emergence.core.sim.elements.PressureTransducer(v.pressureNode(), vdd, gnd, out,
+            c.deviceOfPart.put(p.id(), c.network.add(new dev.emergence.core.sim.elements.PressureTransducer(pressure, vdd, gnd, out,
                     a.ambientPressure(), p.param("pmin", 0), p.param("pmax", 10e5))));
         }
 

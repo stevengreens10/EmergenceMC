@@ -614,6 +614,9 @@ public final class AutoShowcase {
                             int shown = (int) leds.getAsDouble();
                             return that(Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
                         }));
+                // the chips close up from above: their pins named on their tops
+                BlockPos chipAt = at.apply("chip");
+                STEPS.add(new Step(30, () -> look(server, chipAt.getX() + 8.5, chipAt.getY() + 3.2, chipAt.getZ() + 3.5, 180, 55), shot.apply("labels")));
                 // the tools, as a player opens them: right-click the display chip, then the font ROM, with an empty hand
                 PlayerHand.Act close = PlayerHand.named("closes the screen", m -> {
                     m.setScreen(null);

@@ -1574,7 +1574,9 @@ public final class AssemblyCompiler {
         /**
          * A ribbon's conductors along it: between each block and the next, for every conductor some wire joins somewhere
          * along that run of ribbon, its copper's resistance from centre to centre (heating the ribbon). Conductors
-         * nothing joins make no nodes.
+         * nothing joins make no nodes. Like a wire run, a conductor has a node only where a wire joins it or the ribbon
+         * branches: the blocks between are in series, one resistor of their summed resistance (exact for the current;
+         * its heat goes to the run's first block). The station's 35-block trunk had a node per block per conductor.
          */
         void buildRibbonConductors() {
             if (ribbonLinks.isEmpty()) return;
@@ -1594,12 +1596,58 @@ public final class AssemblyCompiler {
             Map<Long, Set<Long>> used = new HashMap<>();
             for (long[] u : ribbonUsed) used.computeIfAbsent(find.applyAsLong(u[0]), k -> new HashSet<>()).add(u[1]);
             Material cu = MaterialDatabase.standard().get("copper");
+            double r = cu.resistivity(ambientT) * CELL / RIBBON_CONDUCTOR_AREA;
+            // each group's links as an adjacency list, and where each conductor is joined
+            Map<Long, Map<Long, List<Long>>> adj = new HashMap<>();
             for (long[] l : ribbonLinks) {
-                Part a = partById(l[0]);
-                if (a == null) continue;
-                double r = cu.resistivity(ambientT) * CELL / RIBBON_CONDUCTOR_AREA;
-                for (long k : used.getOrDefault(find.applyAsLong(l[0]), Set.of())) {
-                    c.network.add(new Resistor(enode("p" + l[0] + "c" + k), enode("p" + l[1] + "c" + k), r, c.thermalOfPart.get(a.id())));
+                if (partById(l[0]) == null || partById(l[1]) == null) continue;
+                Map<Long, List<Long>> g = adj.computeIfAbsent(find.applyAsLong(l[0]), x -> new HashMap<>());
+                g.computeIfAbsent(l[0], x -> new ArrayList<>()).add(l[1]);
+                g.computeIfAbsent(l[1], x -> new ArrayList<>()).add(l[0]);
+            }
+            Set<String> taps = new HashSet<>();
+            for (long[] u : ribbonUsed) taps.add(u[0] + ":" + u[1]);
+            for (var ge : adj.entrySet()) {
+                Map<Long, List<Long>> g = ge.getValue();
+                for (long k : used.getOrDefault(ge.getKey(), Set.of())) {
+                    // prune blocks at loose ends that nothing joins (repeatedly: a dead-end branch goes whole)
+                    Map<Long, Integer> deg = new HashMap<>();
+                    for (var en : g.entrySet()) deg.put(en.getKey(), en.getValue().size());
+                    java.util.ArrayDeque<Long> leaves = new java.util.ArrayDeque<>();
+                    for (var en : deg.entrySet()) if (en.getValue() <= 1 && !taps.contains(en.getKey() + ":" + k)) leaves.add(en.getKey());
+                    Set<Long> gone = new HashSet<>();
+                    while (!leaves.isEmpty()) {
+                        long x = leaves.poll();
+                        if (!gone.add(x)) continue;
+                        for (long y : g.get(x)) {
+                            if (gone.contains(y)) continue;
+                            int d = deg.merge(y, -1, Integer::sum);
+                            if (d <= 1 && !taps.contains(y + ":" + k)) leaves.add(y);
+                        }
+                    }
+                    // nodes where a wire joins or the ribbon branches; a series path of other blocks between two is one resistor
+                    Set<Long> kept = new HashSet<>();
+                    for (long x : g.keySet()) if (!gone.contains(x) && (taps.contains(x + ":" + k) || deg.get(x) != 2)) kept.add(x);
+                    Set<String> walked = new HashSet<>();
+                    for (long s : kept) {
+                        for (long first : g.get(s)) {
+                            if (gone.contains(first)) continue;
+                            long prev = s, cur = first;
+                            int blocks = 1;
+                            while (!kept.contains(cur)) {
+                                long next = -1;
+                                for (long y : g.get(cur)) if (y != prev && !gone.contains(y)) next = y;
+                                if (next < 0) break;
+                                prev = cur;
+                                cur = next;
+                                blocks++;
+                            }
+                            if (!kept.contains(cur) || cur == s) continue;
+                            String key = Math.min(s, cur) + ":" + Math.max(s, cur) + ":" + Math.min(first, prev) + ":" + Math.max(first, prev);
+                            if (!walked.add(key)) continue;
+                            c.network.add(new Resistor(enode("p" + s + "c" + k), enode("p" + cur + "c" + k), blocks * r, c.thermalOfPart.get(s)));
+                        }
+                    }
                 }
             }
         }

@@ -311,3 +311,24 @@ Six gauges of miniature electronics (about 2700 parts) cost the station about 16
 time per 10 s, against 13.6 s without. Their chips at 10 kHz cost little (about 3 s of a 30 s run); the circuits'
 analog nodes cost the rest. At first they cost 50 %: the fuel bottle's transducer held the firebox's gas chemistry to
 the engine's steps, until passive readers no longer did (see ARCHITECTURE, "Passive readers").
+
+## The station with seven gauges (2026-10-28, `StationTest -Ddiag.station=120 -Ddiag.profile=true`, machine idle)
+Steady state, wall time per 10 simulated seconds at full accuracy:
+
+| Build | Wall time | Unknowns | Circuits: per Newton (load, solve) |
+|---|---|---|---|
+| Without the dashboard | 9.1 s | 1182 | 85 µs (42, 18) |
+| Seven gauges | 17.2 s | 2897 | 194 µs (57, 67) |
+| Seven gauges, ribbon conductors reduced | 14.9 s | 2648 | 162 µs (52, 53) |
+
+* The dashboard's cost is all per iteration. The step counts are the same with and without it: the circuits take
+  about 14.5k steps and 65k Newton iterations per 10 s, their steps held short by the generator's magnetics.
+  Without it the dashboard's circuits would step far less often.
+* Ribbon conductors were a node per block per conductor: 249 along the station's trunk. They are now a node only
+  where a wire joins or the ribbon branches, the blocks between one resistor (as wire runs already were).
+* What is left of the dashboard's cost: about 640 electrical unknowns (chip pins on analog nets, the front ends,
+  routed wiring) solved at every one of the generator's steps.
+  * The next step is to step the gauges' circuits apart from the generator's. They meet it only through the
+    supply and high-impedance sense lines. A multirate split of the circuits phase, coupled at those nets as the
+    plant and circuits are now, would put the station near 9–10 s again.
+  * Thermal nodes also grew by 849, but the thermal phase is stepped rarely (0.4 s per 10 s).

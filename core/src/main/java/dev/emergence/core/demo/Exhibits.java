@@ -1538,12 +1538,17 @@ public final class Exhibits {
                     d.x0() == 1 ? 4 : d.x0() == -1 ? 5 : d.y0() == 1 ? 0 : d.y0() == -1 ? 1 : d.z0() == 1 ? 2 : 3];
             dev.emergence.core.assembly.CrossScale.link(a, a.get(id), new int[]{o + d.x0(), d.y0(), o + d.z0()}, toMini,
                     a.parts().stream().filter(q -> q.id() < 1_000_000_000L).toList(), new int[]{0, 0, 0}, 16);
-            if (d.kind() != dev.emergence.core.assembly.PartKind.RIBBON) continue;
+            // a full-size ribbon to the miniature wires on the face; a full-size wire to the miniature ribbons on it
+            boolean fullRibbon = d.kind() == dev.emergence.core.assembly.PartKind.RIBBON, fullWire = d.kind() == dev.emergence.core.assembly.PartKind.INSULATED_WIRE;
+            if (!fullRibbon && !fullWire) continue;
             for (Exhibit.PartDef w : e.parts) {
-                if (w.kind() != dev.emergence.core.assembly.PartKind.INSULATED_WIRE) continue;
+                if (w.kind() != (fullRibbon ? dev.emergence.core.assembly.PartKind.INSULATED_WIRE : dev.emergence.core.assembly.PartKind.RIBBON)) continue;
                 boolean face = d.x0() == 1 ? w.x1() == 15 : d.x0() == -1 ? w.x0() == 0 : d.y0() == 1 ? w.y1() == 15
                         : d.y0() == -1 ? w.y0() == 0 : d.z0() == 1 ? w.z1() == 15 : w.z0() == 0;
-                if (face) a.bridge(id, ids.get(w.index()));
+                if (face) {
+                    if (fullRibbon) a.bridge(id, ids.get(w.index()));
+                    else a.bridge(ids.get(w.index()), id);
+                }
             }
         }
         for (var en : e.blockInitial.entrySet()) {
@@ -1602,9 +1607,10 @@ public final class Exhibits {
                     Part full = a.get(ids.get(d.index()));
                     // (the full-size part's cell on that face, and the direction from it to the block)
                     dev.emergence.core.assembly.CrossScale.link(a, full, new int[]{nx, ny, nz}, f.opposite(), miniParts, origin, 16);
-                    if (d.kind() != dev.emergence.core.assembly.PartKind.RIBBON) continue;
+                    boolean fullRibbon = d.kind() == dev.emergence.core.assembly.PartKind.RIBBON;
+                    if (!fullRibbon && d.kind() != dev.emergence.core.assembly.PartKind.INSULATED_WIRE) continue;
                     for (Exhibit.PartDef w : m.parts) {
-                        if (w.kind() != dev.emergence.core.assembly.PartKind.INSULATED_WIRE) continue;
+                        if (w.kind() != (fullRibbon ? dev.emergence.core.assembly.PartKind.INSULATED_WIRE : dev.emergence.core.assembly.PartKind.RIBBON)) continue;
                         boolean onFace = switch (f) {
                             case EAST -> w.x1() == 15;
                             case WEST -> w.x0() == 0;
@@ -1613,7 +1619,10 @@ public final class Exhibits {
                             case SOUTH -> w.z1() == 15;
                             case NORTH -> w.z0() == 0;
                         };
-                        if (onFace) a.bridge(full.id(), mids.get(w.index()));
+                        if (onFace) {
+                            if (fullRibbon) a.bridge(full.id(), mids.get(w.index()));
+                            else a.bridge(mids.get(w.index()), full.id());
+                        }
                     }
                 }
             }

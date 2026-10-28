@@ -349,3 +349,23 @@ The tolerance is converged at 1 and stays as it is. In the game the pace control
 island's accuracy up to 3× (`relaxAccuracy`), which takes in this tolerance. A looser base would stack with
 that, and the core's validation would lose 0.3–1.2 %. The whole suite passes at 10×, so nothing breaks; it is a
 fidelity choice.
+
+### What would bring the station back to real time in the game (plan, 2026-10-28)
+In the game the station runs at about 0.65 of real time with its dashboard (1.00 without), its accuracy already
+relaxed. In the core the dashboard costs 14.9 − 9.1 = 5.8 s per 10 s, all in the circuits phase's iterations
+(not their number). The options, measured or estimated:
+
+| Option | Gain | Fidelity | Work |
+|---|---|---|---|
+| Wire nodes merged outright (measured upper bound, `-Ddiag.mergeWires`) | 10 % | loses IR drops and wire heat | — (diagnostic only) |
+| Exact series/star reduction of wire-only nodes (each wire's resistance and heat kept, voltages rebuilt for probes) | ≤ 10 % | exact | a multi-terminal element, every reader of a wire's node |
+| Flux tolerance 3× (measured) | 11 % | 0.3 % of the generator's current; stacks with the game's relaxation | one constant |
+| Factorisation reuse (simplified Newton) in the circuits phase | est. 20–30 % of the circuits' solve | exact at convergence | elements stamp residual and Jacobian together: a split, or a stale-matrix mode |
+| The gauges' circuits stepped apart from the generator's | est. 35–40 % (most of the dashboard's cost) | needs interface error control | a latency-tolerant electrical coupling between circuit parts, carrying the digital domain's events |
+
+The last is the one that restores real time. The gauges meet the generator's circuit only through the ribbon's
+supply and sense nets: a stiff battery on one side, high-impedance inputs on the other. Each gauge part would read
+the trunk's node voltages as their mean over its step (as the circuits read the plant's) and hand the trunk its
+supply current as a held injection, with the energy in transit booked as the plant–circuit coupling's is. The open
+question is the interface's error control: a gauge's fast edges (its ADC's sampling) must not alias through held
+values.

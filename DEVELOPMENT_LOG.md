@@ -1385,3 +1385,9 @@ the station's screens drew garbage after a reload.
     It fails without each fix.
   - The station tour reads every screen from the image the client received, checks its label and value against
     its gauge, and does so again after braking the engine.
+
+**Ribbons across scales, the other way round (2026-10-28).** A miniature ribbon on its block's face now joins a
+full-size insulated wire against that face, to the conductor of the wire's colour. The wire's end covers the
+whole face, so every miniature ribbon on that face is joined. The game's islands, both core builders and the
+drawing all follow the rule: the wire reaches the face, and the ribbon's conductor reaches the wire. In the core,
+a miniature battery lights a full-size LED through two miniature ribbons (10.3 mA).

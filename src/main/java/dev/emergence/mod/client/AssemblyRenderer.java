@@ -1195,9 +1195,23 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
                 at[a] = d.sign() * half[a];
                 out.add(new float[]{conductor(q), at[0], at[1], at[2]});
             }
-            // a full-size ribbon against a miniature block: the miniature wires on that block's face, each where it is
-            if (be.resolution() != AssemblyBlockEntity.BLOCK_SCALE || be.getLevel() == null) continue;
+            if (be.getLevel() == null) continue;
             net.minecraft.core.BlockPos np = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
+            // a miniature ribbon on its block's face against a full-size insulated wire: that wire, at the face of its cell
+            if (be.resolution() == AssemblyBlockEntity.MINIATURE) {
+                int[] lo = {p.x0, p.y0, p.z0}, hi = {p.x1, p.y1, p.z1};
+                boolean onFace = d.sign() > 0 ? hi[a] == be.resolution() - 1 : lo[a] == 0;
+                if (onFace && be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity full && full.resolution() == AssemblyBlockEntity.BLOCK_SCALE)
+                    for (PlacedPart w : full.parts()) {
+                        if (w.kind != PartKind.INSULATED_WIRE) continue;
+                        float[] at = new float[3];
+                        at[a] = d.sign() * half[a];
+                        out.add(new float[]{conductor(w), at[0], at[1], at[2]});
+                    }
+                continue;
+            }
+            // a full-size ribbon against a miniature block: the miniature wires on that block's face, each where it is
+            if (be.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
             if (!(be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity m) || m.resolution() != AssemblyBlockEntity.MINIATURE) continue;
             int last = m.resolution() - 1;
             float r = m.resolution();

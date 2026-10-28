@@ -274,6 +274,31 @@ public final class SimulationManager {
                 }
             }
         }
+        // and the other way round: a miniature ribbon on its block's face against a full-size insulated wire (whose end
+        // covers the whole face) — the wire to the ribbon's conductor of its colour
+        for (BlockPos b : isl.blocks) {
+            AssemblyBlockEntity m = be(b);
+            if (m == null || m.resolution() != AssemblyBlockEntity.MINIATURE) continue;
+            int last = m.resolution() - 1;
+            for (PlacedPart r : m.parts()) {
+                if (r.kind != PartKind.RIBBON) continue;
+                for (Direction d : Direction.values()) {
+                    boolean face = switch (d) {
+                        case EAST -> r.x1 == last;
+                        case WEST -> r.x0 == 0;
+                        case UP -> r.y1 == last;
+                        case DOWN -> r.y0 == 0;
+                        case SOUTH -> r.z1 == last;
+                        case NORTH -> r.z0 == 0;
+                    };
+                    if (!face) continue;
+                    BlockPos n = b.relative(d);
+                    AssemblyBlockEntity full = isl.blocks.contains(n) ? be(n) : null;
+                    if (full == null || full.resolution() != AssemblyBlockEntity.BLOCK_SCALE) continue;
+                    for (PlacedPart w : full.parts()) if (w.kind == PartKind.INSULATED_WIRE) asm.bridge(r.id, w.id);
+                }
+            }
+        }
     }
 
     /**

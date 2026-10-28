@@ -101,6 +101,16 @@ public final class PartLinks {
                 if (p.kind == PartKind.INSULATED_WIRE && be.getLevel() != null && be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity big
                         && big.resolution() == AssemblyBlockEntity.BLOCK_SCALE && res == AssemblyBlockEntity.MINIATURE)
                     for (PlacedPart q : big.parts()) if (q.kind == PartKind.RIBBON) return q;
+                // a full-size insulated wire against a miniature block with a ribbon on that face: joined to its conductors
+                if (p.kind == PartKind.INSULATED_WIRE && res == AssemblyBlockEntity.BLOCK_SCALE && be.getLevel() != null
+                        && be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity mini && mini.resolution() == AssemblyBlockEntity.MINIATURE) {
+                    int lastM = mini.resolution() - 1;
+                    for (PlacedPart q : mini.parts()) {
+                        if (q.kind != PartKind.RIBBON) continue;
+                        int[] qlo = {q.x0, q.y0, q.z0}, qhi = {q.x1, q.y1, q.z1};
+                        if (d.sign() > 0 ? qlo[a] == 0 : qhi[a] == lastM) return q;
+                    }
+                }
                 return null;
             }
             target = o;

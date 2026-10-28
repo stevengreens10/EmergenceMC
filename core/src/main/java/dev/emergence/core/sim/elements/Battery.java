@@ -29,7 +29,9 @@ import dev.emergence.core.units.PhysicalConstants;
  *   clamped: the knees hold it in range. The resistance is 60 % higher flat, and steeply higher in the knee.</li>
  * </ul>
  * <b>Energy</b>: the chemical free energy is an external reservoir delivering N·E·i; N·i²·r is Joule heat in the
- * battery (its thermal node, or an untracked loss without one). Not modelled: the reversible (entropic) heat, Peukert
+ * battery (its thermal node, or an untracked loss without one). One element may stand for a string of identical
+ * batteries in series (see AssemblyCompiler's battery strings): then its heat is shared equally among their thermal
+ * nodes — exact, since identical cells carrying one current go through identical states. Not modelled: the reversible (entropic) heat, Peukert
  * rate dependence of capacity beyond the resistance, temperature dependence (the Nernst term is taken at 298 K),
  * self-discharge, ageing.
  */
@@ -56,7 +58,9 @@ public final class Battery implements Element {
     /** The nickel electrode's potential at half charge [V], the Nernst slope RT/F at 298 K [V], and its end pinch. */
     static final double NI_HALF = 1.30, NERNST = PhysicalConstants.GAS_CONSTANT * 298.15 / PhysicalConstants.FARADAY, NI_PINCH = 0.02;
 
-    private final Node pos, neg, thermal;
+    private final Node pos, neg;
+    /** Where its Joule heat goes, in equal shares (none: an untracked loss). */
+    private final Node[] thermals;
     private final Chemistry chemistry;
     private final int cells;
     private final double capacity, soc0;
@@ -67,13 +71,18 @@ public final class Battery implements Element {
      * @param stateOfCharge charge held at the start (1: full)
      */
     public Battery(Chemistry chemistry, Node pos, Node neg, int cells, double capacityAh, double stateOfCharge, Node thermal) {
+        this(chemistry, pos, neg, cells, capacityAh, stateOfCharge, thermal == null ? new Node[0] : new Node[]{thermal});
+    }
+
+    /** A string of batteries as one: its cells in all, and each battery's thermal node (their heat in equal shares). */
+    public Battery(Chemistry chemistry, Node pos, Node neg, int cells, double capacityAh, double stateOfCharge, Node[] thermals) {
         this.chemistry = chemistry;
         this.pos = pos;
         this.neg = neg;
         this.cells = Math.max(1, cells);
         this.capacity = Math.max(1e-3, capacityAh) * 3600;
         this.soc0 = stateOfCharge;
-        this.thermal = thermal;
+        this.thermals = java.util.Arrays.stream(thermals).filter(java.util.Objects::nonNull).toArray(Node[]::new);
     }
 
     @Override
@@ -144,11 +153,12 @@ public final class Battery implements Element {
         ctx.addF(qIdx, ctx.ddt(slot, q) + j);
         ctx.addJ(qIdx, qIdx, ctx.alpha());
         ctx.addJ(qIdx, jIdx, 1);
-        if (thermal != null) {
-            // Joule heat N j² r into the battery
-            ctx.addF(thermal.index(), -cells * j * j * r[0]);
-            ctx.addJ(thermal.index(), jIdx, -2 * cells * j * r[0]);
-            ctx.addJ(thermal.index(), qIdx, cells * j * j * r[1] / capacity);
+        // Joule heat N j² r into the battery (shared among a string's batteries)
+        double share = 1.0 / Math.max(1, thermals.length);
+        for (Node thermal : thermals) {
+            ctx.addF(thermal.index(), -share * cells * j * j * r[0]);
+            ctx.addJ(thermal.index(), jIdx, -share * 2 * cells * j * r[0]);
+            ctx.addJ(thermal.index(), qIdx, share * cells * j * j * r[1] / capacity);
         }
     }
 
@@ -188,7 +198,7 @@ public final class Battery implements Element {
 
     @Override
     public double untrackedLoss(StateView s) {
-        if (thermal != null) return 0;
+        if (thermals.length > 0) return 0;
         double j = s.x(jIdx);
         return cells * j * j * resistance(stateOfCharge(s))[0];
     }

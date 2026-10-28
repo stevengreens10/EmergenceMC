@@ -76,6 +76,8 @@ public final class CompiledAssembly {
     final Map<Long, Node> thermalOfPart = new HashMap<>();
     final Map<Long, Node[]> leadsOfPart = new HashMap<>();   // {neg, pos} or {node}
     final Map<Long, Object> deviceOfPart = new HashMap<>(); // Resistor, Diode, Switch, Capacitor, MagneticSystem.Coil
+    /** A battery solved in a string with others (see AssemblyCompiler's battery strings): its share of the string's voltage. */
+    final Map<Long, Double> batteryShare = new HashMap<>();
     /** Chips with registers or memory, by their first segment's part id (their bits are saved with the build). */
     /** The digital side: event-driven chips' insides and the nets of their pins (see DigitalDomain). */
     final dev.emergence.core.digital.DigitalDomain digital = new dev.emergence.core.digital.DigitalDomain();
@@ -980,6 +982,8 @@ public final class CompiledAssembly {
             pw = 0;
         } else if (d instanceof dev.emergence.core.sim.elements.Battery bt) {
             i = bt.current(solver);
+            Double share = batteryShare.get(partId);
+            if (share != null) v *= share; // one of a string's batteries: its share of the string's voltage
             pw = Math.abs(i * v);
         } else if (d instanceof dev.emergence.core.sim.elements.Led led) {
             i = led.current(solver);

@@ -14,7 +14,7 @@ class BatteryTest {
     void fullSixCellBatteryReadsTwelvePointSevenFiveVolts() {
         Network net = new Network();
         Node p = net.node(Domain.ELECTRICAL, "+", 0), gnd = net.reference(Domain.ELECTRICAL);
-        Battery b = net.add(new Battery(Battery.Chemistry.LEAD_ACID, p, gnd, 6, 7, 1.0, null));
+        Battery b = net.add(new Battery(Battery.Chemistry.LEAD_ACID, p, gnd, 6, 7, 1.0, (Node) null));
         net.add(new Resistor(p, gnd, 1e6)); // a voltmeter
         TransientSolver s = new TransientSolver(net);
         s.advance(0.01);
@@ -53,7 +53,7 @@ class BatteryTest {
     void chargingRaisesTheStateOfCharge() {
         Network net = new Network();
         Node p = net.node(Domain.ELECTRICAL, "+", 0), q = net.node(Domain.ELECTRICAL, "s", 0), gnd = net.reference(Domain.ELECTRICAL);
-        Battery b = net.add(new Battery(Battery.Chemistry.LEAD_ACID, p, gnd, 6, 0.5, 0.5, null));
+        Battery b = net.add(new Battery(Battery.Chemistry.LEAD_ACID, p, gnd, 6, 0.5, 0.5, (Node) null));
         net.add(new VoltageSource(q, gnd, 14.4));
         net.add(new Resistor(q, p, 2));
         TransientSolver s = new TransientSolver(net);
@@ -78,7 +78,7 @@ class BatteryTest {
         }
         Network net = new Network();
         Node p = net.node(Domain.ELECTRICAL, "+", 0), gnd = net.reference(Domain.ELECTRICAL);
-        Battery b = net.add(new Battery(Battery.Chemistry.NICKEL_METAL_HYDRIDE, p, gnd, 4, 1.0, 1.0, null));
+        Battery b = net.add(new Battery(Battery.Chemistry.NICKEL_METAL_HYDRIDE, p, gnd, 4, 1.0, 1.0, (Node) null));
         net.add(new Resistor(p, gnd, 20));
         TransientSolver s = new TransientSolver(net);
         s.advance(0.01);

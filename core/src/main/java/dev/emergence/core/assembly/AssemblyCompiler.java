@@ -2196,6 +2196,10 @@ public final class AssemblyCompiler {
                     joinedPairs.add(pairKey(p.id(), q.id()));
                 }
             }
+            // ---- batteries end to end: a string of alike ones is one element (see groupBatteryStrings)
+            List<String[]> contactKeys = new ArrayList<>();
+            for (Contact k : contacts) contactKeys.add(new String[]{k.pk, k.qk});
+            groupBatteryStrings(contactKeys);
             // ---- devices
             for (Part p : parts) {
                 Node th = c.thermalOfPart.get(p.id());
@@ -2318,13 +2322,26 @@ public final class AssemblyCompiler {
                         c.deviceOfPart.put(p.id(), c.network.add(new Capacitor(l[1], l[0], p.param("capacitance", 1e-4))));
                     }
                     case BATTERY -> {
-                        Node[] l = leads(p);
-                        c.network.preferDatum(l[0]); // its circuit's datum: the supply's negative terminal, where it is stiff
-                        // its charge carries over from the running state (kept with the capacitors' voltages)
-                        Double held = prev.capacitorVoltages().get(p.id());
-                        c.deviceOfPart.put(p.id(), c.network.add(new Battery(Battery.Chemistry.of(p.param("chemistry", 0)), l[1], l[0],
-                                (int) Math.round(p.param("cells", 6)),
-                                p.param("capacity", 7), held != null ? held : p.param("charge", 1), c.thermalOfPart.get(p.id()))));
+                        BatteryString s = batteryStringOf.get(p.id());
+                        if (s == null) {
+                            Node[] l = leads(p);
+                            c.network.preferDatum(l[0]); // its circuit's datum: the supply's negative terminal, where it is stiff
+                            c.deviceOfPart.put(p.id(), c.network.add(new Battery(Battery.Chemistry.of(p.param("chemistry", 0)), l[1], l[0],
+                                    (int) Math.round(p.param("cells", 6)), p.param("capacity", 7), heldCharge(p), th)));
+                        } else if (s.members().get(0) == p) {
+                            // the string's ends: its first battery's − and its last's +; its joints make no nodes
+                            Part last = s.members().get(s.members().size() - 1);
+                            Node neg = enode("p" + p.id() + "-"), pos = enode("p" + last.id() + "+");
+                            c.network.preferDatum(neg);
+                            Node[] ths = s.members().stream().map(q -> c.thermalOfPart.get(q.id())).toArray(Node[]::new);
+                            Battery bt = c.network.add(new Battery(Battery.Chemistry.of(p.param("chemistry", 0)), pos, neg, s.cells(),
+                                    p.param("capacity", 7), heldCharge(p), ths));
+                            for (Part q : s.members()) {
+                                c.deviceOfPart.put(q.id(), bt);
+                                c.leadsOfPart.put(q.id(), new Node[]{neg, pos});
+                                c.batteryShare.put(q.id(), Math.round(q.param("cells", 6)) / (double) s.cells());
+                            }
+                        }
                     }
                     case WIRE, INSULATED_WIRE -> c.leadsOfPart.put(p.id(), new Node[]{enode("p" + p.id())});
                     default -> {
@@ -2485,6 +2502,76 @@ public final class AssemblyCompiler {
         boolean isLeadKey(String k) {
             char e = k.charAt(k.length() - 1);
             return e == '+' || e == '-' || Character.isLetter(e);
+        }
+
+        /** A battery's charge as it starts: carried over from the running state (kept with the capacitors' voltages), or as placed. */
+        double heldCharge(Part p) {
+            Double held = prev.capacitorVoltages().get(p.id());
+            return held != null ? held : p.param("charge", 1);
+        }
+
+        /** Batteries end to end that are solved as one element: in order from the − end, and their cells in all. */
+        record BatteryString(List<Part> members, int cells) { }
+
+        final Map<Long, BatteryString> batteryStringOf = new HashMap<>();
+
+        /**
+         * Batteries end to end, alike — the same chemistry, cells, capacity and charge — with nothing else at the joints
+         * between them (only one's + and the next's − there, no wire, no other part), carry one current and so go through
+         * the same states: a string of them is solved as one battery of all their cells, its joints making no nodes. Exact
+         * for the string's terminals; each battery reads its share of the voltage, and the heat is shared among them. A
+         * bank of hundreds of blocks costs the solver a few elements.
+         */
+        void groupBatteryStrings(List<String[]> contactKeys) {
+            List<Part> bats = new ArrayList<>();
+            for (Part p : parts) if (p.kind() == PartKind.BATTERY) bats.add(p);
+            if (bats.size() < 2) return;
+            // what reaches each node: the keys joined into it, and anything with a conductor of its own there (a wire
+            // touching a lead is a conductor element, not a join)
+            Map<String, Set<String>> keysAt = new HashMap<>();
+            for (String k : eunion.keySet()) keysAt.computeIfAbsent(eroot(k), r -> new HashSet<>()).add(k);
+            Set<String> conductorAt = new HashSet<>();
+            for (String[] ck : contactKeys) {
+                String r0 = eroot(ck[0]), r1 = eroot(ck[1]);
+                if (r0.equals(r1)) continue;
+                conductorAt.add(r0);
+                conductorAt.add(r1);
+            }
+            Map<String, Part> byKey = new HashMap<>();
+            for (Part p : bats) {
+                byKey.put("p" + p.id() + "+", p);
+                byKey.put("p" + p.id() + "-", p);
+            }
+            Map<Long, Part> next = new HashMap<>();
+            Set<Long> follows = new HashSet<>();
+            for (Part a : bats) {
+                String ka = "p" + a.id() + "+", r = eroot(ka);
+                if (conductorAt.contains(r)) continue;
+                Set<String> at = new HashSet<>(keysAt.getOrDefault(r, Set.of()));
+                at.add(r);
+                at.add(ka);
+                if (at.size() != 2) continue;
+                at.remove(ka);
+                String other = at.iterator().next();
+                Part b = byKey.get(other);
+                if (b == null || b == a || !other.endsWith("-") || !alikeBatteries(a, b)) continue;
+                next.put(a.id(), b);
+                follows.add(b.id());
+            }
+            for (Part p : bats) {
+                if (follows.contains(p.id()) || !next.containsKey(p.id())) continue;
+                List<Part> m = new ArrayList<>();
+                for (Part q = p; q != null && m.size() <= bats.size(); q = next.get(q.id())) m.add(q);
+                int cells = 0;
+                for (Part q : m) cells += (int) Math.round(q.param("cells", 6));
+                BatteryString s = new BatteryString(m, cells);
+                for (Part q : m) batteryStringOf.put(q.id(), s);
+            }
+        }
+
+        boolean alikeBatteries(Part a, Part b) {
+            return Math.round(a.param("chemistry", 0)) == Math.round(b.param("chemistry", 0)) && Math.round(a.param("cells", 6)) == Math.round(b.param("cells", 6))
+                    && a.param("capacity", 7) == b.param("capacity", 7) && Math.abs(heldCharge(a) - heldCharge(b)) < 1e-12;
         }
 
         Node[] leads(Part p) {

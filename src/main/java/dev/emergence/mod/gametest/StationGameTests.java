@@ -45,6 +45,9 @@ public final class StationGameTests {
         int failures0 = sim.failures;
         double[] w0 = {0, 0}, w1 = {0, 0}, q = {Double.NaN, Double.NaN}, t = {Double.NaN, Double.NaN};
         Set<String> counts = new HashSet<>();
+        // the regulator over the battery's window, once a second: its output at most, the battery at most, the dump's current at most
+        double[] regMax = {0}, vMax = {0}, dumpMax = {0};
+        BlockPos regAt = DemoBuilder.partBlock(origin, e, "regulator"), dumpAt = DemoBuilder.partBlock(origin, e, "dump");
         for (int tick = 20; tick <= END; tick += 20) {
             int at = tick;
             h.runAtTickTime(at, () -> {
@@ -60,6 +63,11 @@ public final class StationGameTests {
                     w1[0] += w;
                     w1[1]++;
                 }
+                if (at >= FIRST && at <= BRAKE) {
+                    regMax[0] = Math.max(regMax[0], c.probe(id(c, regAt, PartKind.OPAMP)).voltage());
+                    vMax[0] = Math.max(vMax[0], c.probe(id(c, bat, PartKind.BATTERY)).voltage());
+                    dumpMax[0] = Math.max(dumpMax[0], Math.abs(c.probe(id(c, dumpAt, PartKind.RESISTOR)).current()));
+                }
                 StringBuilder sb = new StringBuilder();
                 for (int k = 2; k >= 0; k--) sb.append(c.lightOutput(id(c, bitLed[k], PartKind.LED)) > 1e-4 ? '1' : '0');
                 counts.add(sb.toString());
@@ -74,11 +82,31 @@ public final class StationGameTests {
                     h.assertTrue(pc < 80e3, String.format("it exhausts into a partial vacuum (condenser %.1f kPa)", pc / 1e3));
                     q[0] = c.batteryChargeDelivered(id(c, bat, PartKind.BATTERY));
                     t[0] = c.solverView().time();
+                    // -Demergence.stationDump=true: the island as it stands, to replay in the core (IslandDumpReplayTest)
+                    if (Boolean.getBoolean("emergence.stationDump")) sim.dumpIsland(shaft);
                 }
                 if (at == BRAKE) {
                     q[1] = c.batteryChargeDelivered(id(c, bat, PartKind.BATTERY));
                     t[1] = c.solverView().time();
                     double mAh = -(q[1] - q[0]) / 3.6;
+                    // what decides the battery's charge: its voltage, the regulator's output and what it dumps, the screens
+                    BlockPos reg = DemoBuilder.partBlock(origin, e, "regulator"), lamp = DemoBuilder.partBlock(origin, e, "lamp"),
+                            shunt = DemoBuilder.partBlock(origin, e, "shunt");
+                    double screens = 0;
+                    for (long pid : c.assembly().parts().stream().map(dev.emergence.core.assembly.Part::id).toList()) {
+                        var chip = c.digitalChip(pid);
+                        if (chip != null && chip.component() instanceof dev.emergence.core.digital.DisplayPanel dp)
+                            screens += dp.leakage(c.probe(id(c, bat, PartKind.BATTERY)).voltage());
+                    }
+                    dev.emergence.mod.EmergenceMod.LOG.info("Station battery: {} mA·h over {} s ({} mA); battery {} V; regulator output {} V; lamp {} mA; shunt MOSFET {} mA; screens {} mA; regulator {} K",
+                            String.format("%.3f", mAh), String.format("%.0f", t[1] - t[0]), String.format("%.2f", 3600 * mAh / (t[1] - t[0])),
+                            String.format("%.4f", c.probe(id(c, bat, PartKind.BATTERY)).voltage()),
+                            String.format("%.3f", c.probe(id(c, reg, PartKind.OPAMP)).voltage()),
+                            String.format("%.2f", 1e3 * Math.abs(c.probe(id(c, lamp, PartKind.LED)).current())),
+                            String.format("%.2f", 1e3 * Math.abs(c.probe(id(c, shunt, PartKind.TRANSISTOR)).current())),
+                            String.format("%.2f", 1e3 * screens / 6), String.format("%.1f", c.temperature(id(c, reg, PartKind.OPAMP))));
+                    dev.emergence.mod.EmergenceMod.LOG.info("Station battery window, sampled each second: regulator output at most {} V; battery at most {} V; dump load at most {} mA",
+                            String.format("%.3f", regMax[0]), String.format("%.4f", vMax[0]), String.format("%.1f", 1e3 * dumpMax[0]));
                     h.assertTrue(mAh > 0.001, String.format("its generator charges its battery (%.3f mA·h taken in over %.0f s)", mAh, t[1] - t[0]));
                     h.assertTrue(counts.size() >= 2, "its counter counts the engine's turns (states seen: " + counts + ")");
                     sim.toggleSwitch(brake, id(c, brake, PartKind.BRAKE)); // a load put on it by hand

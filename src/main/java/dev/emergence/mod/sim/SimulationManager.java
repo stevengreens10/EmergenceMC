@@ -1349,7 +1349,16 @@ public final class SimulationManager {
             p.params().forEach((k, v) -> b.append(' ').append(k).append('=').append(v));
             b.append('\n');
             p.state().forEach((k, v) -> b.append("S ").append(p.id()).append(' ').append(k).append(' ').append(v).append('\n'));
+            // its text (a chip's design, a ROM's image), base 64 on a line of its own
+            if (p.text() != null && !p.text().isEmpty())
+                b.append("X ").append(p.id()).append(' ').append(java.util.Base64.getEncoder().encodeToString(p.text().getBytes(java.nio.charset.StandardCharsets.UTF_8))).append('\n');
         }
+        // the joins across scales: ribbons to the miniature wires they carry, and the links at blocks' faces
+        for (long[] br : asm.bridges()) b.append("B ").append(br[0]).append(' ').append(br[1]).append('\n');
+        for (var l : asm.links())
+            b.append("L ").append(l.kind()).append(' ').append(l.a()).append(' ').append(l.cellA()[0]).append(' ').append(l.cellA()[1]).append(' ')
+                    .append(l.cellA()[2]).append(' ').append(l.faceA()).append(' ').append(l.b()).append(' ').append(l.cellB()[0]).append(' ')
+                    .append(l.cellB()[1]).append(' ').append(l.cellB()[2]).append(' ').append(l.faceB()).append(' ').append(l.share()).append('\n');
         if (st != null) {
             st.temperatures().forEach((k, v) -> b.append("T ").append(k).append(' ').append(v).append('\n'));
             st.coilCurrents().forEach((k, v) -> b.append("I ").append(k).append(' ').append(v).append('\n'));

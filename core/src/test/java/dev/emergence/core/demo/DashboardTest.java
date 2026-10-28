@@ -26,6 +26,9 @@ class DashboardTest {
         double pa = b.assembly().ambientPressure();
         long fuel = b.id(e, "fuel"), boiler = b.id(e, "boiler"), shaft = b.id(e, "shaft"), cond = b.id(e, "condenser"),
                 bat = b.id(e, "battery"), shunt = b.id(e, "genShunt");
+        // -Ddiag.sun=<W/m²>: the sun high in the sky, every part in it (as a world by day)
+        double sun = Double.parseDouble(System.getProperty("diag.sun", "0"));
+        if (sun > 0) c.setDaylight(new dev.emergence.core.math.Vec3(-0.3, -1, -0.2).normalize(), sun, id -> true);
         double t0 = c.time(), q0 = c.batteryChargeDelivered(bat);
         long wall0 = System.nanoTime();
         double seconds = Double.parseDouble(System.getProperty("diag.dashRun", "30"));
@@ -46,16 +49,25 @@ class DashboardTest {
         // the generator's current pulses with each magnet's pass: its mean over the last second, sampled every millisecond
         // (what the gauge's 0.2 s filter averages; samples 50 ms apart alias)
         double q1 = 0;
+        double vMax = 0, regMax = 0;
         for (int i = 0; i < 1000; i++) {
             c.step(0.001);
             q1 += -c.probe(shunt).current() * 0.001;
+            vMax = Math.max(vMax, c.probe(bat).voltage());
+            regMax = Math.max(regMax, c.probe(b.id(e, "regulator")).voltage());
         }
         double wall = (System.nanoTime() - wall0) / 1e9;
         // the station's own electricity unharmed: its battery still charges, its regulator not dumping (with the
         // generator's return led to the dashboard and back, its current through the station's ground wiring shifted the
         // regulator's sense and it dumped 550 mA into its load)
         double charged = -(c.batteryChargeDelivered(bat) - q0) / 3.6, dump = Math.abs(c.probe(b.id(e, "dump")).current());
+        System.out.printf("  over the last second, sampled every millisecond: the battery's terminal voltage at most %.4f V, the regulator's output at most %.3f V%n", vMax, regMax);
         System.out.printf("  battery: %.3f mA·h taken in; the regulator's dump load %.1f mA%n", charged, 1e3 * dump);
+        // the regulator's state: what decides whether it dumps (its output, the lamp, the shunt MOSFET) and how warm its parts are
+        System.out.printf("  regulator: battery %.4f V; output %.3f V; lamp %.2f mA; shunt MOSFET %.2f mA; regulator %.1f K, shunt %.1f K, lamp %.1f K; sun %.0f W/m², %.1f W absorbed in all%n",
+                c.probe(bat).voltage(), c.probe(b.id(e, "regulator")).voltage(), 1e3 * Math.abs(c.probe(b.id(e, "lamp")).current()),
+                1e3 * Math.abs(c.probe(b.id(e, "shunt")).current()), c.temperature(b.id(e, "regulator")), c.temperature(b.id(e, "shunt")),
+                c.temperature(b.id(e, "lamp")), sun, c.sunlightAbsorbed());
         double meanCurrent = q1 / 1.0;
         double[] truth = {
                 (c.pressure(fuel) - pa) / 1e5 * 10,                                 // bar, 1 place
@@ -104,7 +116,7 @@ class DashboardTest {
         for (int k = 0; k < n; k++) assertEquals(0, chip[k].instance().violations(), StationExhibit.GAUGES[k].label() + ": timing");
         assertTrue(ok, "every gauge shows its quantity within its accuracy");
         // the fuel's trend takes a reading in thirty (none yet in 30 s of readings every 2 s), the boiler's every one
-        assertEquals(0, chip[0].instance().value("wr"), "the fuel gauge's slow trend: no point yet");
+        if (seconds < 50) assertEquals(0, chip[0].instance().value("wr"), "the fuel gauge's slow trend: no point yet"); // (its first after 30 readings, some 60 s)
         assertTrue(chip[1].instance().value("wr") >= 10, "the boiler's trend: a point a reading, " + chip[1].instance().value("wr"));
         // running as it should, none of its alarms: no card inverted
         for (int k = 0; k < n; k++) {

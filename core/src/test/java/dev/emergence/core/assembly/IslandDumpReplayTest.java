@@ -25,8 +25,16 @@ class IslandDumpReplayTest {
         AssemblyState st = AssemblyState.empty();
         // -Ddiag.dropState=<id>,…: those parts' saved state left out (they start as built)
         java.util.Set<String> drop = new java.util.HashSet<>(java.util.Arrays.asList(System.getProperty("diag.dropState", "").split(",")));
+        // parts' texts (a chip's design, a ROM's image), base 64 on lines of their own
+        java.util.Map<Long, String> texts = new java.util.HashMap<>();
         for (String line : Files.readAllLines(Path.of(System.getProperty("diag.dump")))) {
             String[] f = line.trim().split(" ");
+            if (f[0].equals("X") && f.length > 2)
+                texts.put(Long.parseLong(f[1]), new String(java.util.Base64.getDecoder().decode(f[2]), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        for (String line : Files.readAllLines(Path.of(System.getProperty("diag.dump")))) {
+            String[] f = line.trim().split(" ");
+            if (f[0].equals("X")) continue;
             if (f.length > 1 && !f[0].equals("P") && !f[0].equals("S")) {
                 String id = f[0].equals("C") ? f[1].substring(1, f[1].indexOf(':') > 0 ? f[1].indexOf(':') : 1) : f[1];
                 if (drop.contains(id)) continue;
@@ -41,7 +49,7 @@ class IslandDumpReplayTest {
                     }
                     a.add(new Part(Long.parseLong(f[1]), PartKind.valueOf(f[2]), mats.get(f[3]), Integer.parseInt(f[4]),
                             Integer.parseInt(f[5]), Integer.parseInt(f[6]), Integer.parseInt(f[7]), Integer.parseInt(f[8]),
-                            Integer.parseInt(f[9]), Dir.valueOf(f[10]), prm));
+                            Integer.parseInt(f[9]), Dir.valueOf(f[10]), prm, texts.get(Long.parseLong(f[1]))));
                 }
                 case "T" -> st.temperatures().put(Long.parseLong(f[1]), Double.parseDouble(f[2]));
                 case "I" -> st.coilCurrents().put(Long.parseLong(f[1]), Double.parseDouble(f[2]));
@@ -68,6 +76,12 @@ class IslandDumpReplayTest {
         for (String line : Files.readAllLines(Path.of(System.getProperty("diag.dump")))) {
             String[] f = line.trim().split(" ");
             if (f[0].equals("P") && f[11].equals("1")) anchored.add(Long.parseLong(f[1]));
+            // the joins across scales
+            if (f[0].equals("B")) a.bridge(Long.parseLong(f[1]), Long.parseLong(f[2]));
+            if (f[0].equals("L"))
+                a.link(new Assembly.Link(Assembly.LinkKind.valueOf(f[1]), Long.parseLong(f[2]),
+                        new int[]{Integer.parseInt(f[3]), Integer.parseInt(f[4]), Integer.parseInt(f[5])}, Dir.valueOf(f[6]), Long.parseLong(f[7]),
+                        new int[]{Integer.parseInt(f[8]), Integer.parseInt(f[9]), Integer.parseInt(f[10])}, Dir.valueOf(f[11]), Double.parseDouble(f[12])));
             // a part's own state (a switch's position, a knob's setting)
             if (f[0].equals("S")) a.get(Long.parseLong(f[1])).setState(f[2], Double.parseDouble(f[3]));
         }
@@ -90,6 +104,9 @@ class IslandDumpReplayTest {
         // -Ddiag.dumpCrank=<crank part id>:<s>: a hand on that crank for the first s seconds (as the tour's hand)
         String[] crank = System.getProperty("diag.dumpCrank", "").isBlank() ? null : System.getProperty("diag.dumpCrank").split(":");
         long wall0 = System.nanoTime();
+        // each battery's charge at the start, for its net over the replay
+        java.util.Map<Long, Double> q0 = new java.util.LinkedHashMap<>();
+        for (Part p : a.parts()) if (p.kind() == PartKind.BATTERY) q0.put(p.id(), c.batteryChargeDelivered(p.id()));
         for (int i = 0; i < Math.round(seconds / 0.05); i++) {
             // -Ddiag.dumpProfile=true: every 5 s, the wall time it took and the solver's phases
             if (Boolean.getBoolean("diag.dumpProfile") && i > 0 && i % 100 == 0) {
@@ -165,6 +182,11 @@ class IslandDumpReplayTest {
         // -Ddiag.dumpNodes=true: every component's lead nodes and their voltages at the end (which nets it joins)
         if (Boolean.getBoolean("diag.dumpNodes")) printNodes(a, c);
         // -Ddiag.dumpCurrents=<A>: every part carrying more than that at the end, where the current goes
+        for (var en : q0.entrySet()) {
+            double mAh = -(c.batteryChargeDelivered(en.getKey()) - en.getValue()) / 3.6;
+            System.out.printf("battery #%d: %.4f mA·h taken in over %.0f s (%.2f mA); now %.4f V%n", en.getKey(), mAh, seconds, 3600 * mAh / seconds,
+                    c.probe(en.getKey()).voltage());
+        }
         if (System.getProperty("diag.dumpCurrents") != null) {
             double min = Double.parseDouble(System.getProperty("diag.dumpCurrents"));
             for (Part p : a.parts()) {

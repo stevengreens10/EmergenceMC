@@ -223,6 +223,19 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0b2. **The station's displays and battery (2026-10-28).**
+   - The screens froze after any reload, then drew garbage after the first fix. Both are fixed, and the tests now
+     read the screens (see DEVELOPMENT_LOG). The station tour passes 21/21 on a reloaded world, every screen read
+     right off the client before and after braking.
+   - The battery gap was not world against core. Replaying the world's state in the core gives +0.24 mA over
+     100 s against the world's +0.25. The core dashboard test measured its first 31 s, the battery still
+     recovering from its start (+7.5 mA); steadily both are about +0.2 mA.
+   - **Open:** the margin is thin. The dashboard draws about 22 mA of the generator's about 74 mA, its screens
+     8.6 mA of that, leaving +0.1 to +0.25 mA for the battery in five in-world runs. One earlier run lost 6.9 mA
+     on average, with no recompile during its window; unexplained. The station test now logs its regulator's
+     extremes each second, so the next such run will show whether the regulator tripped. To restore a margin:
+     dim the screens (contrast 0x40 to 0x20 saves about 3 mA), lighten the references, or gear the generator up.
+
 0b1. **Scheduled tour 2026-10-28 06:23: not run.** Windows showed only its "WinDisc" placeholder (no monitor), as
    at 02:00, so no client could open. The demo world was regenerated (headless): 86 exhibits, 0 problems,
    0 differences, 24/24 in-world tests. The tour copies `run-demo/world`, so it is ready. Run

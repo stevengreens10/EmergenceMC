@@ -295,8 +295,11 @@ multimeter, oscilloscope/data logging.
 * Oxidation is dry, in air, on a (100) face. There is no steam (wet oxidation is about 10× faster) and no other
   atmosphere: a wafer inside a vessel still sees air. B/A is taken as linear in the oxygen pressure (it goes as about
   p^0.8).
-* One dopant film, one diffusion. The oxide does not mask the dopant, and there is no masking, patterning or
-  separate gate step: the mask is a number (the gate length) on the wafer. Diffusion is intrinsic, with no
+* One dopant film at a time. A two-step process works by editing the wafer between heatings: its state carries
+  over. The oxide does not mask the dopant, and there is no patterning: the mask is a number (the gate length) on
+  the wafer.
+* Short-channel effects are Yau's charge sharing and velocity saturation only: no drain-induced barrier lowering,
+  no hot-carrier wear. Diffusion is intrinsic, with no
   concentration-dependent or oxidation-enhanced diffusion.
 * A chip from a process keeps its design's logic. All its transistors share the process, and in the circuits it
   still behaves as CMOS (no static power of NMOS or PMOS logic).

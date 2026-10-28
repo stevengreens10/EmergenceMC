@@ -58,7 +58,8 @@ class FabricationTest {
         assertEquals(1, ChipProcess.REFERENCE.delayScale(), 1e-12);
         assertEquals(1, ChipProcess.REFERENCE.leakageScale(), 1e-12);
         ChipProcess thick = new ChipProcess(150e-9, 0.5e-6, 3e-6, false);
-        assertEquals(0.75 + 2 * 0.71, thick.threshold(), 0.05);
+        // 0.71 V for every 50 nm, less the 11 % of the depletion charge the reference's source and drain share
+        assertEquals(0.75 + 2 * 0.71 * (1 - 0.111), thick.threshold(), 0.03);
         assertTrue(thick.works() && thick.delayScale() > 3, "a thick oxide makes slow chips: " + thick.delayScale());
         assertTrue(thick.leakageScale() < 1e-10, "that hardly leak");
         assertTrue(new ChipProcess(10e-9, 0.5e-6, 3e-6, false).fault().contains("turn off"));
@@ -66,7 +67,14 @@ class FabricationTest {
         assertTrue(new ChipProcess(50e-9, 0.05e-6, 3e-6, false).fault().contains("shallow"));
         assertTrue(new ChipProcess(50e-9, 1.5e-6, 3e-6, false).fault().contains("punch-through"));
         ChipProcess p = new ChipProcess(50e-9, 0.5e-6, 3e-6, true);
-        assertEquals(1350.0 / 480, p.delayScale(), 1e-9, "holes are slower");
+        assertTrue(p.delayScale() > 2 && p.delayScale() < 1350.0 / 480, "holes are slower (by less than their mobility, saturating later): " + p.delayScale());
+        // a channel shortened towards punch-through: its threshold falls (charge sharing), it leaks, and it gains less
+        // speed than the square law would give (velocity saturation)
+        ChipProcess shortCh = new ChipProcess(50e-9, 1.2e-6, 3e-6, false), longCh = new ChipProcess(50e-9, 0.2e-6, 3e-6, false);
+        assertTrue(shortCh.threshold() < longCh.threshold() - 0.1, "threshold roll-off: " + shortCh.threshold() + " against " + longCh.threshold());
+        assertTrue(shortCh.leakageScale() > 10 * longCh.leakageScale(), "the short channel leaks more");
+        double lr = shortCh.effectiveLength() / longCh.effectiveLength();
+        assertTrue(shortCh.delayScale() / longCh.delayScale() > lr * lr, "less than the square law's gain");
         // a longer gate tolerates deeper junctions, at a price in speed
         ChipProcess longGate = new ChipProcess(50e-9, 1.5e-6, 10e-6, false);
         assertTrue(longGate.works() && longGate.delayScale() > 5, "10 µm gates: " + longGate.delayScale());
@@ -111,6 +119,69 @@ class FabricationTest {
         assertArrayEquals(c.wafer(wafer), again.wafer(wafer), 1e-15);
         // a 3 µm mask on the same diffusion leaves no channel: the junctions (1.7 µm deep) spread 1.4 µm under each side
         assertTrue(new ChipProcess(cp.oxide(), cp.junction(), 3e-6, false).fault().contains("punch-through"));
+    }
+
+    /**
+     * Two steps, as a player can run them: the wafer heated bare (no film) grows its gate oxide alone; the part edited
+     * to carry a phosphorus film (the same part, its process kept with the machine) and heated again takes the dopant
+     * in, its oxide growing on from where it was. With a 3 µm mask one step works only in the few minutes between its
+     * oxide's becoming thick enough and its junctions' running under the gates; its fastest chips come at the end of
+     * that window, their channels short and their thresholds low, and leak several times more than the two steps'
+     * chips.
+     */
+    @Test
+    void anOxideFirstThenTheDopant() {
+        Exhibit e = FabExhibits.waferFurnace();
+        Exhibits.Built b = Exhibits.build(e, 293.15);
+        long wafer = b.id(e, "wafer");
+        Assembly bare = withDopant(b.assembly(), wafer, 0, 3e-6);
+        CompiledAssembly c = AssemblyCompiler.compile(bare, b.state());
+        for (int i = 0; i < 480; i++) c.step(1);
+        double[] w1 = c.wafer(wafer);
+        System.out.printf("two steps: after 8 min bare, oxide %.1f nm, junction %.2f µm%n", w1[0] * 1e9, w1[1] * 1e6);
+        assertTrue(w1[0] > 20e-9, "the oxide has grown: " + w1[0]);
+        assertEquals(0, w1[1], "no film: no junction");
+        assertNull(c.chipProcess(wafer), "no film: not a wafer for chips yet");
+        // the film put on, the furnace kept hot: the same machine state, the part edited
+        CompiledAssembly c2 = AssemblyCompiler.compile(withDopant(b.assembly(), wafer, 2, 3e-6), c.exportState());
+        assertEquals(w1[0], c2.wafer(wafer)[0], 1e-15, "the oxide carried over the edit");
+        for (int i = 0; i < 40; i++) c2.step(1);
+        ChipProcess two = c2.chipProcess(wafer);
+        System.out.printf("two steps: then 40 s with phosphorus, oxide %.1f nm, junction %.2f µm: %s%n", two.oxide() * 1e9, two.junction() * 1e6,
+                two.works() ? String.format("3 µm chips %.2f× slower than ready-made", two.delayScale()) : two.fault());
+        assertTrue(two.works(), two.fault());
+        // in one step: a window between the oxide's being thick enough and the junctions' running under the gates
+        CompiledAssembly one = AssemblyCompiler.compile(withDopant(b.assembly(), wafer, 2, 3e-6), b.state());
+        double from = Double.NaN, to = Double.NaN;
+        ChipProcess fastest = null;
+        for (int i = 1; i <= 900; i++) {
+            one.step(1);
+            ChipProcess p = one.chipProcess(wafer);
+            if (p.works() && (fastest == null || p.delayScale() < fastest.delayScale())) fastest = p;
+            if (p.works() && Double.isNaN(from)) from = i;
+            if (!p.works() && !Double.isNaN(from) && Double.isNaN(to)) to = i;
+        }
+        System.out.printf("one step, 3 µm mask: chips work from %.0f s to %.0f s; the fastest %.2f× the reference's delay, leaking %.2g×; "
+                + "the two steps' %.2f×, leaking %.2g×%n", from, to, fastest.delayScale(), fastest.leakageScale(), two.delayScale(), two.leakageScale());
+        assertTrue(to - from > 0 && to - from < 600, "one step's window: " + from + " .. " + to);
+        assertTrue(two.leakageScale() < fastest.leakageScale() / 3, "the two steps' chips leak several times less than one step's fastest");
+    }
+
+    /** The assembly with part {@code id}'s dopant film and mask set (an edit in the part editor: the same part). */
+    static Assembly withDopant(Assembly a, long id, int dopant, double gate) {
+        Assembly out = new Assembly();
+        for (Part p : a.parts()) {
+            if (p.id() != id) {
+                out.add(p);
+                continue;
+            }
+            java.util.Map<String, Double> m = new java.util.HashMap<>(p.params());
+            m.put("dopant", (double) dopant);
+            m.put(ChipProcess.GATE, gate);
+            out.add(new Part(p.id(), p.kind(), p.material(), p.minX(), p.minY(), p.minZ(), p.maxX(), p.maxY(), p.maxZ(), p.axis(), m, p.text()));
+        }
+        out.ambientTemperature(a.ambientTemperature()).ambientPressure(a.ambientPressure());
+        return out;
     }
 
     /**

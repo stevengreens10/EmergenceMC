@@ -659,8 +659,12 @@ count.
 * erfc against tables to 10⁻⁶ relative; its inverse round-trips.
 * The reference process gives exactly V_T = 0.75 V, delay and leakage ×1. A 150 nm oxide gives 2.2 V and ×4.5; too
   thin, too thick, too shallow and punched-through processes each fail with their reason.
-* The furnace exhibit in the core: 1.4 kW from 24 lead–acid cells holds the wafer at 1460 K (1190 °C). The chips
-  work from 300 s (oxide 18.9 nm, junctions 0.97 µm), 6.7× slower than the reference. At 900 s: 32 nm, 1.71 µm,
-  5.8×. The process survives a save and reload.
+* The furnace exhibit in the core: 1.4 kW from 24 lead–acid cells holds the wafer at 1460 K (1190 °C), and
+  nothing burns out. The chips work from 180 s (oxide 14.2 nm, junctions 0.71 µm), 5.4× slower than the
+  reference. At 900 s: 32 nm, 1.71 µm, 4.6×. The process survives a save and reload.
+* Two steps: the wafer heated bare, then edited to carry its film (the same part, its state carried over the edit).
+  Its 3 µm chips work, and leak 6× less than one step's fastest (see PHYSICS_MODELS).
+* Short channels: the threshold rolls off and leakage rises as the junctions near the gates' middle; a halved
+  channel gains less than the square law's 4× (velocity saturation).
 * A counter design clocked at 1.5× its reference period keeps up on reference chips and misses edges on chips three
   times slower.

@@ -976,11 +976,15 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
     D = D₀·e^(−Ea/kT): boron 0.76 cm²/s and 3.46 eV, phosphorus 3.85 cm²/s and 3.66 eV.
 * **The chips a process makes** (long-channel MOS, against the 74HC-class reference: 50 nm oxide, 0.5 µm junctions,
   3 µm gates, n-channel).
-  * Threshold: V_T = V_FB + 2φ_F + √(2qε_Si·N_A·2φ_F)·t_ox/ε_ox, with N_A = 10¹⁶ cm⁻³ and V_FB set so the reference
-    has 0.75 V. That is 0.71 V more for every 50 nm of oxide.
   * Effective channel: L_eff = L − 1.6·x_j (sideways diffusion).
-  * Delay scales as (μ_ref/μ)·((5 − 0.75)/(5 − V_T))²·(L_eff/L_ref)·[½·L_eff/L_ref + ½·t_ox/t_ref]. Half the load
-    is gates, half wiring. Holes are 1350/480 slower than electrons.
+  * Threshold: V_T = V_FB + 2φ_F + (Q_d·t_ox/ε_ox)·(1 − (x_j/L_eff)·(√(1 + 2W_d/x_j) − 1)), with
+    Q_d = √(2qε_Si·N_A·2φ_F), N_A = 10¹⁶ cm⁻³, W_d = 0.31 µm, and V_FB set so the reference has 0.75 V. The bracket
+    is Yau's charge sharing: a short channel's source and drain hold part of the charge under the gate, and the
+    threshold falls. The oxide adds about 0.63 V for every 50 nm at the reference's lengths.
+  * Drive: I ∝ μ·(1/t_ox)·(1/L_eff)·(V − V_T)²/(1 + (V − V_T)/(E_sat·L_eff)), the denominator velocity saturation
+    (E_sat = 2v_sat/μ_surface: electrons about 4 V/µm, holes 9). The delay is load/I, the load half gates
+    (∝ L_eff/t_ox) and half wiring. Holes are about 2.5× slower than electrons (their mobility a third, their
+    saturation later).
   * Subthreshold leakage scales as e^((0.75 − V_T)/(1.5·kT/q)).
   * A chip works for 0.3 V ≤ V_T ≤ 4.5 V, x_j ≥ 0.1 µm (shallower, the contacts spike through) and L_eff ≥ 1 µm
     (shorter, punch-through).
@@ -989,6 +993,10 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
 * **The process window.** Oxide (2.0–2.3 eV) and diffusion (3.5–3.7 eV) have different activation energies.
   * A hotter furnace drives the junctions deeper for the same oxide.
   * A finer mask makes faster chips but leaves less room for the junctions.
-  * At 1190 °C in air with a 10 µm mask, the chips work after about 5 minutes and run 6–7× slower than the
-    ready-made ones, leaking 10⁵× at first, less as the oxide thickens. A 3 µm mask's channel is gone after about
-    8 minutes.
+  * At 1190 °C in air with a 10 µm mask, the chips work after 3 minutes and run about 5× slower than the
+    ready-made ones. They leak 10⁴–10⁵× at first, less as the oxide thickens.
+  * With a 3 µm mask, one step works between 190 s and 484 s; its fastest chips (0.26× the reference's delay)
+    come just before punch-through and leak 1.8·10⁴×.
+  * Two steps, as a player runs them, give an easier window. First heat the bare wafer for 8 minutes (24 nm of
+    oxide). Then edit the part to carry the film and heat 40 s more (0.36 µm junctions). The chips: 0.76×,
+    leaking 2.9·10³×.

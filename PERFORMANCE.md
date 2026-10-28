@@ -332,3 +332,20 @@ Steady state, wall time per 10 simulated seconds at full accuracy:
     supply and high-impedance sense lines. A multirate split of the circuits phase, coupled at those nets as the
     plant and circuits are now, would put the station near 9–10 s again.
   * Thermal nodes also grew by 849, but the thermal phase is stepped rarely (0.4 s per 10 s).
+
+### The generator coils' flux tolerance (2026-10-28, `-Ddiag.fluxTolScale`)
+The coils' flux error is held to 10⁻⁴ of the magnet flux swing they see (`MagneticSystem.setup`), ten times
+tighter than the solver's general 10⁻³ relative tolerance. These coils hold the circuits' steps short at the
+station (`MagneticSystem#1711` limits most of them).
+
+| Scale | Wall time per 10 s (steady) | Battery net, DashboardTest 31 s |
+|---|---|---|
+| 0.3 | — | 0.065 mA·h |
+| 1 (as is) | 15.4 s | 0.065 mA·h |
+| 3 | 13.7 s (−11 %) | 0.067 mA·h (+0.23 mA, 0.3 % of the generator's current) |
+| 10 | 12.5 s (−16 %) | 0.073 mA·h (+0.9 mA, 1.2 %) |
+
+The tolerance is converged at 1 and stays as it is. In the game the pace controller already relaxes a slow
+island's accuracy up to 3× (`relaxAccuracy`), which takes in this tolerance. A looser base would stack with
+that, and the core's validation would lose 0.3–1.2 %. The whole suite passes at 10×, so nothing breaks; it is a
+fidelity choice.

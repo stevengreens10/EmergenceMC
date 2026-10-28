@@ -96,12 +96,20 @@ public final class PartLinks {
         if (cell[a] < 0 || cell[a] >= res) {
             BlockPos np = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
             AssemblyBlockEntity o = other(be, np);
-            if (o == null) return null;
+            if (o == null) {
+                // a miniature insulated wire on its block's face against a full-size ribbon: joined to its conductor
+                if (p.kind == PartKind.INSULATED_WIRE && be.getLevel() != null && be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity big
+                        && big.resolution() == AssemblyBlockEntity.BLOCK_SCALE && res == AssemblyBlockEntity.MINIATURE)
+                    for (PlacedPart q : big.parts()) if (q.kind == PartKind.RIBBON) return q;
+                return null;
+            }
             target = o;
             cell[a] = Math.floorMod(cell[a], res);
         }
         for (PlacedPart q : target.parts()) {
             if (!q.contains(cell[0], cell[1], cell[2])) continue;
+            // an insulated wire against a ribbon joins the conductor of its colour (and a ribbon its wires)
+            if (p.kind == PartKind.INSULATED_WIRE && q.kind == PartKind.RIBBON || p.kind == PartKind.RIBBON && q.kind == PartKind.INSULATED_WIRE) return q;
             if (p.kind == PartKind.INSULATED_WIRE && q.kind == PartKind.INSULATED_WIRE
                     && Math.round(p.spec.params().getOrDefault("color", 0.0)) != Math.round(q.spec.params().getOrDefault("color", 0.0))) continue;
             if (!isWire(p) && !isWire(q)) continue; // two components side by side: no lead between them

@@ -365,7 +365,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             }
             case LOGIC -> drawModel(c, "logic", p, 1, 1, 1, false);
             case DISPLAY -> drawDisplay(c, p, ex, ey, ez);
-            case RIBBON -> drawRibbon(c, ez);
+            case RIBBON -> drawRibbon(c, be, p, f, ez);
             case PRESSURE_SENSOR -> {
                 // a stainless body on a hex port (the −axis end, against the vessel), a cable gland at the other
                 TextureAtlasSprite s = PartModels.sprite("metal_smooth");
@@ -1147,7 +1147,7 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
      * A ribbon cable: a flat grey strip lying along its axis on the floor of its cell, its sixteen conductors' colours
      * striped along the top (the insulation colours, conductor 0 at model −X).
      */
-    private void drawRibbon(Ctx c, float ez) {
+    private void drawRibbon(Ctx c, AssemblyBlockEntity be, PlacedPart p, Frame f, float ez) {
         TextureAtlasSprite s = PartModels.sprite("plastic");
         float w = 0.34f, y0 = -0.5f, y1 = -0.44f, z = 0.5f * ez;
         box(c, s, tintOf(c, 0x8C8C8C), -w, y0, -z, w, y1, z);
@@ -1156,6 +1156,66 @@ public final class AssemblyRenderer implements BlockEntityRenderer<AssemblyBlock
             float x = -w + k * sw;
             box(c, s, tintOf(c, INSULATION[k]), x + 0.004f, y1, -z, x + sw - 0.004f, y1 + 0.006f, z);
         }
+        // each conductor a wire of its colour joins: up out of the cable a pixel and a half, then over to where that wire
+        // meets the ribbon (straight runs, in the cable's own frame)
+        float top = y1 + 0.006f, rise = 1.5f / 16, t = 0.3f * sw;
+        for (float[] j : ribbonJoins(be, p)) {
+            int k = (int) j[0];
+            org.joml.Vector3f m = new org.joml.Vector3f(j[1], j[2], j[3]);
+            new Matrix3f(f.m3).transformTranspose(m); // the join's place, from the grid's axes into the cable's
+            float lx = -w + (k + 0.5f) * sw, zc = Math.max(-z + t, Math.min(z - t, m.z)), up = top + rise;
+            int rgb = tintOf(c, INSULATION[k]);
+            jumper(c, s, rgb, t, lx, top, zc, lx, up, zc);
+            jumper(c, s, rgb, t, lx, up, zc, m.x, up, zc);
+            jumper(c, s, rgb, t, m.x, up, zc, m.x, up, m.z);
+            jumper(c, s, rgb, t, m.x, up, m.z, m.x, m.y, m.z);
+        }
+    }
+
+    /** A straight run of a conductor between two points on one axis, of half-width t. */
+    private void jumper(Ctx c, TextureAtlasSprite s, int rgb, float t, float ax, float ay, float az, float bx, float by, float bz) {
+        if (Math.abs(ax - bx) + Math.abs(ay - by) + Math.abs(az - bz) < 1e-4f) return;
+        box(c, s, rgb, Math.min(ax, bx) - t, Math.min(ay, by) - t, Math.min(az, bz) - t, Math.max(ax, bx) + t, Math.max(ay, by) + t, Math.max(az, bz) + t);
+    }
+
+    /**
+     * The wires a ribbon's conductors join, as the game joins them: an insulated wire beside it (in its own grid, which
+     * may run on into the next block) to the conductor of its colour; and, a full-size ribbon against a miniature block,
+     * each miniature insulated wire on that block's face. Each as {conductor, x, y, z}: where the wire meets the
+     * ribbon, on the face of the ribbon's cell, in the ribbon's cells from its centre along the grid's axes.
+     */
+    private static java.util.List<float[]> ribbonJoins(AssemblyBlockEntity be, PlacedPart p) {
+        java.util.List<float[]> out = new java.util.ArrayList<>();
+        float[] half = {(p.x1 - p.x0 + 1) / 2f, (p.y1 - p.y0 + 1) / 2f, (p.z1 - p.z0 + 1) / 2f};
+        for (Dir d : Dir.values()) {
+            int a = d.axis();
+            for (PlacedPart q : across(be, p, d)) {
+                if (q.kind != PartKind.INSULATED_WIRE) continue;
+                float[] at = new float[3];
+                at[a] = d.sign() * half[a];
+                out.add(new float[]{conductor(q), at[0], at[1], at[2]});
+            }
+            // a full-size ribbon against a miniature block: the miniature wires on that block's face, each where it is
+            if (be.resolution() != AssemblyBlockEntity.BLOCK_SCALE || be.getLevel() == null) continue;
+            net.minecraft.core.BlockPos np = be.getBlockPos().relative(net.minecraft.core.Direction.values()[d.ordinal()]);
+            if (!(be.getLevel().getBlockEntity(np) instanceof AssemblyBlockEntity m) || m.resolution() != AssemblyBlockEntity.MINIATURE) continue;
+            int last = m.resolution() - 1;
+            float r = m.resolution();
+            for (PlacedPart w : m.parts()) {
+                if (w.kind != PartKind.INSULATED_WIRE) continue;
+                int[] lo = {w.x0, w.y0, w.z0}, hi = {w.x1, w.y1, w.z1};
+                if (d.sign() > 0 ? lo[a] != 0 : hi[a] != last) continue;
+                float[] at = new float[3];
+                for (int k = 0; k < 3; k++) at[k] = k == a ? d.sign() * half[a] : (lo[k] + hi[k] + 1) / (2 * r) - 0.5f;
+                out.add(new float[]{conductor(w), at[0], at[1], at[2]});
+            }
+        }
+        return out;
+    }
+
+    /** The ribbon conductor an insulated wire joins: the one of its colour. */
+    private static int conductor(PlacedPart w) {
+        return Math.floorMod((int) Math.round(w.spec.params().getOrDefault("color", 0.0)), INSULATION.length);
     }
 
     /** Insulation colours (parameter "color" 0–15): blue (default), then the usual wiring colours. */

@@ -109,6 +109,8 @@ public final class PartShapes {
             case LOGIC, OPAMP -> model(out, be, p, -0.48f, 0.48f, -0.33f, -0.12f, -0.48f, 0.48f);
             case LED -> model(out, be, p, -0.46f, 0.46f, -0.33f, 0.2f, -0.5f, 0.5f);
             case CHIP -> model(out, be, p, -0.5f, 0.5f, -0.5f, -0.18f, -0.5f, 0.5f);
+            // the flat cable as drawn (a little thicker, to aim at), its conductors' jumpers to their wires left out
+            case RIBBON -> model(out, be, p, -0.34f, 0.34f, -0.5f, -0.4f, -0.5f * ez, 0.5f * ez);
             case SOURCE -> model(out, be, p, -0.3f, 0.3f, -0.5f, -0.3f, -0.3f, 0.3f);
             case GM_TUBE -> model(out, be, p, -0.16f, 0.16f, -0.16f, 0.16f, -0.5f, 0.5f);
             case POTENTIOMETER -> model(out, be, p, -0.36f, 0.36f, -0.36f, 0.36f, -0.5f * ez, 0.5f * ez);
@@ -154,7 +156,7 @@ public final class PartShapes {
         float[] x = {l == 0 ? 1 : 0, l == 1 ? 1 : 0, l == 2 ? 1 : 0};
         float[] y = cross(z, x);
         boolean lying = p.kind == PartKind.SWITCH || p.kind == PartKind.VALVE || p.kind == PartKind.LED || p.kind == PartKind.TRANSISTOR
-                || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP || p.kind == PartKind.OPAMP;
+                || p.kind == PartKind.LOGIC || p.kind == PartKind.CHIP || p.kind == PartKind.OPAMP || p.kind == PartKind.RIBBON;
         if (lying && p.axis.axis() != 1) {
             y = new float[]{0, 1, 0};
             x = cross(y, z);

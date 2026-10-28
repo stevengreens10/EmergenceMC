@@ -223,6 +223,11 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0b0. **Full tour 2026-10-28 01:15 (scheduled): 189/189 over 86 exhibits in 33 min, no hand failures.** The
+   demo world was not regenerated: it was built at 00:50 from the code committed since. At 01:25 Windows lost the
+   audio device ("Audio device was lost!"). Vanilla Minecraft then retries opening it every tick, which put 27 000
+   stack traces in the log, but no check depends on the client's sound.
+
 0b. **The user's seven next steps** (asked 2026-10-27: "Complete these steps").
    1. *The gas engine's slow start* (done): the tour's condition read the server off its thread (NaN). It now reads
       on the server's thread, and the engine's visit takes 86 s.

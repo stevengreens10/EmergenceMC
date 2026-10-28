@@ -953,7 +953,8 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
     k = V_ref·1023·100 (V_ref = 1.41 V at the diodes' 4 mA).
   * **Generator current.** It flows through a full-size 0.5 Ω shunt beside the station's bridge. Its two ends are
     sensed on ribbon conductors of their own, which carry no current (Kelvin sensing), into an inverting amplifier in
-    the gauge's block (gain 50, 0.2 s low-pass): 40 mA a volt. The ADC's reference is the supply, so this one scales
+    the gauge's block (gain 50, 1 s low-pass: the current comes in pulses, 0 to 670 mA at each magnet's pass, and a
+    0.2 s filter left a single reading anywhere from 63 to 105 mA against a 74 mA mean): 40 mA a volt. The ADC's reference is the supply, so this one scales
     with it (set for 5.6 V).
   * **Engine speed.** The gauge counts its 10 kHz clock between the rev counter's pulses: rpm = 600 000 / count.
   * **Condenser pressure.** Shown absolute: its transducer's gauge reading plus a fixed 2.8 kPa (the world's air,

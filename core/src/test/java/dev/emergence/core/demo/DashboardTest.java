@@ -29,8 +29,19 @@ class DashboardTest {
         double t0 = c.time(), q0 = c.batteryChargeDelivered(bat);
         long wall0 = System.nanoTime();
         double seconds = Double.parseDouble(System.getProperty("diag.dashRun", "30"));
+        // -Ddiag.powerTrace=true: every half second, the power and current gauges against the generator's mean current
+        // (from the battery's charge) and power over that half second
+        boolean trace = Boolean.getBoolean("diag.powerTrace");
+        double qa = c.batteryChargeDelivered(bat);
         for (int i = 0; i < Math.round(seconds / 0.05); i++) {
             c.step(0.05);
+            if (trace && i % 10 == 9) {
+                double qb = c.batteryChargeDelivered(bat), iBat = -(qb - qa) / 0.5;
+                qa = qb;
+                System.out.printf("  t=%5.1f s: power gauge %d, current gauge %d; battery %.3f V, mean charging current %.1f mA (%.1f ×10 mW); shunt now %.1f mA%n",
+                        c.time(), chip[6].instance().value("v"), chip[4].instance().value("v"), c.probe(bat).voltage(), 1e3 * iBat,
+                        100 * iBat * c.probe(bat).voltage(), -1e3 * c.probe(shunt).current());
+            }
         }
         // the generator's current pulses with each magnet's pass: its mean over the last second, sampled every millisecond
         // (what the gauge's 0.2 s filter averages; samples 50 ms apart alias)

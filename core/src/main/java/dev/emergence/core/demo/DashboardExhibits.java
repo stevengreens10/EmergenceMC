@@ -208,13 +208,14 @@ public final class DashboardExhibits {
             }
             case CURRENT, POWER -> {
                 // an inverting amplifier: the op-amp's + input on the shunt's ground end, its − input through 2 kΩ from
-                // the shunt's other end and through 100 kΩ (with 2 µF across it) from its output
+                // the shunt's other end and through 100 kΩ (with 10 µF across it: a 1 s low-pass, the generator's current
+                // pulsing at each magnet's pass) from its output
                 e.name("amp", e.add(OPAMP, "silicon", 9, 1, 3, Dir.EAST));
                 e.add(RESISTOR, "alumina", 7, 0, 5, Dir.EAST, "resistance", 2_000);
                 e.add(RESISTOR, "alumina", 11, 0, 4, Dir.EAST, "resistance", 100_000);
                 // (a row clear of the 100 kΩ: single-cell parts also bring their leads out on their side faces, and side by
                 // side the two were joined end to end, the amplifier's feedback shorted)
-                e.add(CAPACITOR, "alumina", 11, 0, 6, Dir.EAST, "capacitance", 2e-6);
+                e.add(CAPACITOR, "alumina", 11, 0, 6, Dir.EAST, "capacitance", 10e-6);
                 r.pin("sig2", 8, 1, 3);                                  // + input (west): the shunt's ground end
                 r.pin("inm", 9, 0, 3).pin("inm", 8, 0, 5).pin("inm", 10, 0, 4).pin("inm", 10, 0, 6);
                 r.pin("sig", 6, 0, 5);                                    // the shunt's far end, into 2 kΩ

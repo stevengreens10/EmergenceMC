@@ -244,10 +244,15 @@
    6. *Station performance* (one round done): profiled at 17.2 s per 10 s with seven gauges, against 9.1 s without
       them. Ribbon conductors reduced to a node per joined point: 14.9 s. The rest of the dashboard's cost is its
       circuits solved at every step of the generator's; the next round is a multirate split of the circuits phase
-      (see PERFORMANCE, "The station with seven gauges"). Open: the power gauge reads 10–18 % under the run's mean
-      (35 against 42.6, 37 against 41.3), while the current gauge reads 5 % over. Its constant (1625) was set from
-      one instant's codes; set it over a whole reading window. Its 15 % + 2 tolerance is nearly used up, so the
-      DashboardTest failed once under load.
+      (see PERFORMANCE, "The station with seven gauges"). The power gauge read 10–18 % under the run's mean. Found
+      (2026-10-28): not a bias but sampling noise. The generator's current comes in pulses (0 to 670 mA at each
+      magnet's pass), the current front ends' 0.2 s filter left a single reading anywhere from 63 to 105 mA, and the
+      gauges read at different moments. The filter is now 1 s (10 µF): the current gauge holds 73–77 mA against
+      73.9, and the power gauge, its constant set again from settled readings (1695), shows 0.40 W against 0.425.
+      The station world rebuilt with it (01:54): 0 problems, its GameTest passing. **The station tour is still to
+      run:** at 02:00 Windows had no monitor ("Failed to locate a primary monitor"; the audio device went at 01:25
+      too), so no client could open. Run `./gradlew runStationWorld` (if the code changed) and
+      `./gradlew runStationShowcase` when a display is back.
    7. *The EM-8 and the analyser* (done in the core): the EM-8 has 32 bytes, a stack, CALL/RET, PUSH/POP, LDN/STN
       and ADC/SBC. The analyser decodes SPI and UART and exports CSV.
    **Seen in the world (2026-10-28 00:43–01:05):**

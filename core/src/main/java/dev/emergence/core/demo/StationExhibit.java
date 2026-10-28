@@ -426,8 +426,8 @@ public final class StationExhibit {
 
     /** The battery gauge's constant: its diode reference's voltage × 1023 × 100 (see DashboardTest). */
     static final int BATTERY_K = 132_230;
-    /** The power gauge's constant: 4 × its diode's drop² × 1023 (see DashboardTest). */
-    static final int POWER_K = 1_625;
+    /** The power gauge's constant: 4 × its diode's drop² × 1023, set from its settled readings (see DashboardTest). */
+    static final int POWER_K = 1_695;
     /** The dashboard's gauges, west to east (see {@link #dashboard}). */
     static final DashboardExhibits.Gauge[] GAUGES = {
             // the bottles' gauge pressure: 0–250 bar on 10–90 % of the supply

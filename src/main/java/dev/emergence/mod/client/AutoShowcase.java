@@ -455,7 +455,7 @@ public final class AutoShowcase {
                 logOn(key, part.apply("chamber", PartKind.TANK), "fluid temperature", 3, server, logger);
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " switch the igniter on", part.apply("switch", PartKind.SWITCH), logger)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " open the fuel valve", part.apply("valve", PartKind.VALVE), logger)));
-                STEPS.add(new Step(4800, view, shot.apply("burning"), () -> chamber(server, chamberAt, true) > 1300).show().check(key + " the methane burns in the chamber", () -> atLeast("chamber gas temperature [K]", chamberNow(server, chamberAt, true), 1000)));
+                STEPS.add(new Step(4800, view, shot.apply("burning"), () -> onServer(server, key + "chamber", () -> chamber(server, chamberAt, true)) > 1300).show().check(key + " the methane burns in the chamber", () -> atLeast("chamber gas temperature [K]", chamberNow(server, chamberAt, true), 1000)));
             }
             if (id.equals("harvester")) {
                 // a push sets the magnet bouncing between the coils; the switch connects the load
@@ -570,7 +570,7 @@ public final class AutoShowcase {
                 // (up to 10 s: an island compiled only as the tour lands — its chunks loaded on arrival — has first to run
                 // its battery's LED and the receiver up; the periscope's, once its neighbours moved it on, was checked two
                 // simulated seconds after it compiled)
-                STEPS.add(new Step(200, NOTHING, shot.apply("lit"), () -> light(server, led) > 1e-5)
+                STEPS.add(new Step(200, NOTHING, shot.apply("lit"), () -> onServer(server, key + "lit", () -> light(server, led)) > 1e-5)
                         .check(key + " the light reaches the photodiode and lights the LED", () -> {
                             Verdict v = lit(server, led);
                             if (v.pass() || !id.equals("periscope")) return v;
@@ -1048,7 +1048,7 @@ public final class AutoShowcase {
                 BlockPos root = at.apply("aluminiumRoot");
                 for (String k : new String[]{"aluminium", "steel"}) {
                     BlockPos shaftAt = at.apply(k + "Root");
-                    STEPS.add(new Step(600, NOTHING, null, () -> motion(server, shaftAt, PartKind.SHAFT) > 120)
+                    STEPS.add(new Step(600, NOTHING, null, () -> onServer(server, key + "w", () -> motion(server, shaftAt, PartKind.SHAFT)) > 120)
                             .act(PlayerHand.hold(key + " crank the " + k + " shaft up to speed", part.apply(k + "Crank", PartKind.CRANK), false)));
                     STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 }
@@ -1083,7 +1083,19 @@ public final class AutoShowcase {
                         .after(() -> dumpIf(server, key, shaft)));
                 // held until it fires and runs away from the hand (a hand cannot drive it faster than handTop): ten seconds of
                 // its own time do it, but a busy full tour runs its island at a fifth of real time or less, so up to 3 minutes
-                STEPS.add(new Step(3600, NOTHING, null, () -> motion(server, shaft, PartKind.SHAFT) > handTop + 5)
+                long[] logged = {0};
+                STEPS.add(new Step(3600, NOTHING, null, () -> {
+                    // (read on the server's thread, as every condition must be: off it the level gives no block entity, and
+                    // this read NaN until the step's 3-minute limit — the engine had fired within seconds)
+                    double w = onServer(server, key + "w", () -> motion(server, shaft, PartKind.SHAFT));
+                    // (-Demergence.engineLog=true: its speed against its own time, once a second, to compare with the core)
+                    if (Boolean.getBoolean("emergence.engineLog") && System.currentTimeMillis() - logged[0] > 1000) {
+                        logged[0] = System.currentTimeMillis();
+                        EmergenceMod.LOG.info("Engine: t = {} s, crankshaft {} rad/s", String.format("%.2f", onServer(server, key + "t", () -> simTime(server, shaft))),
+                                String.format("%.1f", w));
+                    }
+                    return w > handTop + 5;
+                })
                         .act(PlayerHand.hold(key + " swing the starting handle until it fires", part.apply("handle", PartKind.CRANK), false)));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
                 STEPS.add(new Step(200, view, shot.apply("running")).check(key + " it fires and runs on, faster than a hand can turn it",

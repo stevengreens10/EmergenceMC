@@ -89,6 +89,7 @@ neoForge {
             systemProperty 'emergence.autoShowcase', 'true'
             // motion diagnostics: -Demergence.poseLog=true -Demergence.showcaseOnly=servo,jack (see PoseLog)
             systemProperty 'emergence.poseLog', System.getProperty('emergence.poseLog', 'false')
+            systemProperty 'emergence.engineLog', System.getProperty('emergence.engineLog', 'false')
             systemProperty 'emergence.showcaseOnly', System.getProperty('emergence.showcaseOnly', '')
             // GIF frames for the README: -Demergence.gifs=a,b (with showcaseOnly=a,b), then python tools/make_gifs.py
             systemProperty 'emergence.gifs', System.getProperty('emergence.gifs', '')

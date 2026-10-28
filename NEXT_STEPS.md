@@ -55,10 +55,13 @@
    - (done: the miniature generator is built with the precision tweezers, each part clicked into its cells or onto
      its shaft, and compiles as its definition);
    - the gas engine's island runs at a fifth to a third of real time once it fires (combustion steps at 200+ rad/s);
-   - (2026-10-27 full tour, watched by the user: "the showcase just spins the crank for the gas engine for a long
-     time") the hand swung the starting handle 3 min 12 s before it fired: the island ran 0.30–0.50× real time
-     *while cranked* (45 ms ticks), and needed ~60–70 s of its own time against ~10 s in the core — find why it is
-     slow to fire in the world (mixture? the fuel valve's state? sun-warmed intake?) and why cranking is so costly;
+   - (fixed 2026-10-27: the tour's fault, not the engine's) the hand swung the starting handle for 3–4 minutes: the
+     step's "has it fired?" condition read the crankshaft's speed off the server's thread, where the level gives no
+     block entity, so it read NaN until the step's 3-minute limit. The engine fires 3.5 s into the cranking, in the
+     world as in the core (replays of the world's state with relaxed accuracy and with the noon sun agree). Three
+     more conditions read so (the burner's, the periscope's, the fatigue rig's); all four now read on the server.
+     The engine's visit took 86 s instead of 214–247. Still open: its island runs at about a third of real time once
+     it fires (combustion's fine steps at 200+ rad/s);
    - the wind turbine's load check now asks only that power arrives (a lull at 30 rad/s gave 0.12 W against 0.2);
    - (done: `runWatchDemoBuild` builds the gallery where it can be watched; it found five machines held by scaffolding
      that had gone, now rebuilt when a world block beside them changes) confirm a full watched build matches its
@@ -235,7 +238,7 @@
    (2026-10-25)"); the user opened it.
    **Full tour 20:10 (the 18:20 slot, held while the user was in the station): 182/182 over 84 exhibits, no hand
    failures.** The new exhibits, the datum and passive-reader changes and the gas-pressure sensor all hold across
-   the gallery. Still open: the gas engine's start took 214 s again (see 0).
+   the gallery. (The gas engine's 214 s start: the tour's condition, fixed since; see 0.)
    Next for the dashboard:
    - a seventh screen for the engine's power (current × voltage: a gauge reading two ADCs);
    - alarm limits that invert a gauge's card;

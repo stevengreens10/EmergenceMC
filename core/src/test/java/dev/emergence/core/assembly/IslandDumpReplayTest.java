@@ -74,6 +74,11 @@ class IslandDumpReplayTest {
         a.anchoredWhen(p -> anchored.contains(p.id()));
         if (Boolean.getBoolean("diag.rest")) st = st.recovery();
         CompiledAssembly c = AssemblyCompiler.compile(a, st);
+        // -Ddiag.dumpRelax=<×>: its accuracy relaxed, as the game relaxes a slow island's (SimulationManager's pace)
+        if (System.getProperty("diag.dumpRelax") != null) c.relaxAccuracy(Double.parseDouble(System.getProperty("diag.dumpRelax")));
+        // -Ddiag.dumpSun=<W/m²>: the noon sun overhead on every part, as the world's daylight
+        if (System.getProperty("diag.dumpSun") != null)
+            c.setDaylight(new dev.emergence.core.math.Vec3(0, -1, 0), Double.parseDouble(System.getProperty("diag.dumpSun")), id -> true);
         for (var b : c.bodies()) {
             StringBuilder sb = new StringBuilder();
             for (long id : b.parts()) sb.append(a.get(id).kind()).append('@').append(a.get(id).minX()).append(',').append(a.get(id).minY()).append(' ');

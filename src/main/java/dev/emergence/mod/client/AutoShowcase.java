@@ -689,6 +689,10 @@ public final class AutoShowcase {
                     return "trace rows " + r0 + " -> " + r1 + " (column " + x + ")";
                 };
                 STEPS.add(new Step(2400, view, shot.apply("graph"), () -> onServer(server, key + "x", () -> column(server, recP)) >= 100)
+                        .check(key + " each screen, as this client shows it, is its recorder's image", () -> {
+                            String a = sameImage(server, at.apply("screenP")), b = sameImage(server, at.apply("screenT"));
+                            return that(a == null && b == null, a == null && b == null ? "both alike (but the newest columns)" : a != null ? a : b);
+                        })
                         .check(key + " both screens are lit", () -> {
                             DisplayPanel a = display(server, at.apply("screenP")), b = display(server, at.apply("screenT"));
                             return that(a != null && b != null && a.on() && b.on(), "screens " + (a == null ? "missing" : a.on()) + ", " + (b == null ? "missing" : b.on()));
@@ -1777,6 +1781,28 @@ public final class AutoShowcase {
         PlacedPart p = any(s, at, PartKind.DISPLAY);
         CompiledAssembly c = compiled(s, at);
         return p == null || c == null ? null : c.display(p.id);
+    }
+
+    /**
+     * Whether the screen in block {@code at}, as this client received it, shows its controller's image: null if every
+     * column matches but at most the three newest (still on their way), else what differs. A garbled screen, NO SIGNAL
+     * or a stale image fails.
+     */
+    private static String sameImage(net.minecraft.server.MinecraftServer s, BlockPos at) {
+        PlacedPart panel = any(s, at, PartKind.DISPLAY);
+        DisplayPanel d = display(s, at);
+        if (panel == null || d == null) return "no screen";
+        int differ = 0;
+        StringBuilder cols = new StringBuilder();
+        for (int x = 0; x < 128; x++) {
+            boolean same = true;
+            for (int y = 0; y < 64 && same; y++) same = d.pixel(x, y) == ClientDisplays.lit(panel.id, x, y);
+            if (!same) {
+                differ++;
+                if (cols.length() < 40) cols.append(' ').append(x);
+            }
+        }
+        return differ <= 3 ? null : differ + " columns differ from the controller's image:" + cols;
     }
 
     /** The column a chart-recorder chip (a chip of the player's design) in the block is drawing (its register x; −1 if none). */

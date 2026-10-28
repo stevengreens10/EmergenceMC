@@ -52,5 +52,50 @@ class ChartRecorderExhibitTest {
             assertTrue(last < first, "the trace climbed: row " + first + " -> " + last);
         }
         assertTrue(c.digital().nets().size() >= 14, "the buses are digital nets (no solver steps): " + c.digital().nets().size());
+        // read off the screen: the newest point where the chip put it (its row y in the column it last drew)
+        newestPointShown(scrP, recP);
+        newestPointShown(scrT, (DesignComponent) c.digitalChip(b.id(e, "recorderT")).component());
+    }
+
+    /**
+     * The recorder's last finished point is lit on its screen, in the column it last finished (x − 1), and the column
+     * ahead of it is clear. (Between columns that point is its y; while it draws column x, y is already that column's
+     * point and the finished one is yp.)
+     */
+    static void newestPointShown(DisplayPanel s, DesignComponent rec) {
+        int x = (int) rec.instance().value("x");
+        int y = (int) (rec.instance().value("st") >= 6 ? rec.instance().value("yp") : rec.instance().value("y"));
+        assertTrue(s.pixel(Math.floorMod(x - 1, 128), y), "the newest point at column " + (x - 1) + ", row " + y + " is on the screen");
+        boolean clear = true;
+        for (int r = 0; r < 64; r++) clear &= !s.pixel(Math.floorMod(x + 1, 128), r);
+        assertTrue(clear, "the column ahead of the trace is clear");
+    }
+
+    /** Saved mid-byte and loaded again (as saved now and as saved before), the recorders go on drawing where they should. */
+    @Test
+    void reloadedMidByteTheTraceGoesOn() {
+        Exhibit e = MonitorExhibits.chartRecorder();
+        Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+        var rec = (DesignComponent) c.digitalChip(b.id(e, "recorderP")).component();
+        for (int i = 0; i < 100; i++) c.step(0.05);
+        for (int i = 0; i < 20000 && !(rec.instance().value("b") >= 1 && rec.instance().value("b") <= 6); i++) c.step(1e-6);
+        long bit = rec.instance().value("b");
+        assertTrue(bit >= 1 && bit <= 6, "saved mid-byte: bit " + bit);
+        long scr = b.id(e, "screenP");
+        for (boolean oldSave : new boolean[]{false, true}) {
+            var s = c.exportState();
+            if (oldSave) {
+                // as saved before the display kept its place in a byte: the controller's words less the last
+                for (var k : new java.util.ArrayList<>(s.chemistry().keySet()))
+                    if (k.endsWith(":n") && s.chemistry().get(k) == 131 && c.display(scr) != null) s.chemistry().put(k, 130.0);
+            }
+            CompiledAssembly again = AssemblyCompiler.compile(b.assembly(), s);
+            var rec2 = (DesignComponent) again.digitalChip(b.id(e, "recorderP")).component();
+            for (int i = 0; i < 100; i++) again.step(0.05);
+            System.out.printf("chart recorder reloaded mid-byte (%s): column %d, row %d%n", oldSave ? "an old save" : "its place kept",
+                    rec2.instance().value("x"), rec2.instance().value("y"));
+            newestPointShown(again.display(scr), rec2);
+        }
     }
 }

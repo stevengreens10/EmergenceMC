@@ -216,7 +216,7 @@ public final class PartEditorScreen extends Screen {
             String what = design ? (pins.error() == null ? "Chip designer: " + pins.label() + ", " + pins.segments() + " blocks long" : "Chip designer: write its design")
                     : "ROM editor: " + (text.isBlank() ? "empty" : "edit its contents");
             addRenderableWidget(Button.builder(Component.literal("✎ " + what), b -> minecraft.setScreen(design
-                            ? ChipDesignerScreen.forItem(this, text, t -> text = t)
+                            ? ChipDesignerScreen.forItem(this, text, t -> text = t).madeFrom(values)
                             : RomEditorScreen.forItem(this, text, t -> text = t)))
                     .bounds(width / 2 - 154, height - 52, 308, 20)
                     .tooltip(Tooltip.create(Component.literal(design ? "Write or change what this chip does, in the chip language." : "See and change the ROM's 256 bytes.")))

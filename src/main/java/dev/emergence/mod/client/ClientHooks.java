@@ -26,7 +26,7 @@ public final class ClientHooks {
         Minecraft mc = Minecraft.getInstance();
         int fn = ChipRows.function(part.spec);
         if (fn == ChipTypes.DESIGN) {
-            mc.setScreen(ChipDesignerScreen.forPlaced(pos, part.id, part.spec.text()));
+            mc.setScreen(ChipDesignerScreen.forPlaced(pos, part.id, part.spec.text()).madeFrom(part.spec.params()));
         } else if (fn == ChipTypes.ROM256) {
             mc.setScreen(RomEditorScreen.forPlaced(pos, part.id, part.spec.text()));
         } else if (mc.player != null && mc.level != null) {

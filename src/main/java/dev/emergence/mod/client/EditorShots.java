@@ -27,6 +27,13 @@ final class EditorShots {
     static boolean init() {
         String which = System.getProperty("emergence.editorShots", "");
         if (which.isBlank()) return false;
+        // the chip designer on a chip cut from a wafer: a process that works (the two-step furnace's) and one that does not
+        if (which.equals("all") || List.of(which.split(",")).contains("DESIGNER_FAB")) {
+            SHOTS.add(new Object[]{null, java.util.Map.of(dev.emergence.core.digital.ChipProcess.OXIDE, 24.9e-9, dev.emergence.core.digital.ChipProcess.JUNCTION,
+                    0.36e-6, dev.emergence.core.digital.ChipProcess.GATE, 3e-6, dev.emergence.core.digital.ChipProcess.CHANNEL, 0.0), false, "designer-fab"});
+            SHOTS.add(new Object[]{null, java.util.Map.of(dev.emergence.core.digital.ChipProcess.OXIDE, 26.7e-9, dev.emergence.core.digital.ChipProcess.JUNCTION,
+                    1.4e-6, dev.emergence.core.digital.ChipProcess.GATE, 3e-6, dev.emergence.core.digital.ChipProcess.CHANNEL, 0.0), false, "designer-fab-dead"});
+        }
         for (PartKind k : PartKind.values()) {
             if (!which.equals("all") && !List.of(which.split(",")).contains(k.name())) continue;
             SHOTS.add(new Object[]{k, PartItem.defaultSpec(k), false, "editor-" + k.name().toLowerCase()});
@@ -46,7 +53,11 @@ final class EditorShots {
             return;
         }
         Object[] s = SHOTS.get(index);
-        if (wait < 0) {
+        if (wait < 0 && s[0] == null) {
+            @SuppressWarnings("unchecked") var params = (java.util.Map<String, Double>) s[1];
+            mc.setScreen(ChipDesignerScreen.forItem(null, dev.emergence.core.digital.ChipLibrary.source("gauge"), t -> { }).madeFrom(params));
+            wait = 10;
+        } else if (wait < 0) {
             PartEditorScreen screen = new PartEditorScreen((PartKind) s[0], false, (PartSpec) s[1]);
             if ((boolean) s[2]) screen.showAdvanced();
             if (s[0] == PartKind.BATTERY && (boolean) s[2]) screen.startTyping("capacity");

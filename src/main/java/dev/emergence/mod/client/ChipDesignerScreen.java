@@ -45,6 +45,14 @@ public final class ChipDesignerScreen extends Screen {
     private ChipDesign.ChipError error;
     private ChipProbePayload live;
     private int ticks, tab, panelW, panelX;
+    /** The process the chip was made in (one cut from a wafer carries its; null: the ready-made chips'). */
+    private dev.emergence.core.digital.ChipProcess process;
+
+    /** The chip's settings: its process, if it was cut from a wafer. */
+    ChipDesignerScreen madeFrom(java.util.Map<String, Double> params) {
+        process = params != null && params.containsKey(dev.emergence.core.digital.ChipProcess.OXIDE) ? dev.emergence.core.digital.ChipProcess.of(params) : null;
+        return this;
+    }
 
     private ChipDesignerScreen(Screen parent, Consumer<String> onDone, BlockPos pos, long partId, String text) {
         super(Component.literal("Chip designer"));
@@ -257,14 +265,31 @@ public final class ChipDesignerScreen extends Screen {
             return;
         }
         var e = compiled.estimate();
+        // made in a process of the player's: its speed and leakage scaled (see ChipProcess)
+        double slow = process == null ? 1 : process.delayScale(), leak = process == null ? 1 : process.leakageScale();
+        if (process != null) {
+            y = section(g, "Made in (cut from a wafer)", x, y);
+            y = row(g, "Gate oxide", String.format("%.1f nm", process.oxide() * 1e9), x, y);
+            y = row(g, "Junctions", String.format("%.2f µm deep", process.junction() * 1e6), x, y);
+            y = row(g, "Gate length", String.format("%.1f µm (%.2f left)", process.gateLength() * 1e6, Math.max(0, process.effectiveLength()) * 1e6), x, y);
+            y = row(g, "Threshold", String.format("%.2f V, %s-channel", process.threshold(), process.pChannel() ? "p" : "n"), x, y);
+            if (!process.works()) {
+                y = para(g, "This chip does not work: " + process.fault() + ".", x, y, 0xFFFF6B6B);
+                y += 4;
+            } else {
+                y = row(g, "Delay", String.format("%.2f× ready-made", slow), x, y);
+                y = row(g, "Leakage", String.format("%.2g× ready-made", leak), x, y);
+            }
+            y += 4;
+        }
         y = section(g, "Size and speed (estimate)", x, y);
         y = row(g, "Gates", String.valueOf(e.gates()), x, y);
         y = row(g, "Flip-flops", String.valueOf(e.flipFlops()), x, y);
         if (e.memoryBits() > 0) y = row(g, "Memory", e.memoryBits() + " bits", x, y);
         y = row(g, "Logic depth", e.registerDepth() + " gates", x, y);
-        y = row(g, "Fastest clock", Units.formatSI(e.maxClock(), "Hz"), x, y);
-        y = row(g, "In → out delay", Units.formatSI(e.propagationDelay(), "s"), x, y);
-        y = row(g, "Leakage, 5 V", Units.formatSI(e.leakage(5), "A"), x, y);
+        y = row(g, "Fastest clock", Units.formatSI(e.maxClock() / slow, "Hz"), x, y);
+        y = row(g, "In → out delay", Units.formatSI(e.propagationDelay() * slow, "s"), x, y);
+        y = row(g, "Leakage, 5 V", Units.formatSI(e.leakage(5) * leak, "A"), x, y);
         y = row(g, "Per clock edge", Units.formatSI(e.energyPerEdge(5), "J"), x, y);
         int ni = compiled.inputPins().size(), no = compiled.outputPins().size();
         y += 4;

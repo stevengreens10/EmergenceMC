@@ -938,7 +938,11 @@ public final class AutoShowcase {
                             int shown = (int) leds.getAsDouble();
                             return that(Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
                         })
-                        .check(key + " the screen, as this client shows it, reads the LEDs' count", () -> screenReadsCount(server, at.apply("screen"), leds)));
+                        .check(key + " the screen, as this client shows it, reads the LEDs' count", () -> screenReadsCount(server, at.apply("screen"), leds))
+                        .check(key + " the screen, as this client shows it, is its controller's image", () -> {
+                            String why = sameImage(server, at.apply("screen"));
+                            return that(why == null, why == null ? "alike" : why);
+                        }));
                 // the chips close up from above: their pins named on their tops
                 BlockPos chipAt = at.apply("chip");
                 STEPS.add(new Step(30, () -> look(server, chipAt.getX() + 8.5, chipAt.getY() + 3.2, chipAt.getZ() + 3.5, 180, 55), shot.apply("labels")));

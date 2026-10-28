@@ -247,6 +247,13 @@ public final class ChipDesign {
         private final int[] wireEpoch = new int[signals.size()];
         private int epoch = 1;
         private long edges, violations;
+        /** How much slower its logic settles than the design's estimate (its process: {@link ChipProcess}). */
+        private double slowdown = 1;
+
+        /** Sets how much slower than the estimate its logic settles (a clock faster than that is a violation). */
+        public void slowdown(double s) {
+            slowdown = s;
+        }
 
         Instance(Map<String, Double> params) {
             for (Signal s : signals) {
@@ -316,7 +323,7 @@ public final class ChipDesign {
             lastEdge[i] = t;
             epoch++;
             // a clock faster than the logic settles: the registers miss their setup and hold (counted)
-            if (period < 1 / estimate.maxClock()) {
+            if (period < slowdown / estimate.maxClock()) {
                 violations++;
                 return;
             }

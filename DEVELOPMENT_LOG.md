@@ -1311,3 +1311,26 @@ the station's operation, with a nice UI, using miniature electronics wherever po
     16-tooth one at exactly −2.000.
   The spur mesh is split so that a link, whose geometry CrossScale has judged, can make it. The "Gears across
   scales" exhibit uses an embedded miniature block standing on a full-size block beside the crank's gear.
+
+**The EM-8's stack and the analyser's decoders (2026-10-28).**
+- *EM-8.* RAM goes from 16 to 32 bytes, and a stack grows down from its top. New instructions: CALL and RET, PUSH
+  and POP, LDN and STN (through a pointer), and ADC/ADCI and SBC/SBCI (with carry). The opcodes are new, so old
+  programs run unchanged.
+- *Analyser.* A Decode button reads SPI (CH1 clock, CH2 data, CH3 select) or UART (every level channel, its baud
+  rate found from its shortest pulse) from the recorded levels, and labels each byte on its trace. A framing error
+  shows red. CSV saves the record: the button, or `/emergence analyser export`. The tour now clips the thermostat's
+  probes in the decoder's order and checks that bytes come off the ADC's data line.
+
+**Chip fabrication (2026-10-28).** The next steps included making chips from materials. A silicon block with a
+dopant film is a wafer. Heated, its surface oxidises (Deal–Grove plus Massoud's thin-oxide term, in air) and the
+dopant diffuses in (Arrhenius D, a constant source, erfc profile). Both are integrated on the block's simulated
+temperature. The oxide, the junction depth, the mask's gate length and the carrier make a `ChipProcess`: threshold
+from the MOS equation, effective channel after sideways diffusion, and the delay and leakage that follow. A custom
+chip's delays, clock limit and leakage scale with it; a failed process makes dead chips.
+- In game, an empty-hand click on a silicon block reports its oxide and junctions and what its chips would be.
+  Sneak-click cuts a cool wafer into 16 blank custom chips carrying its process.
+- Exhibit "Wafer furnace": a ceramic element on 24 lead–acid cells holds a phosphorus-filmed wafer at 1190 °C.
+- *Found on the way.* A thin plate conducted heat through its face as if through its edge (the plate's
+  cross-section over half a cell): face to face, plates were near insulators. Heat crossing a plate through its
+  face now has the whole face and half the plate's thickness. Without that, no heater could bring a wafer above
+  700 K.

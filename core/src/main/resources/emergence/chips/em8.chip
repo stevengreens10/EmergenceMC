@@ -1,21 +1,30 @@
 // EM-8 processor: an 8-bit computer on one chip, its program in a ROM beside it.
 //
 // It fetches two bytes for every instruction — the opcode, then its operand — from the ROM on its address bus a7..a0
-// and data bus d7..d0, and executes it: four clocks an instruction. An accumulator, a zero and a carry flag, sixteen
-// bytes of memory inside, a 4-bit input port i3..i0 and an 8-bit output port o7..o0. rst high holds it at the start.
+// and data bus d7..d0, and executes it: four clocks an instruction. An accumulator, a zero and a carry flag, 32 bytes
+// of memory inside (a stack for calls grows down from its top), a 4-bit input port i3..i0 and an 8-bit output port
+// o7..o0. rst high holds it at the start.
 //
 // Wiring: clk from a clock; rst low to run (high holds it reset); a7..a0 to a 256-byte ROM's A7..A0 and its D7..D0 to
 // d7..d0; the ports to what it reads and drives. Programs are written in its assembly language in the ROM editor
 // (".asm em8" at the top of the ROM's text): see the instruction table there.
 //
-// Instructions (operand n: a number, r: a memory address 0-15, a: a program address):
+// Instructions (operand n: a number, r: a memory address 0-31, a: a program address):
 //   00 NOP         01 LDI n  A=n      02 LD r   A=mem[r]   03 ST r   mem[r]=A
 //   04 ADD r       05 ADDI n          06 SUB r             07 SUBI n          (carry: carry out / borrow)
 //   08 AND r       09 ANDI n          0A OR r              0B ORI n
 //   0C XOR r       0D XORI n          0E SHL  A<<1, C=bit7 0F SHR  A>>1, C=bit0
 //   10 JMP a       11 JZ a            12 JNZ a             13 JC a            14 JNC a
 //   15 IN    A=i   16 OUT   o=A       17 OUTI n  o=n       18 CMP r           19 CMPI n  (flags of A-x)
-//   1A INC r       1B DEC r           (mem[r]+-1, Z)       FF HLT  (stops)
+//   1A INC r       1B DEC r           (mem[r]+-1, Z)
+//   1C CALL a  push the return address, go to a           1D RET   pop it, go back
+//   1E PUSH  push A                    1F POP   pop A
+//   20 LDN r   A=mem[mem[r]]           21 STN r   mem[mem[r]]=A   (r holds a pointer)
+//   22 ADC r   23 ADCI n  A+=x+C       24 SBC r   25 SBCI n  A-=x+C   (multi-byte arithmetic)
+//   FF HLT  (stops)
+//
+// The stack: SP starts at 0 and counts down, a push storing at mem[SP-1] (so the first at mem[31]); 32 bytes shared
+// between data (from the bottom) and the stack (from the top) — keep them apart.
 
 chip em8
 in clk, rst
@@ -32,21 +41,27 @@ reg [7:0] outp = 0       // the output port's latch
 reg z = 0                // zero flag
 reg cy = 0               // carry flag
 reg [1:0] st = 0         // fetch opcode, fetch operand, execute
-mem [7:0] ram[16]
+reg [4:0] sp = 0         // the stack pointer: the top of the stack is mem[sp]
+mem [7:0] ram[32]
 
 assign o = outp
 
 // the operand as a value: immediate (odd opcodes 05..19) or from memory (even)
-wire [7:0] m = ram[arg[3:0]]
+wire [7:0] m = ram[arg[4:0]]
 wire [7:0] val = op[0] ? arg : m
-wire [8:0] sum = {1'b0, acc} + {1'b0, val}
-wire [8:0] dif = {1'b0, acc} - {1'b0, val}
+// with the carry in for ADC/SBC (opcodes 22-25)
+wire cin = op[5] & cy
+wire [8:0] sum = {1'b0, acc} + {1'b0, val} + {8'd0, cin}
+wire [8:0] dif = {1'b0, acc} - {1'b0, val} - {8'd0, cin}
+wire [4:0] down = sp - 1
+wire [7:0] top = ram[sp]
+wire [7:0] ind = ram[m[4:0]]
 wire [7:0] inc = m + 1
 wire [7:0] dec = m - 1
 
 on rise clk {
     if (rst) {
-        pc <= 0  acc <= 0  outp <= 0  z <= 0  cy <= 0  st <= 0  a <= 0
+        pc <= 0  acc <= 0  outp <= 0  z <= 0  cy <= 0  st <= 0  a <= 0  sp <= 0
     } else {
         case (st) {
             0: { a <= pc  st <= 1 }
@@ -57,9 +72,9 @@ on rise clk {
                 case (op) {
                     1: { acc <= arg  z <= arg == 0 }
                     2: { acc <= m  z <= m == 0 }
-                    3: { ram[arg[3:0]] <= acc }
-                    4, 5: { acc <= sum[7:0]  cy <= sum[8]  z <= sum[7:0] == 0 }
-                    6, 7: { acc <= dif[7:0]  cy <= dif[8]  z <= dif[7:0] == 0 }
+                    3: { ram[arg[4:0]] <= acc }
+                    4, 5, 34, 35: { acc <= sum[7:0]  cy <= sum[8]  z <= sum[7:0] == 0 }
+                    6, 7, 36, 37: { acc <= dif[7:0]  cy <= dif[8]  z <= dif[7:0] == 0 }
                     8, 9: { acc <= acc & val  z <= (acc & val) == 0 }
                     10, 11: { acc <= acc | val  z <= (acc | val) == 0 }
                     12, 13: { acc <= acc ^ val  z <= (acc ^ val) == 0 }
@@ -74,8 +89,14 @@ on rise clk {
                     22: { outp <= acc }
                     23: { outp <= arg }
                     24, 25: { cy <= dif[8]  z <= dif[7:0] == 0 }
-                    26: { ram[arg[3:0]] <= inc  z <= inc == 0 }
-                    27: { ram[arg[3:0]] <= dec  z <= dec == 0 }
+                    26: { ram[arg[4:0]] <= inc  z <= inc == 0 }
+                    27: { ram[arg[4:0]] <= dec  z <= dec == 0 }
+                    28: { ram[down] <= pc  sp <= down  pc <= arg }
+                    29: { pc <= top  sp <= sp + 1 }
+                    30: { ram[down] <= acc  sp <= down }
+                    31: { acc <= top  z <= top == 0  sp <= sp + 1 }
+                    32: { acc <= ind  z <= ind == 0 }
+                    33: { ram[m[4:0]] <= acc }
                     255: { st <= 3 }
                 }
             }

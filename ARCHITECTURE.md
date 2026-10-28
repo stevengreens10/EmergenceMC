@@ -204,3 +204,10 @@ The plant phase splits into parts stepped independently (the firebox's gas chemi
 part whose unknowns the circuits read stays with the plant phase. A passive reader (a pressure transducer, whose
 diaphragm takes nothing from its vessel) is exempt: the circuits read its part's latest step, and its derivative on
 a held unknown is dropped without counting as the parts meeting.
+
+### Processes on parts over time (`ShaftFatigue`, `WaferProcessing`)
+Slow changes to a part are integrated after each step from the simulated state, and their state is saved in the
+machine's state maps: a shaft's fatigue damage (in `damage`), a silicon block's oxide and diffused dopant (in
+`chemistry`, as "W{id}:ox" and "W{id}:Dt"). They read the physics and do not feed back into the step. Their
+results reach other parts through what the player makes of them: chips cut from a wafer carry its process as
+parameters (`ChipProcess`), which the chip's component reads.

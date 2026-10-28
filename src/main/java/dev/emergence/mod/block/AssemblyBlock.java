@@ -123,6 +123,12 @@ public final class AssemblyBlock extends BaseEntityBlock implements SimpleWaterl
             if (level.isClientSide) dev.emergence.mod.client.ClientHooks.openPlacedChip(pos, part);
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
+        // a silicon block, with an empty hand: what heating has made of it (oxide, junctions, the chips it would make);
+        // sneaking, a wafer is cut into chips
+        if (bare && part.kind == PartKind.BLOCK && "silicon".equals(part.spec.material())) {
+            if (level instanceof ServerLevel sl) SimulationManager.get(sl).waferClick(pos, part, player, player.isShiftKeyDown());
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         if (bare && level instanceof ServerLevel sl0 && SimulationManager.get(sl0).pushSlider(pos, part.id, player)) {
             return InteractionResult.SUCCESS;
         }

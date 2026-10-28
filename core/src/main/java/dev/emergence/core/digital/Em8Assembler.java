@@ -58,6 +58,16 @@ public final class Em8Assembler {
             new Op("CMPI", 0x19, true, "flags of A - n (C: A < n)"),
             new Op("INC", 0x1A, true, "mem[r] += 1"),
             new Op("DEC", 0x1B, true, "mem[r] -= 1"),
+            new Op("CALL", 0x1C, true, "push the return address, go to a"),
+            new Op("RET", 0x1D, false, "pop the return address, go back"),
+            new Op("PUSH", 0x1E, false, "push A"),
+            new Op("POP", 0x1F, false, "pop A"),
+            new Op("LDN", 0x20, true, "A = mem[mem[r]]"),
+            new Op("STN", 0x21, true, "mem[mem[r]] = A"),
+            new Op("ADC", 0x22, true, "A += mem[r] + C"),
+            new Op("ADCI", 0x23, true, "A += n + C"),
+            new Op("SBC", 0x24, true, "A -= mem[r] + C"),
+            new Op("SBCI", 0x25, true, "A -= n + C"),
             new Op("HLT", 0xFF, false, "stop"));
 
     private static final Map<String, Op> BY_NAME = new HashMap<>();

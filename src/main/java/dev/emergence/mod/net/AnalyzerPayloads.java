@@ -13,7 +13,9 @@ public final class AnalyzerPayloads {
 
     /** Operations of {@link Control}. */
     public static final int RUN = 0, SINGLE = 1, HOLD = 2, CLEAR = 3, TRIGGER_CHANNEL = 4, TRIGGER_EDGE = 5, REMOVE_PROBE = 6, WINDOW_US = 7,
-            TRIGGER_LEVEL_MV = 8;
+            TRIGGER_LEVEL_MV = 8, DECODE = 9, EXPORT = 10;
+    /** Decoders ({@link #DECODE}'s argument): none, SPI (CH1 clock, CH2 data, CH3 select if probed), UART (every level channel). */
+    public static final int DECODE_OFF = 0, DECODE_SPI = 1, DECODE_UART = 2;
 
     /** Client → server: a control of the player's analyser (an operation and its argument). */
     public record Control(int op, int arg) implements CustomPacketPayload {
@@ -54,11 +56,15 @@ public final class AnalyzerPayloads {
     /**
      * Server → client: the traces over the window asked for — per channel its name ("" if no probe), whether it is
      * digital, and its (min, max) per bin (NaN where nothing is recorded) — with the window's end time, the newest
-     * record, and the capture's state (mode, armed, holding, trigger channel/edge/time, window after the trigger).
+     * record, and the capture's state (mode, armed, holding, trigger channel/edge/time, window after the trigger); and
+     * the decoder's bytes in the window (channel, start, end, text) with a note on how it reads the bus.
      */
     public record Data(String[] names, boolean[] digital, float[][] min, float[][] max, double end, double span, double newest,
                        int mode, boolean armed, boolean frozen, int trigChannel, boolean trigRising, double trigTime, double window,
-                       boolean grounded) implements CustomPacketPayload {
+                       boolean grounded, int decode, String decodeNote, int[] frameCh, double[] frameStart, double[] frameEnd,
+                       String[] frameText) implements CustomPacketPayload {
+        public static final int MAX_FRAMES = 512;
+
         public static final Type<Data> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(EmergenceMod.MODID, "analyzer_data"));
         public static final StreamCodec<FriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.of(Data::write, Data::read);
 
@@ -84,6 +90,15 @@ public final class AnalyzerPayloads {
             buf.writeDouble(d.trigTime);
             buf.writeDouble(d.window);
             buf.writeBoolean(d.grounded);
+            buf.writeVarInt(d.decode);
+            buf.writeUtf(d.decodeNote, 200);
+            buf.writeVarInt(d.frameCh.length);
+            for (int i = 0; i < d.frameCh.length; i++) {
+                buf.writeVarInt(d.frameCh[i]);
+                buf.writeDouble(d.frameStart[i]);
+                buf.writeDouble(d.frameEnd[i]);
+                buf.writeUtf(d.frameText[i], 8);
+            }
         }
 
         private static Data read(FriendlyByteBuf buf) {
@@ -102,8 +117,26 @@ public final class AnalyzerPayloads {
                     mx[k][i] = buf.readFloat();
                 }
             }
-            return new Data(names, dig, mn, mx, buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readVarInt(), buf.readBoolean(),
-                    buf.readBoolean(), buf.readVarInt(), buf.readBoolean(), buf.readDouble(), buf.readDouble(), buf.readBoolean());
+            double end = buf.readDouble(), span = buf.readDouble(), newest = buf.readDouble();
+            int mode = buf.readVarInt();
+            boolean armed = buf.readBoolean(), frozen = buf.readBoolean();
+            int trig = buf.readVarInt();
+            boolean rising = buf.readBoolean();
+            double trigTime = buf.readDouble(), window = buf.readDouble();
+            boolean grounded = buf.readBoolean();
+            int decode = buf.readVarInt();
+            String note = buf.readUtf(200);
+            int f = Math.min(MAX_FRAMES, buf.readVarInt());
+            int[] ch = new int[f];
+            double[] f0 = new double[f], f1 = new double[f];
+            String[] tx = new String[f];
+            for (int i = 0; i < f; i++) {
+                ch[i] = buf.readVarInt();
+                f0[i] = buf.readDouble();
+                f1[i] = buf.readDouble();
+                tx[i] = buf.readUtf(8);
+            }
+            return new Data(names, dig, mn, mx, end, span, newest, mode, armed, frozen, trig, rising, trigTime, window, grounded, decode, note, ch, f0, f1, tx);
         }
 
         @Override

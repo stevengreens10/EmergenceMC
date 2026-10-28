@@ -747,9 +747,30 @@ public final class SimulationManager {
         final dev.emergence.core.instruments.LogicCapture cap = new dev.emergence.core.instruments.LogicCapture(131_072);
         CompiledAssembly attachedTo;
         boolean dirty;
+        /** Its decoder ({@link dev.emergence.mod.net.AnalyzerPayloads#DECODE_OFF} …). */
+        int decode;
     }
 
     private final Map<UUID, AnalyzerSession> analyzers = new HashMap<>();
+
+    /** Saves a player's analyser record as CSV (in the server's emergence-logs); a status line. */
+    public String exportAnalyzer(ServerPlayer player) {
+        AnalyzerSession s = analyzers.get(player.getUUID());
+        if (s == null) return "Your logic analyser has no probes yet: clip one onto a part.";
+        String csv = dev.emergence.core.instruments.BusDecoder.csv(s.cap, s.names);
+        long rows = csv.chars().filter(ch -> ch == '\n').count() - 1;
+        if (rows <= 0) return "Your logic analyser has recorded nothing yet.";
+        try {
+            java.nio.file.Path dir = level.getServer().getServerDirectory().resolve("emergence-logs");
+            java.nio.file.Files.createDirectories(dir);
+            String stamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+            java.nio.file.Path file = dir.resolve(stamp + "-analyser.csv");
+            java.nio.file.Files.writeString(file, csv);
+            return "Saved " + rows + " rows to " + file.toAbsolutePath();
+        } catch (java.io.IOException e) {
+            return "Could not write the record: " + e.getMessage();
+        }
+    }
 
     /**
      * Clips a probe onto a part: the next free channel (all used: the first is moved), or the ground lead. Probes are on
@@ -796,6 +817,8 @@ public final class SimulationManager {
             case dev.emergence.mod.net.AnalyzerPayloads.TRIGGER_CHANNEL -> cap.trigger(Math.floorMod(arg, 8), cap.triggerRising(), 2.5, cap.window());
             case dev.emergence.mod.net.AnalyzerPayloads.TRIGGER_EDGE -> cap.trigger(cap.triggerChannel(), !cap.triggerRising(), 2.5, cap.window());
             case dev.emergence.mod.net.AnalyzerPayloads.WINDOW_US -> cap.trigger(cap.triggerChannel(), cap.triggerRising(), 2.5, Math.max(1, arg) * 1e-6);
+            case dev.emergence.mod.net.AnalyzerPayloads.DECODE -> s.decode = Math.floorMod(arg, 3);
+            case dev.emergence.mod.net.AnalyzerPayloads.EXPORT -> player.displayClientMessage(net.minecraft.network.chat.Component.literal(exportAnalyzer(player)), false);
             case dev.emergence.mod.net.AnalyzerPayloads.REMOVE_PROBE -> {
                 if (arg >= 0 && arg < 8) {
                     s.probes[arg] = -1;
@@ -819,7 +842,8 @@ public final class SimulationManager {
                 mn[k] = new float[0];
                 mx[k] = new float[0];
             }
-            return new dev.emergence.mod.net.AnalyzerPayloads.Data(names, dig, mn, mx, 0, span, 0, 0, false, false, 0, true, Double.NaN, 1e-3, false);
+            return new dev.emergence.mod.net.AnalyzerPayloads.Data(names, dig, mn, mx, 0, span, 0, 0, false, false, 0, true, Double.NaN, 1e-3, false,
+                    0, "", new int[0], new double[0], new double[0], new String[0]);
         }
         var cap = s.cap;
         double ref = cap.frozen() && !Double.isNaN(cap.triggerTime()) ? cap.triggerTime() + cap.window() : cap.newest();
@@ -831,8 +855,43 @@ public final class SimulationManager {
             mn[k] = env[0];
             mx[k] = env[1];
         }
+        // the decoder's bytes in the window
+        List<dev.emergence.core.instruments.BusDecoder.Frame> frames = new ArrayList<>();
+        String note = "";
+        boolean[] lv = new boolean[8];
+        for (int k = 0; k < 8; k++) lv[k] = s.probes[k] >= 0 && cap.used(k) && cap.digital(k);
+        if (s.decode == dev.emergence.mod.net.AnalyzerPayloads.DECODE_SPI) {
+            if (lv[0] && lv[1]) {
+                int cs = lv[2] ? 2 : -1;
+                frames.addAll(dev.emergence.core.instruments.BusDecoder.spi(cap, 0, 1, cs, true, end - span, end));
+                note = "SPI: CH1 clock (rising), CH2 data" + (cs >= 0 ? ", CH3 select (low)" : ", no select");
+            } else {
+                note = "SPI: probe the clock on CH1 and the data on CH2 (nets between chips)";
+            }
+        } else if (s.decode == dev.emergence.mod.net.AnalyzerPayloads.DECODE_UART) {
+            StringBuilder b = new StringBuilder("UART 8N1:");
+            for (int k = 0; k < 8; k++) {
+                if (!lv[k]) continue;
+                double baud = dev.emergence.core.instruments.BusDecoder.guessBaud(cap, k);
+                if (!(baud > 0)) continue;
+                frames.addAll(dev.emergence.core.instruments.BusDecoder.uart(cap, k, baud, end - span, end));
+                b.append(String.format(" CH%d %.0f baud", k + 1, baud));
+            }
+            note = b.length() > 9 ? b.toString() : "UART: no level channel has switched";
+        }
+        int nf = Math.min(frames.size(), dev.emergence.mod.net.AnalyzerPayloads.Data.MAX_FRAMES);
+        int[] fch = new int[nf];
+        double[] f0 = new double[nf], f1 = new double[nf];
+        String[] ft = new String[nf];
+        for (int i = 0; i < nf; i++) {
+            var f = frames.get(frames.size() - nf + i);
+            fch[i] = f.channel();
+            f0[i] = f.start();
+            f1[i] = f.end();
+            ft[i] = f.text();
+        }
         return new dev.emergence.mod.net.AnalyzerPayloads.Data(names, dig, mn, mx, end, span, cap.newest(), cap.mode().ordinal(), cap.armed(),
-                cap.frozen(), cap.triggerChannel(), cap.triggerRising(), cap.triggerTime(), cap.window(), s.ground >= 0);
+                cap.frozen(), cap.triggerChannel(), cap.triggerRising(), cap.triggerTime(), cap.window(), s.ground >= 0, s.decode, note, fch, f0, f1, ft);
     }
 
     /** Keeps each analyser attached to its machine as it is rebuilt (and to new probes). */
@@ -1821,6 +1880,53 @@ public final class SimulationManager {
     public CompiledAssembly compiledAt(BlockPos pos) {
         Island isl = islandAt(pos);
         return isl == null ? null : isl.compiled;
+    }
+
+    /** Chips a wafer is cut into (a 6.25 cm square, dies about 1.5 cm across). */
+    public static final int CHIPS_PER_WAFER = 16;
+
+    /**
+     * A silicon block clicked with an empty hand: what heating has made of it, its oxide and (a wafer, with a dopant
+     * film) its junctions and the chips they would make. {@code cut}: a cool wafer is cut into chips carrying its
+     * process ({@link dev.emergence.core.digital.ChipProcess}), and is gone.
+     */
+    public void waferClick(BlockPos pos, PlacedPart part, Player player, boolean cut) {
+        CompiledAssembly c = compiledAt(pos);
+        double[] w = c == null ? null : c.wafer(part.id);
+        if (w == null) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.emergence.wafer_unsimulated"), true);
+            return;
+        }
+        double t = c.temperature(part.id);
+        var cp = c.chipProcess(part.id);
+        if (cp == null) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.emergence.wafer",
+                    String.format("%.0f", t), String.format("%.1f", w[0] * 1e9)), false);
+            return;
+        }
+        String chips = cp.works() ? net.minecraft.network.chat.Component.translatable("message.emergence.wafer_chips_work",
+                String.format("%.2f", cp.delayScale()), String.format("%.2g", cp.leakageScale())).getString() : cp.fault();
+        if (!cut) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.emergence.wafer_doped",
+                    String.format("%.0f", t), String.format("%.1f", w[0] * 1e9), cp.pChannel() ? "p+" : "n+",
+                    String.format("%.2f", w[1] * 1e6), String.format("%.0f", cp.gateLength() * 1e6), chips), false);
+            return;
+        }
+        if (t > 373) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.emergence.wafer_hot", String.format("%.0f", t)), true);
+            return;
+        }
+        AssemblyBlockEntity be = be(pos) != null ? be(pos) : level.getBlockEntity(pos) instanceof AssemblyBlockEntity x ? x : null;
+        if (be == null || be.removePart(part.id) == null) return;
+        if (be.parts().isEmpty()) level.removeBlock(pos, false);
+        var spec = dev.emergence.mod.part.PartSpec.of("silicon", 1, 1, "function", dev.emergence.core.digital.ChipTypes.DESIGN,
+                dev.emergence.core.digital.ChipProcess.OXIDE, cp.oxide(), dev.emergence.core.digital.ChipProcess.JUNCTION, cp.junction(),
+                dev.emergence.core.digital.ChipProcess.GATE, cp.gateLength(), dev.emergence.core.digital.ChipProcess.CHANNEL, cp.pChannel() ? 1 : 0);
+        net.minecraft.world.item.ItemStack chipsStack = dev.emergence.mod.part.PartPresets.stack(PartKind.CHIP, spec);
+        chipsStack.setCount(CHIPS_PER_WAFER);
+        if (!player.getInventory().add(chipsStack)) net.minecraft.world.level.block.Block.popResource(level, pos, chipsStack);
+        level.playSound(null, pos, SoundEvents.GLASS_BREAK, SoundSource.BLOCKS, 0.5f, 1.6f);
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.emergence.wafer_cut", CHIPS_PER_WAFER, chips), false);
     }
 
     /** The block a part of the island at {@code pos} is in (null if none such). */

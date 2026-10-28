@@ -177,6 +177,12 @@ public final class PartItem extends Item {
             }
             int fn = ChipRows.function(s);
             if (fn == dev.emergence.core.digital.ChipTypes.DESIGN) tooltip.add(Component.literal("Right-click the air (or the placed chip) to open the chip designer").withStyle(ChatFormatting.YELLOW));
+            if (fn == dev.emergence.core.digital.ChipTypes.DESIGN && s.params().containsKey(dev.emergence.core.digital.ChipProcess.OXIDE)) {
+                // cut from a wafer: what its process made of it
+                var cp = dev.emergence.core.digital.ChipProcess.of(s.params());
+                tooltip.add(Component.literal(cp.works() ? String.format("Cut from a wafer: %.2f× slower than ready-made chips, leaking %.2g× as much", cp.delayScale(), cp.leakageScale())
+                        : "Cut from a wafer, and dead: " + cp.fault()).withStyle(cp.works() ? ChatFormatting.GREEN : ChatFormatting.RED));
+            }
             if (fn == dev.emergence.core.digital.ChipTypes.ROM256) tooltip.add(Component.literal("Right-click the air (or the placed chip) to open the ROM editor").withStyle(ChatFormatting.YELLOW));
         }
         tooltip.add(Component.literal(m.name()).withStyle(ChatFormatting.DARK_AQUA));

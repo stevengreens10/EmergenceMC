@@ -168,6 +168,12 @@ public final class EmergenceMod {
                     }
                     return Command.SINGLE_SUCCESS;
                 })))
+                .then(Commands.literal("analyser").then(Commands.literal("export").executes(ctx -> {
+                    var src = ctx.getSource();
+                    String msg = SimulationManager.get(src.getLevel()).exportAnalyzer(src.getPlayerOrException());
+                    src.sendSuccess(() -> Component.literal(msg), false);
+                    return Command.SINGLE_SUCCESS;
+                })))
                 .then(Commands.literal("demo").requires(s -> s.hasPermission(2)).executes(ctx -> {
                     var src = ctx.getSource();
                     net.minecraft.core.BlockPos at = net.minecraft.core.BlockPos.containing(src.getPosition()).offset(3, 0, -6);

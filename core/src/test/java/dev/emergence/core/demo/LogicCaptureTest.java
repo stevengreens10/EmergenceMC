@@ -15,6 +15,39 @@ class LogicCaptureTest {
         throw new IllegalArgumentException("no net " + net);
     }
 
+    /**
+     * The analyser decodes the counter display's serial bus from the levels it recorded: the controller's set-up
+     * commands come first (display on 0xAF, horizontal addressing 0x20 0x00, as the design sends them).
+     */
+    @Test
+    void itDecodesTheDisplaysSpiBus() {
+        Exhibit e = MonitorExhibits.counterDisplay();
+        Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+        LogicCapture cap = new LogicCapture(65_536);
+        long[] probes = {wireOf(e, b, "sclk"), wireOf(e, b, "din"), wireOf(e, b, "cs"), -1, -1, -1, -1, -1};
+        c.attachCapture(cap, wireOf(e, b, "gnd"), probes);
+        // a single capture on the select's first fall (the bus fills the record in 36 ms, so a rolling one has lost
+        // the start by the time it is read)
+        cap.trigger(2, false, 2.5, 3e-3);
+        cap.mode(LogicCapture.Mode.SINGLE);
+        for (int i = 0; i < 4; i++) c.step(0.05);
+        assertTrue(cap.frozen(), "triggered and holding");
+        var frames = dev.emergence.core.instruments.BusDecoder.spi(cap, 0, 1, 2, true, 0, cap.newest());
+        StringBuilder s = new StringBuilder();
+        for (int i = 0; i < Math.min(8, frames.size()); i++) s.append(frames.get(i).text()).append(' ');
+        System.out.println("counter display bus: " + frames.size() + " bytes, first " + s);
+        assertTrue(frames.size() > 50, "the set-up and the screen's first bytes: " + frames.size());
+        assertEquals(0xAF, frames.get(0).value());
+        assertEquals(0x20, frames.get(1).value());
+        assertEquals(0x00, frames.get(2).value());
+        assertEquals(1, frames.get(0).channel(), "reported on the data line");
+        String csv = dev.emergence.core.instruments.BusDecoder.csv(cap, new String[]{"sclk", "din", "cs"});
+        assertTrue(csv.startsWith("time_s,\"sclk (level)\",\"din (level)\",\"cs (level)\"\n"), csv.substring(0, 80));
+        assertTrue(csv.lines().count() > cap.size(0), "a row for every change");
+        c.detachCapture(cap);
+    }
+
     @Test
     void probesRecordTheBusAndACounterOutput() {
         Exhibit e = MonitorExhibits.counterDisplay();

@@ -112,7 +112,7 @@ public final class ChipTypes {
                 for (var en : params.entrySet()) {
                     if (en.getKey().startsWith(DESIGN_PARAM)) overrides.put(en.getKey().substring(DESIGN_PARAM.length()), en.getValue());
                 }
-                yield new DesignComponent(cd, overrides);
+                yield new DesignComponent(cd, overrides, ChipProcess.of(params));
             }
             case 6 -> new ClockOscillator(params.getOrDefault("frequency", 10_000.0), params.getOrDefault("ppm", 0.0));
             case 7 -> new SpiAdc(10);

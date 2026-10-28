@@ -482,6 +482,7 @@ public final class CompiledAssembly {
         List<Long> failed = new ArrayList<>();
         for (long id : vessels().keySet()) if (burstUtilisation(id) >= 1) failed.add(id);
         if (fatigue != null) for (long id : fatigue.accumulate(this)) if (!failed.contains(id)) failed.add(id);
+        if (wafers != null) wafers.accumulate(this);
         sinceStructure += done;
         if (sinceStructure >= 1.0) {
             structure = StructuralAnalysis.run(this);
@@ -666,6 +667,29 @@ public final class CompiledAssembly {
 
     /** Fatigue of turning shafts in rotating bending. */
     ShaftFatigue fatigue;
+    /** Hot silicon: oxide grown, dopant diffused. */
+    WaferProcessing wafers;
+
+    /**
+     * A silicon block's processing: {oxide thickness [m], junction depth [m] (0 without a dopant film), dopant
+     * (0 none, 1 boron, 2 phosphorus)}, or null if the part is not a silicon block.
+     */
+    public double[] wafer(long partId) {
+        WaferProcessing.Wafer f = wafers == null ? null : wafers.byPart.get(partId);
+        if (f == null) return null;
+        return new double[]{f.oxide, f.junction(), f.dopant == WaferProcessing.BORON ? 1 : f.dopant == WaferProcessing.PHOSPHORUS ? 2 : 0};
+    }
+
+    /**
+     * The process the chips cut from a silicon block would be made in (its oxide, junctions, mask and dopant), or null
+     * if it is not a wafer (no silicon block, or no dopant film).
+     */
+    public dev.emergence.core.digital.ChipProcess chipProcess(long partId) {
+        double[] w = wafer(partId);
+        if (w == null || w[2] == 0) return null;
+        Part p = assembly.get(partId);
+        return new dev.emergence.core.digital.ChipProcess(w[0], w[1], p.param(dev.emergence.core.digital.ChipProcess.GATE, 1e-5), w[2] == 1);
+    }
 
     /**
      * Fatigue of a shaft cell in rotating bending: {stress amplitude [Pa], accumulated damage (Miner's sum), cycles to
@@ -1175,6 +1199,7 @@ public final class CompiledAssembly {
             }
         }
         if (fatigue != null) for (var e : fatigue.byPart.entrySet()) if (e.getValue().damage > 0) s.damage().put(e.getKey(), e.getValue().damage);
+        if (wafers != null) wafers.save(s);
         // event-driven chips' state (registers, memories, a display's image), each word as two 32-bit halves (doubles
         // hold them exactly)
         for (var e : digitalChips.entrySet()) {

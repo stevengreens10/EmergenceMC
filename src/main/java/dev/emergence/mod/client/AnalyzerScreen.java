@@ -13,7 +13,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * The logic analyser's screen: its probes' traces against time, one lane each — a digital net as its level (a band
  * where it switched faster than a pixel), an analog node as its voltage (auto-ranged). The wheel zooms, dragging pans;
  * the time axis is marked in seconds before the newest record (or, for a held single capture, after its trigger). Run
- * rolls; Single arms the trigger (channel and edge chosen beside it) and holds what follows; Hold freezes.
+ * rolls; Single arms the trigger (channel and edge chosen beside it) and holds what follows; Hold freezes. Decode reads
+ * the bytes on a serial bus from the levels (SPI: CH1 clock, CH2 data, CH3 select; UART on every level channel) and
+ * labels them on their traces; CSV saves the record.
  */
 public final class AnalyzerScreen extends Screen {
     private static final int LABEL_W = 92, TOP = 30;
@@ -25,7 +27,10 @@ public final class AnalyzerScreen extends Screen {
     private AnalyzerPayloads.Data data;
     private int ticks;
     private double dragX = Double.NaN, dragBack;
-    private Button trigBtn, edgeBtn;
+    private Button trigBtn, edgeBtn, decodeBtn;
+    private static final String[] DECODERS = {"Decode: off", "Decode: SPI", "Decode: UART"};
+    /** Where the toolbar ends (the state is drawn beside it if it fits, else below the traces). */
+    private int toolbarEnd;
 
     public AnalyzerScreen() {
         super(Component.literal("Logic analyser"));
@@ -36,6 +41,7 @@ public final class AnalyzerScreen extends Screen {
         if (trigBtn != null) {
             trigBtn.setMessage(Component.literal("Trig CH" + (d.trigChannel() + 1)));
             edgeBtn.setMessage(Component.literal(d.trigRising() ? "Edge ↑" : "Edge ↓"));
+            decodeBtn.setMessage(Component.literal(DECODERS[Math.floorMod(d.decode(), 3)]));
         }
     }
 
@@ -60,6 +66,19 @@ public final class AnalyzerScreen extends Screen {
         return n;
     }
 
+    /** The decoded bytes in view, as text (for the tour's report): "CH2 AF 20 00 …". */
+    String decoded() {
+        if (data == null || data.frameText().length == 0) return "";
+        StringBuilder b = new StringBuilder();
+        int last = -1;
+        for (int i = 0; i < data.frameText().length && i < 24; i++) {
+            if (data.frameCh()[i] != last) b.append(last < 0 ? "" : "; ").append("CH").append(data.frameCh()[i] + 1);
+            last = data.frameCh()[i];
+            b.append(' ').append(data.frameText()[i]);
+        }
+        return b.toString();
+    }
+
     /** What each probe shows, for the tour's report. */
     String summary() {
         if (data == null) return "no data yet";
@@ -80,7 +99,7 @@ public final class AnalyzerScreen extends Screen {
 
     /** The lanes' height: eight between the buttons and the two footer lines, at most 24 (fits a small window). */
     private int laneH() {
-        return Math.max(12, Math.min(24, (height - TOP - 30) / 8));
+        return Math.max(12, Math.min(24, (height - TOP - 40) / 8));
     }
 
     private int plotX0() {
@@ -123,6 +142,27 @@ public final class AnalyzerScreen extends Screen {
                 .tooltip(Tooltip.create(Component.literal("Shorter time span."))).build());
         addRenderableWidget(Button.builder(Component.literal("Now"), b -> back = 0).bounds(x + 42, y, 32, 18)
                 .tooltip(Tooltip.create(Component.literal("Back to the newest record."))).build());
+        x += 78;
+        decodeBtn = addRenderableWidget(Button.builder(Component.literal(DECODERS[0]), b -> send(AnalyzerPayloads.DECODE, data == null ? 1 : data.decode() + 1))
+                .bounds(x, y, 72, 18).tooltip(Tooltip.create(Component.literal(
+                        "Read the bytes on a serial bus from its levels. SPI: the clock on CH1, data on CH2, an active-low select on CH3 "
+                                + "(optional). UART: every level channel, 8 data bits, its baud rate from its shortest pulse."))).build());
+        x += 74;
+        addRenderableWidget(Button.builder(Component.literal("CSV"), b -> send(AnalyzerPayloads.EXPORT, 0)).bounds(x, y, 30, 18)
+                .tooltip(Tooltip.create(Component.literal("Save the whole record as CSV (in the server's emergence-logs folder)."))).build());
+        toolbarEnd = x + 30;
+    }
+
+    /** Chooses its decoder (as its Decode button does). */
+    void decode(int mode) {
+        send(AnalyzerPayloads.DECODE, mode);
+    }
+
+    /** Zooms to show about {@code seconds} (as the wheel does). */
+    void showSpan(double seconds) {
+        int i = 0;
+        while (i < SPANS.length - 1 && SPANS[i] < seconds) i++;
+        zoom(i - spanIdx);
     }
 
     private void send(int op, int arg) {
@@ -199,7 +239,9 @@ public final class AnalyzerScreen extends Screen {
         else if (data.frozen()) state = data.mode() == 1 ? "TRIGGERED — holding" : "HOLD";
         else if (data.armed()) state = "ARMED — waiting for CH" + (data.trigChannel() + 1) + (data.trigRising() ? " ↑" : " ↓");
         else state = "RUN";
-        g.drawString(font, state, width - 8 - font.width(state), 12, data != null && data.armed() ? 0xFFFFC66B : 0xFF9AA6B2, false);
+        int stateX = width - 8 - font.width(state);
+        g.drawString(font, state, stateX > toolbarEnd + 6 ? stateX : x1 - font.width(state), stateX > toolbarEnd + 6 ? 12 : bottom + 28,
+                data != null && data.armed() ? 0xFFFFC66B : 0xFF9AA6B2, false);
         for (int k = 0; k < 8; k++) {
             int ly = TOP + k * lane;
             g.fill(8, ly, x0 - 2, ly + lane - 1, 0xC0101418);
@@ -252,9 +294,29 @@ public final class AnalyzerScreen extends Screen {
                 if (lane >= 20) g.drawString(font, String.format("%.2f V", lo), x1 - 44, ly + lane - 10, 0x80FFFFFF, false);
             }
         }
+        // the decoder's bytes, each a box over its time on its channel's lane, its value inside where it fits
+        if (data != null) {
+            double t0 = data.end() - span();
+            for (int i = 0; i < data.frameText().length; i++) {
+                int k = data.frameCh()[i];
+                if (k < 0 || k >= 8) continue;
+                int fa = x0 + (int) Math.round((data.frameStart()[i] - t0) / span() * w), fb = x0 + (int) Math.round((data.frameEnd()[i] - t0) / span() * w);
+                if (fb < x0 || fa > x1) continue;
+                fa = Math.max(x0, fa);
+                fb = Math.min(x1, Math.max(fa + 1, fb));
+                int ly = TOP + k * lane;
+                boolean bad = data.frameText()[i].endsWith("!");
+                g.fill(fa, ly + 1, fb, ly + lane - 2, bad ? 0x60FF4040 : 0x50FFFFFF);
+                g.fill(fa, ly + 1, fa + 1, ly + lane - 2, 0xC0FFFFFF);
+                String tx = data.frameText()[i];
+                if (fb - fa > font.width(tx) + 2) g.drawString(font, tx, (fa + fb - font.width(tx)) / 2, ly + (lane - 8) / 2, 0xFFFFFFFF, true);
+            }
+        }
         // the time axis, and the cursor's readout
         String spanTxt = Units.formatSI(span() / 10, "s") + "/div";
         g.drawString(font, spanTxt, x0, bottom + 4, 0xFF9AA6B2, false);
+        if (data != null && !data.decodeNote().isEmpty())
+            g.drawString(font, font.plainSubstrByWidth(data.decodeNote(), w / 2), x0 + font.width(spanTxt) + 12, bottom + 4, 0xFFB8E0A0, false);
         String endTxt = back == 0 ? "newest at right" : Units.formatSI(back, "s") + " before the newest";
         g.drawString(font, endTxt, x1 - font.width(endTxt), bottom + 4, 0xFF9AA6B2, false);
         boolean cursor = mx >= x0 && mx < x1 && my >= TOP && my < bottom && data != null;

@@ -686,6 +686,23 @@ public final class AutoShowcase {
                         }));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
             }
+            if (id.equals("waferfurnace")) {
+                // the element heats the wafer to about 1200 °C: its oxide grows and the phosphorus diffuses in
+                BlockPos mini = plot.offset(DemoBuilder.MINIATURE_AT);
+                STEPS.add(new Step(2400, view, shot.apply("hot"), () -> onServer(server, key + "ox", () -> wafer(server, mini, 0)) > 4e-9)
+                        .check(key + " the element holds the wafer near 1200 °C", () -> {
+                            double t = temperature(server, mini, PartKind.BLOCK);
+                            return that(t > 1350 && t < 1560, String.format("wafer %.0f K", t));
+                        })
+                        .check(key + " its gate oxide grows", () -> {
+                            double x = wafer(server, mini, 0);
+                            return that(x > 4e-9, String.format("oxide %.1f nm (1.5 native)", x * 1e9));
+                        })
+                        .check(key + " the phosphorus diffuses in", () -> {
+                            double xj = wafer(server, mini, 1);
+                            return that(xj > 0.1e-6, String.format("junctions %.2f µm deep", xj * 1e6));
+                        }));
+            }
             if (id.equals("acrossscales2")) {
                 // found settled or settling: the small tank filled from the big one through the pipes meeting at the face,
                 // the miniature copper cell warmed by the full-size block resting on the top face
@@ -721,8 +738,9 @@ public final class AutoShowcase {
                                 String.format("plate %.1f .. %.1f K (318 K wanted)", pt.min(), pt.max())))
                         .check(key + " it switches the heater", () -> that(hi.max() > 0.2 && hi.min() < 0.01,
                                 String.format("heater current %.2f .. %.2f A", hi.min(), hi.max()))));
-                // the logic analyser, as a player would use it: probes clipped onto the ADC's chip select, clock and data
-                // wires and the heater's gate, then its screen opened by right-clicking the air
+                // the logic analyser, as a player would use it: probes clipped onto the ADC's clock, data and chip select
+                // wires (the order its SPI decoder reads them in) and the heater's gate, then its screen opened by
+                // right-clicking the air
                 ItemStack analyser = new ItemStack(dev.emergence.mod.registry.ModRegistries.LOGIC_ANALYZER.get());
                 java.util.function.Function<String, PlayerHand.Target> wire = net -> {
                     for (var en : e.nets.entrySet()) if (en.getValue().equals(net)) {
@@ -731,7 +749,7 @@ public final class AutoShowcase {
                     }
                     return new PlayerHand.Target(plot, PartKind.INSULATED_WIRE);
                 };
-                for (String net : new String[]{"cs", "sclk", "dout", "gate"})
+                for (String net : new String[]{"sclk", "dout", "cs", "gate"})
                     STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.clickWith(key + " clip a probe on the " + net + " wire", wire.apply(net), analyser)));
                 STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.useInAirUntil(key + " open the analyser's screen", false,
                         () -> Minecraft.getInstance().screen instanceof AnalyzerScreen, 3)));
@@ -746,6 +764,23 @@ public final class AutoShowcase {
                             return that(sc instanceof AnalyzerScreen a && busy.max() >= 2 && a.probes() == 4 && a.digitalProbes() == 3,
                                     sc instanceof AnalyzerScreen a ? String.format("most switching at once %.0f; ", busy.max()) + a.summary() : "no analyser screen");
                         }));
+                // its SPI decoder reads the ADC's replies off the data line, a byte at a time (the program bit-bangs the
+                // bus, a byte taking over a millisecond: the view widened to 10 ms)
+                STEPS.add(new Step(0, NOTHING, null).keepScreen().act(PlayerHand.named(key + " chooses Decode: SPI", m -> {
+                    if (m.screen instanceof AnalyzerScreen a) {
+                        a.decode(dev.emergence.mod.net.AnalyzerPayloads.DECODE_SPI);
+                        a.showSpan(10e-3);
+                    }
+                    return true;
+                })));
+                String[] bytes = {""};
+                STEPS.add(new Step(120, NOTHING, shot.apply("decoded")).keepScreen()
+                        .sample(new Sampler(), () -> {
+                            if (Minecraft.getInstance().screen instanceof AnalyzerScreen a && !a.decoded().isEmpty()) bytes[0] = a.decoded();
+                            return 0;
+                        })
+                        .check(key + " the decoder reads bytes off the ADC's data line", () -> that(bytes[0].startsWith("CH2 "),
+                                bytes[0].isEmpty() ? "no bytes decoded" : bytes[0])));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.named("closes the screen", m -> {
                     m.setScreen(null);
                     return true;
@@ -1652,6 +1687,14 @@ public final class AutoShowcase {
     }
 
     /** Pressure of the fluid in a vessel or pipe [Pa]. */
+    /** The silicon block's processing in block {@code at}: k = 0 its oxide [m], 1 its junctions' depth [m]. */
+    private static double wafer(net.minecraft.server.MinecraftServer s, BlockPos at, int k) {
+        PlacedPart p = any(s, at, PartKind.BLOCK);
+        CompiledAssembly c = compiled(s, at);
+        double[] w = p == null || c == null ? null : c.wafer(p.id);
+        return w == null ? Double.NaN : w[k];
+    }
+
     private static double pressure(net.minecraft.server.MinecraftServer s, BlockPos at, PartKind k) {
         PlacedPart p = any(s, at, k);
         CompiledAssembly c = compiled(s, at);

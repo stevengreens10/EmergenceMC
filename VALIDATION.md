@@ -637,3 +637,30 @@ count.
   engine 137 rpm (137.7), condenser 43.3 kPa (42.5), generator 63 mA (70.5 mean over the last second), battery
   5.59 V (5.573). There are no timing violations.
 * A ribbon from a full-size battery lights an LED in an embedded miniature block (15.3 mA).
+
+## The EM-8's calls and the analyser's decoders (`Em8Test`, `BusDecoderTest`, `LogicCaptureTest`)
+* A program calls a subroutine, then another that calls the first. It keeps A on the stack across the inner call:
+  5 → 15 → 30 → 120, as computed by hand.
+* A pointer fills a table in RAM through STN and sums it through LDN with a 16-bit carry (ADCI): 200 + … + 207 = 1628,
+  the high byte 6.
+* UART at 9600 baud, found from the shortest pulse: "Hi", 0x55, 0x00 and 0xFF decoded. Read at 4800, the bytes come
+  out wrong. A low stop bit is flagged as a framing error.
+* SPI with a select: two bytes decoded; a stray clock while deselected and a partial byte cut off by the select are
+  ignored. Without the select the stray edge shifts every bit.
+* The counter display's real bus, recorded off the simulated nets: the controller's set-up commands come first,
+  0xAF 0x20 0x00, as the design sends them, then the screen's bytes.
+* The CSV has a row for every change, each channel's value at it.
+
+## Chip fabrication (`FabricationTest`)
+* Dry oxidation of (100) silicon, 1 h at 1100 °C in O₂: Deal–Grove's closed form 99 nm (textbook about 0.1 µm),
+  the integrator with the thin-oxide term 107 nm. Deep in the parabolic regime the rate is Deal–Grove's to 0.1 %.
+  At room temperature nothing grows in a year.
+* Boron at 1100 °C: D = 1.52·10⁻¹³ cm²/s (Fair, intrinsic); after 1 h from a constant source x_j = 1.36 µm.
+* erfc against tables to 10⁻⁶ relative; its inverse round-trips.
+* The reference process gives exactly V_T = 0.75 V, delay and leakage ×1. A 150 nm oxide gives 2.2 V and ×4.5; too
+  thin, too thick, too shallow and punched-through processes each fail with their reason.
+* The furnace exhibit in the core: 1.4 kW from 24 lead–acid cells holds the wafer at 1460 K (1190 °C). The chips
+  work from 300 s (oxide 18.9 nm, junctions 0.97 µm), 6.7× slower than the reference. At 900 s: 32 nm, 1.71 µm,
+  5.8×. The process survives a save and reload.
+* A counter design clocked at 1.5× its reference period keeps up on reference chips and misses edges on chips three
+  times slower.

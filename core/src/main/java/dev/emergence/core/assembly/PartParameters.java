@@ -1,5 +1,6 @@
 package dev.emergence.core.assembly;
 
+import dev.emergence.core.digital.ChipProcess;
 import dev.emergence.core.materials.Material;
 import dev.emergence.core.materials.MaterialCategory;
 import dev.emergence.core.materials.MaterialDatabase;
@@ -346,6 +347,11 @@ public final class PartParameters {
                         "How much of the cell along the part's axis it fills: below 100 % it is a plate.")
                 .adv().log().real("contact_resistance", "Sliding contact resistance", "Ω", 1e-4, 10, 0.02,
                         "Where a brush rubs on it: the electrical resistance of that contact.")
+                .adv().choice("dopant", "Dopant film (silicon)", 0, List.of(new Choice(0, "none"), new Choice(1, "boron (p-type)"),
+                        new Choice(2, "phosphorus (n-type)")),
+                        "On a silicon block, a wafer: heated, the dopant diffuses in, making the sources and drains of transistors.")
+                .when(positive("dopant")).adv().shown("µm", 1e6).log().real(ChipProcess.GATE, "Gate length (mask)", "m", 5e-7, 1e-4, 1e-5,
+                        "The transistors' gate length drawn on the wafer's mask: shorter makes faster chips, if the diffusion leaves a channel.")
                 .build();
         new B(PartKind.SHAFT).made("steel_1045", MECHANICAL)
                 .log().real("diameter", "Diameter", "m", 5e-4, 0.059, PartGeometry.DEFAULT_SHAFT_DIAMETER, "The rod's diameter (at most 95 % " + cellNote + ").")
@@ -503,6 +509,15 @@ public final class PartParameters {
                 .when(is("function", 0, 9)).adv().log().real("access_time", "Access time", "s", 1e-9, 1e-5, 120e-9, "How long after its address changes its data follows.")
                 .adv().log().real("output_resistance", "Output resistance", "Ω", 1, 10_000, 50, "How stiffly its outputs hold their level.")
                 .family("w", "ROM contents", romWords(), "The ROM's sixteen bytes.", is("function", 0, 3))
+                // the process it was made in (dev.emergence.core.digital.ChipProcess): chips cut from a wafer carry its
+                .when(is("function", 0, 5)).adv().shown("nm", 1e9).log().real(ChipProcess.OXIDE, "Gate oxide", "m", 5e-10, 2e-6, ChipProcess.REF_OXIDE,
+                        "Its transistors' gate oxide: thicker raises their threshold, so they switch slower.")
+                .when(is("function", 0, 5)).adv().shown("µm", 1e6).real(ChipProcess.JUNCTION, "Junction depth", "m", 0, 2e-5, ChipProcess.REF_JUNCTION,
+                        "How deep its sources and drains are diffused: they spread sideways too, shortening the channel.")
+                .when(is("function", 0, 5)).adv().shown("µm", 1e6).log().real(ChipProcess.GATE, "Gate length", "m", 5e-7, 1e-4, ChipProcess.REF_GATE,
+                        "The mask's gate length: shorter switches faster, if the junctions leave a channel.")
+                .when(is("function", 0, 5)).adv().choice(ChipProcess.CHANNEL, "Channel", 0, List.of(new Choice(0, "n (phosphorus)"), new Choice(1, "p (boron)")),
+                        "Electrons or holes conduct its channels: holes are about a third as mobile.")
                 .component(0.002, Double.NaN).build();
         new B(PartKind.PHOTODIODE).made("silicon", SEMICONDUCTOR)
                 .direction("face", "Faces", 1, "Which way its sensitive face looks.")

@@ -266,8 +266,13 @@ multimeter, oscilloscope/data logging.
   are shortest paths, not tidy ones, and each run is one colour (pick it in the part editor).
 
 ## Computers and instruments
-* The EM-8 has 16 bytes of RAM, no stack or subroutine call, and one 8-bit input and one output port. Larger
-  programs need a design of the player's own. The assembler knows only the EM-8's instructions.
+* The EM-8 has 32 bytes of RAM, shared by data and the stack, and nothing stops the stack running into the data. It
+  has one 4-bit input and one 8-bit output port and no interrupts. Larger programs need a design of the player's
+  own. The assembler knows only the EM-8's instructions.
+* The analyser's SPI decoder samples on the clock's rising edge (modes 0 and 3), most significant bit first. Its
+  channels are fixed: CH1 clock, CH2 data, CH3 select. The UART decoder reads 8 data bits, no parity, one stop bit,
+  idle high. Its baud rate comes from the shortest pulse, so a line that has not yet sent a lone bit (0x55, say) may
+  be read at half its rate.
 * The logic analyser records at most 65 536 changes per channel; a busy bus fills it in a fraction of a second, and
   the oldest go first. Analog channels are sampled at the solver's steps, so a fast analog edge between steps is
   seen at the step's ends. Its screen is polled a few times a second.
@@ -285,3 +290,17 @@ multimeter, oscilloscope/data logging.
   its side joins it. The compiler warns where that is likely an accident: a wire of another colour beside a lead
   that a wire reaches at its end, or two components side by side. A deliberate join of either kind warns too, and
   can be laid otherwise. An empty-hand right-click on a component says where its leads come out.
+
+## Chip fabrication
+* Oxidation is dry, in air, on a (100) face. There is no steam (wet oxidation is about 10× faster) and no other
+  atmosphere: a wafer inside a vessel still sees air. B/A is taken as linear in the oxygen pressure (it goes as about
+  p^0.8).
+* One dopant film, one diffusion. The oxide does not mask the dopant, and there is no masking, patterning or
+  separate gate step: the mask is a number (the gate length) on the wafer. Diffusion is intrinsic, with no
+  concentration-dependent or oxidation-enhanced diffusion.
+* A chip from a process keeps its design's logic. All its transistors share the process, and in the circuits it
+  still behaves as CMOS (no static power of NMOS or PMOS logic).
+* The chips' timing uses the process's speed at 5 V, times the supply's own factor (as for the ready-made chips).
+* Heat leaves every part by convection and radiation over its whole surface. An enclosure does not reflect it back,
+  so insulation round a furnace only helps by conduction. The furnace's wafer loses about 1.4 kW at 1190 °C.
+* Thermal conductivity is taken at room temperature (silicon conducts about 5× less at 1200 °C).

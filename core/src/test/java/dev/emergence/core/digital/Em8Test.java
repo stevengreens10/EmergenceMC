@@ -122,6 +122,76 @@ class Em8Test {
         assertEquals(0xAA, run(p, 0b1010, 4e-3));
     }
 
+    /** A subroutine called twice (nested in a third), saving A on the stack across it. */
+    @Test
+    void itCallsSubroutinesAndReturns() throws Exception {
+        String p = """
+                .asm em8
+                x = 0
+                        LDI 5
+                        CALL triple     ; 15
+                        CALL twice      ; 30, then 90 inside
+                        OUT
+                        HLT
+                twice:  ST x
+                        ADD x
+                        PUSH            ; kept across the call
+                        CALL triple
+                        ST x
+                        POP
+                        ADD x           ; 30 + 90
+                        RET
+                triple: ST x
+                        ADD x
+                        ADD x
+                        RET
+                """;
+        assertEquals(120, run(p, 0, 6e-3));
+    }
+
+    /** A pointer walks a table in memory (indirect loads and stores), summing it with a 16-bit carry. */
+    @Test
+    void pointersAndMultiByteArithmetic() throws Exception {
+        String p = """
+                .asm em8
+                ptr = 0
+                lo = 1
+                hi = 2
+                n = 3
+                table = 20
+                        LDI table       ; fill mem[20..27] with 200, 201, ... 207
+                        ST ptr
+                        LDI 8
+                        ST n
+                        LDI 200
+                fill:   STN ptr
+                        INC ptr
+                        ADDI 1
+                        DEC n
+                        JNZ fill
+                        LDI table
+                        ST ptr
+                        LDI 8
+                        ST n
+                        LDI 0
+                        ST lo
+                        ST hi
+                sum:    LDN ptr         ; lo += mem[ptr]; hi += carry
+                        ADD lo
+                        ST lo
+                        LD hi
+                        ADCI 0
+                        ST hi
+                        INC ptr
+                        DEC n
+                        JNZ sum
+                        LD hi           ; 1628 = 6 * 256 + 92
+                        OUT
+                        HLT
+                """;
+        assertEquals(6, run(p, 0, 12e-3));
+    }
+
     @Test
     void theAssemblerSaysWhereAndWhat() {
         var e = assertThrows(Em8Assembler.AsmError.class, () -> Em8Assembler.assemble(".asm em8\n  LDI\n"));

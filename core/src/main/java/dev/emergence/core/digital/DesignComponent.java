@@ -6,18 +6,38 @@ import java.util.Map;
 /**
  * A chip made from a design in the chip language (see ChipDesign): its outputs follow an edge after a clock-to-output
  * delay (registered ones) or the logic's propagation delay (combinational ones), both from the design's own synthesis
- * estimate; its switching energy per edge and its leakage likewise.
+ * estimate; its switching energy per edge and its leakage likewise. The process it was made in ({@link ChipProcess})
+ * scales its delays and leakage; a chip from a failed process does nothing (its outputs stay low).
  */
 public final class DesignComponent implements DigitalComponent {
     private final ChipDesign design;
     private final Map<String, Double> params;
+    private final ChipProcess process;
+    private final boolean works;
     private ChipDesign.Instance inst;
     private long[] saved;
 
     public DesignComponent(ChipDesign design, Map<String, Double> params) {
+        this(design, params, ChipProcess.REFERENCE);
+    }
+
+    public DesignComponent(ChipDesign design, Map<String, Double> params, ChipProcess process) {
         this.design = design;
         this.params = params;
-        this.inst = design.instantiate(params);
+        this.process = process;
+        this.works = process.works();
+        this.inst = instantiate();
+    }
+
+    private ChipDesign.Instance instantiate() {
+        ChipDesign.Instance i = design.instantiate(params);
+        i.slowdown(process.delayScale());
+        return i;
+    }
+
+    /** The process it was made in. */
+    public ChipProcess process() {
+        return process;
     }
 
     public ChipDesign design() {
@@ -41,11 +61,12 @@ public final class DesignComponent implements DigitalComponent {
 
     private double delay(int k) {
         var e = design.estimate();
-        return design.outputRegistered(k) ? ChipDesign.Estimate.CLOCK_TO_Q : e.propagationDelay();
+        return process.delayScale() * (design.outputRegistered(k) ? ChipDesign.Estimate.CLOCK_TO_Q : e.propagationDelay());
     }
 
     @Override
     public void input(int k, boolean level, double t, Ctx ctx) {
+        if (!works) return;
         java.util.BitSet ch = inst.setInput(k, level, t);
         if (ch == null) return;
         for (int p = ch.nextSetBit(0); p >= 0; p = ch.nextSetBit(p + 1)) ctx.drive(p, inst.output(p), delay(p));
@@ -54,17 +75,17 @@ public final class DesignComponent implements DigitalComponent {
     @Override
     public void powerUp(double t, Ctx ctx) {
         // a chip's registers start as the design says when power comes (or as saved, when a machine is loaded)
-        inst = design.instantiate(params);
+        inst = instantiate();
         if (saved != null) {
             inst.restore(saved);
             saved = null;
         }
-        for (int p = 0; p < design.outputPins().size(); p++) ctx.drive(p, inst.output(p), delay(p));
+        for (int p = 0; p < design.outputPins().size(); p++) ctx.drive(p, output(p), delay(p));
     }
 
     @Override
     public boolean output(int k) {
-        return inst.output(k);
+        return works && inst.output(k);
     }
 
     @Override
@@ -85,7 +106,7 @@ public final class DesignComponent implements DigitalComponent {
 
     @Override
     public double leakage(double v) {
-        return design.estimate().leakage(v);
+        return process.leakageScale() * design.estimate().leakage(v);
     }
 
     @Override

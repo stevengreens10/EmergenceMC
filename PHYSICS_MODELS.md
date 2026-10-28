@@ -934,8 +934,10 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
 * Heat flows through G = 1/(L/2kA + L/2kA + 1/hA) with A one cell's face shared among the miniature parts on it.
 
 ## The EM-8 processor (`emergence/chips/em8.chip`, `Em8Assembler`)
-* A chip design simulated by events like any other: an accumulator, Z and C flags, 16 bytes of RAM, a program
-  counter into an external 256-byte ROM, 2-byte instructions in four clocks. Its outputs are driven through the
+* A chip design simulated by events like any other: an accumulator, Z and C flags, 32 bytes of RAM, a program
+  counter into an external 256-byte ROM, 2-byte instructions in four clocks. A stack grows down from the top of the
+  RAM (SP starts at 0, the first push lands in byte 31): CALL pushes the return address, RET pops it, PUSH and POP
+  keep A. LDN and STN load and store through a pointer in memory. ADC and SBC carry between bytes. Its outputs are driven through the
   chip's output pins, with the supply-dependent CMOS delay of every chip. Its synthesis estimate is 1825 gates, good
   to about 5.9 MHz at 5 V. A faster clock is flagged as a timing violation.
 * The thermostat program: a plate (10 kΩ NTC thermistor over 5.1 kΩ) is read through the 10-bit ADC over its serial
@@ -958,3 +960,34 @@ balancing. Not modelled: the stream slowing as a paddle takes its momentum (it k
     102.8 kPa, less the 100 kPa of its range).
 * Division (k / x) is done by repeated subtraction over clocks, and decimal digits likewise. A reading and its frame
   take about 2 s at 10 kHz. The trend holds the last 128 readings (about 4 minutes).
+
+## Chip fabrication (`WaferProcessing`, `ChipProcess`)
+* **Hot silicon.** Every silicon block oxidises in the air and, with a dopant film (a wafer), takes the dopant in.
+  Both run on the block's own simulated temperature, integrated each step and saved with the machine. Whatever heats
+  it is the furnace.
+  * *Oxide* (dry, on a (100) face): dx/dt = B/(2x + A) + C·e^(−x/L).
+    * The first term is Deal–Grove: B = 772 µm²/h·e^(−1.23 eV/kT), B/A = 3.71·10⁶ µm/h·e^(−2.0 eV/kT).
+    * The second is Massoud's fast thin-oxide growth: C = 3.6·10⁸ µm/h·e^(−2.32 eV/kT), L = 7 nm (an
+      order-of-magnitude fit).
+    * Both are for 1 atm of oxygen, scaled by air's 0.21 atm. The native oxide is 1.5 nm.
+  * *Dopant*: a constant surface source at the solid solubility (boron 2.5·10²⁰, phosphorus 10²¹ cm⁻³) into a
+    10¹⁶ cm⁻³ background. The junction depth is x_j = 2√(Dt)·erfc⁻¹(N_B/N_s), with Dt = ∫D dt and
+    D = D₀·e^(−Ea/kT): boron 0.76 cm²/s and 3.46 eV, phosphorus 3.85 cm²/s and 3.66 eV.
+* **The chips a process makes** (long-channel MOS, against the 74HC-class reference: 50 nm oxide, 0.5 µm junctions,
+  3 µm gates, n-channel).
+  * Threshold: V_T = V_FB + 2φ_F + √(2qε_Si·N_A·2φ_F)·t_ox/ε_ox, with N_A = 10¹⁶ cm⁻³ and V_FB set so the reference
+    has 0.75 V. That is 0.71 V more for every 50 nm of oxide.
+  * Effective channel: L_eff = L − 1.6·x_j (sideways diffusion).
+  * Delay scales as (μ_ref/μ)·((5 − 0.75)/(5 − V_T))²·(L_eff/L_ref)·[½·L_eff/L_ref + ½·t_ox/t_ref]. Half the load
+    is gates, half wiring. Holes are 1350/480 slower than electrons.
+  * Subthreshold leakage scales as e^((0.75 − V_T)/(1.5·kT/q)).
+  * A chip works for 0.3 V ≤ V_T ≤ 4.5 V, x_j ≥ 0.1 µm (shallower, the contacts spike through) and L_eff ≥ 1 µm
+    (shorter, punch-through).
+  * A custom chip's delays, its clock limit (timing violations) and its leakage scale with these. A chip from a failed
+    process holds its outputs low.
+* **The process window.** Oxide (2.0–2.3 eV) and diffusion (3.5–3.7 eV) have different activation energies.
+  * A hotter furnace drives the junctions deeper for the same oxide.
+  * A finer mask makes faster chips but leaves less room for the junctions.
+  * At 1190 °C in air with a 10 µm mask, the chips work after about 5 minutes and run 6–7× slower than the
+    ready-made ones, leaking 10⁵× at first, less as the oxide thickens. A 3 µm mask's channel is gone after about
+    8 minutes.

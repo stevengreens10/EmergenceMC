@@ -157,6 +157,7 @@ public final class AssemblyCompiler {
             buildDisplays();
             buildAbsorbedLight();
             c.fatigue = ShaftFatigue.build(a, c, prev);
+            c.wafers = WaferProcessing.build(a, c, prev);
             checkpoint();
             c.network.compile(); // (the magnet field tables)
             checkpoint();
@@ -845,6 +846,14 @@ public final class AssemblyCompiler {
                 // through the head (a cylinder head is about twice the barrel wall) or through the barrel
                 if (along > 0.5 * d.length()) return new double[]{2 * w, Math.PI * bore * bore / 4};
                 return new double[]{w, (bore + 2 * w) * PartGeometry.axialLength(p)};
+            }
+            // a plate: heat crossing it through its face has its whole face and half its thickness to cross (its edge,
+            // the plate's cross-section over half a cell)
+            if (p.kind() == PartKind.BLOCK && p.param("fill", 1.0) < 1) {
+                Vec3 d = q.center().sub(p.center());
+                int a = p.axis().axis();
+                double along = Math.abs(a == 0 ? d.x() : a == 1 ? d.y() : d.z());
+                if (along > 0.5 * d.length()) return new double[]{p.param("fill", 1.0) * CELL / 2, CELL * CELL};
             }
             if (p.kind() == PartKind.PIPE || p.kind() == PartKind.VALVE) {
                 boolean axial = false;

@@ -334,6 +334,11 @@ public final class CompiledAssembly {
         return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Battery bt ? bt.chargeDelivered(solver) : Double.NaN;
     }
 
+    /** A battery's state of charge (0–1), NaN for any other part. */
+    public double batteryStateOfCharge(long partId) {
+        return deviceOfPart.get(partId) instanceof dev.emergence.core.sim.elements.Battery bt ? bt.stateOfCharge(solver) : Double.NaN;
+    }
+
     /** Simulated time the solver fell behind wall-clock requests (step budget exhausted) [s]. */
     public double lag() {
         return lag;

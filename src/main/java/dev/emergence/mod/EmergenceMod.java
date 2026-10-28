@@ -64,6 +64,7 @@ public final class EmergenceMod {
                 (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.LoggerHud.apply(payload)));
         registerChipPayloads(reg);
         registerAnalyzerPayloads(reg);
+        registerGogglesPayloads(reg);
         reg.playToServer(dev.emergence.mod.net.PartSpecEditPayload.TYPE, dev.emergence.mod.net.PartSpecEditPayload.STREAM_CODEC,
                 (payload, ctx) -> ctx.enqueueWork(() -> {
                     if (!(ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
@@ -71,6 +72,28 @@ public final class EmergenceMod {
                             ? net.minecraft.world.InteractionHand.OFF_HAND : net.minecraft.world.InteractionHand.MAIN_HAND, payload.spec());
                     if (why != null) sp.displayClientMessage(net.minecraft.network.chat.Component.literal(why), true);
                 }));
+    }
+
+    private static void registerGogglesPayloads(net.neoforged.neoforge.network.registration.PayloadRegistrar reg) {
+        reg.playToServer(dev.emergence.mod.net.GogglesPayloads.Query.TYPE, dev.emergence.mod.net.GogglesPayloads.Query.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> {
+                    if (!(ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp) || !(sp.level() instanceof ServerLevel sl)) return;
+                    // a part the wearer can see from where they stand
+                    if (sp.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(payload.pos())) > 64 * 64) return;
+                    if (!(sl.getBlockEntity(payload.pos()) instanceof dev.emergence.mod.block.AssemblyBlockEntity be)) return;
+                    var part = be.byId(payload.partId());
+                    if (part == null) return;
+                    var lines = dev.emergence.mod.sim.PartReadout.of(SimulationManager.get(sl), payload.pos(), part);
+                    int n = Math.min(lines.size(), dev.emergence.mod.net.GogglesPayloads.Data.MAX_LINES);
+                    String[] l = new String[n], v = new String[n];
+                    for (int i = 0; i < n; i++) {
+                        l[i] = lines.get(i).label();
+                        v[i] = lines.get(i).value();
+                    }
+                    ctx.reply(new dev.emergence.mod.net.GogglesPayloads.Data(payload.pos(), payload.partId(), l, v));
+                }));
+        reg.playToClient(dev.emergence.mod.net.GogglesPayloads.Data.TYPE, dev.emergence.mod.net.GogglesPayloads.Data.STREAM_CODEC,
+                (payload, ctx) -> ctx.enqueueWork(() -> dev.emergence.mod.client.ClientHooks.gogglesData(payload)));
     }
 
     private static void registerAnalyzerPayloads(net.neoforged.neoforge.network.registration.PayloadRegistrar reg) {

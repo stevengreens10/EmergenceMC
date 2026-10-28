@@ -262,6 +262,15 @@ public final class PlayerBuilder {
             for (String s : got) onlyWant.remove(s);
             for (String s : want) onlyGot.remove(s);
             if (!onlyWant.isEmpty() || !onlyGot.isEmpty()) problems.add(e.id + ": placed with the tweezers it differs: wanted " + onlyWant + ", got " + onlyGot);
+            // switches and valves that start closed, closed as an empty-hand click on them closes them
+            for (int idx : e.latched) {
+                Exhibit.PartDef d = e.parts.get(idx);
+                PlacedPart q = null;
+                for (PlacedPart c : be.parts()) if (c.kind == d.kind() && c.x0 == d.x0() && c.y0 == d.y0() && c.z0 == d.z0()) q = c;
+                if (q == null) problems.add(e.id + ": no " + d.kind() + " at " + cell(d) + " to close");
+                else if (!q.closed && !dev.emergence.mod.sim.SimulationManager.get(level).toggleSwitch(at, q.id))
+                    problems.add(e.id + ": could not close the " + d.kind() + " at " + cell(d));
+            }
         } else {
             problems.add(e.id + ": nothing was placed");
         }

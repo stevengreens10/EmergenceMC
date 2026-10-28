@@ -54,6 +54,10 @@ public final class ClientHooks {
         Minecraft.getInstance().setScreen(new AnalyzerScreen());
     }
 
+    public static void gogglesData(dev.emergence.mod.net.GogglesPayloads.Data d) {
+        GogglesHud.apply(d);
+    }
+
     public static void analyzerData(dev.emergence.mod.net.AnalyzerPayloads.Data d) {
         if (Minecraft.getInstance().screen instanceof AnalyzerScreen s) s.data(d);
     }

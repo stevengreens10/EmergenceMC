@@ -88,8 +88,9 @@ class FabricationTest {
         assertEquals(0, w0[1]);
         assertNotNull(c.chipProcess(wafer).fault(), "an unprocessed wafer makes no working chips");
         double works = Double.NaN;
+        java.util.List<Long> destroyed = new java.util.ArrayList<>();
         for (int i = 1; i <= 900; i++) {
-            c.step(1);
+            destroyed.addAll(c.step(1));
             if (i % 60 == 0 || i == 30) {
                 double[] w = c.wafer(wafer);
                 ChipProcess cp = c.chipProcess(wafer);
@@ -98,6 +99,7 @@ class FabricationTest {
             }
             if (Double.isNaN(works) && c.chipProcess(wafer).works()) works = i;
         }
+        assertTrue(destroyed.isEmpty(), "nothing burns out: " + destroyed);
         assertEquals(1462, c.temperature(wafer), 30, "the furnace holds the wafer near 1190 °C");
         assertTrue(works > 120 && works < 600, "the oxide is thick enough to make working chips after a few minutes: " + works);
         ChipProcess cp = c.chipProcess(wafer);

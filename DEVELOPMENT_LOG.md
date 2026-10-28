@@ -1334,3 +1334,16 @@ chip's delays, clock limit and leakage scale with it; a failed process makes dea
   cross-section over half a cell): face to face, plates were near insulators. Heat crossing a plate through its
   face now has the whole face and half the plate's thickness. Without that, no heater could bring a wafer above
   700 K.
+
+**Engineer's goggles (2026-10-28).** The user asked for something like the engineer's goggles of the Create mod, to
+see a machine component's important stats just by looking at it.
+- *The goggles* are worn on the head, or held. A panel beside the crosshair shows the part looked at: its name and
+  material, then its live readings.
+- *The readings* are the multimeter's, from the simulated state: temperature, voltage, current, power, speed, a
+  battery's charge, fluid pressure, temperature and flow, wall and structural stress, fatigue, a link bar's
+  tension, a brake's torque, a chip's state, a wafer's oxide and junctions, and electrochemistry. One builder,
+  `PartReadout`, serves both instruments.
+- *How it works.* The client finds the part under the crosshair and asks the server four times a second. Values
+  older than two seconds are greyed.
+- *The tour.* At the wafer furnace it puts the goggles on, looks at the wafer, and checks the panel shows its
+  temperature and oxide.

@@ -304,3 +304,10 @@ multimeter, oscilloscope/data logging.
 * Heat leaves every part by convection and radiation over its whole surface. An enclosure does not reflect it back,
   so insulation round a furnace only helps by conduction. The furnace's wafer loses about 1.4 kW at 1190 °C.
 * Thermal conductivity is taken at room temperature (silicon conducts about 5× less at 1200 °C).
+
+## Engineer's goggles
+* The goggles read ideally, like the multimeter: no instrument error and no loading of the circuit.
+* They show a single part, the one under the crosshair, not a summary of the machine it is in. They refresh four
+  times a second.
+* A shaft has no torque reading yet: the simulation's rotor carries speed, and torque between parts of one rigid
+  body is not resolved.

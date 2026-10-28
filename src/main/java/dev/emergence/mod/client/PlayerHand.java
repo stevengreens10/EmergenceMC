@@ -91,6 +91,11 @@ final class PlayerHand {
                 .expect(t.kind == PartKind.SWITCH || t.kind == PartKind.VALVE || t.kind == PartKind.BRAKE ? Effect.TOGGLED : Effect.NONE);
     }
 
+    /** Walk up to the part and look at it, doing nothing to it (to read it through the goggles, say). */
+    static Act look(String what, Target t) {
+        return new Reach(what, t, ItemStack.EMPTY, false, mc -> { });
+    }
+
     /** Left-click the part (take it away). */
     static Act attack(String what, Target t) {
         return new Reach(what, t, ItemStack.EMPTY, false, mc -> KeyMapping.click(mc.options.keyAttack.getKey())).expect(Effect.REMOVED);

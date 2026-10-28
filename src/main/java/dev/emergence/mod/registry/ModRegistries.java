@@ -69,6 +69,28 @@ public final class ModRegistries {
     public static final DeferredItem<dev.emergence.mod.item.LogicAnalyzerItem> LOGIC_ANALYZER = ITEMS.register("logic_analyzer",
             () -> new dev.emergence.mod.item.LogicAnalyzerItem(new Item.Properties().stacksTo(1)));
 
+    /** What the engineer's goggles are made of: a leather strap and brass-rimmed glass, a helmet's worth of nothing. */
+    public static final DeferredRegister<net.minecraft.world.item.ArmorMaterial> ARMOR_MATERIALS =
+            DeferredRegister.create(Registries.ARMOR_MATERIAL, EmergenceMod.MODID);
+    public static final DeferredHolder<net.minecraft.world.item.ArmorMaterial, net.minecraft.world.item.ArmorMaterial> GOGGLES_MATERIAL =
+            ARMOR_MATERIALS.register("engineers_goggles", () -> {
+                Map<net.minecraft.world.item.ArmorItem.Type, Integer> defence = new EnumMap<>(net.minecraft.world.item.ArmorItem.Type.class);
+                for (var t : net.minecraft.world.item.ArmorItem.Type.values()) defence.put(t, t == net.minecraft.world.item.ArmorItem.Type.HELMET ? 1 : 0);
+                return new net.minecraft.world.item.ArmorMaterial(defence, 10, net.minecraft.sounds.SoundEvents.ARMOR_EQUIP_LEATHER,
+                        () -> net.minecraft.world.item.crafting.Ingredient.EMPTY,
+                        java.util.List.of(new net.minecraft.world.item.ArmorMaterial.Layer(
+                                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(EmergenceMod.MODID, "engineers_goggles"))), 0, 0);
+            });
+
+    /** Worn (or held): the part looked at has its readings drawn beside the crosshair (see GogglesHud). */
+    public static final DeferredItem<net.minecraft.world.item.ArmorItem> GOGGLES = ITEMS.register("engineers_goggles",
+            () -> new net.minecraft.world.item.ArmorItem(GOGGLES_MATERIAL, net.minecraft.world.item.ArmorItem.Type.HELMET, new Item.Properties().stacksTo(1)) {
+                @Override
+                public void appendHoverText(ItemStack stack, TooltipContext ctx, java.util.List<Component> tip, net.minecraft.world.item.TooltipFlag flag) {
+                    tip.add(Component.translatable("tooltip.emergence.engineers_goggles").withStyle(net.minecraft.ChatFormatting.GRAY));
+                }
+            });
+
     /** Held in the off-hand, part items place miniature (1/16-block, true-scale) parts. */
     public static final DeferredItem<Item> TWEEZERS = ITEMS.register("precision_tweezers",
             () -> new Item(new Item.Properties().stacksTo(1)) {
@@ -83,6 +105,7 @@ public final class ModRegistries {
             .icon(() -> new ItemStack(PART_ITEMS.get(PartKind.COIL).get()))
             .displayItems((params, out) -> {
                 out.accept(MULTIMETER.get());
+                out.accept(GOGGLES.get());
                 out.accept(DATA_LOGGER.get());
                 out.accept(LOGIC_ANALYZER.get());
                 out.accept(TWEEZERS.get());
@@ -99,6 +122,7 @@ public final class ModRegistries {
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);
         SOUNDS.register(bus);
+        ARMOR_MATERIALS.register(bus);
         ITEMS.register(bus);
         BLOCK_ENTITIES.register(bus);
         COMPONENTS.register(bus);

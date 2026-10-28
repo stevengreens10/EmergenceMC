@@ -702,6 +702,21 @@ public final class AutoShowcase {
                             double xj = wafer(server, mini, 1);
                             return that(xj > 0.1e-6, String.format("junctions %.2f µm deep", xj * 1e6));
                         }));
+                // the engineer's goggles on, the wafer looked at: its readings beside the crosshair
+                ItemStack goggles = new ItemStack(dev.emergence.mod.registry.ModRegistries.GOGGLES.get());
+                STEPS.add(new Step(0, () -> player(server).setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, goggles.copy()), null)
+                        .act(PlayerHand.look(key + " look at the wafer through the goggles", part.apply("wafer", PartKind.BLOCK))));
+                String[] seen = {""};
+                STEPS.add(new Step(60, NOTHING, shot.apply("goggles"))
+                        .sample(new Sampler(), () -> {
+                            var d = GogglesHud.shown();
+                            if (d != null) seen[0] = String.join("; ", java.util.stream.IntStream.range(0, d.labels().length)
+                                    .mapToObj(j -> d.labels()[j] + " " + d.values()[j]).toList());
+                            return 0;
+                        })
+                        .check(key + " the goggles show the wafer's readings", () -> that(seen[0].contains("Oxide") && seen[0].contains("Temperature"),
+                                seen[0].isEmpty() ? "nothing shown" : seen[0])));
+                STEPS.add(new Step(0, () -> player(server).setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, ItemStack.EMPTY), null));
             }
             if (id.equals("acrossscales2")) {
                 // found settled or settling: the small tank filled from the big one through the pipes meeting at the face,

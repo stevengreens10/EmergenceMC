@@ -223,6 +223,33 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0b. **The user's seven next steps** (asked 2026-10-27: "Complete these steps").
+   1. *The gas engine's slow start* (done): the tour's condition read the server off its thread (NaN). It now reads
+      on the server's thread, and the engine's visit takes 86 s.
+   2. *Accidental lead joins* (done): the compiler warns of a lead reached at its end and its side by different
+      wires, and of components side by side. An empty-hand click on a two-terminal component shows its lead faces.
+   3. *The dashboard* (done in the core): a seventh gauge, the generator's power (two ADCs, k·I·V); negative
+      readings; alarm limits that invert a card; a trend interval per gauge (fuel every 30 readings).
+   4. *Across scales* (done in the core): structural parts touching across a block's face are one rigid piece, and
+      gears side by side across a face mesh. New exhibit "acrossscales3": a full-size 32-tooth gear drives a
+      miniature 16-tooth one, 2 : 1.
+   5. *Chips from materials* (done in the core): a silicon block oxidises and takes its dopant in at its simulated
+      temperature, and a process sets the chips cut from it. New exhibit "waferfurnace". See PHYSICS_MODELS,
+      "Chip fabrication".
+   6. *Station performance* (one round done): profiled at 17.2 s per 10 s with seven gauges, against 9.1 s without
+      them. Ribbon conductors reduced to a node per joined point: 14.9 s. The rest of the dashboard's cost is its
+      circuits solved at every step of the generator's; the next round is a multirate split of the circuits phase
+      (see PERFORMANCE, "The station with seven gauges"). Open: the power gauge reads 10–18 % under the run's mean
+      (35 against 42.6, 37 against 41.3), while the current gauge reads 5 % over. Its constant (1625) was set from
+      one instant's codes; set it over a whole reading window. Its 15 % + 2 tolerance is nearly used up, so the
+      DashboardTest failed once under load.
+   7. *The EM-8 and the analyser* (done in the core): the EM-8 has 32 bytes, a stack, CALL/RET, PUSH/POP, LDN/STN
+      and ADC/SBC. The analyser decodes SPI and UART and exports CSV.
+   **Still to see in the world:** regenerate the demo world, then tour "waferfurnace", "acrossscales3" and
+   "em8thermostat" (its new decode check). Regenerate the station world and tour it: seven gauges, alarms, the power
+   gauge. Next for fabrication: wet oxidation in steam (a wafer inside a vessel of steam), a mask step separate from
+   the diffusion, and a chip's process shown in the chip designer.
+
 0a9. **The station's dashboard** (done 2026-10-27, asked by the user: live metrics on displays, a nice UI, miniature
    electronics wherever possible). Six screens in front of the station show fuel, boiler pressure, engine speed,
    condenser pressure, generator current and battery voltage. Each is drawn by a gauge of miniature electronics

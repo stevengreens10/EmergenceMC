@@ -123,7 +123,7 @@ public final class ScaleExhibits {
         m.name("shaft", m.fill(SHAFT, st, 0, 0, 8, 0, 12, 8, Dir.UP, "diameter", 0.006));
         m.name("bearing", m.add(BEARING, st, 0, 0, 8, Dir.UP));
         m.name("gear", m.add(GEAR, st, 0, 8, 8, Dir.UP, "teeth", 16, "pitch_radius", 1.0 / 16, "thickness", 0.01));
-        m.name("disc", m.box(BLOCK, "aluminium_6061", 0, 13, 6, 2, 13, 10, Dir.UP, "fill", 0.2));
+        m.name("disc", m.box(BLOCK, "aluminium_6061", 0, 13, 7, 2, 13, 9, Dir.UP, "fill", 0.2));
         e.embed(7, 1, 8, m);
         return e.view(6.5, 3.5, 14, 25);
     }

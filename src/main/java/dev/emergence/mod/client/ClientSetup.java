@@ -18,6 +18,10 @@ public final class ClientSetup {
                 net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.emergence.mod.EmergenceMod.MODID, "logger"), LoggerHud::render));
         modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) -> e.registerAboveAll(
                 net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.emergence.mod.EmergenceMod.MODID, "showcase"), ShowcaseHud::render));
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterGuiLayersEvent e) -> e.registerBelow(
+                net.neoforged.neoforge.client.gui.VanillaGuiLayers.CHAT,
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.emergence.mod.EmergenceMod.MODID, "goggles"), GogglesHud::render));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientTickEvent.Post e) -> GogglesHud.tick());
         AutoShowcase.init();
         WatchBuild.init();
     }

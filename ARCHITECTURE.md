@@ -211,3 +211,8 @@ machine's state maps: a shaft's fatigue damage (in `damage`), a silicon block's 
 `chemistry`, as "W{id}:ox" and "W{id}:Dt"). They read the physics and do not feed back into the step. Their
 results reach other parts through what the player makes of them: chips cut from a wafer carry its process as
 parameters (`ChipProcess`), which the chip's component reads.
+
+### Readings (`PartReadout`, the multimeter, the engineer's goggles)
+A part's readings are built in one place on the server from the compiled machine's state. The multimeter prints them
+when clicked. The goggles' HUD (`GogglesHud`) asks for them for the part under the crosshair (`GogglesPayloads`) and
+draws them beside it.

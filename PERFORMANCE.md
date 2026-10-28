@@ -352,6 +352,23 @@ island's accuracy up to 3× (`relaxAccuracy`), which takes in this tolerance. A 
 that, and the core's validation would lose 0.3–1.2 %. The whole suite passes at 10×, so nothing breaks; it is a
 fidelity choice.
 
+### The generator and bank of 2026-10-28
+The 4-pole axial-flux generator (eight coils) and the 288-block bank, 37 W into it, against the old 2-pole generator
+at 1.6 W:
+
+| | Old (4 : 1, two coils) | New |
+|---|---|---|
+| Dashboard test, 31 s | 2.3 s per simulated second | 4.9 s per simulated second |
+| Circuits per 10 s (StationTest profile, steady) | ~14.5k steps, 65k Newton | 27.7k steps (+8.3k rejected), 154k Newton |
+| Steps limited by | the generator's MagneticSystem | the generator's four MagneticSystem flux states |
+
+* The step count doubled with the electrical frequency (four poles: two pulses a coil for each magnet's pass).
+  Resolving the pulses is physical. The coils' flux tolerance at 3× saves 10 %, at 10× 20 %.
+* The bank costs little. Solved as twelve strings, it adds twelve elements and 288 thermal nodes. Without the
+  strings, the bench put 144 separate blocks at +1.4 s per simulated second.
+* The circuits' cost is per step × per Newton iteration, and the dashboard's 640 unknowns are in every one of them.
+  The split below now saves twice what it did.
+
 ### What would bring the station back to real time in the game (plan, 2026-10-28)
 In the game the station runs at about 0.65 of real time with its dashboard (1.00 without), its accuracy already
 relaxed. In the core the dashboard costs 14.9 − 9.1 = 5.8 s per 10 s, all in the circuits phase's iterations

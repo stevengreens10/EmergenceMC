@@ -835,6 +835,11 @@ tolerances relaxed 100×, accepted only if it converges, and counted (`Transient
 * Energy: the chemistry is an external reservoir delivering N·E·i; N·i²·r heats the battery. Its state of charge is
   saved with the assembly (in the capacitors' voltage channel). Not modelled: entropic heat, Peukert capacity loss
   beyond the resistance, temperature dependence, self-discharge, sulfation.
+* Strings (`AssemblyCompiler.groupBatteryStrings`): batteries end to end that are alike (chemistry, cells, capacity,
+  charge) with nothing else at the joints between them are one element of all their cells. This is exact, since they
+  carry one current through identical states: each block reads its share of the voltage, and the Joule heat is
+  shared equally among their thermal nodes. A wire or another part at a joint keeps that joint a node, and a battery
+  that differs splits the string there.
 
 ## Buoyancy in still water (`Buoyancy`, `Assembly.waterWhen`)
 Parts on a slide standing in still water (in Minecraft: water blocks, the machine's own blocks waterlogged) feel

@@ -29,7 +29,7 @@ class DashboardTest {
         // -Ddiag.sun=<W/m²>: the sun high in the sky, every part in it (as a world by day)
         double sun = Double.parseDouble(System.getProperty("diag.sun", "0"));
         if (sun > 0) c.setDaylight(new dev.emergence.core.math.Vec3(-0.3, -1, -0.2).normalize(), sun, id -> true);
-        double t0 = c.time(), q0 = c.batteryChargeDelivered(bat);
+        double t0 = c.time(), q0 = c.batteryChargeDelivered(bat), bankSoc0 = c.batteryStateOfCharge(b.id(e, "bank"));
         long wall0 = System.nanoTime();
         double seconds = Double.parseDouble(System.getProperty("diag.dashRun", "30"));
         // -Ddiag.powerTrace=true: every half second, the power and current gauges against the generator's mean current
@@ -69,18 +69,34 @@ class DashboardTest {
                 1e3 * Math.abs(c.probe(b.id(e, "shunt")).current()), c.temperature(b.id(e, "regulator")), c.temperature(b.id(e, "shunt")),
                 c.temperature(b.id(e, "lamp")), c.temperature(b.id(e, "dump")), sun, c.sunlightAbsorbed());
         double meanCurrent = q1 / 1.0;
+        long bank = b.id(e, "bank");
+        double vBank = c.probe(bank).voltage() * StationExhibit.BANK_CELLS;
+        // -Ddiag.currents=true: every part carrying a milliampere or more
+        if (Boolean.getBoolean("diag.currents"))
+            for (var p : b.assembly().parts()) {
+                var pr = c.probe(p.id());
+                if (pr != null && Math.abs(pr.current()) > 1e-3)
+                    System.out.printf("    %s %s at %d,%d,%d: %.2f mA, %.3f V%n", p.kind(), p.material().id(), p.minX(), p.minY(), p.minZ(), 1e3 * pr.current(), pr.voltage());
+            }
+        System.out.printf("  dropper %.2f mA into the battery (%.1f K); the battery %.2f mA%n", 1e3 * Math.abs(c.probe(b.id(e, "dropper")).current()),
+                c.temperature(b.id(e, "dropper")), 1e3 * c.probe(bat).current());
+        System.out.printf("  bank regulator: sense %.4f V, the reference's first diode %.4f V%n", c.probe(b.id(e, "bankSense")).voltage(),
+                c.probe(b.id(e, "ref1")).voltage());
+        System.out.printf("  bank: %.2f V, %.1f %% charged; its regulator's output %.3f V, its dump load %.1f mA, %.1f K%n", vBank,
+                100 * c.batteryStateOfCharge(bank), c.probe(b.id(e, "bankRegulator")).voltage(), 1e3 * Math.abs(c.probe(b.id(e, "bankDump")).current()),
+                c.temperature(b.id(e, "bankDump")));
         double[] truth = {
                 (c.pressure(fuel) - pa) / 1e5 * 10,                                 // bar, 1 place
                 (c.pressure(boiler) - pa) / 1e5 * 100,                              // bar, 2 places
                 Math.abs(c.probe(shaft).angularVelocity()) * 60 / (2 * Math.PI),    // rpm
                 c.pressure(cond) / 1e3 * 10,                                        // kPa absolute, 1 place
                 meanCurrent * 1e3,                                                  // mA (its mean over the run)
-                c.probe(bat).voltage() * 100,                                       // V, 2 places
-                meanCurrent * c.probe(bat).voltage() * 100};                        // W, 2 places
+                c.batteryStateOfCharge(bank) * 100,                                 // %
+                meanCurrent * vBank * 10};                                          // W, 1 place
         // what each may be off by: the ADC's step and noise, the gain's rounding, and: the condenser's offset for the
         // world's air pressure (2.8 kPa) against the test's; the generator's for its supply's 5.6 V; the engine's for
         // the speed's ripple within a turn; the battery's for its diodes' drop
-        double[] tol = {15, 12, 6, 30, 0.15 * truth[4] + 2, 6, 0.15 * truth[6] + 2};
+        double[] tol = {15, 12, 6, 30, 0.15 * truth[4] + 2, 8, 0.15 * truth[6] + 2};
         System.out.printf("dashboard: %.0f s in %.1f s of wall time; ambient %.0f Pa%n", c.time() - t0, wall, pa);
         boolean ok = true;
         for (int k = 0; k < n; k++) {
@@ -96,12 +112,13 @@ class DashboardTest {
         // the power gauge's readings, for its constant: k = P·code2²/code (P in tens of milliwatts)
         var pcur = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 6, "adc")).component();
         var pr = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 6, "adc2")).component();
-        System.out.printf("  power: current ADC %d, reference ADC %d: k = %.0f%n", pcur.lastCode(), pr.lastCode(),
-                truth[6] * pr.lastCode() * pr.lastCode() / Math.max(1, pcur.lastCode()));
-        // the battery gauge's reference, for its constant
-        var refAdc = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 5, "adc")).component();
-        System.out.printf("  battery reference: ADC %d at %.3f V: k = %.0f%n", refAdc.lastCode(), c.probe(bat).voltage(),
-                refAdc.lastCode() * c.probe(bat).voltage() * 100);
+        System.out.printf("  power: current ADC %d, bank line ADC %d: k = %.0f%n", pcur.lastCode(), pr.lastCode(),
+                (double) pcur.lastCode() * pr.lastCode() / Math.max(1, truth[6]));
+        // the storage gauge's reference, for its constant: k = V·100·code2/code (V the bank's voltage in hundredths)
+        var sLine = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 5, "adc")).component();
+        var sRef = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 5, "adc2")).component();
+        System.out.printf("  storage: line ADC %d, reference ADC %d at %.3f V: k = %.0f%n", sLine.lastCode(), sRef.lastCode(), vBank,
+                vBank * 100 * sRef.lastCode() / Math.max(1, sLine.lastCode()));
         // what the screens draw from the supply: each controller's own current and its lit pixels'
         double screensA = 0;
         StringBuilder lits = new StringBuilder();
@@ -124,6 +141,7 @@ class DashboardTest {
             assertFalse(ctl.inverted(), StationExhibit.GAUGES[k].label() + " in alarm while the station runs as it should");
         }
         assertTrue(charged > 0, "the battery still charges: " + charged + " mA·h");
+        assertTrue(c.batteryStateOfCharge(bank) > bankSoc0, "the bank charges");
         assertTrue(dump < 0.01, "the regulator is not dumping: " + dump + " A");
     }
 

@@ -495,6 +495,33 @@ Hand-cranked generator inside a real world heats its resistor; part persistence 
 capacitor exhibit placed at block scale through the real builder path flash-heats its wire; the
 block-scale gear train meshes across air gaps (island reach) with the 8:40 ratio within 1 %.
 
+## Battery strings (`BatteryStringTest`)
+Six one-cell lead–acid blocks end to end through 10 Ω carry 1.210111 A after 10 s, against 1.210040 A from one
+six-cell battery (the difference is the routed wiring's resistance). Each block reads a sixth of the string's
+voltage, the last block's charge is the battery's to 10⁻⁶, and the first and last blocks are equally warm. With a
+second load tapped at the joint between the third and fourth blocks, the lower blocks carry 1.795 A and the upper
+1.200 A (the tap's 0.595 A).
+
+## The station's generator on a bench (`GeneratorBenchTest`, `-Ddiag.genBench=open|bank`)
+The rotor on a heavy flywheel at 56 rad/s. Open circuit (across 1 MΩ), each coil gives 22 mV a turn at its peak
+(12.4 mV RMS), the same on both sides of the disc. The coils at the side poles read exactly opposite to those above
+and below, which is their leads' orientation. Into a 24-cell bank (49.75 V) through a four-diode bridge, eight coils
+of 510 turns of 1.19 mm wire (7.5 Ω in all) deliver 37.35 W, 0.743 A mean and 2.64 A at the peak, from 52.7 W of
+shaft power (bearings included). The same bank as 144 blocks in six strings takes 37.30 W.
+
+## The station's engine on its brake (`PlantBenchTest`, `-Ddiag.plantBench=<forces>`)
+The plant alone, the brake on from the start, over 20 s after 40 s settling:
+
+| Engine | Brake | Speed | Brake power | Safety valve |
+|---|---|---|---|---|
+| 35 mm × 24 mm, 2 mm throttle (as was) | 20 N | 13.6 rad/s | 10.2 W | 0.22 g/s |
+| 53 mm × 40 mm, 2 mm throttle | 40 N | 13.5 rad/s | 20.2 W | 0.12 g/s |
+| 53 mm × 40 mm, 4 mm throttle | 80 N | 13.7 rad/s | 41.1 W | 0.00 g/s |
+| 53 mm × 50 mm, lap 0.78, 4 mm throttle (now) | 100 N | 13.3 rad/s | 49.9 W | 0.00 g/s |
+
+Unloaded, 0.55 g/s of steam goes out through the safety valve. Fully loaded, it all goes through the engine, which
+gets 91 J a gram from it (ideal Rankine between the boiler and condenser: 336 J/g).
+
 ## Battery (`BatteryTest`, `BatteryPartTest`)
 A full six-cell battery reads 12.753 V open circuit (Vinal: 12.75 V). Run down 300 s through 12 Ω, the state of charge
 counted (0.841) equals 1 − ∫i dt / capacity to 10⁻³, the terminal voltage sags 11.57 → 11.31 V as the acid thins,

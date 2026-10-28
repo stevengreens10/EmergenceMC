@@ -267,7 +267,7 @@ class StationTest {
                 System.out.printf("   generator %.1f rad/s, battery %.3f V, charging %.3f A, coil A %.3f A%n", Math.abs(c.probe(b.id(e, "genShaft")).angularVelocity()),
                         bat.voltage(), bat.current(), c.probe(b.id(e, "coilA")).current());
                 System.out.printf("   coil A %.3f V, coil B %.3f V; diodes %.3f %.3f %.3f %.3f A%n", c.probe(b.id(e, "coilA")).voltage(),
-                        c.probe(b.id(e, "coilB")).voltage(), c.probe(b.id(e, "d1")).current(), c.probe(b.id(e, "d2")).current(),
+                        c.probe(b.id(e, "coil4")).voltage(), c.probe(b.id(e, "d1")).current(), c.probe(b.id(e, "d2")).current(),
                         c.probe(b.id(e, "d3")).current(), c.probe(b.id(e, "d4")).current());
             }
             if (e.named.containsKey("lamp")) {

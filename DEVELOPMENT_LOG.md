@@ -1412,3 +1412,30 @@ values wrap onto further lines.
   not 0.6, so the regulator tripped at 6.7 V (1.68 V a cell), well past an overcharged NiMH cell. A 12 kΩ lower
   leg, up from 10 kΩ, puts the trip near 5.85 V. Full, the battery does not trip it; overcharged to 108 %, it trips
   and dumps 0.6 A until the battery is back down, and the dump load warms by only 10 K.
+
+**A 4.6 kWh bank, and 37 W into it (2026-10-28).** The user asked for a very large store, and for generation closer
+to what the fire can realistically give, without the machine growing much. The ceiling: about 750 W of the 2 kW
+fire reaches the water, and the ideal steam cycle between the boiler (152 °C) and the condenser (84 °C) would turn
+some 120 W of that into work.
+- *The engine was the bottleneck.* On its brake (`PlantBenchTest`), the old 35 × 24 mm cylinder gave 10 W, while the
+  safety valve vented most of the steam. In the same cell it is now 53 mm bore × 50 mm stroke, cutting off a little
+  earlier (lap 0.78), behind a 4 mm throttle in place of 2 mm: 50 W at 13.3 rad/s, with all the steam going through it.
+- *The generator.* The same disc now holds four magnets set into it, alternately north and south, with eight coils
+  on both sides of it: an axial-flux machine in the cells the old generator used. `GeneratorBenchTest` sized the
+  windings (510 turns of 1.19 mm, 55 % fill) for a 48 V bank: 37 W of 53 W at its shaft. In the station, 760 mA at
+  130 rpm, 37 W into the bank.
+- *The bank.* 288 lead–acid blocks, each a 2 V, 8 A·h cell (16 Wh in its 6.25 cm cube, as a real flooded cell
+  holds), in twelve strings of 24, in two walls north of the electronics: 48 V, 96 A·h, 4.6 kWh, two days of the
+  generator's output. A new compiler rule solves each string as one element (exact; see the battery-strings commit),
+  without which the bank would have slowed the station by more than half.
+- *Around it.*
+  - The bank has a charge regulator (an op-amp, a MOSFET and a 56 Ω dump load, tripping at 2.4 V a cell).
+  - It charges the station's 5 V battery through a 560 Ω dropping resistor. Its 3.4 W loss is the price of not
+    switching; the electronics draw 63 mA.
+  - The dashboard's battery gauge became STORAGE: the bank's charge from its voltage, read against a diode (new gauge
+    mode 5).
+  - Its power gauge now reads the power into the bank, the generator's current times the bank's voltage on a new
+    ribbon line (mode 4).
+- *What it costs.* The circuits take twice the steps they did, since the 4-pole machine's pulses come twice as often,
+  and the dashboard's unknowns are solved at each of them. The dashboard test runs at 4.9 s per simulated second
+  (2.3 before). Stepping the gauges apart from the generator, the plan in PERFORMANCE.md, is now worth twice as much.

@@ -39,11 +39,12 @@ public final class StationGameTests {
         SimulationManager sim = SimulationManager.get(h.getLevel());
         BlockPos shaft = DemoBuilder.partBlock(origin, e, "shaft"), boiler = DemoBuilder.partBlock(origin, e, "boiler"),
                 box = DemoBuilder.partBlock(origin, e, "firebox"), cnd = DemoBuilder.partBlock(origin, e, "condenser"),
-                bat = DemoBuilder.partBlock(origin, e, "battery"), brake = DemoBuilder.partBlock(origin, e, "brake");
+                bat = DemoBuilder.partBlock(origin, e, "battery"), brake = DemoBuilder.partBlock(origin, e, "brake"),
+                bank = DemoBuilder.partBlock(origin, e, "bank");
         BlockPos[] bitLed = new BlockPos[3];
         for (int k = 0; k < 3; k++) bitLed[k] = DemoBuilder.partBlock(origin, e, "bitLed" + k);
         int failures0 = sim.failures;
-        double[] w0 = {0, 0}, w1 = {0, 0}, q = {Double.NaN, Double.NaN}, t = {Double.NaN, Double.NaN};
+        double[] w0 = {0, 0}, w1 = {0, 0}, q = {Double.NaN, Double.NaN}, t = {Double.NaN, Double.NaN}, soc = {Double.NaN, Double.NaN};
         Set<String> counts = new HashSet<>();
         // the regulator over the battery's window, once a second: its output at most, the battery at most, the dump's current at most
         double[] regMax = {0}, vMax = {0}, dumpMax = {0};
@@ -81,13 +82,21 @@ public final class StationGameTests {
                     double pc = c.pressure(id(c, cnd, PartKind.TANK));
                     h.assertTrue(pc < 80e3, String.format("it exhausts into a partial vacuum (condenser %.1f kPa)", pc / 1e3));
                     q[0] = c.batteryChargeDelivered(id(c, bat, PartKind.BATTERY));
+                    soc[0] = c.batteryStateOfCharge(id(c, bank, PartKind.BATTERY));
                     t[0] = c.solverView().time();
                     // -Demergence.stationDump=true: the island as it stands, to replay in the core (IslandDumpReplayTest)
                     if (Boolean.getBoolean("emergence.stationDump")) sim.dumpIsland(shaft);
                 }
                 if (at == BRAKE) {
                     q[1] = c.batteryChargeDelivered(id(c, bat, PartKind.BATTERY));
+                    soc[1] = c.batteryStateOfCharge(id(c, bank, PartKind.BATTERY));
                     t[1] = c.solverView().time();
+                    // the bank: 96 A·h; what its generator brought over the window
+                    double bankA = (soc[1] - soc[0]) * StationExhibit.BANK_STRINGS * 8 * 3600 / (t[1] - t[0]);
+                    dev.emergence.mod.EmergenceMod.LOG.info("Station bank: {} % → {} % over {} s ({} A net into it); {} V",
+                            String.format("%.4f", 100 * soc[0]), String.format("%.4f", 100 * soc[1]), String.format("%.0f", t[1] - t[0]),
+                            String.format("%.3f", bankA), String.format("%.2f", c.probe(id(c, bank, PartKind.BATTERY)).voltage() * StationExhibit.BANK_CELLS));
+                    h.assertTrue(bankA > 0.2, String.format("its generator charges the bank (%.3f A net into it)", bankA));
                     double mAh = -(q[1] - q[0]) / 3.6;
                     // what decides the battery's charge: its voltage, the regulator's output and what it dumps, the screens
                     BlockPos reg = DemoBuilder.partBlock(origin, e, "regulator"), lamp = DemoBuilder.partBlock(origin, e, "lamp"),
@@ -107,7 +116,7 @@ public final class StationGameTests {
                             String.format("%.2f", 1e3 * screens / 6), String.format("%.1f", c.temperature(id(c, reg, PartKind.OPAMP))));
                     dev.emergence.mod.EmergenceMod.LOG.info("Station battery window, sampled each second: regulator output at most {} V; battery at most {} V; dump load at most {} mA",
                             String.format("%.3f", regMax[0]), String.format("%.4f", vMax[0]), String.format("%.1f", 1e3 * dumpMax[0]));
-                    h.assertTrue(mAh > 0.001, String.format("its generator charges its battery (%.3f mA·h taken in over %.0f s)", mAh, t[1] - t[0]));
+                    h.assertTrue(mAh > 0.001, String.format("the bank keeps its battery charged (%.3f mA·h taken in over %.0f s)", mAh, t[1] - t[0]));
                     h.assertTrue(counts.size() >= 2, "its counter counts the engine's turns (states seen: " + counts + ")");
                     sim.toggleSwitch(brake, id(c, brake, PartKind.BRAKE)); // a load put on it by hand
                 }

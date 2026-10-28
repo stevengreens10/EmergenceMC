@@ -16,7 +16,12 @@
 // mode 2, a rate: k / the clocks between pulses (k = 60 x the clock's frequency gives turns a minute);
 // mode 3, a product: k * code / code2^2, code2 the mean reading of a second ADC sharing the first's select and clock,
 // its data out on the pulse pin (a current's reading, and a reference's read against the supply: the current times
-// the supply's voltage — a power).
+// the supply's voltage — a power);
+// mode 4, a product: code * code2 / k (a current's reading, and a voltage's read on the second ADC: the power they
+// make, to the supply's voltage squared);
+// mode 5, a ratio, then linear: x = k * code / code2, shown as ((x - lo) * gain >> 8) + off, 0 below lo (a voltage
+// read against a reference on the second ADC — measured in volts, whatever the supply — and scaled: a battery's
+// state of charge from its voltage).
 // Shown with dp decimal places (0-2), up to 9999, a linear reading below its zero with a minus sign. The bar:
 // (value - blo) * bgain >> 8 pixels of 120. Alarms: below alo or above ahi (each 0 for none; a negative value is
 // below any alo) the whole card is shown inverted. The trend takes one reading in every (1: each).
@@ -69,6 +74,9 @@ reg [2:0] pg = 0
 reg [6:0] col = 0
 reg [5:0] cc = 0
 
+// mode 5's linear step on its quotient, clamped likewise
+wire [27:0] qlin = (((q - lo) * gain) >> 8) + off
+wire [13:0] qv = q < lo ? 14'd0 : qlin > 9999 ? 14'd9999 : qlin
 // the linear reading, signed, clamped to what four digits show: above its zero (code - lo) * gain >> 8 + off; below,
 // off less (lo - code) * gain >> 8, negative once that is past off
 wire [9:0] code = sum >> 3
@@ -185,15 +193,17 @@ on rise clk {
             if (mode == 0) { v <= linv  neg <= linNeg  st <= 9 }
             else {
                 q <= 0  neg <= 0  st <= 8
-                if (mode == 3) num <= code * k else num <= k
-                if (mode == 1) den <= code else if (mode == 3) den <= code2 * code2 else if (cnt > ticks) den <= cnt else den <= ticks
+                if (mode == 3 || mode == 5) num <= code * k else if (mode == 4) num <= code * code2 else num <= k
+                if (mode == 1) den <= code else if (mode == 3) den <= code2 * code2 else if (mode == 4) den <= k else if (mode == 5) den <= code2 else if (cnt > ticks) den <= cnt else den <= ticks
             }
         }
         8: {
             if (den == 0) { v <= 0  st <= 9 }
             else if (num >= den && q < 9999) { num <= num - den  q <= q + 1 }
+            else if (mode == 5) st <= 10
             else { v <= q  st <= 9 }
         }
+        10: { v <= qv  st <= 9 }
         // its digits, the bar, the history, the mark
         9: { rem <= v  d3 <= 0  d2 <= 0  d1 <= 0  st <= 12 }
         12: { if (rem >= 1000) { rem <= rem - 1000  d3 <= d3 + 1 } else st <= 13 }

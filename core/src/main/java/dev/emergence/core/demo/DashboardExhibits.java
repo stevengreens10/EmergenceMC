@@ -25,7 +25,7 @@ public final class DashboardExhibits {
     }
 
     /** The ribbon's conductors, by colour. */
-    public static final int GND = 0, VDD = 1, BOILER = 2, CONDENSER = 3, PULSE = 4, RETURN = 5, RETURN_REF = 6, FUEL = 7;
+    public static final int GND = 0, VDD = 1, BOILER = 2, CONDENSER = 3, PULSE = 4, RETURN = 5, RETURN_REF = 6, FUEL = 7, BANK = 8;
 
     /** What stands between the ribbon and the ADC. */
     public enum FrontEnd {
@@ -46,15 +46,34 @@ public final class DashboardExhibits {
          * second ADC sharing its select and clock, whose data goes to the gauge chip's pulse pin: the chip's mode 3
          * takes k · current / reference², the current times the supply's voltage.
          */
-        POWER
+        POWER,
+        /**
+         * Power at another voltage: the current amplifier (as CURRENT) into the first ADC, and a third line — that
+         * voltage, divided down where it is taken — into a second ADC sharing its select and clock: the chip's mode 4
+         * takes current × voltage / k (both read against the supply, so the supply's voltage squared enters it).
+         */
+        POWER_BANK,
+        /**
+         * A voltage, divided down where it is taken, read against a diode's drop on a second ADC: the chip's mode 5 takes
+         * k · signal / reference — the voltage in volts whatever the supply — and scales it (a battery's state of charge
+         * from its voltage).
+         */
+        RATIO
     }
 
     /**
      * One gauge: its label and unit (as the ROM holds them), its front end and the ribbon colours it reads (the second
-     * only for the current amplifier's reference), and the gauge chip's parameters (see gauge.chip).
+     * only for the current amplifier's reference, the third only for power at another voltage), and the gauge chip's
+     * parameters (see gauge.chip).
      */
     public record Gauge(String id, String label, String unit, FrontEnd frontEnd, int signal, int signal2,
-                        int mode, int lo, int gain, int off, int k, int dp, int blo, int bgain, int alo, int ahi, int every) {
+                        int mode, int lo, int gain, int off, int k, int dp, int blo, int bgain, int alo, int ahi, int every, int signal3) {
+        /** With two signal lines at most. */
+        public Gauge(String id, String label, String unit, FrontEnd frontEnd, int signal, int signal2,
+                     int mode, int lo, int gain, int off, int k, int dp, int blo, int bgain, int alo, int ahi, int every) {
+            this(id, label, unit, frontEnd, signal, signal2, mode, lo, gain, off, k, dp, blo, bgain, alo, ahi, every, 0);
+        }
+
         /** Without alarms, every reading to the trend. */
         public Gauge(String id, String label, String unit, FrontEnd frontEnd, int signal, int signal2,
                      int mode, int lo, int gain, int off, int k, int dp, int blo, int bgain) {
@@ -199,11 +218,17 @@ public final class DashboardExhibits {
         Router r = new Router(e, 0, 0, 0, 15, 6, 15);
         // ---- in at the north face: ground, the supply and its signals, each on a wire of its ribbon colour; nothing
         // else may touch that face (a wire there would join the ribbon's conductor of its colour)
-        int[] entries = {6, 8, 10, 12};
-        int[] colours = {GND, VDD, g.signal(), g.signal2()};
-        String[] nets = {"gnd", "vdd", "sig", "sig2"};
-        // (the reference measures the supply itself; the current amplifier takes two sense lines)
-        int used = g.frontEnd() == FrontEnd.REFERENCE ? 2 : g.frontEnd() == FrontEnd.CURRENT || g.frontEnd() == FrontEnd.POWER ? 4 : 3;
+        int[] entries = {6, 8, 10, 12, 4};
+        int[] colours = {GND, VDD, g.signal(), g.signal2(), g.signal3()};
+        String[] nets = {"gnd", "vdd", "sig", "sig2", "sig3"};
+        // (the reference measures the supply itself; the current amplifier takes two sense lines, and power at another
+        // voltage a third)
+        int used = switch (g.frontEnd()) {
+            case REFERENCE -> 2;
+            case CURRENT, POWER -> 4;
+            case POWER_BANK -> 5;
+            default -> 3;
+        };
         for (int x = 0; x <= 15; x++) {
             boolean entry = false;
             for (int k = 0; k < used; k++) if (entries[k] == x) entry = true;
@@ -266,7 +291,11 @@ public final class DashboardExhibits {
                 pin(r, "ref", adc.get("vin"));
                 r.keepClear(10, 1, 4, 10, 6, 4);
             }
-            case CURRENT, POWER -> {
+            case RATIO -> {
+                pin(r, "sig", adc.get("vin"));
+                secondAdc(e, r, chip, null);
+            }
+            case CURRENT, POWER, POWER_BANK -> {
                 // an inverting amplifier: the op-amp's + input on the shunt's ground end, its − input through 2 kΩ from
                 // the shunt's other end and through 100 kΩ (with 10 µF across it: a 1 s low-pass, the generator's current
                 // pulsing at each magnet's pass) from its output
@@ -282,29 +311,40 @@ public final class DashboardExhibits {
                 r.pin("aout", 10, 1, 3).pin("aout", 12, 0, 4).pin("aout", 12, 0, 6);
                 r.pin("vdd", 9, 1, 4).pin("gnd", 9, 1, 2);
                 pin(r, "aout", adc.get("vin"));
-                if (g.frontEnd() == FrontEnd.POWER) {
-                    // the second ADC, upright against the east side, on the first's select and clock; the reference: a
-                    // diode fed through 10 kΩ from the supply (its sides along its lead axis, x, kept clear)
-                    Map<String, int[]> adc2 = chip(e, 7, null, 14, 0, 5, true);
-                    e.name("adc2", adc2.get("#")[0]);
-                    pin(r, "gnd", adc2.get("GND"));
-                    pin(r, "vdd", adc2.get("V_DD"));
-                    pin(r, "acs", adc2.get("cs"));
-                    pin(r, "asclk", adc2.get("sclk"));
-                    pin(r, "pulse2", adc2.get("dout"));
-                    pin(r, "pulse2", chip.get("pulse"));
-                    e.add(RESISTOR, "alumina", 7, 0, 2, Dir.EAST, "resistance", 10_000);
-                    e.add(DIODE, "silicon", 5, 0, 4, Dir.SOUTH, "lead_axis", 0);
-                    r.pin("ref", 6, 0, 2).pin("vdd", 8, 0, 2).pin("ref", 5, 0, 3).pin("gnd", 5, 0, 5);
-                    pin(r, "ref", adc2.get("vin"));
-                    r.keepClear(6, 0, 4, 6, 6, 4);
-                } else {
+                if (g.frontEnd() == FrontEnd.POWER) secondAdc(e, r, chip, null);
+                else if (g.frontEnd() == FrontEnd.POWER_BANK) secondAdc(e, r, chip, "sig3");
+                else {
                     pin(r, "gnd", chip.get("pulse")); // (the timer unused: its input grounded)
                 }
             }
         }
         if (ROUTE) r.route();
         return e;
+    }
+
+    /**
+     * The second ADC, upright against the block's east side, on the first's select and clock, its data into the gauge
+     * chip's pulse pin; its input the net {@code input}, or (null) a reference: a diode fed through 10 kΩ from the supply
+     * (its sides along its lead axis, x, kept clear).
+     */
+    private static void secondAdc(Exhibit e, Router r, Map<String, int[]> chip, String input) {
+        Map<String, int[]> adc2 = chip(e, 7, null, 14, 0, 5, true);
+        e.name("adc2", adc2.get("#")[0]);
+        pin(r, "gnd", adc2.get("GND"));
+        pin(r, "vdd", adc2.get("V_DD"));
+        pin(r, "acs", adc2.get("cs"));
+        pin(r, "asclk", adc2.get("sclk"));
+        pin(r, "pulse2", adc2.get("dout"));
+        pin(r, "pulse2", chip.get("pulse"));
+        if (input != null) {
+            pin(r, input, adc2.get("vin"));
+            return;
+        }
+        e.add(RESISTOR, "alumina", 7, 0, 2, Dir.EAST, "resistance", 10_000);
+        e.add(DIODE, "silicon", 5, 0, 4, Dir.SOUTH, "lead_axis", 0);
+        r.pin("ref", 6, 0, 2).pin("vdd", 8, 0, 2).pin("ref", 5, 0, 3).pin("gnd", 5, 0, 5);
+        pin(r, "ref", adc2.get("vin"));
+        r.keepClear(6, 0, 4, 6, 6, 4);
     }
 
     /** (Tests: false leaves a gauge block unrouted, to look at its layout.) */

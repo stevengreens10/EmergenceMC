@@ -223,6 +223,21 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0b5. **The station's bank and its 37 W (2026-10-28).** Asked for: a very large store, and generation near what the
+   fire can realistically give, the machine little bigger. Done:
+   - the engine's cylinder filled out in its cell, with a 4 mm throttle (50 W on the brake, up from 10 W);
+   - an axial-flux generator of four magnets and eight coils on the old disc (37 W into the bank at 130 rpm, up from
+     0.4 W);
+   - a 288-block lead–acid bank (4.6 kWh at 48 V), solved as twelve strings, with its own charge regulator;
+   - the 5 V battery fed from the bank, and the dashboard reading the bank (STORAGE %, power into it).
+   Open:
+   - **Speed.** The station costs twice the computing (the dashboard test at 4.9 s per simulated second, 2.3 before).
+     The next task is stepping the gauges' circuits apart from the generator's (PERFORMANCE.md's plan).
+   - The station's screens and the bank on a tour (`-Demergence.showcaseOnly=station`) after the user's next
+     station world (`./gradlew generateStationWorld` replaces their "Emergence Station").
+   - A buck converter in place of the 3.4 W dropper, and battery energy density bound by a block's volume
+     (KNOWN_LIMITATIONS).
+
 0b4. **Full tour 2026-10-28 14:15 (the display back): 191/191 over 86 exhibits in 33 min, no hand failures.** It
    includes today's screen-reading checks (the counter displays read off the client), the goggles at the wafer
    furnace, and the ribbons' new drawing. Since then:

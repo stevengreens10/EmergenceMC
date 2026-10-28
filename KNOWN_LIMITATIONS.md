@@ -315,6 +315,18 @@ multimeter, oscilloscope/data logging.
 * A shaft has no torque reading yet: the simulation's rotor carries speed, and torque between parts of one rigid
   body is not resolved.
 
+## Batteries
+* A battery block's capacity is not bound by its volume. One 6.25 cm cell may hold up to 400 cells of 500 A·h, far past
+  any chemistry's energy density: lead–acid stores some 50–90 Wh a litre, about 16 Wh in a block. The station's bank
+  keeps to that (8 A·h at 2 V a block), but the station's igniter bank (96 V, 40 A·h in one block) and some exhibits'
+  batteries are hundreds of times denser than real cells.
+* The station's 5 V battery is charged from its 48 V bank through a dropping resistor, which loses 3.4 W (a tenth of
+  the generator's output). A switching converter built from parts would take far less, but its switching edges would
+  hold the circuits' steps short.
+* The station's current and power gauges read against their own supply (the 5 V battery): the current gauge shifts
+  with its voltage, the power gauge with its square (−7 % if the supply rises from 5.41 V to 5.6 V). They are
+  calibrated at 5.6 V, the battery kept full. The storage gauge reads against a diode, so it holds whatever the supply.
+
 ## Displays
 * A display restored with its machine shows "NO SIGNAL" until its chip sends its first byte. A design that draws
   its screen only once (at power-up) shows it until the chip next draws.

@@ -188,8 +188,8 @@ public final class AutoShowcase {
                 if (dwell > 0) STEPS.add(new Step(20 * dwell, NOTHING, null));
                 // the power station, found running: its fire, its steam, its engine, its vacuum, its electricity
                 BlockPos shaft = at.apply("shaft"), boiler = at.apply("boiler"), cnd = at.apply("condenser"), bat = at.apply("battery"),
-                        box = at.apply("firebox");
-                Sampler w0 = shaftSpeed(server, shaft), w1 = shaftSpeed(server, shaft), q = new Sampler(), t = new Sampler();
+                        box = at.apply("firebox"), bank = at.apply("bank");
+                Sampler w0 = shaftSpeed(server, shaft), w1 = shaftSpeed(server, shaft), q = new Sampler(), t = new Sampler(), qb = new Sampler();
                 java.util.Set<String> counts = java.util.concurrent.ConcurrentHashMap.newKeySet();
                 java.util.function.Supplier<String> bits = () -> {
                     StringBuilder sb = new StringBuilder();
@@ -201,7 +201,7 @@ public final class AutoShowcase {
                 double[] from = {Double.NaN}, braked = {Double.NaN};
                 STEPS.add(new Step(6000, () -> from[0] = simTime(server, shaft), shot.apply("running"),
                         () -> onServer(server, key + "t", () -> simTime(server, shaft)) - from[0] > 5).sample(w0, () -> motion(server, shaft, PartKind.SHAFT))
-                        .sample(q, () -> chargeDelivered(server, bat)).sample(t, () -> simTime(server, bat))
+                        .sample(q, () -> chargeDelivered(server, bat)).sample(t, () -> simTime(server, bat)).sample(qb, () -> chargeDelivered(server, bank))
                         .sample(new Sampler(), () -> {
                             counts.add(bits.get()); // (samples are taken on the server thread)
                             return 0;
@@ -210,7 +210,8 @@ public final class AutoShowcase {
                         .check(key + " its boiler holds steam", () -> atLeast("boiler pressure [bar]", 1e-5 * pressure(server, boiler, PartKind.TANK), 1.5))
                         .check(key + " the engine runs on it", () -> atLeast("mean crankshaft speed [rad/s]", w0.mean(), 8))
                         .check(key + " it exhausts into a partial vacuum", () -> atMost("condenser pressure [kPa]", 1e-3 * pressure(server, cnd, PartKind.TANK), 80))
-                        .check(key + " its generator charges its battery", () -> atLeast("charge taken in [mA·h]", -q.change() / 3.6, 0.001))
+                        .check(key + " its generator charges the bank", () -> atLeast("charge a string took in [mA·h]", -qb.change() / 3.6, 0.01))
+                        .check(key + " the bank keeps its battery charged", () -> atLeast("charge taken in [mA·h]", -q.change() / 3.6, 0.001))
                         .check(key + " its counter counts the engine's turns", () -> atLeast("counter states seen", counts.size(), 2))
                         .after(() -> dumpIf(server, key, shaft)));
                 // the dashboard: six full-size screens, each drawn by a gauge of miniature electronics in the block behind
@@ -251,16 +252,16 @@ public final class AutoShowcase {
                                     pressureAt.apply(at.apply("condenser"), PartKind.TANK) / 1e3 * 10, 30, "0.1 kPa"))
                             .check(key + " generator gauge: a charging current", () -> {
                                 long v = gaugeValue(server, plot, e, 4);
-                                return that(v >= 10 && v <= 400, v + " mA, expected a charging current (10 to 400 mA)");
+                                return that(v >= 200 && v <= 1100, v + " mA, expected the bank's charging current (200 to 1100 mA)");
                             })
-                            .check(key + " battery gauge: its voltage", () -> {
-                                PlacedPart bp = partIn(server, at.apply("battery"), PartKind.BATTERY);
-                                CompiledAssembly c = compiled(server, at.apply("battery"));
-                                return gauge(gaugeValue(server, plot, e, 5), bp == null || c == null ? Double.NaN : 100 * c.probe(bp.id).voltage(), 8, "0.01 V");
+                            .check(key + " storage gauge: the bank's charge", () -> {
+                                PlacedPart bp = partIn(server, at.apply("bank"), PartKind.BATTERY);
+                                CompiledAssembly c = compiled(server, at.apply("bank"));
+                                return gauge(gaugeValue(server, plot, e, 5), bp == null || c == null ? Double.NaN : 100 * c.batteryStateOfCharge(bp.id), 8, "%");
                             })
                             .check(key + " power gauge: the generator's output", () -> {
                                 long v = e.embedded.size() > 6 ? gaugeValue(server, plot, e, 6) : -1;
-                                return that(v >= 10 && v <= 100, String.format("%.2f W, expected 0.10 to 1.00 W", v / 100.0));
+                                return that(v >= 100 && v <= 600, String.format("%.1f W, expected 10 to 60 W", v / 10.0));
                             })
                             .check(key + " each screen, as this client shows it, reads its label and its gauge's value", () -> screensRead(server, plot, e, at)));
                     // a close look at one card (the boiler's), right of the notes

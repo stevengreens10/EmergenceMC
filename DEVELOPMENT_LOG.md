@@ -1294,3 +1294,13 @@ the station's operation, with a nice UI, using miniature electronics wherever po
 - *2. Accidental lead joins.* The compiler warns of a wire of another colour beside a component's lead, and of
   components side by side (LeadJoinWarningTest). No exhibit has either. An empty-hand right-click on a two-terminal
   component names the faces where its leads come out.
+- *3. The dashboard grew.* The gauge chip gained four features:
+  - signed readings (a minus sign below its zero);
+  - alarm limits, outside which the whole card is shown inverted;
+  - a trend interval (the fuel gauge takes one reading a minute, two hours across its trend);
+  - a power mode: a second ADC shares the first's select and clock and sends its data on the pulse pin, for
+    k·current/reference².
+  A seventh screen shows the generator's power: 0.44 W against 0.418 in the core. Alarm limits are set on fuel
+  (below 50 bar), boiler (above 4.4 bar), engine (below 90 rpm), condenser (above 80 kPa) and battery (below
+  5.40 V). None trips while the station runs as it should (DashboardTest); a negative value inverts its card
+  (GaugeTest).

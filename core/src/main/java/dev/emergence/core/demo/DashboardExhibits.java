@@ -40,7 +40,13 @@ public final class DashboardExhibits {
          */
         CURRENT,
         /** A pulse train into the gauge chip's timer. */
-        PULSE
+        PULSE,
+        /**
+         * Power: the current amplifier (as CURRENT) into the first ADC, and a diode's drop (fed through 10 kΩ) into a
+         * second ADC sharing its select and clock, whose data goes to the gauge chip's pulse pin: the chip's mode 3
+         * takes k · current / reference², the current times the supply's voltage.
+         */
+        POWER
     }
 
     /**
@@ -48,7 +54,12 @@ public final class DashboardExhibits {
      * only for the current amplifier's reference), and the gauge chip's parameters (see gauge.chip).
      */
     public record Gauge(String id, String label, String unit, FrontEnd frontEnd, int signal, int signal2,
-                        int mode, int lo, int gain, int off, int k, int dp, int blo, int bgain) {
+                        int mode, int lo, int gain, int off, int k, int dp, int blo, int bgain, int alo, int ahi, int every) {
+        /** Without alarms, every reading to the trend. */
+        public Gauge(String id, String label, String unit, FrontEnd frontEnd, int signal, int signal2,
+                     int mode, int lo, int gain, int off, int k, int dp, int blo, int bgain) {
+            this(id, label, unit, frontEnd, signal, signal2, mode, lo, gain, off, k, dp, blo, bgain, 0, 0, 1);
+        }
     }
 
     /** The 5x7 font: each glyph's five columns, bit 0 the top row. */
@@ -132,7 +143,7 @@ public final class DashboardExhibits {
         int[] colours = {GND, VDD, g.signal(), g.signal2()};
         String[] nets = {"gnd", "vdd", "sig", "sig2"};
         // (the reference measures the supply itself; the current amplifier takes two sense lines)
-        int used = g.frontEnd() == FrontEnd.REFERENCE ? 2 : g.frontEnd() == FrontEnd.CURRENT ? 4 : 3;
+        int used = g.frontEnd() == FrontEnd.REFERENCE ? 2 : g.frontEnd() == FrontEnd.CURRENT || g.frontEnd() == FrontEnd.POWER ? 4 : 3;
         for (int x = 0; x <= 15; x++) {
             boolean entry = false;
             for (int k = 0; k < used; k++) if (entries[k] == x) entry = true;
@@ -145,7 +156,7 @@ public final class DashboardExhibits {
         Map<String, int[]> adc = chip(e, 7, null, 1, 0, 4, false);
         Map<String, int[]> chip = chip(e, ChipTypes.DESIGN, design, 0, 0, 8, false,
                 "p_mode", g.mode(), "p_lo", g.lo(), "p_gain", g.gain(), "p_off", g.off(), "p_k", g.k(), "p_dp", g.dp(),
-                "p_blo", g.blo(), "p_bgain", g.bgain());
+                "p_blo", g.blo(), "p_bgain", g.bgain(), "p_alo", g.alo(), "p_ahi", g.ahi(), "p_every", g.every());
         // (the ROM's address and data pins in line with the chip's: each bus wire runs straight)
         Map<String, int[]> romPins = chip(e, ChipTypes.ROM256, rom, 0, 0, 12, false);
         Map<String, int[]> ctl = chip(e, 8, null, 13, 0, 15, true);
@@ -195,7 +206,7 @@ public final class DashboardExhibits {
                 pin(r, "ref", adc.get("vin"));
                 r.keepClear(10, 1, 4, 10, 6, 4);
             }
-            case CURRENT -> {
+            case CURRENT, POWER -> {
                 // an inverting amplifier: the op-amp's + input on the shunt's ground end, its − input through 2 kΩ from
                 // the shunt's other end and through 100 kΩ (with 2 µF across it) from its output
                 e.name("amp", e.add(OPAMP, "silicon", 9, 1, 3, Dir.EAST));
@@ -210,6 +221,25 @@ public final class DashboardExhibits {
                 r.pin("aout", 10, 1, 3).pin("aout", 12, 0, 4).pin("aout", 12, 0, 6);
                 r.pin("vdd", 9, 1, 4).pin("gnd", 9, 1, 2);
                 pin(r, "aout", adc.get("vin"));
+                if (g.frontEnd() == FrontEnd.POWER) {
+                    // the second ADC, upright against the east side, on the first's select and clock; the reference: a
+                    // diode fed through 10 kΩ from the supply (its sides along its lead axis, x, kept clear)
+                    Map<String, int[]> adc2 = chip(e, 7, null, 14, 0, 5, true);
+                    e.name("adc2", adc2.get("#")[0]);
+                    pin(r, "gnd", adc2.get("GND"));
+                    pin(r, "vdd", adc2.get("V_DD"));
+                    pin(r, "acs", adc2.get("cs"));
+                    pin(r, "asclk", adc2.get("sclk"));
+                    pin(r, "pulse2", adc2.get("dout"));
+                    pin(r, "pulse2", chip.get("pulse"));
+                    e.add(RESISTOR, "alumina", 7, 0, 2, Dir.EAST, "resistance", 10_000);
+                    e.add(DIODE, "silicon", 5, 0, 4, Dir.SOUTH, "lead_axis", 0);
+                    r.pin("ref", 6, 0, 2).pin("vdd", 8, 0, 2).pin("ref", 5, 0, 3).pin("gnd", 5, 0, 5);
+                    pin(r, "ref", adc2.get("vin"));
+                    r.keepClear(6, 0, 4, 6, 6, 4);
+                } else {
+                    pin(r, "gnd", chip.get("pulse")); // (the timer unused: its input grounded)
+                }
             }
         }
         if (ROUTE) r.route();

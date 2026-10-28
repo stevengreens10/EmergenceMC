@@ -426,31 +426,42 @@ public final class StationExhibit {
 
     /** The battery gauge's constant: its diode reference's voltage × 1023 × 100 (see DashboardTest). */
     static final int BATTERY_K = 132_230;
+    /** The power gauge's constant: 4 × its diode's drop² × 1023 (see DashboardTest). */
+    static final int POWER_K = 1_625;
     /** The dashboard's gauges, west to east (see {@link #dashboard}). */
     static final DashboardExhibits.Gauge[] GAUGES = {
             // the bottles' gauge pressure: 0–250 bar on 10–90 % of the supply
+            // (its trend a reading a minute — 30 of them, at one each 2 s: two hours across; an alarm below 50 bar)
             new DashboardExhibits.Gauge("fuel", "FUEL BOTTLES", "BAR", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.FUEL, 0,
-                    0, 102, 782, 0, 0, 1, 0, 12),
+                    0, 102, 782, 0, 0, 1, 0, 12, 500, 0, 30),
             // the boiler's gauge pressure: 0–6 bar
+            // (an alarm above 4.4 bar: near the safety valve's lift)
             new DashboardExhibits.Gauge("boiler", "BOILER PRESSURE", "BAR", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.BOILER, 0,
-                    0, 102, 188, 0, 0, 2, 0, 51),
+                    0, 102, 188, 0, 0, 2, 0, 51, 0, 440, 1),
             // turns a minute from the counter's pulses, one a turn: 60 × 10 kHz / clocks between them
+            // (an alarm below 90 rpm: the engine slowing to a stall)
             new DashboardExhibits.Gauge("engine", "ENGINE SPEED", "RPM", DashboardExhibits.FrontEnd.PULSE, DashboardExhibits.PULSE, 0,
-                    2, 0, 0, 0, 600_000, 0, 0, 154),
+                    2, 0, 0, 0, 600_000, 0, 0, 154, 90, 0, 1),
             // the condenser's absolute pressure: gauge −100–0 kPa, plus the world's air pressure above 100 kPa (2.8 kPa)
+            // (an alarm above 80 kPa: its vacuum lost)
             new DashboardExhibits.Gauge("condenser", "CONDENSER", "KPA", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.CONDENSER, 0,
-                    0, 102, 313, 28, 0, 1, 0, 31),
+                    0, 102, 313, 28, 0, 1, 0, 31, 0, 800, 1),
             // the generator's current: 0.5 Ω, gain 50 (40 mA a volt), on a 5.6 V supply: 0.219 mA a code
             new DashboardExhibits.Gauge("generator", "GENERATOR", "MA", DashboardExhibits.FrontEnd.CURRENT, DashboardExhibits.RETURN, DashboardExhibits.RETURN_REF,
                     0, 0, 56, 0, 0, 0, 0, 307),
             // the battery's voltage: two diodes' 1.24 V read against it, k = 1.24 V × 1023 × 100
+            // (an alarm below 5.40 V: running down)
             new DashboardExhibits.Gauge("battery", "BATTERY", "V", DashboardExhibits.FrontEnd.REFERENCE, DashboardExhibits.VDD, 0,
-                    1, 0, 0, 0, BATTERY_K, 2, 400, 154)};
+                    1, 0, 0, 0, BATTERY_K, 2, 400, 154, 540, 0, 1),
+            // the generator's power: its current (the shunt, as the generator gauge's) times the supply's voltage (a
+            // diode read against it): k = 4 V_ref² 1023 in tens of milliwatts; full scale 1 W
+            new DashboardExhibits.Gauge("power", "GENERATOR POWER", "W", DashboardExhibits.FrontEnd.POWER, DashboardExhibits.RETURN,
+                    DashboardExhibits.RETURN_REF, 3, 0, 0, 0, POWER_K, 2, 0, 307, 0, 0, 1)};
     /**
      * The gauge blocks' x (each at z 19, its screen at x − 2…x + 1, z 20): a block apart, so that each screen is its own
      * (panels side by side make one screen).
      */
-    static final int[] GAUGE_X = {18, 23, 28, 33, 38, 43};
+    static final int[] GAUGE_X = {18, 23, 28, 33, 38, 43, 48};
 
     /**
      * The dashboard (station coordinates), south of the plant: six full-size screens of 4 × 2 blocks facing south, and
@@ -461,7 +472,7 @@ public final class StationExhibit {
      * the condenser and on a fuel bottle — wired to it here, each transducer powered from the ribbon.
      */
     static void dashboard(Exhibit e) {
-        for (int x = 16; x <= 46; x++) {
+        for (int x = 16; x <= 50; x++) {
             int rb = e.add(RIBBON, "copper", x, 0, 18, Dir.EAST);
             if (x == 16) e.name("trunk", rb);
         }

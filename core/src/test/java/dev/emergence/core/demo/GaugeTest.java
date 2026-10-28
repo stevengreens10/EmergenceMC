@@ -79,6 +79,34 @@ class GaugeTest {
         assertEquals(0x42, m[5 * 128 + 3 + px + 2] & 0xff, "past its length, the frame");
     }
 
+    /**
+     * A reading below the gauge's zero shows with a minus sign; past its alarm limit the card is shown inverted.
+     * (The 1-cell signal reads about 1.3 V; a zero at code 400 puts it below, and a negative value is below a low alarm.)
+     */
+    @Test
+    void negativeReadingsAndAlarms() {
+        var g = new DashboardExhibits.Gauge("test", "SIGNED", "V", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.BOILER, 0,
+                0, 400, 256, 0, 0, 0, 0, 51, 1, 0, 1);
+        Exhibit e = host(g);
+        Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+        var chip = (DesignComponent) c.digitalChip(b.embeddedId(e, 0, "gauge")).component();
+        var screen = (DisplayPanel) c.digitalChip(b.embeddedId(e, 0, "controller")).component();
+        for (int i = 0; i < 160; i++) c.step(0.05);
+        for (int i = 0; i < 300 && !(chip.instance().value("st") >= 17 && chip.instance().value("pg") >= 5); i++) c.step(0.01);
+        long v = chip.instance().value("v"), neg = chip.instance().value("neg");
+        System.out.printf("signed gauge: %s%d, inverted %s%n", neg == 1 ? "-" : "", v, screen.inverted());
+        System.out.println(render(screen));
+        assertEquals(1, neg, "below its zero: negative");
+        assertTrue(v > 50, "its magnitude: " + v);
+        // the first cell holds the minus sign: its first glyph column ('-' is 08 in every column) three wide, page 3
+        byte[] m = screen.memory();
+        int dash = DashboardExhibits.FONT[39][0];
+        int mid = (bit(dash, 5) << 7) | (bit(dash, 4) << 6) | (bit(dash, 4) << 5) | (bit(dash, 4) << 4) | (bit(dash, 3) << 3) | (bit(dash, 3) << 2) | (bit(dash, 3) << 1) | bit(dash, 2);
+        assertEquals(mid, m[3 * 128 + 4] & 0xff, "the minus sign's middle rows");
+        assertTrue(screen.inverted(), "a negative value is past any alarm: the card inverted");
+    }
+
     static int bit(int f, int i) {
         return (f >> i) & 1;
     }

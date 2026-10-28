@@ -257,6 +257,10 @@ public final class AutoShowcase {
                                 PlacedPart bp = partIn(server, at.apply("battery"), PartKind.BATTERY);
                                 CompiledAssembly c = compiled(server, at.apply("battery"));
                                 return gauge(gaugeValue(server, plot, e, 5), bp == null || c == null ? Double.NaN : 100 * c.probe(bp.id).voltage(), 8, "0.01 V");
+                            })
+                            .check(key + " power gauge: the generator's output", () -> {
+                                long v = e.embedded.size() > 6 ? gaugeValue(server, plot, e, 6) : -1;
+                                return that(v >= 10 && v <= 100, String.format("%.2f W, expected 0.10 to 1.00 W", v / 100.0));
                             }));
                     // a close look at one card (the boiler's), right of the notes
                     STEPS.add(new Step(40, () -> look(server, plot.getX() + 23.5, plot.getY() + 1.1, plot.getZ() + 24.5, 153.5f, 0),

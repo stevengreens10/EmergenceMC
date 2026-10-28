@@ -52,11 +52,12 @@ class DashboardTest {
                 Math.abs(c.probe(shaft).angularVelocity()) * 60 / (2 * Math.PI),    // rpm
                 c.pressure(cond) / 1e3 * 10,                                        // kPa absolute, 1 place
                 meanCurrent * 1e3,                                                  // mA (its mean over the run)
-                c.probe(bat).voltage() * 100};                                      // V, 2 places
+                c.probe(bat).voltage() * 100,                                       // V, 2 places
+                meanCurrent * c.probe(bat).voltage() * 100};                        // W, 2 places
         // what each may be off by: the ADC's step and noise, the gain's rounding, and: the condenser's offset for the
         // world's air pressure (2.8 kPa) against the test's; the generator's for its supply's 5.6 V; the engine's for
         // the speed's ripple within a turn; the battery's for its diodes' drop
-        double[] tol = {15, 12, 6, 30, 0.15 * truth[4] + 2, 6};
+        double[] tol = {15, 12, 6, 30, 0.15 * truth[4] + 2, 6, 0.15 * truth[6] + 2};
         System.out.printf("dashboard: %.0f s in %.1f s of wall time; ambient %.0f Pa%n", c.time() - t0, wall, pa);
         boolean ok = true;
         for (int k = 0; k < n; k++) {
@@ -69,6 +70,11 @@ class DashboardTest {
         var genAdc = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 4, "adc")).component();
         System.out.printf("  generator: shunt %.4f V (%.4f A), amplifier out %.4f V, ADC %d%n", c.probe(shunt).voltage(), c.probe(shunt).current(),
                 c.probe(b.embeddedId(e, 4, "amp")).voltage(), genAdc.lastCode());
+        // the power gauge's readings, for its constant: k = P·code2²/code (P in tens of milliwatts)
+        var pcur = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 6, "adc")).component();
+        var pr = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 6, "adc2")).component();
+        System.out.printf("  power: current ADC %d, reference ADC %d: k = %.0f%n", pcur.lastCode(), pr.lastCode(),
+                truth[6] * pr.lastCode() * pr.lastCode() / Math.max(1, pcur.lastCode()));
         // the battery gauge's reference, for its constant
         var refAdc = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 5, "adc")).component();
         System.out.printf("  battery reference: ADC %d at %.3f V: k = %.0f%n", refAdc.lastCode(), c.probe(bat).voltage(),
@@ -77,6 +83,14 @@ class DashboardTest {
         System.out.println(GaugeTest.render(screen));
         for (int k = 0; k < n; k++) assertEquals(0, chip[k].instance().violations(), StationExhibit.GAUGES[k].label() + ": timing");
         assertTrue(ok, "every gauge shows its quantity within its accuracy");
+        // the fuel's trend takes a reading in thirty (none yet in 30 s of readings every 2 s), the boiler's every one
+        assertEquals(0, chip[0].instance().value("wr"), "the fuel gauge's slow trend: no point yet");
+        assertTrue(chip[1].instance().value("wr") >= 10, "the boiler's trend: a point a reading, " + chip[1].instance().value("wr"));
+        // running as it should, none of its alarms: no card inverted
+        for (int k = 0; k < n; k++) {
+            var ctl = (DisplayPanel) c.digitalChip(b.embeddedId(e, k, "controller")).component();
+            assertFalse(ctl.inverted(), StationExhibit.GAUGES[k].label() + " in alarm while the station runs as it should");
+        }
         assertTrue(charged > 0, "the battery still charges: " + charged + " mA·h");
         assertTrue(dump < 0.01, "the regulator is not dumping: " + dump + " A");
     }

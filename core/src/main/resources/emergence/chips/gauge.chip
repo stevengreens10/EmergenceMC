@@ -13,8 +13,13 @@
 //
 // The value: mode 0, a linear reading: ((code - lo) * gain >> 8) + off, code the mean of eight ADC readings;
 // mode 1, a reciprocal reading: k / code (a fixed reference read against the supply measures the supply);
-// mode 2, a rate: k / the clocks between pulses (k = 60 x the clock's frequency gives turns a minute).
-// Shown with dp decimal places (0-2), up to 9999. The bar: (value - blo) * bgain >> 8 pixels of 120.
+// mode 2, a rate: k / the clocks between pulses (k = 60 x the clock's frequency gives turns a minute);
+// mode 3, a product: k * code / code2^2, code2 the mean reading of a second ADC sharing the first's select and clock,
+// its data out on the pulse pin (a current's reading, and a reference's read against the supply: the current times
+// the supply's voltage — a power).
+// Shown with dp decimal places (0-2), up to 9999, a linear reading below its zero with a minus sign. The bar:
+// (value - blo) * bgain >> 8 pixels of 120. Alarms: below alo or above ahi (each 0 for none; a negative value is
+// below any alo) the whole card is shown inverted. The trend takes one reading in every (1: each).
 
 chip gauge
 in [7:0] f
@@ -22,7 +27,7 @@ in clk, miso, pulse
 out [7:0] a
 out acs = 1, asclk
 out cs = 1, dc, sclk, din
-param mode = 0, lo = 0, gain = 256, off = 0, k = 0, dp = 0, blo = 0, bgain = 64
+param mode = 0, lo = 0, gain = 256, off = 0, k = 0, dp = 0, blo = 0, bgain = 64, alo = 0, ahi = 0, every = 1
 
 reg [4:0] st = 0         // what it is doing (see below)
 reg [4:0] ret = 0        // where to go once a byte is sent
@@ -34,19 +39,22 @@ reg first = 1            // the first frame draws the label too
 reg live = 0             // the mark, toggled at each reading
 // reading the ADC: eight readings summed
 reg [9:0] sh = 0
+reg [9:0] sh2 = 0        // the second ADC's (mode 3)
 reg [3:0] n = 0
 reg [3:0] ns = 0
 reg [12:0] sum = 0
+reg [12:0] sum2 = 0
 // timing pulses: clocks since the last, and between the last two
 reg [19:0] cnt = 0
 reg [19:0] ticks = 0
 reg p1 = 0
 reg p2 = 0
 // the value, by repeated subtraction where it is a quotient, and its decimal digits
-reg [23:0] num = 0
+reg [27:0] num = 0
 reg [19:0] den = 0
 reg [13:0] q = 0
-reg [13:0] v = 0
+reg [13:0] v = 0         // its magnitude
+reg neg = 0              // and its sign
 reg [13:0] rem = 0
 reg [3:0] d3 = 0
 reg [3:0] d2 = 0
@@ -54,25 +62,33 @@ reg [3:0] d1 = 0
 reg [3:0] d0 = 0
 reg [6:0] px = 0         // the bar's length
 reg [6:0] wr = 0         // where the next reading goes in the history
+reg [11:0] tc = 0        // readings since the trend's last
 mem [3:0] hist[128]
 // drawing: the page and column of the byte being sent, the glyph code read for it
 reg [2:0] pg = 0
 reg [6:0] col = 0
 reg [5:0] cc = 0
 
-// the linear reading, clamped to what four digits show
+// the linear reading, signed, clamped to what four digits show: above its zero (code - lo) * gain >> 8 + off; below,
+// off less (lo - code) * gain >> 8, negative once that is past off
 wire [9:0] code = sum >> 3
-wire [23:0] lin = (code < lo ? 24'd0 : ((code - lo) * gain) >> 8) + off
+wire [9:0] code2 = sum2 >> 3
+wire [23:0] up = ((code - lo) * gain) >> 8
+wire [23:0] down = ((lo - code) * gain) >> 8
+wire linNeg = code < lo && down > off
+wire [23:0] lin = code >= lo ? up + off : linNeg ? down - off : off - down
 wire [13:0] linv = lin > 9999 ? 14'd9999 : lin
+// the alarm: below alo, above ahi
+wire alarm = (ahi != 0 && !neg && v > ahi) || (alo != 0 && (neg || v < alo))
 // the bar, and the trend's height (0-15) for the history
-wire [23:0] bar = v < blo ? 24'd0 : ((v - blo) * bgain) >> 8
+wire [23:0] bar = neg || v < blo ? 24'd0 : ((v - blo) * bgain) >> 8
 wire [6:0] pxw = bar > 120 ? 7'd120 : bar
 
 // the value's five glyph cells: leading zeros blank, the point where dp puts it
 wire z3 = d3 == 0
 wire z2 = z3 && d2 == 0
 wire z1 = z2 && d1 == 0
-wire [5:0] c0 = dp == 0 ? 6'd40 : z3 ? 6'd40 : d3
+wire [5:0] c0 = neg ? 6'd39 : dp == 0 ? 6'd40 : z3 ? 6'd40 : d3
 wire [5:0] c1 = dp == 0 ? (z3 ? 6'd40 : d3) : dp == 1 ? (z2 ? 6'd40 : d2) : d2
 wire [5:0] c2 = dp == 0 ? (z2 ? 6'd40 : d2) : dp == 1 ? d1 : 6'd36
 wire [5:0] c3 = dp == 0 ? (z1 ? 6'd40 : d1) : dp == 1 ? 6'd36 : d1
@@ -147,28 +163,30 @@ on rise clk {
                 8: byte <= 8'h22
                 9: byte <= first ? 8'h00 : 8'h01
                 10: byte <= 8'h07
+                11: byte <= alarm ? 8'ha7 : 8'ha6
             }
             dcb <= 0  ret <= 1  st <= 28
         }
         1: {
-            if (ini == 10) {
+            if (ini == 11) {
                 ini <= 0  col <= 0  st <= 17
                 if (first) pg <= 0 else pg <= 1
             } else { ini <= ini + 1  st <= 0 }
         }
         // a reading: eight from the ADC (select, ten bits on rising edges, deselect), or the pulses' period
-        2: { if (mode == 2) st <= 6 else { sum <= 0  ns <= 0  st <= 3 } }
-        3: { acs <= 0  n <= 0  sh <= 0  st <= 4 }
-        4: { asclk <= 1  sh <= {sh[8:0], miso}  st <= 5 }
+        2: { if (mode == 2) st <= 6 else { sum <= 0  sum2 <= 0  ns <= 0  st <= 3 } }
+        3: { acs <= 0  n <= 0  sh <= 0  sh2 <= 0  st <= 4 }
+        4: { asclk <= 1  sh <= {sh[8:0], miso}  sh2 <= {sh2[8:0], pulse}  st <= 5 }
         5: { asclk <= 0  n <= n + 1  if (n == 9) st <= 7 else st <= 4 }
-        7: { acs <= 1  sum <= sum + sh  ns <= ns + 1  if (ns == 7) st <= 6 else st <= 3 }
+        7: { acs <= 1  sum <= sum + sh  sum2 <= sum2 + sh2  ns <= ns + 1  if (ns == 7) st <= 6 else st <= 3 }
         // the value: at once if linear, else the quotient by subtraction (a stopped pulse train's rate falls as
         // its period lengthens)
         6: {
-            if (mode == 0) { v <= linv  st <= 9 }
+            if (mode == 0) { v <= linv  neg <= linNeg  st <= 9 }
             else {
-                num <= k  q <= 0  st <= 8
-                if (mode == 1) den <= code else if (cnt > ticks) den <= cnt else den <= ticks
+                q <= 0  neg <= 0  st <= 8
+                if (mode == 3) num <= code * k else num <= k
+                if (mode == 1) den <= code else if (mode == 3) den <= code2 * code2 else if (cnt > ticks) den <= cnt else den <= ticks
             }
         }
         8: {
@@ -181,7 +199,11 @@ on rise clk {
         12: { if (rem >= 1000) { rem <= rem - 1000  d3 <= d3 + 1 } else st <= 13 }
         13: { if (rem >= 100) { rem <= rem - 100  d2 <= d2 + 1 } else st <= 14 }
         14: { if (rem >= 10) { rem <= rem - 10  d1 <= d1 + 1 } else { d0 <= rem  st <= 15 } }
-        15: { px <= pxw  hist[wr] <= pxw >> 3  wr <= wr + 1  live <= !live  st <= 0 }
+        15: {
+            px <= pxw  live <= !live  st <= 0
+            // one reading in every to the trend
+            if (tc + 1 >= every) { hist[wr] <= pxw >> 3  wr <= wr + 1  tc <= 0 } else tc <= tc + 1
+        }
         // each byte of the frame: a glyph's code from the ROM if it is text, then the glyph's column, then the byte
         17: {
             if (inLabel || inUnit) { a <= codeAt  st <= 18 }

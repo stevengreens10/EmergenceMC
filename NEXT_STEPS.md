@@ -223,6 +223,16 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0b1. **Scheduled tour 2026-10-28 06:23: not run.** Windows showed only its "WinDisc" placeholder (no monitor), as
+   at 02:00, so no client could open. The demo world was regenerated (headless): 86 exhibits, 0 problems,
+   0 differences, 24/24 in-world tests. The tour copies `run-demo/world`, so it is ready. Run
+   `./gradlew runShowcaseClient` and `./gradlew runStationShowcase` when a display is back.
+   *The station battery's margin:* the GameTest's net charge over 189 s fell from 0.121 mA·h (six gauges) to
+   0.006 (seven). That is 2.2 mA, about what a gauge draws: the display controller's 300 µA plus 2.5 µA per lit
+   pixel at quarter contrast, a reference chain, an op-amp and two chips. The generator's mean 74 mA is now nearly
+   all taken by the station's loads. This is physics, not a fault. To give the battery a margin again, a player
+   would lower the screens' contrast or a reference's current, or gear the generator up.
+
 0b0. **Full tour 2026-10-28 01:15 (scheduled): 189/189 over 86 exhibits in 33 min, no hand failures.** The
    demo world was not regenerated: it was built at 00:50 from the code committed since. At 01:25 Windows lost the
    audio device ("Audio device was lost!"). Vanilla Minecraft then retries opening it every tick, which put 27 000

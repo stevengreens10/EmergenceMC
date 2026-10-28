@@ -57,6 +57,51 @@ class CounterDisplayExhibitTest {
         countsOnScreen(MonitorExhibits.miniatureCounterDisplay());
     }
 
+    /**
+     * Saved with its machine in the middle of a byte to its display, and loaded again (as saved now, and as saved before
+     * the display kept its place in a byte), the screen goes on showing what the LEDs show — read off the screen.
+     */
+    @Test
+    void reloadedMidByteItStillShowsTheCount() {
+        for (Exhibit e : new Exhibit[]{MonitorExhibits.counterDisplay(), MonitorExhibits.miniatureCounterDisplay()}) {
+            Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
+            CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+            dev.emergence.core.digital.DesignComponent chip = null;
+            for (long id : b.ids().values()) {
+                var d = c.digitalChip(id);
+                if (d != null && d.component() instanceof dev.emergence.core.digital.DesignComponent dc && dc.design().name().equals("counter_display")) chip = dc;
+            }
+            assertNotNull(chip, "the counter display's chip");
+            for (int i = 0; i < 60; i++) c.step(0.05);
+            // on into a byte to the display: part of it sent
+            for (int i = 0; i < 20000 && !(chip.instance().value("b") >= 1 && chip.instance().value("b") <= 6); i++) c.step(1e-6);
+            long bit = chip.instance().value("b");
+            assertTrue(bit >= 1 && bit <= 6, "saved mid-byte: bit " + bit);
+            long ctl = b.id(e, "controller");
+            for (boolean oldSave : new boolean[]{false, true}) {
+                var s = c.exportState();
+                if (oldSave) s.chemistry().put("R" + ctl + ":n", s.chemistry().get("R" + ctl + ":n") - 1);
+                CompiledAssembly again = AssemblyCompiler.compile(b.assembly(), s);
+                DisplayPanel screen = e.named.containsKey("screen") ? again.display(b.id(e, "screen"))
+                        : (DisplayPanel) again.digitalChip(ctl).component();
+                int agree = 0, checked = 0;
+                for (int i = 1; i <= 8 * 20; i++) {
+                    again.step(0.05);
+                    if (i % 20 != 10 || i < 40) continue; // (a frame to heal an old save's step)
+                    int leds = 0;
+                    for (int k = 0; k < 4; k++) {
+                        long led = e.named.containsKey("led" + k) ? b.id(e, "led" + k) : b.blockId(e, "led" + k);
+                        if (Math.abs(again.probe(led).current()) > 1e-3) leds |= 1 << k;
+                    }
+                    checked++;
+                    if (shown(screen) == leds && binaryRow(screen) == leds) agree++;
+                }
+                System.out.printf("%s reloaded mid-byte (%s): the screen agreed with the LEDs %d of %d times%n", e.id, oldSave ? "an old save" : "its place kept", agree, checked);
+                assertTrue(agree >= checked - 1, e.id + (oldSave ? ", an old save" : "") + ": the screen shows the count after the reload (" + agree + " of " + checked + ")");
+            }
+        }
+    }
+
     static void countsOnScreen(Exhibit e) {
         Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
         CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());

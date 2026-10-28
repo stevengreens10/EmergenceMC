@@ -59,7 +59,11 @@ public final class DisplayPanel implements DigitalComponent {
             }
             case 1 -> dc = level;
             case 2 -> {
-                if (!level || !selected || !rstLevel) return;
+                // a rising edge, not a level: told at power-up of a clock already high (a machine restored mid-bit), it
+                // knows the level it was saved with and does not count a bit twice
+                boolean rise = level && !sclkHigh;
+                sclkHigh = level;
+                if (!rise || !selected || !rstLevel) return;
                 double period = t - lastRise;
                 lastRise = t;
                 if (period < 1 / MAX_SCLK) return;
@@ -80,6 +84,8 @@ public final class DisplayPanel implements DigitalComponent {
     }
 
     private boolean din;
+    /** The clock's level as last seen (a rise is a bit). */
+    private boolean sclkHigh;
 
     private void take(int b) {
         bytes++;
@@ -179,6 +185,7 @@ public final class DisplayPanel implements DigitalComponent {
         selected = true;
         nbits = 0;
         shift = 0;
+        sclkHigh = false;
         awaiting = true;
         applyRestore();
     }
@@ -306,7 +313,7 @@ public final class DisplayPanel implements DigitalComponent {
         // where it is in the byte coming in, and in a command's arguments: a machine saved mid-byte, its chip restored
         // part way through sending, goes on in step
         s[ram.length / 8 + 2] = nbits | ((long) (shift & 0xff) << 4) | ((long) argsLeft << 12) | ((long) (pendingCmd + 1) << 16) | ((long) argCount << 28)
-                | ((long) args[0] << 32) | ((long) args[1] << 40) | (1L << 62);
+                | ((long) args[0] << 32) | ((long) args[1] << 40) | (sclkHigh ? 1L << 61 : 0) | (1L << 62);
         return s;
     }
 
@@ -349,6 +356,7 @@ public final class DisplayPanel implements DigitalComponent {
             argCount = (int) ((h >> 28) & 0xf);
             args[0] = (int) ((h >> 32) & 0xff);
             args[1] = (int) ((h >> 40) & 0xff);
+            sclkHigh = (h >>> 61 & 1) != 0;
         }
         version++;
     }

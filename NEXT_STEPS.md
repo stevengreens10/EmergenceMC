@@ -234,7 +234,9 @@
    - The battery gap was not world against core. Replaying the world's state in the core gives +0.24 mA over
      100 s against the world's +0.25. The core dashboard test measured its first 31 s, the battery still
      recovering from its start (+7.5 mA); steadily both are about +0.2 mA.
-   - **Open:** the margin is thin. The dashboard draws about 22 mA of the generator's about 74 mA, its screens
+   - (Since fixed: the gauges run at an eighth of full contrast, the screens 8.6 → 5.5 mA; in the world the battery
+     takes in +3.77 mA over 100 s. Installed as the user's "Emergence Station" at 14:02, replacing theirs as asked.)
+   - **Was open:** the margin was thin. The dashboard draws about 22 mA of the generator's about 74 mA, its screens
      8.6 mA of that, leaving +0.1 to +0.25 mA for the battery in five in-world runs. One earlier run lost 6.9 mA
      on average, with no recompile during its window; unexplained. The station test now logs its regulator's
      extremes each second, so the next such run will show whether the regulator tripped. To restore a margin:

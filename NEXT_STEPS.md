@@ -245,9 +245,20 @@
       DashboardTest failed once under load.
    7. *The EM-8 and the analyser* (done in the core): the EM-8 has 32 bytes, a stack, CALL/RET, PUSH/POP, LDN/STN
       and ADC/SBC. The analyser decodes SPI and UART and exports CSV.
-   **Still to see in the world:** regenerate the demo world, then tour "waferfurnace", "acrossscales3" and
-   "em8thermostat" (its new decode check). Regenerate the station world and tour it: seven gauges, alarms, the power
-   gauge. Next for fabrication: wet oxidation in steam (a wafer inside a vessel of steam), a mask step separate from
+   **Seen in the world (2026-10-28 00:43–01:05):**
+   - Demo world: 86 exhibits, 0 problems, 0 differences, 24/24 in-world tests. The first build found the gears
+     exhibit's flywheel plate not square (the tweezers lay squares); fixed.
+   - Affected-exhibit tour: minicounter, em8thermostat (the decoder read CH2 0x89 off the ADC), acrossscales and
+     acrossscales3 (2 : 1) all pass.
+   - The wafer furnace failed first, 3/4: the tweezers build never closed the switches a miniature exhibit starts
+     closed, so its heater was off. Fixed; re-toured 4/4: wafer 1456 K, oxide 4.0 nm, junctions 0.21 µm, and the
+     engineer's goggles reading it live.
+   - Station world: 0 problems, its GameTest passing. Station tour: 15/15, all seven screens drawn, every gauge
+     agreeing, the power gauge 0.37 W. The battery's charge in the GameTest fell to 0.005 mA·h (0.121 with six
+     gauges): the seventh gauge's draw nearly takes up the charging margin. Worth watching.
+   **Engineer's goggles** (asked 2026-10-28, done): see DEVELOPMENT_LOG. Next for them: a machine summary (its
+   power flows) when looking at a part of it, and torque on shafts.
+   Next for fabrication: wet oxidation in steam (a wafer inside a vessel of steam), a mask step separate from
    the diffusion, and a chip's process shown in the chip designer.
 
 0a9. **The station's dashboard** (done 2026-10-27, asked by the user: live metrics on displays, a nice UI, miniature

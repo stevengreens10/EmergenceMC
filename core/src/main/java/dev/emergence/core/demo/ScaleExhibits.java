@@ -92,4 +92,39 @@ public final class ScaleExhibits {
         e.blockPart(BLOCK, "nylon_66", -1, 1, 0, Dir.UP);
         return e.view(8.5, 2.2, 12.5, 22);
     }
+    /**
+     * Gears and structure across scales: a full-size crank turns a 32-tooth gear on a shaft one block up; beside it a
+     * miniature block stands on a full-size block (which holds it up: structural parts touching across a face are one
+     * piece), and in it a 16-tooth gear of the same tooth size, against the face, meshes with the big one and turns a
+     * miniature shaft with a disc on it, twice as fast the other way.
+     */
+    public static Exhibit gearsAcrossScales() {
+        Exhibit e = new Exhibit("acrossscales3", "Gears across scales",
+                List.of("ACROSS SCALES", "A full-size gear", "drives a miniature", "one, 2 : 1"),
+                "Turn the crank: its 32-tooth gear meshes, across the face of the block beside it, with a 16-tooth gear "
+                        + "inside that block, at its true size (6.25 cm cells): gears side by side across a block's face mesh, "
+                        + "whatever the scale, if their teeth are the same size. The small gear turns its shaft and the "
+                        + "disc on it twice as fast, the other way. The miniature block stands on a full-size block: "
+                        + "structural parts touching across a face are one piece, so the full-size block holds the "
+                        + "miniature machine up (on a turning platform it would ride round with it).");
+        String st = "steel_1045";
+        // full size: the crank's shaft in a bearing, its post led round the gear (a block beside the gear would weld it)
+        e.name("bigshaft", e.fill(SHAFT, st, 6, 1, 8, 6, 3, 8, Dir.UP, "diameter", 0.012));
+        e.add(BEARING, st, 6, 2, 8, Dir.UP);
+        e.fill(BLOCK, st, 5, 0, 9, 5, 2, 9, Dir.UP);
+        e.add(BLOCK, st, 5, 2, 8, Dir.UP);
+        e.name("biggear", e.add(GEAR, st, 6, 1, 8, Dir.UP, "teeth", 32, "pitch_radius", 2.0 / 16, "thickness", 0.01));
+        e.name("crank", e.add(CRANK, st, 6, 4, 8, Dir.UP, "radius", 0.1));
+        // the block the miniature one stands on
+        e.name("stand", e.add(BLOCK, st, 7, 0, 8, Dir.UP));
+        // the miniature: its gear against the west face on a shaft in a bearing on its floor, a disc on the shaft's top
+        Exhibit m = new Exhibit("gears", "Miniature gear", List.of(), "");
+        m.miniature = true;
+        m.name("shaft", m.fill(SHAFT, st, 0, 0, 8, 0, 12, 8, Dir.UP, "diameter", 0.006));
+        m.name("bearing", m.add(BEARING, st, 0, 0, 8, Dir.UP));
+        m.name("gear", m.add(GEAR, st, 0, 8, 8, Dir.UP, "teeth", 16, "pitch_radius", 1.0 / 16, "thickness", 0.01));
+        m.name("disc", m.box(BLOCK, "aluminium_6061", 0, 13, 6, 2, 13, 10, Dir.UP, "fill", 0.2));
+        e.embed(7, 1, 8, m);
+        return e.view(6.5, 3.5, 14, 25);
+    }
 }

@@ -248,8 +248,9 @@ multimeter, oscilloscope/data logging.
 ## Across scales
 * Miniature and block-scale machines join across a block face. A ribbon's conductors join wires of their colours.
   Shafts end to end are coupled, and pipe and tank ends get a passage. Heat crosses the contact. A display
-  controller drives a full-size screen. Nothing else crosses: light, magnetic fields, structural joints (a
-  full-size part does not hold up a miniature one), and gears meshing across a face.
+  controller drives a full-size screen. Structural parts touching across the face are one rigid piece, and gears
+  side by side across it, on parallel axes, mesh. Nothing else crosses: light, magnetic fields, a gear meshing with
+  a rack, bevel gears.
 * A shaft link couples shafts end to end only: a miniature shaft must run to the face, along the full-size shaft's
   axis. It is rigid and lossless (no coupling's compliance or friction).
 * In a joined island, a cell's scale is found by its distance from the island's full-size blocks (`CellMap`). A

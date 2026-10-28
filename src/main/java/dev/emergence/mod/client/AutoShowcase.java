@@ -670,6 +670,22 @@ public final class AutoShowcase {
                         }));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
             }
+            if (id.equals("acrossscales3")) {
+                // turn the crank: the full-size gear drives the miniature one, 2 : 1, across the block's face
+                var em = e.embedded.get(0);
+                BlockPos mini = plot.offset(em.x(), em.y(), em.z()), big = at.apply("bigshaft");
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.hold(key + " turn the crank", part.apply("crank", PartKind.CRANK), false)));
+                STEPS.add(new Step(60, view, shot.apply("turning"))
+                        .check(key + " the miniature gear turns twice as fast as the full-size one", () -> {
+                            double wb = motion(server, big, PartKind.SHAFT), ws = motion(server, mini, PartKind.SHAFT);
+                            return that(wb > 0.5 && Math.abs(ws / wb - 2) < 0.15, String.format("full-size %.2f rad/s, miniature %.2f rad/s (2 : 1 wanted)", wb, ws));
+                        })
+                        .check(key + " one machine across the scales", () -> {
+                            CompiledAssembly a = compiled(server, mini), b2 = compiled(server, big);
+                            return that(a != null && a == b2, a == b2 ? "one machine" : "two machines");
+                        }));
+                STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.release()));
+            }
             if (id.equals("acrossscales2")) {
                 // found settled or settling: the small tank filled from the big one through the pipes meeting at the face,
                 // the miniature copper cell warmed by the full-size block resting on the top face

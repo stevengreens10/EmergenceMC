@@ -1304,3 +1304,10 @@ the station's operation, with a nice UI, using miniature electronics wherever po
   (below 50 bar), boiler (above 4.4 bar), engine (below 90 rpm), condenser (above 80 kPa) and battery (below
   5.40 V). None trips while the station runs as it should (DashboardTest); a negative value inverts its card
   (GaugeTest).
+- *4. Gears and structure across scales.* Two new link kinds:
+  - STRUCTURAL: structural parts touching across a face are one rigid piece. A miniature block resting on a turning
+    full-size arm rides with it; a miniature machine is held up by the block under it.
+  - GEAR: gears side by side across a face, on parallel axes, mesh. A full-size 32-tooth gear drives a miniature
+    16-tooth one at exactly −2.000.
+  The spur mesh is split so that a link, whose geometry CrossScale has judged, can make it. The "Gears across
+  scales" exhibit uses an embedded miniature block standing on a full-size block beside the crank's gear.

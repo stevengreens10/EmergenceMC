@@ -274,6 +274,13 @@ public final class CompiledAssembly {
     /** Shafts coupled across scales (Assembly.Link SHAFT). */
     int shaftCouplings;
 
+    /** Gear meshes across scales (Assembly.Link GEAR) made. */
+    public int gearLinks() {
+        return gearLinks;
+    }
+
+    int gearLinks;
+
     public int shaftCouplings() {
         return shaftCouplings;
     }

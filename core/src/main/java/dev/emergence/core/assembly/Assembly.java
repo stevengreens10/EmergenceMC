@@ -61,7 +61,14 @@ public final class Assembly {
         /** Two fluid parts' ports facing across the face: a passage between them (their ends do not vent). */
         FLUID,
         /** Two parts touching across the face: heat conducts through the contact ({@code share} of one cell's face). */
-        THERMAL
+        THERMAL,
+        /**
+         * Two structural parts touching across the face: joined as one rigid piece (a miniature machine resting on a
+         * full-size block is held by it, and rides with it if it moves).
+         */
+        STRUCTURAL,
+        /** Two gears side by side across the face, on parallel axes: they mesh. */
+        GEAR
     }
 
     /**

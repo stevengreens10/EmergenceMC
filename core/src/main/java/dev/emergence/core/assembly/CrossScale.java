@@ -12,6 +12,8 @@ import java.util.List;
  *   <li>A shaft: a full-size shaft running towards the face to a miniature shaft running to it — they turn together.</li>
  *   <li>A pipe: a full-size pipe running towards the face (or a tank) to a miniature pipe running to it (or a tank on
  *       it) — a passage, neither end venting.</li>
+ *   <li>Structure: structural parts touching across the face are one rigid piece.</li>
+ *   <li>Gears side by side across the face, on parallel axes: they mesh.</li>
  * </ul>
  */
 public final class CrossScale {
@@ -35,6 +37,15 @@ public final class CrossScale {
             boolean along = p.axis().axis() == ax && full.axis().axis() == ax;
             if (p.kind() == PartKind.SHAFT && full.kind() == PartKind.SHAFT && along) {
                 asm.link(new Assembly.Link(Assembly.LinkKind.SHAFT, p.id(), cell, face, full.id(), fullCell, toMini, 1));
+            }
+            // structural parts against one another: one rigid piece (a gear meshes instead; a shaft's end turns)
+            if (p.kind().structural && full.kind().structural && p.kind() != PartKind.GEAR && full.kind() != PartKind.GEAR
+                    && p.kind() != PartKind.SHAFT && full.kind() != PartKind.SHAFT) {
+                asm.link(new Assembly.Link(Assembly.LinkKind.STRUCTURAL, p.id(), cell, face, full.id(), fullCell, toMini, 1));
+            }
+            // gears side by side across the face (the face across both axes): they mesh
+            if (p.kind() == PartKind.GEAR && full.kind() == PartKind.GEAR && p.axis().axis() == full.axis().axis() && p.axis().axis() != ax) {
+                asm.link(new Assembly.Link(Assembly.LinkKind.GEAR, p.id(), cell, face, full.id(), fullCell, toMini, 1));
             }
             boolean pPipe = p.kind() == PartKind.PIPE && p.axis().axis() == ax || p.kind() == PartKind.TANK;
             boolean qPipe = full.kind() == PartKind.PIPE && full.axis().axis() == ax || full.kind() == PartKind.TANK;

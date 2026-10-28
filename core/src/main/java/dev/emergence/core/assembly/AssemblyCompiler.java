@@ -241,6 +241,15 @@ public final class AssemblyCompiler {
                     else mounts.computeIfAbsent(p.kind().structural ? q : p, k -> new ArrayList<>()).add(p.kind().structural ? p : q);
                 }
             }
+            // structural parts touching across scales (Assembly.Link STRUCTURAL): one rigid piece
+            for (Assembly.Link l : a.links()) {
+                if (l.kind() != Assembly.LinkKind.STRUCTURAL) continue;
+                Integer ia = idx.get(l.a()), ib = idx.get(l.b());
+                if (ia != null && ib != null) {
+                    union(ia, ib);
+                    joinedPairs.add(pairKey(l.a(), l.b()));
+                }
+            }
             // a component (coil, magnet, chip …) is mounted on one structure: it joins the one it touches that is fixed to the
             // ground if there is one, else the first — it never bridges two (a coil over a relay's armature does not weld the
             // armature to the coil's bracket)
@@ -785,6 +794,11 @@ public final class AssemblyCompiler {
                         Node na = bp.isStatic ? refR : bp.node, nb = bq.isStatic ? refR : bq.node;
                         c.network.add(GearMesh.bevel(na, nb, r, r, 1, 1, s, 0, c.thermalOfPart.get(p.id())));
                         c.shaftCouplings++;
+                    }
+                    case GEAR -> {
+                        CompiledAssembly.Body bp = c.bodyOfPart.get(p.id()), bq = c.bodyOfPart.get(q.id());
+                        if (bp == null || bq == null || bp == bq || bp.slider || bq.slider) continue;
+                        if (spurMesh(p, q, bp, bq, p.axis().axis())) c.gearLinks++;
                     }
                     default -> { }
                 }
@@ -1440,6 +1454,22 @@ public final class AssemblyCompiler {
             Vec3 axis = Vec3.axis(ax);
             double dist = d.sub(axis.mul(d.dot(axis))).length();
             if (Math.abs(dist - (r1 + r2)) > 0.3 * m1) return;
+            spurMesh(g1, g2, b1, b2, ax);
+        }
+
+        /**
+         * Meshes two gears on parallel axes (along {@code ax}) whose geometry has been judged — by distance in one grid,
+         * or by their touching across a block's face (across scales). False if they cannot (modules, axis senses).
+         */
+        boolean spurMesh(Part g1, Part g2, CompiledAssembly.Body b1, CompiledAssembly.Body b2, int ax) {
+            double r1 = PartGeometry.gearPitchRadius(g1), r2 = PartGeometry.gearPitchRadius(g2);
+            int z1 = PartGeometry.gearTeeth(g1), z2 = PartGeometry.gearTeeth(g2);
+            double m1 = 2 * r1 / z1, m2 = 2 * r2 / z2;
+            if (Math.abs(m1 - m2) > 0.1 * Math.max(m1, m2)) {
+                c.warnings.add("Gears #" + g1.id() + " and #" + g2.id() + " have different tooth modules and cannot mesh");
+                return false;
+            }
+            Vec3 axis = Vec3.axis(ax);
             // Axis direction consistency: each rotor's ω is measured about its own (positive) axis vector.
             CompiledAssembly.Body ra = b1, rb = b2;
             Node na = ra.isStatic ? refR : ra.node, nb = rb.isStatic ? refR : rb.node;
@@ -1447,13 +1477,14 @@ public final class AssemblyCompiler {
             double s2 = rb.isStatic ? 1 : Math.signum(rb.axis.dot(axis));
             if (s1 * s2 < 0) {
                 c.warnings.add("Gear mesh with opposed axis conventions not supported");
-                return;
+                return false;
             }
             boolean lub = g1.param("lubricated", 1) > 0 || g2.param("lubricated", 1) > 0;
             double mu = lub ? 0.05 : Math.max(g1.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4),
                     g2.material().get(MaterialProperty.FRICTION_COEFFICIENT, 0.4));
             c.network.add(new GearMesh(na, nb, r1, r2, z1, z2, false, mu, c.thermalOfPart.get(g1.id())));
             thermalLink(g1, g2);
+            return true;
         }
 
         /**

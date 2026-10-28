@@ -907,7 +907,8 @@ public final class AutoShowcase {
                             long drawn = chip != null && chip.component() instanceof dev.emergence.core.digital.DesignComponent dc ? dc.instance().value("v") : -1;
                             int shown = (int) leds.getAsDouble();
                             return that(drawn >= 0 && Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
-                        }));
+                        })
+                        .check(key + " the full-size screen, as this client shows it, reads the LEDs' count", () -> screenReadsCount(server, big.apply("screen"), leds)));
                 // close looks at the ribbon: its conductors up and over to the miniature wires on the block's face, the
                 // full-size wires beside it and the ground wire on top
                 BlockPos rib = big.apply("ribbon");
@@ -932,7 +933,8 @@ public final class AutoShowcase {
                             long drawn = register(server, at.apply("chip"), "v");
                             int shown = (int) leds.getAsDouble();
                             return that(Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
-                        }));
+                        })
+                        .check(key + " the screen, as this client shows it, reads the LEDs' count", () -> screenReadsCount(server, at.apply("screen"), leds)));
                 // the chips close up from above: their pins named on their tops
                 BlockPos chipAt = at.apply("chip");
                 STEPS.add(new Step(30, () -> look(server, chipAt.getX() + 8.5, chipAt.getY() + 3.2, chipAt.getZ() + 3.5, 180, 55), shot.apply("labels")));
@@ -1714,6 +1716,18 @@ public final class AutoShowcase {
 
     /** The display panel in the block (null if there is none or it is not simulated). */
     /** A dashboard gauge's shown value (its chip's register v; −1 if not found or not running): the k-th miniature block's. */
+    /**
+     * A counter display's screen read back as this client shows it: its number must be the LEDs' (or one behind: it is
+     * drawn after the count steps). Garbled, blank or NO SIGNAL fails.
+     */
+    private static Verdict screenReadsCount(net.minecraft.server.MinecraftServer s, BlockPos screenAt, java.util.function.DoubleSupplier leds) {
+        PlacedPart panel = partIn(s, screenAt, PartKind.DISPLAY);
+        if (panel == null) return that(false, "no screen there");
+        int read = dev.emergence.core.demo.MonitorExhibits.readCount((x, y) -> ClientDisplays.lit(panel.id, x, y));
+        int count = (int) leds.getAsDouble();
+        return that(read >= 0 && (read == count || (read + 1) % 16 == count), read < 0 ? "unreadable (LEDs " + count + ")" : "reads " + read + ", LEDs " + count);
+    }
+
     /**
      * Every dashboard screen read back as this client shows it, as a person would read it: its label, and its value,
      * which must be the gauge chip's (or its last reading's: a frame is drawn after its reading). A garbled screen, one

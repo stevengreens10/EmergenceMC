@@ -11,6 +11,29 @@ import static dev.emergence.core.assembly.PartKind.*;
 
 /** Exhibits of measurement and display: sensors, converters, chips of the player's design, screens. */
 public final class MonitorExhibits {
+    /** The counter display design's font: three columns of five bits per digit, bit 0 the top row. */
+    static final int[] COUNTER_FONT = {0x1F, 0x11, 0x1F, 0x12, 0x1F, 0x10, 0x1D, 0x15, 0x17, 0x15, 0x15, 0x1F, 0x07, 0x04, 0x1F,
+            0x17, 0x15, 0x1D, 0x1F, 0x15, 0x1D, 0x01, 0x01, 0x1F, 0x1F, 0x15, 0x1F, 0x17, 0x15, 0x1F};
+
+    /**
+     * The count a counter display's screen shows, read off it as a person would: its two big digits (eight pixels a dot,
+     * pages 1–5, from columns 36 and 68), each matched against the design's font. −1 if unreadable (garbled, blank).
+     */
+    public static int readCount(java.util.function.BiPredicate<Integer, Integer> lit) {
+        int t = bigDigit(lit, 36), u = bigDigit(lit, 68);
+        if (u < 0 || t == -2 || t > 1) return -1;
+        return (t == 1 ? 10 : 0) + u;
+    }
+
+    /** The big digit whose cell starts at column x0: 0–9, −1 blank, −2 unreadable. */
+    static int bigDigit(java.util.function.BiPredicate<Integer, Integer> lit, int x0) {
+        int[] cols = new int[3];
+        for (int c = 0; c < 3; c++) for (int r = 0; r < 5; r++) if (lit.test(x0 + 8 * c + 4, 8 + 8 * r + 4)) cols[c] |= 1 << r;
+        if (cols[0] == 0 && cols[1] == 0 && cols[2] == 0) return -1;
+        for (int n = 0; n < 10; n++) if (cols[0] == COUNTER_FONT[3 * n] && cols[1] == COUNTER_FONT[3 * n + 1] && cols[2] == COUNTER_FONT[3 * n + 2]) return n;
+        return -2;
+    }
+
     private MonitorExhibits() {
     }
 

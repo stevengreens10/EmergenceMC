@@ -41,6 +41,12 @@ class CounterDisplayExhibitTest {
 
     /** The number on the screen in decimal, or −1 if unreadable. */
     static int shown(DisplayPanel p) {
+        int v = MonitorExhibits.readCount(p::pixel);
+        assertEquals(v, oldShown(p), "the decoder the tour uses reads as the test's");
+        return v;
+    }
+
+    static int oldShown(DisplayPanel p) {
         int t = bigDigit(p, 36), u = bigDigit(p, 68);
         if (u < 0 || t == -2 || t > 1) return -1;
         return (t == 1 ? 10 : 0) + u;

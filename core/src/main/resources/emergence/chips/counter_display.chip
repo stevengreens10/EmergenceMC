@@ -75,7 +75,8 @@ on rise clk {
             col <= col + 1
             if (col == 127) {
                 pg <= pg + 1
-                if (pg == 7) v <= d
+                // the frame done: the display released (its select's rise starts it afresh at a byte's first bit)
+                if (pg == 7) { v <= d  cs <= 1 }
             }
             st <= 2
         }

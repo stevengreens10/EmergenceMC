@@ -90,6 +90,15 @@ class DashboardTest {
         var refAdc = (dev.emergence.core.digital.SpiAdc) c.digitalChip(b.embeddedId(e, 5, "adc")).component();
         System.out.printf("  battery reference: ADC %d at %.3f V: k = %.0f%n", refAdc.lastCode(), c.probe(bat).voltage(),
                 refAdc.lastCode() * c.probe(bat).voltage() * 100);
+        // what the screens draw from the supply: each controller's own current and its lit pixels'
+        double screensA = 0;
+        StringBuilder lits = new StringBuilder();
+        for (int k = 0; k < n; k++) {
+            var dp = (DisplayPanel) c.digitalChip(b.embeddedId(e, k, "controller")).component();
+            screensA += dp.leakage(c.probe(bat).voltage());
+            lits.append(' ').append(dp.shown());
+        }
+        System.out.printf("  screens: %.2f mA from the supply in all (lit pixels:%s)%n", 1e3 * screensA, lits);
         DisplayPanel screen = (DisplayPanel) c.digitalChip(b.embeddedId(e, 1, "controller")).component();
         System.out.println(GaugeTest.render(screen));
         for (int k = 0; k < n; k++) assertEquals(0, chip[k].instance().violations(), StationExhibit.GAUGES[k].label() + ": timing");

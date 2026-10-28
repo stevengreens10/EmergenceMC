@@ -48,6 +48,12 @@ public final class ClientDisplays {
         return e == null ? null : e.tile;
     }
 
+    /** Whether pixel (x, y) of panel {@code partId}'s image, as this client last received it, is lit (false if none yet). */
+    public static boolean lit(long partId, int x, int y) {
+        Entry e = DISPLAYS.get(partId);
+        return e != null && e.image != null && x >= 0 && x < 128 && y >= 0 && y < 64 && ((e.image[(y >> 3) * 128 + x] >> (y & 7)) & 1) != 0;
+    }
+
     /** A digest of panel {@code partId}'s image as this client last received it (0 if none), and how many it has had. */
     public static long[] received(long partId) {
         Entry e = DISPLAYS.get(partId);

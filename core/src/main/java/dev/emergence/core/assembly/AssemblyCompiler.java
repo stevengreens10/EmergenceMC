@@ -44,6 +44,8 @@ import static dev.emergence.core.assembly.Part.CELL;
 public final class AssemblyCompiler {
     private AssemblyCompiler() {}
 
+    /** Diagnostic: wires touching wires one node (their resistance dropped), to measure what wire nodes cost. */
+    static final boolean DIAG_MERGE_WIRES = Boolean.getBoolean("diag.mergeWires");
     static final double CONTACT_H = 5000;          // W/(m²K), dry metal–metal contact conductance
     static final double BRUSH_RESISTANCE = 0.02;   // Ω, graphite brush contact (≈ 0.2–1 V drop at rated current)
     static final double SWITCH_R_ON = 2e-3, SWITCH_R_OFF = 1e9;
@@ -2063,6 +2065,10 @@ public final class AssemblyCompiler {
             for (Contact k : contacts) {
                 if (k.sliding || k.slide != null) continue;
                 if (isLeadKey(k.pk) && isLeadKey(k.qk)) {
+                    emerge(k.pk, k.qk);
+                    continue;
+                }
+                if (DIAG_MERGE_WIRES && isWire(k.p) && isWire(k.q)) {
                     emerge(k.pk, k.qk);
                     continue;
                 }

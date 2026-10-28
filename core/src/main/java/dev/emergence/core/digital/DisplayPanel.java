@@ -299,16 +299,20 @@ public final class DisplayPanel implements DigitalComponent {
 
     @Override
     public long[] save() {
-        long[] s = new long[ram.length / 8 + 2];
+        long[] s = new long[ram.length / 8 + 3];
         for (int i = 0; i < ram.length; i++) s[i / 8] |= (ram[i] & 0xffL) << (8 * (i % 8));
         s[ram.length / 8] = (on ? 1 : 0) | (inverted ? 2 : 0) | (allOn ? 4 : 0) | ((long) contrast << 8) | ((long) mode << 16);
         s[ram.length / 8 + 1] = page | ((long) col << 8) | ((long) colStart << 16) | ((long) colEnd << 24) | ((long) pageStart << 32) | ((long) pageEnd << 40);
+        // where it is in the byte coming in, and in a command's arguments: a machine saved mid-byte, its chip restored
+        // part way through sending, goes on in step
+        s[ram.length / 8 + 2] = nbits | ((long) (shift & 0xff) << 4) | ((long) argsLeft << 12) | ((long) (pendingCmd + 1) << 16) | ((long) argCount << 28)
+                | ((long) args[0] << 32) | ((long) args[1] << 40) | (1L << 62);
         return s;
     }
 
     @Override
     public void restore(long[] s) {
-        if (s == null || s.length != ram.length / 8 + 2) return;
+        if (s == null || s.length != ram.length / 8 + 2 && s.length != ram.length / 8 + 3) return;
         restoring = s.clone();
     }
 
@@ -336,6 +340,16 @@ public final class DisplayPanel implements DigitalComponent {
         colEnd = (int) ((g >> 24) & 0x7f);
         pageStart = (int) ((g >> 32) & 7);
         pageEnd = (int) ((g >> 40) & 7);
+        if (s.length > ram.length / 8 + 2 && (s[ram.length / 8 + 2] >>> 62 & 1) != 0) {
+            long h = s[ram.length / 8 + 2];
+            nbits = (int) (h & 0xf);
+            shift = (int) ((h >> 4) & 0xff);
+            argsLeft = (int) ((h >> 12) & 0xf);
+            pendingCmd = (int) ((h >> 16) & 0xfff) - 1;
+            argCount = (int) ((h >> 28) & 0xf);
+            args[0] = (int) ((h >> 32) & 0xff);
+            args[1] = (int) ((h >> 40) & 0xff);
+        }
         version++;
     }
 }

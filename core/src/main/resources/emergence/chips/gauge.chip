@@ -215,7 +215,9 @@ on rise clk {
         20: {
             col <= col + 1  st <= 17
             if (col == 127) {
-                if (pg == 7) { first <= 0  st <= 2 } else pg <= pg + 1
+                // the frame done: the display released (a select's rise starts it afresh at a byte's first bit, so a
+                // step lost — a reload mid-byte — heals within a frame)
+                if (pg == 7) { first <= 0  cs <= 1  st <= 2 } else pg <= pg + 1
             }
         }
         // send a byte: each bit set with the clock low, taken on its rising edge

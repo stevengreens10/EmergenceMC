@@ -668,3 +668,11 @@ count.
   channel gains less than the square law's 4× (velocity saturation).
 * A counter design clocked at 1.5× its reference period keeps up on reference chips and misses edges on chips three
   times slower.
+
+## Screens read back (`GaugeTest`, `DisplayReloadTest`, the station tour)
+* A gauge card is read off its screen (each big glyph matched against the font): label "BOILER PRESSURE", value
+  1.13 for the chip's 113.
+* Saved mid-byte (the chip at its fourth bit) and loaded again: the card reads right with the controller's place
+  kept. From an older save without it, it reads right after the next frame. Without the frame's select release the
+  value reads as garbage.
+* A reloaded counter display keeps being drawn (50 000 bytes after the reload; 0 before the fix).

@@ -428,6 +428,16 @@ public final class StationExhibit {
     static final int BATTERY_K = 132_230;
     /** The power gauge's constant: 4 × its diode's drop² × 1023, set from its settled readings (see DashboardTest). */
     static final int POWER_K = 1_695;
+    /** Gauge k's label, as its card shows it (for reading the screens back). */
+    public static String gaugeLabel(int k) {
+        return GAUGES[k].label();
+    }
+
+    /** Gauge k's decimal places (its card's value is its chip's value over 10 to that). */
+    public static int gaugeDecimals(int k) {
+        return GAUGES[k].dp();
+    }
+
     /** The dashboard's gauges, west to east (see {@link #dashboard}). */
     static final DashboardExhibits.Gauge[] GAUGES = {
             // the bottles' gauge pressure: 0–250 bar on 10–90 % of the supply

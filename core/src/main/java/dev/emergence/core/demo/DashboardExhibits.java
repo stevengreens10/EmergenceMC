@@ -62,6 +62,66 @@ public final class DashboardExhibits {
         }
     }
 
+    /**
+     * The value a gauge's card shows, read off its screen as a person would: its five big glyphs (each a font glyph
+     * drawn three times its size, slot i from column 4 + 18i, font row r on screen rows 16 + 3r to 18 + 3r), each
+     * matched against the font. Null if any is not one of the font's glyphs — a garbled screen, or not a gauge's card.
+     * {@code lit} answers whether pixel (x, y) is lit; a card shown inverted (an alarm) is read inverted.
+     */
+    public static String readValue(java.util.function.BiPredicate<Integer, Integer> lit) {
+        java.util.function.BiPredicate<Integer, Integer> on = inked(lit);
+        StringBuilder s = new StringBuilder();
+        for (int i = 0; i < 5; i++) {
+            int[] cols = new int[5];
+            for (int c = 0; c < 5; c++)
+                for (int r = 0; r < 7; r++) if (on.test(4 + 18 * i + 3 * c + 1, 16 + 3 * r + 1)) cols[c] |= 1 << r;
+            char ch = glyphOf(cols);
+            if (ch == 0) return null;
+            if (ch != ' ') s.append(ch);
+        }
+        return s.toString();
+    }
+
+    /** A gauge card's label, read off its screen (small glyphs along the top, from column 2, six apart); null if garbled. */
+    public static String readLabel(java.util.function.BiPredicate<Integer, Integer> lit) {
+        java.util.function.BiPredicate<Integer, Integer> on = inked(lit);
+        StringBuilder s = new StringBuilder();
+        for (int li = 0; li < 19; li++) {
+            int[] cols = new int[5];
+            for (int c = 0; c < 5; c++)
+                for (int r = 0; r < 7; r++) if (on.test(2 + 6 * li + c, r + 1)) cols[c] |= 1 << r;
+            char ch = glyphOf(cols);
+            if (ch == 0) return null;
+            s.append(ch);
+        }
+        return s.toString().trim();
+    }
+
+    /** The value a card's text means (its decimal point where it is drawn), or NaN if it is not a number. */
+    public static double valueOf(String shown) {
+        try {
+            return shown == null || shown.isEmpty() ? Double.NaN : Double.parseDouble(shown);
+        } catch (NumberFormatException e) {
+            return Double.NaN;
+        }
+    }
+
+    /** A card drawn inverted (lit where it would be dark: an alarm) read as ink on paper. */
+    private static java.util.function.BiPredicate<Integer, Integer> inked(java.util.function.BiPredicate<Integer, Integer> lit) {
+        int n = 0;
+        for (int y = 0; y < 64; y += 2) for (int x = 0; x < 128; x += 2) if (lit.test(x, y)) n++;
+        return n > 128 * 64 / 8 ? (x, y) -> !lit.test(x, y) : lit;
+    }
+
+    /** The font glyph with these columns (' ' for none lit), or 0 if it is none of them. */
+    private static char glyphOf(int[] cols) {
+        boolean blank = true;
+        for (int c : cols) blank &= c == 0;
+        if (blank) return ' ';
+        for (int g = 0; g < FONT.length; g++) if (java.util.Arrays.equals(FONT[g], cols)) return GLYPHS.charAt(g);
+        return 0;
+    }
+
     /** The 5x7 font: each glyph's five columns, bit 0 the top row. */
     static final String GLYPHS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.%/-";
     static final int[][] FONT = {

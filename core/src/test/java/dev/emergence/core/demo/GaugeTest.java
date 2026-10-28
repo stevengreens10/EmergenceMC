@@ -77,6 +77,53 @@ class GaugeTest {
         int px = (int) chip.instance().value("px");
         assertEquals(0x56, m[5 * 128 + 3] & 0xff, "the bar starts filled (hatched)");
         assertEquals(0x42, m[5 * 128 + 3 + px + 2] & 0xff, "past its length, the frame");
+        // and read off the screen as a person reads it: its label, and its value where the chip holds it
+        assertEquals("BOILER PRESSURE", DashboardExhibits.readLabel(screen::pixel));
+        assertEquals(v / 100.0, DashboardExhibits.valueOf(DashboardExhibits.readValue(screen::pixel)), 1e-9, "the value as shown");
+    }
+
+    /**
+     * A gauge saved with its machine in the middle of sending a byte, and loaded again, goes on drawing its card right.
+     * Saved so, the chip was restored part way through the byte while its display started counting bits afresh: every
+     * byte after came in shifted, and the screen showed garbage (the user's station). The display now keeps its place
+     * in a byte with its machine; and a save from before it did (no place kept) heals at the end of the next frame, where
+     * the gauge releases the display's select.
+     */
+    @Test
+    void aGaugeSavedMidByteGoesOnDrawingRight() {
+        var g = new DashboardExhibits.Gauge("test", "BOILER PRESSURE", "BAR", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.BOILER, 0,
+                0, 102, 188, 0, 0, 2, 0, 51);
+        Exhibit e = host(g);
+        Exhibits.Built b = Exhibits.build(e, DemoExhibitsTest.AMBIENT);
+        CompiledAssembly c = AssemblyCompiler.compile(b.assembly(), b.state());
+        var chip = (DesignComponent) c.digitalChip(b.embeddedId(e, 0, "gauge")).component();
+        for (int i = 0; i < 60; i++) c.step(0.05);
+        // on into a byte: its fourth bit sent
+        for (int i = 0; i < 20000 && !(chip.instance().value("st") == 29 && chip.instance().value("b") == 3); i++) c.step(1e-4);
+        assertEquals(3, chip.instance().value("b"), "saved mid-byte");
+
+        long ctl = b.embeddedId(e, 0, "controller");
+        for (boolean oldSave : new boolean[]{false, true}) {
+            var s = c.exportState(); // (afresh: c is not stepped between)
+            if (oldSave) {
+                // as saved before the display kept its place: its words less the last
+                String n = "R" + ctl + ":n";
+                s.chemistry().put(n, s.chemistry().get(n) - 1);
+            }
+            CompiledAssembly again = AssemblyCompiler.compile(b.assembly(), s);
+            var chip2 = (DesignComponent) again.digitalChip(b.embeddedId(e, 0, "gauge")).component();
+            var screen2 = (DisplayPanel) again.digitalChip(ctl).component();
+            // two frames on (a reading and its frame take some 2 s), looked at once the value's pages are drawn
+            for (int i = 0; i < 100; i++) again.step(0.05);
+            for (int i = 0; i < 300 && !(chip2.instance().value("st") >= 17 && chip2.instance().value("pg") >= 5); i++) again.step(0.01);
+            long v = chip2.instance().value("v");
+            String shown = DashboardExhibits.readValue(screen2::pixel), label = DashboardExhibits.readLabel(screen2::pixel);
+            System.out.printf("reloaded mid-byte (%s): label \"%s\", value \"%s\" (the chip's %d)%n%s%n", oldSave ? "an old save" : "its place kept",
+                    label, shown, v, render(screen2));
+            assertEquals("BOILER PRESSURE", label, "the label, read off the screen");
+            assertEquals(v / 100.0, DashboardExhibits.valueOf(shown), 1e-9, "the value, read off the screen");
+            assertFalse(screen2.awaitingData());
+        }
     }
 
     /**

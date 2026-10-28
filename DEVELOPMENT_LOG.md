@@ -1366,3 +1366,22 @@ whatever the engine did.
     them change, not only the gauges' values.
 - *Found on the way.* Quitting with the station loaded took minutes: each of its 1100 blocks, unloading, wrote the
   whole island's state again, every entry looked at for every block. Now once a tick, grouped by part.
+
+**Garbled screens after the first fix (2026-10-28, found by the user).** With the controller powering up selected,
+the station's screens drew garbage after a reload.
+- *The cause.* A world saved while a gauge was part way through a byte restored the chip mid-byte, while the
+  controller started counting bits afresh. Every byte after came in shifted, for ever, since the gauges never
+  released the select to start a byte afresh.
+- *The fixes.*
+  - The controller keeps its place in a byte, and in a command's arguments, with its machine. Older saves are still
+    read.
+  - The gauge, counter display and chart recorder designs release the select at the end of each frame (each column
+    for the recorder), as real firmware does, so a lost step heals within a frame.
+- *The tests now read the screens.* My checks had passed both times: a gauge chip's value was right, a screen had an
+  image, then the images changed. Now:
+  - `DashboardExhibits.readValue` and `readLabel` read a card back as a person would, matching each glyph against
+    the font. `GaugeTest` checks the label and value it reads.
+  - `aGaugeSavedMidByteGoesOnDrawingRight` saves mid-byte on purpose and checks both the new save and an old one.
+    It fails without each fix.
+  - The station tour reads every screen from the image the client received, checks its label and value against
+    its gauge, and does so again after braking the engine.

@@ -261,7 +261,8 @@ public final class AutoShowcase {
                             .check(key + " power gauge: the generator's output", () -> {
                                 long v = e.embedded.size() > 6 ? gaugeValue(server, plot, e, 6) : -1;
                                 return that(v >= 10 && v <= 100, String.format("%.2f W, expected 0.10 to 1.00 W", v / 100.0));
-                            }));
+                            })
+                            .check(key + " each screen, as this client shows it, reads its label and its gauge's value", () -> screensRead(server, plot, e, at)));
                     // a close look at one card (the boiler's), right of the notes
                     STEPS.add(new Step(40, () -> look(server, plot.getX() + 23.5, plot.getY() + 1.1, plot.getZ() + 24.5, 153.5f, 0),
                             shot.apply("dashboard-boiler")));
@@ -305,6 +306,13 @@ public final class AutoShowcase {
                             .check(key + " the generator gauge reads its current", () -> {
                                 long v = gaugeValue(server, plot, e, 4);
                                 return that(v >= 0 && v <= 400, v + " mA (0 to 400)");
+                            })
+                            .check(key + " braked, the screens as this client shows them read their gauges", () -> screensRead(server, plot, e, at))
+                            .check(key + " the engine's screen, as this client shows it, reads its speed", () -> {
+                                PlacedPart panel = partIn(server, at.apply("screen2"), PartKind.DISPLAY);
+                                double shown = panel == null ? Double.NaN
+                                        : dev.emergence.core.demo.DashboardExhibits.valueOf(dev.emergence.core.demo.DashboardExhibits.readValue((x, y) -> ClientDisplays.lit(panel.id, x, y)));
+                                return gauge(Double.isNaN(shown) ? -1 : Math.round(shown), Math.abs(motion(server, shaft, PartKind.SHAFT)) * 60 / (2 * Math.PI), 10, "rpm, read off the screen");
                             })
                             .check(key + " the screens on this client show new images", () -> {
                                 int changed = 0, nScreens = 0;
@@ -900,6 +908,13 @@ public final class AutoShowcase {
                             int shown = (int) leds.getAsDouble();
                             return that(drawn >= 0 && Math.abs(drawn - shown) <= 1, "drawing " + drawn + ", LEDs " + shown);
                         }));
+                // close looks at the ribbon: its conductors up and over to the miniature wires on the block's face, the
+                // full-size wires beside it and the ground wire on top
+                BlockPos rib = big.apply("ribbon");
+                STEPS.add(new Step(40, () -> look(server, rib.getX() + 1.3, rib.getY() + 1.1, rib.getZ() + 1.9, 150f, 38), shot.apply("ribbon-face")));
+                STEPS.add(new Step(40, () -> look(server, rib.getX() + 3.5, rib.getY() + 1.9, rib.getZ() + 2.6, 180f, 45), shot.apply("ribbon-taps")));
+                STEPS.add(new Step(40, () -> look(server, rib.getX() + 2.4, rib.getY() + 0.8, rib.getZ() + 1.5, 125f, 18), shot.apply("ribbon-side")));
+                STEPS.add(new Step(40, () -> look(server, rib.getX() + 0.10, rib.getY() + 0.13, rib.getZ() + 0.78, 168f, 12), shot.apply("ribbon-join")));
             }
             if (id.equals("counterdisplay")) {
                 // found counting: wait for a two-digit number, then compare the screen's number with the LEDs'
@@ -1699,6 +1714,33 @@ public final class AutoShowcase {
 
     /** The display panel in the block (null if there is none or it is not simulated). */
     /** A dashboard gauge's shown value (its chip's register v; −1 if not found or not running): the k-th miniature block's. */
+    /**
+     * Every dashboard screen read back as this client shows it, as a person would read it: its label, and its value,
+     * which must be the gauge chip's (or its last reading's: a frame is drawn after its reading). A garbled screen, one
+     * saying NO SIGNAL or showing a stale reading, fails.
+     */
+    private static Verdict screensRead(net.minecraft.server.MinecraftServer s, BlockPos plot, dev.emergence.core.demo.Exhibit e,
+                                       java.util.function.Function<String, BlockPos> at) {
+        StringBuilder sb = new StringBuilder();
+        int good = 0, n = e.embedded.size();
+        for (int k = 0; k < n; k++) {
+            PlacedPart panel = partIn(s, at.apply("screen" + k), PartKind.DISPLAY);
+            if (panel == null) {
+                sb.append(String.format(" [%d: no screen]", k));
+                continue;
+            }
+            java.util.function.BiPredicate<Integer, Integer> lit = (x, y) -> ClientDisplays.lit(panel.id, x, y);
+            String label = dev.emergence.core.demo.DashboardExhibits.readLabel(lit), shown = dev.emergence.core.demo.DashboardExhibits.readValue(lit);
+            double v = gaugeValue(s, plot, e, k) / Math.pow(10, dev.emergence.core.demo.StationExhibit.gaugeDecimals(k));
+            double read = dev.emergence.core.demo.DashboardExhibits.valueOf(shown);
+            // (a frame is drawn after its reading: the screen may still show the last one, within a few steps of this)
+            boolean ok = dev.emergence.core.demo.StationExhibit.gaugeLabel(k).equals(label) && Math.abs(read - v) <= 0.05 * Math.abs(v) + 3 / Math.pow(10, dev.emergence.core.demo.StationExhibit.gaugeDecimals(k));
+            if (ok) good++;
+            sb.append(String.format(" [%s: \"%s\" %s, the gauge's %s]", label == null ? "garbled label" : label, shown == null ? "garbled" : shown, ok ? "ok" : "WRONG", v));
+        }
+        return that(good == n, good + " of " + n + " read right;" + sb);
+    }
+
     private static long gaugeValue(net.minecraft.server.MinecraftServer s, BlockPos plot, dev.emergence.core.demo.Exhibit e, int k) {
         var em = e.embedded.get(k);
         var mini = em.mini();

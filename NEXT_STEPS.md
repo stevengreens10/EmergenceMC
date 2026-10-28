@@ -233,8 +233,9 @@
    55.7 kPa against 55.4, generator 67 mA, battery 5.60 V against 5.620), the battery charging, the governor
    holding. The station world installed in run/saves at 19:13 (the old one kept as "Emergence Station
    (2026-10-25)"); the user opened it.
-   **Open:** the scheduled full tour (18:20 slot), held while the user is in the station's client; to run when they
-   close it (the demo world is current: rebuilt 18:24).
+   **Full tour 20:10 (the 18:20 slot, held while the user was in the station): 182/182 over 84 exhibits, no hand
+   failures.** The new exhibits, the datum and passive-reader changes and the gas-pressure sensor all hold across
+   the gallery. Still open: the gas engine's start took 214 s again (see 0).
    Next for the dashboard:
    - a seventh screen for the engine's power (current × voltage: a gauge reading two ADCs);
    - alarm limits that invert a gauge's card;

@@ -34,7 +34,7 @@ public final class DashboardExhibits {
         /** Two silicon diodes fed through 10 kΩ from the supply: a fixed voltage read against the supply measures it. */
         REFERENCE,
         /**
-         * An inverting amplifier (gain 50, a 0.2 s low-pass) on a 0.5 Ω shunt's voltage, sensed on two conductors of
+         * An inverting amplifier (gain 50, a 0.2 s low-pass) on a shunt's voltage (the station's: 0.25 Ω), sensed on two conductors of
          * its own (the signal: the shunt's far end; the second: its ground end), which carry no current — so neither
          * the ribbon's nor the ground's voltage drops enter the reading (Kelvin sensing).
          */

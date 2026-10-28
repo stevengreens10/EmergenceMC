@@ -1396,3 +1396,19 @@ a miniature battery lights a full-size LED through two miniature ribbons (10.3 m
 machine it is in: its blocks and parts, and how fast it runs against real time (with any accuracy relaxation the
 game applies to keep up). A part on a turning body shows that body's moment of inertia and kinetic energy. Long
 values wrap onto further lines.
+
+**Four times the station's power, from its gears (2026-10-28).** The station made about 0.4 W from a 2 kW fire.
+- *The cause.* Geared 2 : 1, the generator's coils barely beat the battery's voltage plus two diode drops, so it
+  charged in short pulses at 73 mA.
+- *The fix.* Within the same three-cell centre distance and with no other part moved, the gears are now
+  48 : 12 (4 : 1), up from 32 : 16. I tried 3 : 1 at 172 mA and 4 : 1 at 284 mA. The 4 : 1 gearing gives 1.6 W,
+  and the battery gains 217 mA net in the world, up from about 4 mA. The engine has power to spare: its governor
+  holds 133 rpm, up from 136 before.
+- *What it costs.* About a quarter more computing (2.4 s per simulated second in the core test, up from 1.95), as
+  the plant's solution follows sharper current pulses.
+- *Gauges.* Their old range ran out (224 mA, 1 W). The shunt is halved to 0.25 Ω, which also halves its loss, and
+  the gauges' scaling now reads up to 448 mA and 2.5 W on the bar.
+- *The regulator.* With real surplus current, it came to matter. Three silicon diodes at 4 mA drop 0.69 V each,
+  not 0.6, so the regulator tripped at 6.7 V (1.68 V a cell), well past an overcharged NiMH cell. A 12 kΩ lower
+  leg, up from 10 kΩ, puts the trip near 5.85 V. Full, the battery does not trip it; overcharged to 108 %, it trips
+  and dumps 0.6 A until the battery is back down, and the dump load warms by only 10 K.

@@ -199,25 +199,31 @@ public final class StationExhibit {
     }
 
     /**
-     * The generator (plant coordinates): a 32-tooth gear on the crankshaft at x = 10 drives a 16-tooth pinion three cells
-     * north (2 : 1, the governor's tooth size; geared faster, each magnet's pass a sharp pulse of charging current, it
-     * set the whole plant's solution a thousand steps a second), on a shaft along x at (·, y, 5) in two bearings; coils of
-     * 600 turns give the slower rotor EMF enough to charge. On it an aluminium disc
+     * The generator (plant coordinates): a 48-tooth gear on the crankshaft at x = 10 drives a 12-tooth pinion three cells
+     * north (4 : 1), on a shaft along x at (·, y, 5) in two bearings. Geared 2 : 1, its 600-turn coils' EMF barely
+     * passed the battery's voltage and two diodes' drops, and it charged in short pulses at 73 mA; 3 : 1 gave 172 mA,
+     * 4 : 1 284 mA (the same parts and place: only the gears' teeth; the engine has power to spare and its governor
+     * holds its speed). The cost: each magnet's pass a sharper pulse of charging current, which the plant's solution
+     * follows in smaller steps (a quarter more computing than at 2 : 1). On it an aluminium disc
      * at x = 13 carries two magnets (x = 14, two cells above and below the axis, opposite ways) past two coils fixed at
      * x = 15 — the hand generator on its side, turned by the engine. Its alternating EMF goes through a bridge of four
      * diodes into the station's battery (four nickel–metal hydride cells, 5 V).
      */
     static void generator(Exhibit e, int y) {
         String st = "steel_1045", al = "aluminium_6061";
-        e.add(GEAR, st, 10, y, 8, Dir.EAST, "teeth", 32, "pitch_radius", 2.0 / 16, "thickness", 0.01);
+        // the gear pair, three cells apart (their pitch radii add to 3/16 m): -Ddiag.genTeeth=<gear>:<pinion> to try others
+        String[] teeth = System.getProperty("diag.genTeeth", "48:12").split(":");
+        int zg = Integer.parseInt(teeth[0]), zp = Integer.parseInt(teeth[1]);
+        double rg = 3.0 / 16 * zg / (zg + zp), rp = 3.0 / 16 * zp / (zg + zp);
+        e.add(GEAR, st, 10, y, 8, Dir.EAST, "teeth", zg, "pitch_radius", rg, "thickness", 0.01);
         int gs = e.fill(SHAFT, st, 10, y, 5, 16, y, 5, Dir.EAST, "diameter", 0.012);
         e.name("genShaft", gs);
-        e.add(GEAR, st, 10, y, 5, Dir.EAST, "teeth", 16, "pitch_radius", 1.0 / 16, "thickness", 0.01);
+        e.add(GEAR, st, 10, y, 5, Dir.EAST, "teeth", zp, "pitch_radius", rp, "thickness", 0.01);
         e.add(BEARING, st, 11, y, 5, Dir.EAST);
         e.fill(BLOCK, st, 11, 0, 5, 11, y - 1, 5, Dir.UP);
         e.add(BEARING, st, 16, y, 5, Dir.EAST);
         e.fill(BLOCK, st, 16, 0, 5, 16, y - 1, 5, Dir.UP);
-        e.init(gs, new Exhibit.Initial(Double.NaN, -28, 0, 0)); // turning with the engine (the other way: a spur pair)
+        e.init(gs, new Exhibit.Initial(Double.NaN, -14.0 * zg / zp, 0, 0)); // turning with the engine (the other way: a spur pair)
         // the rotor: a thin disc in the y–z plane, the magnets on its east face
         e.fill(BLOCK, al, 13, y - 2, 3, 13, y + 2, 7, Dir.EAST, "fill", 0.08);
         e.add(MAGNET, "ndfeb_n42", 14, y + 2, 5, Dir.EAST);
@@ -228,7 +234,9 @@ public final class StationExhibit {
         e.name("coilB", e.add(COIL, "copper", 15, y - 2, 5, Dir.EAST, "turns", 600, "wire_diameter", 0.6e-3, "lead_axis", 2));
         // the bridge (current west → east through each diode) and the battery
         for (int k = 0; k < 4; k++) e.name("d" + (k + 1), e.add(DIODE, "silicon", 17, 1, 9 + 2 * k, Dir.EAST));
-        e.name("battery", e.add(BATTERY, "pvc", 19, 1, 6, Dir.SOUTH, "chemistry", 1, "cells", 4, "capacity", 5));
+        // (-Ddiag.batteryCharge=<fraction>: it starts at that charge, past 1 overcharged — the regulator's case)
+        e.name("battery", e.add(BATTERY, "pvc", 19, 1, 6, Dir.SOUTH, "chemistry", 1, "cells", 4, "capacity", 5,
+                "charge", Double.parseDouble(System.getProperty("diag.batteryCharge", "1"))));
         // (wired with the electronics: see electrical)
     }
 
@@ -321,11 +329,13 @@ public final class StationExhibit {
      * The station's electronics (plant coordinates, on the floor east of the generator, all on its battery): a charge
      * regulator and a revolution counter.
      * <p>
-     * The regulator: an op-amp compares a third of the battery's voltage (22 kΩ over 10 kΩ) with three silicon diodes'
-     * forward drop (through 1 kΩ: some 1.8 V, nearly whatever the battery does); past about 5.7 V, a full battery, its
-     * output switches on a MOSFET that puts the station's lamp and a 10 Ω dump load across the battery, taking what the
-     * generator brings beyond what the battery can store (1 MΩ from the output back to its input holds it on until the
-     * battery has fallen a tenth of a volt: no chatter).
+     * The regulator: an op-amp compares 12/34 of the battery's voltage (22 kΩ over 12 kΩ) with three silicon diodes'
+     * forward drop (through 1 kΩ: some 4 mA, 0.69 V each, 2.06 V); past about 5.85 V (1.46 V a cell, where a nickel–metal
+     * hydride cell's charge ends: over 10 kΩ, as first built, 6.7 V — overcharged by more than a tenth, which the
+     * generator's 4 mA surplus of old never reached and its 220 mA reaches in hours) its output switches on a MOSFET
+     * that puts the station's lamp and a 10 Ω dump load across the battery, some 0.6 A, more than the generator brings,
+     * so the battery runs back down (1 MΩ from the output back to its input holds it on until the battery has fallen a
+     * tenth of a volt: no chatter).
      * <p>
      * The counter: a steel vane on the crankshaft cuts an infrared beam once a turn; the photodiode's current through
      * 2.2 MΩ holds a Schmitt trigger's input up while the beam is clear, and each cut clocks the first of three
@@ -336,7 +346,7 @@ public final class StationExhibit {
         // ---- the regulator
         e.name("regulator", e.add(OPAMP, "silicon", 23, 1, 8, Dir.EAST));
         e.add(RESISTOR, "alumina", 21, 1, 10, Dir.EAST, "resistance", 22_000);   // battery + → sense
-        e.add(RESISTOR, "alumina", 21, 1, 12, Dir.EAST, "resistance", 10_000);   // sense → ground
+        e.add(RESISTOR, "alumina", 21, 1, 12, Dir.EAST, "resistance", 12_000);   // sense → ground
         e.add(RESISTOR, "alumina", 25, 1, 6, Dir.EAST, "resistance", 1e6);       // output → sense (hysteresis)
         e.add(RESISTOR, "alumina", 21, 1, 14, Dir.EAST, "resistance", 1_000);    // battery + → reference
         e.add(DIODE, "silicon", 28, 1, 12, Dir.EAST);                            // the reference: three diodes down
@@ -370,10 +380,10 @@ public final class StationExhibit {
         r.pin("ac1", 15, y + 2, 4).pin("ac1", 16, 1, 9).pin("ac1", 18, 1, 13);       // → D1 anode, D3 cathode
         r.pin("ac2", 15, y - 2, 4).pin("ac2", 16, 1, 11).pin("ac2", 18, 1, 15);      // → D2 anode, D4 cathode
         r.pin("vdd", 18, 1, 9).pin("vdd", 18, 1, 11).pin("vdd", 19, 1, 7);           // D1, D2 cathodes → battery +
-        // (D3, D4 anodes: the bridge's return, through a 0.5 Ω shunt beside them to ground — the generator gauge on the
+        // (D3, D4 anodes: the bridge's return, through a 0.25 Ω shunt beside them to ground — the generator gauge on the
         // dashboard senses its two ends; the current itself stays here, its path as short as before. Its ground end is
         // a bare copper junction, which joins the ground's wire and the gauge's sense wire of another colour)
-        e.name("genShunt", e.add(RESISTOR, "alumina", 14, 1, 15, Dir.EAST, "resistance", 0.5, "surface_area", 0.002));
+        e.name("genShunt", e.add(RESISTOR, "alumina", 14, 1, 15, Dir.EAST, "resistance", 0.25, "surface_area", 0.002));
         e.add(WIRE, "copper", 13, 1, 15, Dir.UP);
         r.keepClear(12, 1, 15, 12, 1, 15).keepClear(13, 0, 15, 13, 0, 15);
         r.pin("ret", 16, 1, 13).pin("ret", 16, 1, 15).pin("ret", 15, 1, 15).pin("gnd", 19, 1, 5);   // D3, D4 anodes, the shunt; battery −
@@ -427,7 +437,7 @@ public final class StationExhibit {
     /** The battery gauge's constant: its diode reference's voltage × 1023 × 100 (see DashboardTest). */
     static final int BATTERY_K = 132_230;
     /** The power gauge's constant: 4 × its diode's drop² × 1023, set from its settled readings (see DashboardTest). */
-    static final int POWER_K = 1_695;
+    static final int POWER_K = 3_390;
     /** Gauge k's label, as its card shows it (for reading the screens back). */
     public static String gaugeLabel(int k) {
         return GAUGES[k].label();
@@ -456,17 +466,18 @@ public final class StationExhibit {
             // (an alarm above 80 kPa: its vacuum lost)
             new DashboardExhibits.Gauge("condenser", "CONDENSER", "KPA", DashboardExhibits.FrontEnd.DIRECT, DashboardExhibits.CONDENSER, 0,
                     0, 102, 313, 28, 0, 1, 0, 31, 0, 800, 1),
-            // the generator's current: 0.5 Ω, gain 50 (40 mA a volt), on a 5.6 V supply: 0.219 mA a code
+            // the generator's current: 0.25 Ω, gain 50 (80 mA a volt), on a 5.6 V supply: 0.438 mA a code (448 mA full
+            // scale); its bar full at 400 mA
             new DashboardExhibits.Gauge("generator", "GENERATOR", "MA", DashboardExhibits.FrontEnd.CURRENT, DashboardExhibits.RETURN, DashboardExhibits.RETURN_REF,
-                    0, 0, 56, 0, 0, 0, 0, 307),
+                    0, 0, 112, 0, 0, 0, 0, 77),
             // the battery's voltage: two diodes' 1.24 V read against it, k = 1.24 V × 1023 × 100
             // (an alarm below 5.40 V: running down)
             new DashboardExhibits.Gauge("battery", "BATTERY", "V", DashboardExhibits.FrontEnd.REFERENCE, DashboardExhibits.VDD, 0,
                     1, 0, 0, 0, BATTERY_K, 2, 400, 154, 540, 0, 1),
             // the generator's power: its current (the shunt, as the generator gauge's) times the supply's voltage (a
-            // diode read against it): k = 4 V_ref² 1023 in tens of milliwatts; full scale 1 W
+            // diode read against it): k = 8 V_ref² 1023 in tens of milliwatts (the 0.25 Ω shunt); its bar full at 2.5 W
             new DashboardExhibits.Gauge("power", "GENERATOR POWER", "W", DashboardExhibits.FrontEnd.POWER, DashboardExhibits.RETURN,
-                    DashboardExhibits.RETURN_REF, 3, 0, 0, 0, POWER_K, 2, 0, 307, 0, 0, 1)};
+                    DashboardExhibits.RETURN_REF, 3, 0, 0, 0, POWER_K, 2, 0, 123, 0, 0, 1)};
     /**
      * The gauge blocks' x (each at z 19, its screen at x − 2…x + 1, z 20): a block apart, so that each screen is its own
      * (panels side by side make one screen).

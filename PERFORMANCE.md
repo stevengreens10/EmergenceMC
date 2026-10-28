@@ -228,7 +228,9 @@ What sets the step:
 
 1. The generator. Its coil currents kink as the bridge diodes turn on and off, and its steel's magnetisation tracks
    them. That steel is a hysteresis play in its following regime, which turns no corner of its own, so these are the
-   diodes' steep exponentials, and resolving them is physical.
+   diodes' steep exponentials, and resolving them is physical. (2026-10-28: geared 4 : 1, up from 2 : 1, for four
+   times the power, its sharper pulses cost about a quarter more: the dashboard test runs at 2.4 s per simulated
+   second, up from 1.95.)
 2. The flyball weights' bristle friction, which reverses twice a revolution.
 3. The engine cylinder's steam near top dead centre (1.85 cm³) and the feed pump's clearance.
 4. The firebox's combustion.

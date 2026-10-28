@@ -64,10 +64,10 @@ class DashboardTest {
         System.out.printf("  over the last second, sampled every millisecond: the battery's terminal voltage at most %.4f V, the regulator's output at most %.3f V%n", vMax, regMax);
         System.out.printf("  battery: %.3f mA·h taken in; the regulator's dump load %.1f mA%n", charged, 1e3 * dump);
         // the regulator's state: what decides whether it dumps (its output, the lamp, the shunt MOSFET) and how warm its parts are
-        System.out.printf("  regulator: battery %.4f V; output %.3f V; lamp %.2f mA; shunt MOSFET %.2f mA; regulator %.1f K, shunt %.1f K, lamp %.1f K; sun %.0f W/m², %.1f W absorbed in all%n",
+        System.out.printf("  regulator: battery %.4f V; output %.3f V; lamp %.2f mA; shunt MOSFET %.2f mA; regulator %.1f K, shunt %.1f K, lamp %.1f K, dump %.1f K; sun %.0f W/m², %.1f W absorbed in all%n",
                 c.probe(bat).voltage(), c.probe(b.id(e, "regulator")).voltage(), 1e3 * Math.abs(c.probe(b.id(e, "lamp")).current()),
                 1e3 * Math.abs(c.probe(b.id(e, "shunt")).current()), c.temperature(b.id(e, "regulator")), c.temperature(b.id(e, "shunt")),
-                c.temperature(b.id(e, "lamp")), sun, c.sunlightAbsorbed());
+                c.temperature(b.id(e, "lamp")), c.temperature(b.id(e, "dump")), sun, c.sunlightAbsorbed());
         double meanCurrent = q1 / 1.0;
         double[] truth = {
                 (c.pressure(fuel) - pa) / 1e5 * 10,                                 // bar, 1 place

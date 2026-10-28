@@ -278,8 +278,9 @@
      gauges): the seventh gauge's draw nearly takes up the charging margin. Worth watching.
    **Engineer's goggles** (asked 2026-10-28, done): see DEVELOPMENT_LOG. Next for them: a machine summary (its
    power flows) when looking at a part of it, and torque on shafts.
-   Next for fabrication: wet oxidation in steam (a wafer inside a vessel of steam), a mask step separate from
-   the diffusion, and a chip's process shown in the chip designer.
+   Since done for fabrication: a two-step process (the wafer edited between heatings, its state kept), and
+   short-channel effects in the chips' model (2026-10-28 06:40). Next: wet oxidation in steam (a wafer inside a
+   vessel of steam), the oxide masking the dopant (patterning), and a chip's process shown in the chip designer.
 
 0a9. **The station's dashboard** (done 2026-10-27, asked by the user: live metrics on displays, a nice UI, miniature
    electronics wherever possible). Six screens in front of the station show fuel, boiler pressure, engine speed,

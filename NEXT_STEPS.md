@@ -223,6 +223,16 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0b4. **Full tour 2026-10-28 14:15 (the display back): 191/191 over 86 exhibits in 33 min, no hand failures.** It
+   includes today's screen-reading checks (the counter displays read off the client), the goggles at the wafer
+   furnace, and the ribbons' new drawing. Since then:
+   - Displays count a clock rise only from low: a reload mid-bit added a bit even with the place kept.
+   - Miniature ribbons join full-size wires.
+   - PERFORMANCE.md has the options for bringing the station back to real time. The one that does it is stepping
+     the gauges' circuits apart from the generator's.
+   Next: that split (the plan in PERFORMANCE), the chart recorder read back as the counters are, and the goggles'
+   machine summary.
+
 0b3. **Scheduled tour 2026-10-28 13:29: not run** (Windows again showed only "WinDisc", no monitor). The demo
    world was regenerated (headless): 86 exhibits, 0 problems, 0 differences, 24/24 in-world tests. Run
    `./gradlew runShowcaseClient` when a display is back.

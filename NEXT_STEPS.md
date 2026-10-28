@@ -223,6 +223,10 @@
    Open across scales: gears meshing across a face, and structural support (a full-size part does not hold up a
    miniature one); optical beams drawn in a joined island still use one scale.
 
+0b3. **Scheduled tour 2026-10-28 13:29: not run** (Windows again showed only "WinDisc", no monitor). The demo
+   world was regenerated (headless): 86 exhibits, 0 problems, 0 differences, 24/24 in-world tests. Run
+   `./gradlew runShowcaseClient` when a display is back.
+
 0b2. **The station's displays and battery (2026-10-28).**
    - The screens froze after any reload, then drew garbage after the first fix. Both are fixed, and the tests now
      read the screens (see DEVELOPMENT_LOG). The station tour passes 21/21 on a reloaded world, every screen read

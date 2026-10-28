@@ -147,14 +147,14 @@ on rise clk {
         cnt <= cnt + 1
     }
     case (st) {
-        // a frame's set-up: display on, a quarter of full contrast (a panel's current is in proportion: a dashboard
+        // a frame's set-up: display on, an eighth of full contrast (a panel's current is in proportion: a dashboard
         // runs on the station's own battery), horizontal addressing, all the columns, the pages to draw (from 0 the
         // first time, then from 1: the label stays)
         0: {
             case (ini) {
                 0: byte <= 8'haf
                 1: byte <= 8'h81
-                2: byte <= 8'h40
+                2: byte <= 8'h20
                 3: byte <= 8'h20
                 4: byte <= 8'h00
                 5: byte <= 8'h21

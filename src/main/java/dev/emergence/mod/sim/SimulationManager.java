@@ -74,6 +74,8 @@ public final class SimulationManager {
     private final Map<UUID, LoggerSession> loggers = new HashMap<>();
 
     public static final class Island {
+        /** The tick its state was last written into its blocks while they unloaded (once a tick is enough). */
+        long unloadSavedTick = -1;
         final Set<BlockPos> blocks = new HashSet<>();
         final Map<Long, BlockPos> partPos = new HashMap<>();
         CompiledAssembly compiled;
@@ -190,7 +192,12 @@ public final class SimulationManager {
         // unload, and marking a block entity in a chunk that is itself unloading makes the level request that
         // chunk again, which reschedules its unload — forever, at server shutdown. The periodic save has already
         // marked the chunks unsaved, so what is written here goes out with them.
-        if (isl != null) saveIsland(isl, false);
+        // (once a tick: its blocks unload one by one, and at shutdown, with no ticks, all of them — writing the whole state
+        // for each took the 1100-block station minutes to quit)
+        if (isl != null && isl.unloadSavedTick != tickCount) {
+            saveIsland(isl, false);
+            isl.unloadSavedTick = tickCount;
+        }
         blocks.remove(pos);
         markDirty(pos);
     }
@@ -2070,15 +2077,20 @@ public final class SimulationManager {
         // (still compiling: the state it is being compiled from, which it has not run on from)
         AssemblyState s = isl.compiled != null ? isl.compiled.exportState() : isl.pending != null ? isl.startState : null;
         if (s == null) return;
+        // the chemistry (and chips', flows') entries by the part that owns each, once — not every entry for every block
+        Map<Long, List<Map.Entry<String, Double>>> byOwner = new HashMap<>();
+        for (var ce : s.chemistry().entrySet()) {
+            String k = ce.getKey();
+            byOwner.computeIfAbsent(Long.parseLong(k.substring(1, k.indexOf(':'))), o -> new ArrayList<>()).add(ce);
+        }
         for (BlockPos b : isl.blocks) {
             AssemblyBlockEntity be = be(b);
             if (be == null) continue;
             be.savedState().clear();
             be.savedChemistry().clear();
-            for (var ce : s.chemistry().entrySet()) {
-                String k = ce.getKey();
-                long owner = Long.parseLong(k.substring(1, k.indexOf(':')));
-                if (be.byId(owner) != null) be.savedChemistry().put(k, ce.getValue());
+            for (PlacedPart p : be.parts()) {
+                var mine = byOwner.get(p.id);
+                if (mine != null) for (var ce : mine) be.savedChemistry().put(ce.getKey(), ce.getValue());
             }
             for (PlacedPart p : be.parts()) {
                 double[] m = s.bodyMotion().getOrDefault(p.id, new double[]{0, 0});
@@ -2132,12 +2144,24 @@ public final class SimulationManager {
                 for (DisplayLink o : old) if (java.util.Arrays.equals(o.panels(), l.panels()) && o.controller() == l.controller()) System.arraycopy(o.sent(), 0, l.sent(), 0, 2);
             }
         }
+        if (DEBUG_ISLANDS && tickCount % 200 == 0) {
+            StringBuilder sb = new StringBuilder();
+            for (DisplayLink l : isl.displayLinks) {
+                String pins = "";
+                for (long id : isl.partPos.keySet()) {
+                    var chip = isl.compiled.digitalChip(id);
+                    if (chip != null && chip.component() == l.controller()) pins = chip.describePins();
+                }
+                sb.append(String.format(" [%d panels: version %d, on %s, %d lit, %d bytes, last sent tick %d; %s]", l.panels().length, l.controller().version(),
+                        l.controller().on(), l.controller().shown(), l.controller().bytes(), l.sent()[1], pins));
+            }
+            EmergenceMod.LOG.info("Displays of the island at {} (t = {} s):{}", isl.blocks.iterator().next(), Math.round(isl.compiled.time()), sb);
+        }
         for (DisplayLink l : isl.displayLinks) {
             var d = l.controller();
             boolean changed = d.version() != l.sent()[0];
             if (!(changed && tickCount - l.sent()[1] >= 2) && tickCount - l.sent()[1] < 100) continue;
-            byte[] img = new byte[1024];
-            for (int y = 0; y < 64; y++) for (int x = 0; x < 128; x++) if (d.pixel(x, y)) img[(y >> 3) * 128 + x] |= (byte) (1 << (y & 7));
+            byte[] img = screenImage(d);
             for (int i = 0; i < l.panels().length; i++) {
                 PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(l.at()),
                         new dev.emergence.mod.net.DisplaySyncPayload(l.panels()[i], img, d.contrast(), l.tiles()[i]));
@@ -2145,6 +2169,14 @@ public final class SimulationManager {
             l.sent()[0] = d.version();
             l.sent()[1] = tickCount;
         }
+    }
+
+    /** What a display controller's screen shows: its image, or "NO SIGNAL" while it has heard nothing since it powered up. */
+    static byte[] screenImage(dev.emergence.core.digital.DisplayPanel d) {
+        if (d.awaitingData()) return dev.emergence.core.digital.DisplayPanel.noSignalImage();
+        byte[] img = new byte[1024];
+        for (int y = 0; y < 64; y++) for (int x = 0; x < 128; x++) if (d.pixel(x, y)) img[(y >> 3) * 128 + x] |= (byte) (1 << (y & 7));
+        return img;
     }
 
     /** The full-size screens the miniature machine at {@code pos} drives across its block faces: each screen's panel ids. */
@@ -2219,8 +2251,7 @@ public final class SimulationManager {
             long[] last = isl.displaySent.computeIfAbsent(en.getKey(), k -> new long[]{-1, Long.MIN_VALUE / 2});
             boolean changed = d.version() != last[0];
             if (!(changed && tickCount - last[1] >= 2) && tickCount - last[1] < 100) continue;
-            byte[] img = new byte[1024];
-            for (int y = 0; y < 64; y++) for (int x = 0; x < 128; x++) if (d.pixel(x, y)) img[(y >> 3) * 128 + x] |= (byte) (1 << (y & 7));
+            byte[] img = screenImage(d);
             PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(any),
                     new dev.emergence.mod.net.DisplaySyncPayload(en.getKey(), img, d.contrast(), isl.compiled.displayTile(en.getKey())));
             last[0] = d.version();

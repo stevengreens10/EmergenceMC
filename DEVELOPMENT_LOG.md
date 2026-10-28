@@ -1347,3 +1347,22 @@ see a machine component's important stats just by looking at it.
   older than two seconds are greyed.
 - *The tour.* At the wafer furnace it puts the goggles on, looks at the wafer, and checks the panel shows its
   temperature and oxide.
+
+**Screens froze after a reload (2026-10-28, found by the user).** The station's dashboard showed the same readings
+whatever the engine did.
+- *The cause.* The gauge chips computed correctly, but their display controllers never heard a byte. A gauge pulls
+  its display's chip select low with its first byte and keeps it low (one device on the bus). Saved with its world
+  the select is low, and after a reload the restored chip never changes it. The controller, powering up, started
+  out deselected, but the digital domain tells a component only of the inputs already high (all others start low).
+  So it stayed deselected and ignored everything. Every screen in a reloaded world was frozen on the image saved with
+  it; fresh worlds were fine, which is why the tours (each on a newly built world, and checking only the chips'
+  values) missed it.
+- *The fixes.*
+  - A controller powers up selected, as its low inputs say.
+  - Chips get a power-down notice: a display loses its memory and goes dark (it showed its last image for ever).
+  - A screen restored with its machine shows "NO SIGNAL" until its first byte, not a reading nobody is reading.
+  - `DisplayReloadTest` saves and reloads a screen and checks it is still drawn (it failed with 0 bytes before).
+  - The station tour now changes the engine (the brake) and checks that the screens' images as the client received
+    them change, not only the gauges' values.
+- *Found on the way.* Quitting with the station loaded took minutes: each of its 1100 blocks, unloading, wrote the
+  whole island's state again, every entry looked at for every block. Now once a tick, grouped by part.

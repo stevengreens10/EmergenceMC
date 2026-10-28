@@ -61,6 +61,11 @@ public final class DigitalChip implements Element, EventSource {
         for (int k = 0; k < out.length; k++) if (out[k] != null) dom.bindAnalogOutput(slot, k);
     }
 
+    /** For diagnosis: its power and its inputs' connections (see DigitalDomain#describe). */
+    public String describePins() {
+        return dom.describe(slot);
+    }
+
     /** Its outputs' on-resistance [Ω] (74HC: 50 Ω). */
     private double rOn = 50;
 

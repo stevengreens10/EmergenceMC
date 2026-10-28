@@ -23,6 +23,7 @@ public final class ClientDisplays {
         int brightness;
         float[] tile;
         boolean dirty = true;
+        long updates;
         DynamicTexture tex;
         ResourceLocation loc;
     }
@@ -35,6 +36,7 @@ public final class ClientDisplays {
     public static void apply(DisplaySyncPayload p) {
         Entry e = DISPLAYS.computeIfAbsent(p.partId(), k -> new Entry());
         e.image = p.image();
+        e.updates++;
         e.brightness = p.brightness();
         e.tile = p.tile();
         e.dirty = true;
@@ -44,6 +46,12 @@ public final class ClientDisplays {
     public static float[] tile(long partId) {
         Entry e = DISPLAYS.get(partId);
         return e == null ? null : e.tile;
+    }
+
+    /** A digest of panel {@code partId}'s image as this client last received it (0 if none), and how many it has had. */
+    public static long[] received(long partId) {
+        Entry e = DISPLAYS.get(partId);
+        return e == null || e.image == null ? new long[]{0, 0} : new long[]{java.util.Arrays.hashCode(e.image), e.updates};
     }
 
     /** The texture showing panel {@code partId}'s image, or null if none has come yet. */

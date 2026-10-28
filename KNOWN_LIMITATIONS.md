@@ -314,3 +314,7 @@ multimeter, oscilloscope/data logging.
   times a second.
 * A shaft has no torque reading yet: the simulation's rotor carries speed, and torque between parts of one rigid
   body is not resolved.
+
+## Displays
+* A display restored with its machine shows "NO SIGNAL" until its chip sends its first byte. A design that draws
+  its screen only once (at power-up) shows it until the chip next draws.

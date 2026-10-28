@@ -128,6 +128,15 @@ class DigitalPartsTest {
             }
         }
         assertEquals(8, panel.shown());
+        // its supply gone: the panel goes dark and its memory is lost (it kept showing its last image)
+        long v = panel.version();
+        b.dom.postPower(d, false, s.time());
+        b.dom.advanceTo(s.time());
+        assertFalse(panel.on(), "dark without power");
+        assertFalse(panel.pixel(5, 16));
+        assertEquals(0, panel.shown());
+        for (byte m : panel.memory()) assertEquals(0, m, "its memory lost");
+        assertTrue(panel.version() > v, "a changed image, for the clients");
     }
 
     @Test

@@ -37,6 +37,13 @@ public interface DigitalComponent {
     /** Powered up at t (the supply came up): from its starting state; drive the outputs' starting levels. */
     void powerUp(double t, Ctx ctx);
 
+    /**
+     * Its supply went at t: whatever it holds without power is lost (its outputs are already let go by the domain).
+     * A display goes dark.
+     */
+    default void powerDown(double t) {
+    }
+
     /** Output pin k's level as the component holds it (before the delay to the pin). */
     boolean output(int k);
 

@@ -280,6 +280,47 @@ public final class AutoShowcase {
                                 String.format("mean speed %.2f → %.2f rad/s (%+.1f %%), expected within ±10 %%", w0.mean(), w1.mean(),
                                         100 * (w1.mean() / w0.mean() - 1)))));
                 STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " take the brake off", part.apply("brake", PartKind.BRAKE))));
+                if (!e.embedded.isEmpty()) {
+                    // the dashboard follows a change to the engine, on this client's screens: the brake put on by hand (the
+                    // throttle is the governor's); the engine's speed and the generator's current read as the world's own,
+                    // and the screens' images as received here changed
+                    Runnable front = () -> look(server, plot.getX() + 12, plot.getY() + 2.4, plot.getZ() + 32, 205.5f, 6);
+                    java.util.function.IntFunction<Long> panelOf = k -> {
+                        PlacedPart panel = partIn(server, at.apply("screen" + k), PartKind.DISPLAY);
+                        return panel == null ? -1L : panel.id;
+                    };
+                    long[][] before = new long[e.embedded.size()][];
+                    double[] w = {Double.NaN}, shut = {Double.NaN};
+                    STEPS.add(new Step(0, () -> {
+                        w[0] = Math.abs(motion(server, shaft, PartKind.SHAFT));
+                        for (int k = 0; k < before.length; k++) before[k] = ClientDisplays.received(panelOf.apply(k));
+                    }, null).act(PlayerHand.click(key + " put the brake on again", part.apply("brake", PartKind.BRAKE))));
+                    // twenty seconds of it, and two of the gauges' readings more (a reading and its frame take some 2 s)
+                    STEPS.add(new Step(12000, () -> {
+                        front.run();
+                        shut[0] = simTime(server, shaft);
+                    }, shot.apply("braked-dashboard"), () -> onServer(server, key + "t", () -> simTime(server, shaft)) - shut[0] > 20)
+                            .check(key + " braked, the engine gauge reads its speed", () -> gauge(gaugeValue(server, plot, e, 2),
+                                    Math.abs(motion(server, shaft, PartKind.SHAFT)) * 60 / (2 * Math.PI), 10, "rpm"))
+                            .check(key + " the generator gauge reads its current", () -> {
+                                long v = gaugeValue(server, plot, e, 4);
+                                return that(v >= 0 && v <= 400, v + " mA (0 to 400)");
+                            })
+                            .check(key + " the screens on this client show new images", () -> {
+                                int changed = 0, nScreens = 0;
+                                StringBuilder sb = new StringBuilder();
+                                for (int k = 0; k < before.length; k++) {
+                                    long pid = panelOf.apply(k);
+                                    if (pid < 0) continue;
+                                    nScreens++;
+                                    long[] now = ClientDisplays.received(pid);
+                                    if (now[0] != before[k][0]) changed++;
+                                    sb.append(String.format(" [%d: %d images, %d new]", k, now[1], now[1] - before[k][1]));
+                                }
+                                return that(changed >= Math.min(3, nScreens), changed + " of " + nScreens + " screens changed;" + sb);
+                            }));
+                    STEPS.add(new Step(0, NOTHING, null).act(PlayerHand.click(key + " take the brake off again", part.apply("brake", PartKind.BRAKE))));
+                }
             }
             if (id.equals("glow") || id.equals("fuse")) {
                 BlockPos wire = at.apply("wire");

@@ -83,6 +83,7 @@ public final class DisplayPanel implements DigitalComponent {
 
     private void take(int b) {
         bytes++;
+        awaiting = false;
         if (dc) {
             data(b);
             return;
@@ -172,7 +173,70 @@ public final class DisplayPanel implements DigitalComponent {
         reset();
         java.util.Arrays.fill(ram, (byte) 0);
         lit = 0;
+        // its inputs start low, as the domain has them (it tells a component only of those already high): cs low is
+        // selected. (Starting deselected, a controller whose chip held cs low — a gauge saved with its world, which keeps
+        // its only device selected — never heard a byte again after a reload.)
+        selected = true;
+        nbits = 0;
+        shift = 0;
+        awaiting = true;
         applyRestore();
+    }
+
+    /** Powered up and not yet sent a byte since (what it shows is only what it was restored with). */
+    private boolean awaiting;
+
+    /**
+     * Whether it is on but has heard nothing since it powered up: what it shows was saved with its machine, not drawn
+     * now. The game shows "NO SIGNAL" for it then (see {@link #noSignalImage}), not a reading that is not being read.
+     */
+    public boolean awaitingData() {
+        return on && awaiting;
+    }
+
+    /** A screen's image saying it has no signal: the words in a frame (8 pages of 128 column bytes). */
+    public static byte[] noSignalImage() {
+        byte[] img = new byte[WIDTH * PAGES];
+        String[] glyphs = {
+                "N:10001,11001,10101,10011,10001,10001,10001", "O:01110,10001,10001,10001,10001,10001,01110",
+                "S:01111,10000,10000,01110,00001,00001,11110", "I:01110,00100,00100,00100,00100,00100,01110",
+                "G:01110,10001,10000,10111,10001,10001,01111", "A:01110,10001,10001,11111,10001,10001,10001",
+                "L:10000,10000,10000,10000,10000,10000,11111"};
+        java.util.Map<Character, String[]> font = new java.util.HashMap<>();
+        for (String g : glyphs) font.put(g.charAt(0), g.substring(2).split(","));
+        String text = "NO SIGNAL";
+        int scale = 2, x0 = (WIDTH - text.length() * 6 * scale) / 2, y0 = (HEIGHT - 7 * scale) / 2;
+        for (int i = 0; i < text.length(); i++) {
+            String[] rows = font.get(text.charAt(i));
+            if (rows == null) continue;
+            for (int r = 0; r < 7; r++)
+                for (int c = 0; c < 5; c++)
+                    if (rows[r].charAt(c) == '1')
+                        for (int dy = 0; dy < scale; dy++)
+                            for (int dx = 0; dx < scale; dx++) set(img, x0 + (i * 6 + c) * scale + dx, y0 + r * scale + dy);
+        }
+        // a dashed frame round the screen
+        for (int x = 0; x < WIDTH; x += 2) {
+            set(img, x, 0);
+            set(img, x, HEIGHT - 1);
+        }
+        for (int y = 0; y < HEIGHT; y += 2) {
+            set(img, 0, y);
+            set(img, WIDTH - 1, y);
+        }
+        return img;
+    }
+
+    private static void set(byte[] img, int x, int y) {
+        if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) img[(y >> 3) * WIDTH + x] |= (byte) (1 << (y & 7));
+    }
+
+    /** Without power its memory is lost and the panel goes dark (it was showing its last image for ever). */
+    @Override
+    public void powerDown(double t) {
+        reset();
+        java.util.Arrays.fill(ram, (byte) 0);
+        lit = 0;
     }
 
     @Override

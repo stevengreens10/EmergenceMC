@@ -159,6 +159,20 @@ public final class DigitalDomain {
         return s.index;
     }
 
+    /** For diagnosis: slot k's power and each input pin's connection (net, level, transitions; analog; none). */
+    public String describe(int k) {
+        Slot s = slots.get(k);
+        StringBuilder b = new StringBuilder(s.powered ? "powered" : "unpowered").append(String.format(" %.2f V;", s.supply));
+        var names = s.c.inputs();
+        for (int i = 0; i < s.inNet.length; i++) {
+            b.append(' ').append(i < names.size() ? names.get(i) : "in" + i).append('=');
+            if (s.inKind[i] == NET) b.append(s.inNet[i].name).append(s.inNet[i].level ? "/1/" : "/0/").append(s.inNet[i].transitions);
+            else if (s.inKind[i] == ANALOG) b.append("analog/").append(s.inSeen[i] ? 1 : 0);
+            else b.append("none");
+        }
+        return b.toString();
+    }
+
     public Net net(String name) {
         Net n = new Net(name);
         nets.add(n);
@@ -330,6 +344,7 @@ public final class DigitalDomain {
                         if (s.inKind[k] == NET ? s.inNet[k].level : s.inSeen[k]) s.c.input(k, true, e.time(), s);
                     }
                 } else {
+                    s.c.powerDown(e.time());
                     for (int k = 0; k < s.outLevel.length; k++) {
                         s.outVersion[k]++;
                         if (s.outLevel[k]) analogChanged = true;

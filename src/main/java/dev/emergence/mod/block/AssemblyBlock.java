@@ -126,6 +126,11 @@ public final class AssemblyBlock extends BaseEntityBlock implements SimpleWaterl
         if (bare && level instanceof ServerLevel sl0 && SimulationManager.get(sl0).pushSlider(pos, part.id, player)) {
             return InteractionResult.SUCCESS;
         }
+        // a two-terminal component, with an empty hand: where its leads come out (any wire against those faces joins it)
+        if (bare && dev.emergence.mod.client.LeadFaces.shows(part.kind)) {
+            if (level.isClientSide) dev.emergence.mod.client.ClientHooks.showLeads(pos, be.resolution(), part);
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         if (part.kind == PartKind.CRANK || part.kind == PartKind.SWITCH || part.kind == PartKind.VALVE || part.kind == PartKind.BRAKE) {
             if (level instanceof ServerLevel sl) {
                 SimulationManager sim = SimulationManager.get(sl);

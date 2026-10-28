@@ -82,6 +82,16 @@ public final class AssemblyCompiler {
         return Builder.port(p, x, y, z, d) != null;
     }
 
+    /**
+     * The lead a two-terminal component brings out through face d of its cell (x, y, z): "+", "−", or null (no lead
+     * there) — for telling a player where a wire would join it.
+     */
+    public static String leadAt(Part p, int x, int y, int z, Dir d) {
+        String k = Builder.port(p, x, y, z, d);
+        if (k == null) return null;
+        return k.endsWith("+") ? "+" : k.endsWith("-") ? "−" : null;
+    }
+
     private static final class Builder {
         final Assembly a;
         final CompiledAssembly c;
@@ -1577,6 +1587,14 @@ public final class AssemblyCompiler {
         }
 
         /** Port key of part p on face d of cell (x,y,z), or null if p has no electrical port there. */
+        /** Whether a part is a single-cell two-terminal component, whose leads come out on its sides as well as its ends. */
+        static boolean sideLeaded(Part p) {
+            return switch (p.kind()) {
+                case RESISTOR, CAPACITOR, BATTERY, DIODE, LED, PHOTODIODE, GM_TUBE, SWITCH, COIL -> p.minX() == p.maxX() && p.minY() == p.maxY() && p.minZ() == p.maxZ();
+                default -> false;
+            };
+        }
+
         static String port(Part p, int x, int y, int z, Dir d) {
             switch (p.kind()) {
                 case WIRE, INSULATED_WIRE -> {
@@ -1860,6 +1878,12 @@ public final class AssemblyCompiler {
             }
             List<Contact> contacts = new ArrayList<>();
             Set<String> seen = new HashSet<>();
+            // a single-cell component's leads come out on its sides too (see port): what reaches each lead by its end
+            // and by its side, to warn of joins that are likely accidents (a wire of another net beside a component, two
+            // components side by side)
+            Map<String, Set<Long>> endColours = new HashMap<>(), sideColours = new HashMap<>();
+            Map<String, Part> leadOwner = new HashMap<>();
+            Set<String> sideBySide = new java.util.LinkedHashSet<>();
             for (Part p : parts) {
                 if (!(conductive(p) || p.kind().leaded)) continue;
                 for (int x = p.minX(); x <= p.maxX(); x++)
@@ -1910,9 +1934,34 @@ public final class AssemblyCompiler {
                                     String key = pk.compareTo(qk) < 0 ? pk + "|" + qk : qk + "|" + pk;
                                     if (!seen.add(key)) continue;
                                     contacts.add(new Contact(p, pk, q, qk, sliding, slide, end, sense));
+                                    if (sideLeaded(p)) {
+                                        boolean side = d.axis() != p.axis().axis();
+                                        if (q.kind() == PartKind.INSULATED_WIRE) {
+                                            (side ? sideColours : endColours).computeIfAbsent(pk, k -> new HashSet<>()).add(Math.round(q.param("color", 0)));
+                                            leadOwner.put(pk, p);
+                                        } else if (side && sideLeaded(q) && d.axis() != q.axis().axis() && p.id() < q.id()) {
+                                            sideBySide.add(p.kind().name().toLowerCase(Locale.ROOT) + " #" + p.id() + " and " + q.kind().name().toLowerCase(Locale.ROOT)
+                                                    + " #" + q.id());
+                                        }
+                                    }
                                 }
                             }
             }
+            for (var en : sideColours.entrySet()) {
+                Set<Long> ends = endColours.get(en.getKey());
+                if (ends == null) continue;
+                for (long col : en.getValue()) {
+                    if (ends.contains(col)) continue;
+                    Part p = leadOwner.get(en.getKey());
+                    c.warnings.add(String.format("%s #%d: a lead is reached at its end by wire of colour %s and on its side by colour %d — a single-cell "
+                            + "part's leads come out on its sides too, so the two wires join there (move one aside if they are not one net)",
+                            p.kind().name().toLowerCase(Locale.ROOT), p.id(), ends, col));
+                    break;
+                }
+            }
+            for (String pair : sideBySide)
+                c.warnings.add("The " + pair + " touch side by side: single-cell parts' leads come out on their sides too, so their leads join "
+                        + "there (a row apart, they do not)");
             // ---- joins across scales: a full-size ribbon's conductors to the miniature wires against its face
             for (long[] br : a.bridges()) {
                 Part r = partById(br[0]), w = partById(br[1]);

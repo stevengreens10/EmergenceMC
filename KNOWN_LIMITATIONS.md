@@ -280,6 +280,7 @@ multimeter, oscilloscope/data logging.
   diodes' drop at room temperature.
 * The engine gauge's speed is the last turn's: it ripples with the speed within a turn.
 * A passive reader's part of the plant is read a plant step late by the circuits.
-* The router checks that a pin cell touches one component, not which face it touches: a pin beside a single-cell
-  part's side, along its lead axis, joins that part's lead. Twice this joined what should not have been (the
-  gauge's amplifier, the station's regulator). Each was found by its test and the part moved.
+* A single-cell component's leads come out on its sides along its lead axis as well as its ends, so a wire beside
+  its side joins it. The compiler warns where that is likely an accident: a wire of another colour beside a lead
+  that a wire reaches at its end, or two components side by side. A deliberate join of either kind warns too, and
+  can be laid otherwise. An empty-hand right-click on a component says where its leads come out.

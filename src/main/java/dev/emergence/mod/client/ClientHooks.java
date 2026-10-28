@@ -44,6 +44,12 @@ public final class ClientHooks {
         }
     }
 
+    /** Says where a two-terminal component's leads come out (see LeadFaces). */
+    public static void showLeads(BlockPos pos, int resolution, PlacedPart part) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) mc.player.displayClientMessage(Component.literal(LeadFaces.describe(pos, resolution, part)), true);
+    }
+
     public static void openAnalyzer() {
         Minecraft.getInstance().setScreen(new AnalyzerScreen());
     }

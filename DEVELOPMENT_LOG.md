@@ -1284,3 +1284,13 @@ the station's operation, with a nice UI, using miniature electronics wherever po
 - *Cost.* The dashboard first made the station 50 % slower. The fuel transducer kept the firebox's gas chemistry in
   the engine's fast steps. Passive readers no longer hold their part to the plant's steps, and the dashboard now
   costs 16 %.
+
+**Seven next steps (2026-10-27, evening).** The user asked for all seven next steps.
+- *1. The gas engine's slow start was the tour's fault.* The step's "has it fired?" condition read the
+  crankshaft's speed off the server's thread. There the level gives no block entity, so the reading was NaN until
+  the step's 3-minute limit. Replays of the world's state in the core (with relaxed accuracy, with the noon sun) all
+  fired in seconds. Logging the world's crankshaft against its own time showed the same. Four conditions now read on
+  the server.
+- *2. Accidental lead joins.* The compiler warns of a wire of another colour beside a component's lead, and of
+  components side by side (LeadJoinWarningTest). No exhibit has either. An empty-hand right-click on a two-terminal
+  component names the faces where its leads come out.

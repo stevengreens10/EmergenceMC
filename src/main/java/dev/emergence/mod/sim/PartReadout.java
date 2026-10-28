@@ -33,8 +33,15 @@ public final class PartReadout {
         if (!Double.isNaN(p.voltage())) out.add(new Line("Voltage", Units.formatSI(round(p.voltage()), "V")));
         if (!Double.isNaN(p.current())) out.add(new Line("Current", Units.formatSI(round(p.current()), "A")));
         if (!Double.isNaN(p.power())) out.add(new Line("Power", Units.formatSI(round(p.power()), "W")));
-        if (p.bodyIndex() > 0)
+        if (p.bodyIndex() > 0) {
             out.add(new Line("Speed", String.format("%.1f rpm (%.2f rad/s)", p.angularVelocity() * 60 / (2 * Math.PI), p.angularVelocity())));
+            // the body it turns with: its inertia and the energy in its turning
+            var body = c.bodyOf(part.id);
+            if (body != null && !body.isStatic() && body.inertia() > 0) {
+                double w = p.angularVelocity();
+                out.add(new Line("Body", String.format("%s kg·m², %s turning", Units.formatSI(round(body.inertia()), ""), Units.formatSI(round(0.5 * body.inertia() * w * w), "J"))));
+            }
+        }
         double soc = c.batteryStateOfCharge(part.id);
         if (!Double.isNaN(soc)) out.add(new Line("Charge", String.format("%.1f %%", 100 * soc)));
         double[] fl = c.fluid(part.id);
@@ -82,6 +89,8 @@ public final class PartReadout {
                 out.add(new Line("Its chips", cp.works() ? String.format("work, %.2f× slower", cp.delayScale()) : "dead"));
             }
         }
+        String machine = sm.machineSummary(pos);
+        if (machine != null) out.add(new Line("Machine", machine));
         // electrochemistry: concentrations in a jar; dissolution, deposits and gas at an electrode
         for (var e : c.chemistry(part.id).entrySet()) {
             String[] kv = e.getKey().split(" (?=[^ ]+$)");

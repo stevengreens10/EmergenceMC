@@ -1391,3 +1391,8 @@ full-size insulated wire against that face, to the conductor of the wire's colou
 whole face, so every miniature ribbon on that face is joined. The game's islands, both core builders and the
 drawing all follow the rule: the wire reaches the face, and the ribbon's conductor reaches the wire. In the core,
 a miniature battery lights a full-size LED through two miniature ribbons (10.3 mA).
+
+**The goggles show the machine (2026-10-28).** Looking at a part through the engineer's goggles now also shows the
+machine it is in: its blocks and parts, and how fast it runs against real time (with any accuracy relaxation the
+game applies to keep up). A part on a turning body shows that body's moment of inertia and kinetic energy. Long
+values wrap onto further lines.

@@ -83,7 +83,6 @@ public final class GogglesHud {
         String title = Component.translatable("item.emergence." + part.kind.name().toLowerCase()).getString();
         String material = part.spec.resolveMaterial().name().split(" \\(")[0];
         boolean stale = d == null || System.currentTimeMillis() - dataAt > 2000;
-        int rows = d == null ? 1 : Math.max(1, d.labels().length);
         int labelW = 0, valueW = 0;
         if (d != null) {
             for (String s : d.labels()) labelW = Math.max(labelW, font.width(s));
@@ -91,6 +90,16 @@ public final class GogglesHud {
         }
         int w = Math.max(Math.max(font.width(title), font.width(material)) + 8, labelW + valueW + 18);
         w = Math.min(w, g.guiWidth() / 2 - 24);
+        // a value too long for the card goes on over the lines below it, broken between words
+        java.util.List<String[]> lines = new java.util.ArrayList<>();
+        if (d != null) for (int i = 0; i < d.labels().length; i++) {
+            String label = d.labels()[i];
+            for (var part2 : font.getSplitter().splitLines(d.values()[i], Math.max(40, w - labelW - 14), net.minecraft.network.chat.Style.EMPTY)) {
+                lines.add(new String[]{label, part2.getString()});
+                label = "";
+            }
+        }
+        int rows = Math.max(1, lines.size());
         int h = 26 + rows * 10;
         int x0 = g.guiWidth() / 2 + 14, y0 = Math.max(4, g.guiHeight() / 2 - h / 2);
         // a brass-edged card, as the goggles' lenses tint it
@@ -106,9 +115,9 @@ public final class GogglesHud {
             g.drawString(font, d == null ? "reading…" : "not simulated yet", x0 + 4, y, 0xFF8A96A2, false);
             return;
         }
-        for (int i = 0; i < d.labels().length; i++) {
-            g.drawString(font, d.labels()[i], x0 + 4, y, 0xFF9AA6B2, false);
-            g.drawString(font, font.plainSubstrByWidth(d.values()[i], w - labelW - 14), x0 + labelW + 10, y, stale ? 0xFF8A96A2 : 0xFFFFFFFF, false);
+        for (String[] l : lines) {
+            g.drawString(font, l[0], x0 + 4, y, 0xFF9AA6B2, false);
+            g.drawString(font, font.plainSubstrByWidth(l[1], w - labelW - 14), x0 + labelW + 10, y, stale ? 0xFF8A96A2 : 0xFFFFFFFF, false);
             y += 10;
         }
     }

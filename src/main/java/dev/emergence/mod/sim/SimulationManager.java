@@ -1923,6 +1923,20 @@ public final class SimulationManager {
         return isl == null ? null : isl.compiled;
     }
 
+    /**
+     * The machine the part at {@code pos} is in, for the goggles: its size, and how fast it runs against real time (its
+     * own time scale, the distance scale, and how far its accuracy is relaxed to keep up). Null if not simulated.
+     */
+    String machineSummary(BlockPos pos) {
+        Island isl = islandOf.get(pos);
+        if (isl == null || isl.compiled == null) return null;
+        double pace = isl.timeScale * scaleOf(isl);
+        int nb = isl.blocks.size(), np = isl.compiled.assembly().parts().size();
+        return String.format("%d block%s, %d part%s; %s%s", nb, nb == 1 ? "" : "s", np, np == 1 ? "" : "s",
+                pace >= 0.995 ? "running at real time" : String.format("running at %.2f× real time", pace),
+                isl.relax > 1.01 ? String.format(" (accuracy relaxed ×%.1f)", isl.relax) : "");
+    }
+
     /** Chips a wafer is cut into (a 6.25 cm square, dies about 1.5 cm across). */
     public static final int CHIPS_PER_WAFER = 16;
 

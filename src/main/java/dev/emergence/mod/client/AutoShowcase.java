@@ -767,7 +767,7 @@ public final class AutoShowcase {
                                     .mapToObj(j -> d.labels()[j] + " " + d.values()[j]).toList());
                             return 0;
                         })
-                        .check(key + " the goggles show the wafer's readings", () -> that(seen[0].contains("Oxide") && seen[0].contains("Temperature"),
+                        .check(key + " the goggles show the wafer's readings", () -> that(seen[0].contains("Oxide") && seen[0].contains("Temperature") && seen[0].contains("Machine"),
                                 seen[0].isEmpty() ? "nothing shown" : seen[0])));
                 STEPS.add(new Step(0, () -> player(server).setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, ItemStack.EMPTY), null));
             }
